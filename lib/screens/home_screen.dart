@@ -9,6 +9,7 @@ import '../services/auth/auth_manager.dart';
 import '../models/user_model.dart';
 import 'hybrid_shopping_screen.dart';
 import 'webview_screen.dart';
+import 'health_dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -82,6 +83,19 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 // 마이페이지로 이동
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.dashboard),
+              title: const Text('건강대시보드'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HealthDashboardScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -252,7 +266,12 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('건강대시보드'),
               onTap: () {
                 Navigator.pop(context);
-                // 보미오라 소개 페이지로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HealthDashboardScreen(),
+                  ),
+                );
               },
             ),
             ExpansionTile(
@@ -276,27 +295,51 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.cleaning_services, size: 20),
+                  leading: const Icon(Icons.fitness_center, size: 20),
                   title: const Text('디톡스'),
                   onTap: () {
                     Navigator.pop(context);
-                    // 디톡스 페이지로 이동
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WebViewScreen(
+                          url: 'https://bomiora0.mycafe24.com/shop/list.php?ca_id=20&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
+                          title: '디톡스',
+                        ),
+                      ),
+                    );
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.health_and_safety, size: 20),
-                  title: const Text('건강/면역'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // 건강/면역 페이지로 이동
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.psychology, size: 20),
+                  leading: const Icon(Icons.fitness_center, size: 20),
                   title: const Text('심신안정'),
                   onTap: () {
                     Navigator.pop(context);
-                    // 심신안정 페이지로 이동
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WebViewScreen(
+                          url: 'https://bomiora0.mycafe24.com/shop/list.php?ca_id=80&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
+                          title: '심신안정',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.fitness_center, size: 20),
+                  title: const Text('건강/면역'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WebViewScreen(
+                          url: 'https://bomiora0.mycafe24.com/shop/list.php?ca_id=50&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
+                          title: '건강/면역',
+                        ),
+                      ),
+                    );
                   },
                 ),
               ],
