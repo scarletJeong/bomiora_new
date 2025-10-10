@@ -5,8 +5,6 @@ import '../widgets/popular_products.dart';
 import '../widgets/review_section.dart';
 import '../widgets/tester_section.dart';
 import '../widgets/bottom_banner.dart';
-import '../services/api_service.dart';
-import '../models/product_model.dart';
 import '../services/auth/auth_manager.dart';
 import '../models/user_model.dart';
 import 'hybrid_shopping_screen.dart';
@@ -20,8 +18,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ApiService _apiService = ApiService();
-  List<ProductModel> popularProducts = [];
   bool isLoading = true;
   UserModel? _currentUser;
   int _currentIndex = 0;
@@ -140,10 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     try {
-      // API에서 인기상품 데이터 로드
-      final products = await _apiService.getPopularProducts();
+      // 임시로 더미 데이터 사용 (API 연동 전)
       setState(() {
-        popularProducts = products;
         isLoading = false;
       });
     } catch (e) {
@@ -407,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const MobileProductSlider(),
                 
                 // 인기상품 섹션
-                PopularProducts(products: popularProducts),
+                const PopularProducts(),
                 
                 // 리뷰 섹션
                 const ReviewSection(),

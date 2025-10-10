@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 
 class TesterSection extends StatefulWidget {
   const TesterSection({super.key});
@@ -9,7 +8,6 @@ class TesterSection extends StatefulWidget {
 }
 
 class _TesterSectionState extends State<TesterSection> {
-  final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> testerItems = [];
   bool isLoading = true;
 
@@ -21,9 +19,29 @@ class _TesterSectionState extends State<TesterSection> {
 
   Future<void> _loadTesterItems() async {
     try {
-      final items = await _apiService.getTesterItems();
+      // 임시로 더미 데이터 사용
+      await Future.delayed(const Duration(seconds: 1));
       setState(() {
-        testerItems = items;
+        testerItems = [
+          {
+            'id': 1,
+            'title': '체험단 모집 1',
+            'description': '새로운 상품 체험단을 모집합니다.',
+            'imageUrl': 'https://via.placeholder.com/300x200',
+            'deadline': DateTime.now().add(const Duration(days: 7)),
+            'applicantCount': 25,
+            'maxApplicants': 50,
+          },
+          {
+            'id': 2,
+            'title': '체험단 모집 2',
+            'description': '특별한 혜택이 있는 체험단입니다.',
+            'imageUrl': 'https://via.placeholder.com/300x200',
+            'deadline': DateTime.now().add(const Duration(days: 14)),
+            'applicantCount': 15,
+            'maxApplicants': 30,
+          },
+        ];
         isLoading = false;
       });
     } catch (e) {

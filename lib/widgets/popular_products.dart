@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
-import '../models/product_model.dart';
 
-class PopularProducts extends StatelessWidget {
-  final List<ProductModel> products;
-
+class PopularProducts extends StatefulWidget {
   const PopularProducts({
     super.key,
-    required this.products,
   });
+
+  @override
+  State<PopularProducts> createState() => _PopularProductsState();
+}
+
+class _PopularProductsState extends State<PopularProducts> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // 임시로 로딩 완료 처리
+    Future.delayed(const Duration(seconds: 1), () {
+      setState(() {
+        isLoading = false;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +68,7 @@ class PopularProducts extends StatelessWidget {
           const SizedBox(height: 30),
           
           // 상품 그리드
-          products.isEmpty
+          isLoading
               ? const Center(
                   child: Text('상품을 불러오는 중입니다...'),
                 )
@@ -67,10 +81,9 @@ class PopularProducts extends StatelessWidget {
                     crossAxisSpacing: 15,
                     mainAxisSpacing: 20,
                   ),
-                  itemCount: products.length > 4 ? 4 : products.length,
+                  itemCount: 4, // 임시로 4개 고정
                   itemBuilder: (context, index) {
-                    final product = products[index];
-                    return _buildProductCard(product, index + 1);
+                    return _buildProductCard(index + 1);
                   },
                 ),
         ],
@@ -78,11 +91,11 @@ class PopularProducts extends StatelessWidget {
     );
   }
 
-  Widget _buildProductCard(ProductModel product, int rank) {
+  Widget _buildProductCard(int rank) {
     return GestureDetector(
       onTap: () {
         // 상품 상세 페이지로 이동
-        print('Navigate to product: ${product.id}');
+        print('Navigate to product: $rank');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -110,7 +123,7 @@ class PopularProducts extends StatelessWidget {
                     top: Radius.circular(12),
                   ),
                   image: DecorationImage(
-                    image: NetworkImage(product.imageUrl),
+                    image: const NetworkImage('https://via.placeholder.com/150'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -154,7 +167,7 @@ class PopularProducts extends StatelessWidget {
                   children: [
                     // 상품 설명
                     Text(
-                      product.description,
+                      '상품 설명 $rank',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.grey,
@@ -166,7 +179,7 @@ class PopularProducts extends StatelessWidget {
                     
                     // 상품명
                     Text(
-                      product.name,
+                      '상품명 $rank',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -179,9 +192,9 @@ class PopularProducts extends StatelessWidget {
                     // 가격 정보
                     Row(
                       children: [
-                        if (product.discountRate > 0) ...[
+                        if (rank % 2 == 0) ...[
                           Text(
-                            '${product.discountRate}%',
+                            '${rank * 10}%',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -192,7 +205,7 @@ class PopularProducts extends StatelessWidget {
                         ],
                         Expanded(
                           child: Text(
-                            '${product.formattedPrice}원',
+                            '${(rank * 10000).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -214,12 +227,12 @@ class PopularProducts extends StatelessWidget {
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          product.rating.toStringAsFixed(1),
+                          (4.0 + rank * 0.1).toStringAsFixed(1),
                           style: const TextStyle(fontSize: 12),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '(${product.reviewCount})',
+                          '(${rank * 25})',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,

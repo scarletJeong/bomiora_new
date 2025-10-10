@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 
 class ReviewSection extends StatefulWidget {
   const ReviewSection({super.key});
@@ -9,7 +8,6 @@ class ReviewSection extends StatefulWidget {
 }
 
 class _ReviewSectionState extends State<ReviewSection> {
-  final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> reviews = [];
   bool isLoading = true;
 
@@ -21,9 +19,27 @@ class _ReviewSectionState extends State<ReviewSection> {
 
   Future<void> _loadReviews() async {
     try {
-      final reviewData = await _apiService.getMainReviews();
+      // 임시로 더미 데이터 사용
+      await Future.delayed(const Duration(seconds: 1));
       setState(() {
-        reviews = reviewData;
+        reviews = [
+          {
+            'id': 1,
+            'userName': '김사용자',
+            'rating': 5,
+            'content': '정말 좋은 상품이에요!',
+            'productName': '상품1',
+            'createdAt': DateTime.now().subtract(const Duration(days: 1)),
+          },
+          {
+            'id': 2,
+            'userName': '이고객',
+            'rating': 4,
+            'content': '만족스러운 구매였습니다.',
+            'productName': '상품2',
+            'createdAt': DateTime.now().subtract(const Duration(days: 2)),
+          },
+        ];
         isLoading = false;
       });
     } catch (e) {
