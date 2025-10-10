@@ -18,19 +18,33 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="보미오라 다이어트 쇼핑몰 - 한의사가 직접 개발한 다이어트 한약">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="my_flutter_app">
+  <meta name="apple-mobile-web-app-title" content="보미오라">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>my_flutter_app</title>
+  <title>보미오라 다이어트 쇼핑몰</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- 포트 설정 및 개발 서버 설정 -->
+  <script>
+    // 개발 서버 포트 설정
+    window.flutterDevServerPort = 5000;
+    
+    // PWA 설정
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('flutter-first-frame', function () {
+        navigator.serviceWorker.register('flutter_service_worker.js');
+      });
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

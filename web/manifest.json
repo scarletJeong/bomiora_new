@@ -1,11 +1,11 @@
 {
-    "name": "my_flutter_app",
-    "short_name": "my_flutter_app",
+    "name": "보미오라 다이어트 쇼핑몰",
+    "short_name": "보미오라",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#007FAE",
+    "theme_color": "#007FAE",
+    "description": "한의사가 직접 개발한 다이어트 한약 쇼핑몰",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
