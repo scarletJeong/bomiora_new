@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:html' as html;
 import 'dart:ui' as ui;
 import 'dart:ui_web' as ui_web;
+import '../widgets/mobile_layout_wrapper.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String url;
@@ -87,49 +88,31 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Container(
-          width: 600, // 모바일 크기로 고정 (main.dart와 동일)
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(widget.title),
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  Navigator.pop(context); // 이전 페이지로 돌아가기
-                },
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(_useIframe ? Icons.open_in_new : Icons.web),
-                  onPressed: () {
-                    setState(() {
-                      _useIframe = !_useIframe;
-                    });
-                  },
-                  tooltip: _useIframe ? '외부 브라우저로 열기' : '앱 내에서 보기',
-                ),
-              ],
-            ),
-            body: _useIframe ? _buildIframeView() : _buildExternalView(),
-          ),
+    return MobileAppLayoutWrapper(
+      appBar: AppBar(
+        title: Text(widget.title),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context); // 이전 페이지로 돌아가기
+          },
         ),
+        actions: [
+          IconButton(
+            icon: Icon(_useIframe ? Icons.open_in_new : Icons.web),
+            onPressed: () {
+              setState(() {
+                _useIframe = !_useIframe;
+              });
+            },
+            tooltip: _useIframe ? '외부 브라우저로 열기' : '앱 내에서 보기',
+          ),
+        ],
       ),
+      child: _useIframe ? _buildIframeView() : _buildExternalView(),
     );
   }
 

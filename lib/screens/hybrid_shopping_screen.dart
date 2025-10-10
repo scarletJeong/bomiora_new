@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'webview_screen.dart';
+import '../widgets/mobile_layout_wrapper.dart';
 
 class HybridShoppingScreen extends StatelessWidget {
   const HybridShoppingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return MobileAppLayoutWrapper(
       appBar: AppBar(
         title: const Text('보미오라 쇼핑몰'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: ListView(
+      child: ListView(
         children: [
           // Flutter로 만든 메인 화면
           Container(

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/auth/auth_manager.dart';
+import 'widgets/mobile_layout_wrapper.dart';
 
 void main() {
   runApp(const BomioraApp());
@@ -69,30 +70,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 }
 
-// 모바일 전용 레이아웃 래퍼
+// 모바일 전용 레이아웃 래퍼 (공통 위젯 사용)
 class MobileLayoutWrapper extends StatelessWidget {
   const MobileLayoutWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Container(
-          width: 600, // 모바일 화면 크기로 고정
-          height: MediaQuery.of(context).size.height,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: const HomeScreen(),
-        ),
-      ),
+    return MobileAppLayoutWrapper(
+      child: const HomeScreen(),
     );
   }
 }
