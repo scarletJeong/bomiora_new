@@ -1,8 +1,8 @@
 import 'dart:convert';
-import '../base/api_client.dart';
-import '../base/api_endpoints.dart';
+import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart';
 
-class LoginService {
+class AuthRepository {
   // 로그인 API 호출 (Spring Boot 서버)
   static Future<Map<String, dynamic>> login({
     required String email,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../../data/services/auth_service.dart';
+import '../../../../data/models/user/user_model.dart';
+import '../../weight/screens/weight_list_screen.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -11,11 +14,14 @@ class HealthDashboardScreen extends StatefulWidget {
 
 class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   // 사용자 정보
-  String userName = "고길동(둘리아빠)";
+  UserModel? currentUser;
   double targetWeight = 74.0;
   double currentWeight = 91.0;
   double height = 180.0;
   double bmi = 28.09;
+  
+  // 날짜 관련
+  DateTime selectedDate = DateTime.now();
   
   // 오늘의 식사 정보
   int consumedCalories = 1500;
@@ -36,6 +42,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     '저녁': 0,
     '간식': 672,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthService.getUser();
+    setState(() {
+      currentUser = user;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,10 +129,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 30,
-                      color: Colors.grey,
+                    child: Text(
+                      currentUser?.name.isNotEmpty == true 
+                          ? currentUser!.name[0].toUpperCase()
+                          : 'U',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -142,7 +166,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      userName,
+                      currentUser?.name ?? '사용자',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -173,42 +197,121 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           ),
           const SizedBox(height: 16),
           // 날짜 네비게이션
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '12 일',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '오늘',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Text(
-                '1.14',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
+          _buildDateNavigation(),
         ],
       ),
+    );
+  }
+
+  // 날짜 네비게이션 위젯
+  Widget _buildDateNavigation() {
+    final now = DateTime.now();
+    final isToday = selectedDate.year == now.year && 
+                   selectedDate.month == now.month && 
+                   selectedDate.day == now.day;
+    
+    final yesterday = selectedDate.subtract(const Duration(days: 1));
+    final tomorrow = selectedDate.add(const Duration(days: 1));
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // 이전 날짜
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedDate = yesterday;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.chevron_left, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  '${yesterday.month}.${yesterday.day.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // 현재 선택된 날짜
+        GestureDetector(
+          onTap: () async {
+            final pickedDate = await showDatePicker(
+              context: context,
+              initialDate: selectedDate,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now(),
+            );
+            if (pickedDate != null) {
+              setState(() {
+                selectedDate = pickedDate;
+              });
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isToday ? Colors.black : Colors.blue,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${selectedDate.month}.${selectedDate.day.toString().padLeft(2, '0')}',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        
+        // 다음 날짜 (오늘 이후는 비활성화)
+        GestureDetector(
+          onTap: tomorrow.isAfter(now) ? null : () {
+            setState(() {
+              selectedDate = tomorrow;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: tomorrow.isAfter(now) ? Colors.grey[50] : Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${tomorrow.month}.${tomorrow.day.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: tomorrow.isAfter(now) ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right, 
+                  size: 16, 
+                  color: tomorrow.isAfter(now) ? Colors.grey[400] : Colors.grey,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -235,8 +338,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   Widget _buildMetricCard(String title, String value) {
     return GestureDetector(
       onTap: () {
-        // 체중 입력 페이지로 이동
-        print('Navigate to weight input page');
+        // 체중 카드 클릭 시 체중 기록 목록 페이지로 이동
+        if (title == '체중(kg)') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const WeightListScreen(),
+            ),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16),

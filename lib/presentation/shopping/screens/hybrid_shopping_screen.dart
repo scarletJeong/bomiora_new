@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'webview_screen.dart';
-import '../widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class HybridShoppingScreen extends StatelessWidget {
   const HybridShoppingScreen({super.key});

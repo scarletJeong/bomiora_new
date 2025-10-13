@@ -1,8 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../../models/user_model.dart';
+import '../models/user/user_model.dart';
 
-class AuthManager {
+class AuthService {
   static const String _userKey = 'user_data';
   static const String _tokenKey = 'auth_token';
   static const String _isLoggedInKey = 'is_logged_in';
@@ -30,7 +30,7 @@ class AuthManager {
   }
 
   // 사용자 정보 가져오기
-  static Future<UserModel?> getCurrentUser() async {
+  static Future<UserModel?> getUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
     

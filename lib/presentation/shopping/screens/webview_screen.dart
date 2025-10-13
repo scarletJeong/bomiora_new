@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:html' as html;
 import 'dart:ui' as ui;
 import 'dart:ui_web' as ui_web;
-import '../widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String url;

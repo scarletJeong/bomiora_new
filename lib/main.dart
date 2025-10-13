@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-import 'services/auth/auth_manager.dart';
-import 'widgets/mobile_layout_wrapper.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'presentation/home/screens/home_screen.dart';
+import 'presentation/auth/screens/login_screen.dart';
+import 'data/services/auth_service.dart';
+import 'presentation/common/widgets/mobile_layout_wrapper.dart';
 
 void main() {
   runApp(const BomioraApp());
@@ -21,6 +22,17 @@ class BomioraApp extends StatelessWidget {
         fontFamily: 'NotoSans',
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      // 한국어 로케일 설정
+      locale: const Locale('ko', 'KR'),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ko', 'KR'),
+        Locale('en', 'US'),
+      ],
       home: const AuthWrapper(),
       routes: {
         '/login': (context) => const LoginScreen(),
@@ -49,7 +61,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkLoginStatus() async {
-    final isLoggedIn = await AuthManager.isLoggedIn();
+    final isLoggedIn = await AuthService.isLoggedIn();
     setState(() {
       _isLoggedIn = isLoggedIn;
       _isLoading = false;

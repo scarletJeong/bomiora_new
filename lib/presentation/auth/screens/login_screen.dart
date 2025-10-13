@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/auth/login_service.dart';
-import '../services/auth/auth_manager.dart';
-import '../models/user_model.dart';
-import '../widgets/mobile_layout_wrapper.dart';
+import '../../../data/repositories/auth_repository.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/models/user/user_model.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // 실제 로그인 API 호출
-      final result = await LoginService.login(
+      final result = await AuthRepository.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -240,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final user = UserModel.fromJson(userData['user']);
         final token = userData['token']; // token이 없으면 null이 됨
 
-        await AuthManager.saveLoginData(user: user, token: token); // token을 String?으로 전달
+        await AuthService.saveLoginData(user: user, token: token); // token을 String?으로 전달
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

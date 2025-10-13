@@ -5,11 +5,11 @@ import '../widgets/popular_products.dart';
 import '../widgets/review_section.dart';
 import '../widgets/tester_section.dart';
 import '../widgets/bottom_banner.dart';
-import '../services/auth/auth_manager.dart';
-import '../models/user_model.dart';
-import 'hybrid_shopping_screen.dart';
-import 'webview_screen.dart';
-import 'health_dashboard_screen.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/models/user/user_model.dart';
+import '../../shopping/screens/hybrid_shopping_screen.dart';
+import '../../shopping/screens/webview_screen.dart';
+import '../../health/dashboard/screens/health_dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadCurrentUser() async {
-    final user = await AuthManager.getCurrentUser();
+      final user = await AuthService.getUser();
     setState(() {
       _currentUser = user;
     });
@@ -141,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (confirmed == true) {
-      await AuthManager.logout();
+      await AuthService.logout();
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -295,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.fitness_center, size: 20),
+                  leading: const Icon(Icons.cleaning_services, size: 20),
                   title: const Text('디톡스'),
                   onTap: () {
                     Navigator.pop(context);
@@ -311,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.fitness_center, size: 20),
+                  leading: const Icon(Icons.health_and_safety, size: 20),
                   title: const Text('심신안정'),
                   onTap: () {
                     Navigator.pop(context);
@@ -327,7 +327,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.fitness_center, size: 20),
+                  leading: const Icon(Icons.psychology, size: 20),
                   title: const Text('건강/면역'),
                   onTap: () {
                     Navigator.pop(context);
