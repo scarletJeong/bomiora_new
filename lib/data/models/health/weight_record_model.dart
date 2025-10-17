@@ -1,6 +1,6 @@
 class WeightRecord {
   final int? id;
-  final int mbNo;
+  final String mbId;
   final DateTime measuredAt;
   final double weight; // kg
   final double? height; // cm
@@ -11,7 +11,7 @@ class WeightRecord {
 
   WeightRecord({
     this.id,
-    required this.mbNo,
+    required this.mbId,
     required this.measuredAt,
     required this.weight,
     this.height,
@@ -50,22 +50,26 @@ class WeightRecord {
 
   factory WeightRecord.fromJson(Map<String, dynamic> json) {
     return WeightRecord(
-      id: json['record_id'] ?? json['id'],
-      mbNo: json['mb_no'],
-      measuredAt: DateTime.parse(json['measured_at']),
+      id: json['recordId'] ?? json['record_id'] ?? json['id'],
+      mbId: (json['mbId'] ?? json['mb_id'] ?? '').toString(),
+      measuredAt: DateTime.parse(json['measuredAt'] ?? json['measured_at']),
       weight: (json['weight'] as num).toDouble(),
       height: json['height'] != null ? (json['height'] as num).toDouble() : null,
       bmi: json['bmi'] != null ? (json['bmi'] as num).toDouble() : null,
-      notes: json['notes'],
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      notes: json['notes']?.toString(),
+      createdAt: (json['createdAt'] ?? json['created_at']) != null 
+          ? DateTime.parse(json['createdAt'] ?? json['created_at']) 
+          : null,
+      updatedAt: (json['updatedAt'] ?? json['updated_at']) != null 
+          ? DateTime.parse(json['updatedAt'] ?? json['updated_at']) 
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'record_id': id,
-      'mb_no': mbNo,
+      'mb_id': mbId,
       'measured_at': measuredAt.toIso8601String(),
       'weight': weight,
       if (height != null) 'height': height,
@@ -76,7 +80,7 @@ class WeightRecord {
 
   WeightRecord copyWith({
     int? id,
-    int? mbNo,
+    String? mbId,
     DateTime? measuredAt,
     double? weight,
     double? height,
@@ -87,7 +91,7 @@ class WeightRecord {
   }) {
     return WeightRecord(
       id: id ?? this.id,
-      mbNo: mbNo ?? this.mbNo,
+      mbId: mbId ?? this.mbId,
       measuredAt: measuredAt ?? this.measuredAt,
       weight: weight ?? this.weight,
       height: height ?? this.height,

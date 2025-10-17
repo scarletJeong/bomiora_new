@@ -12,11 +12,24 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    print('🏗️ [UserModel.fromJson] 입력 데이터: $json');
+    
+    final id = json['id']?.toString() ?? '';
+    final email = json['email'] ?? json['mb_email'] ?? '';
+    final name = json['name'] ?? json['mb_name'] ?? '';
+    final phone = json['phone']?.toString() ?? json['mb_phone']?.toString();
+    
+    print('🏗️ [UserModel.fromJson] 파싱 결과:');
+    print('   - id: $id');
+    print('   - email: $email');
+    print('   - name: $name');
+    print('   - phone: $phone');
+    
     return UserModel(
-      id: json['id']?.toString() ?? '', // int를 String으로 변환
-      email: json['email'] ?? '',
-      name: json['name'] ?? '',
-      phone: json['phone']?.toString(), // 안전한 null 처리
+      id: id,
+      email: email,
+      name: name,
+      phone: phone,
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../data/repositories/health/weight_repository.dart';
 
 class WeightInputScreen extends StatefulWidget {
   final WeightRecord? record; // null이면 새 기록, 있으면 수정
@@ -36,8 +37,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       _selectedDateTime = widget.record!.measuredAt;
       _calculatedBMI = widget.record!.bmi;
     } else {
-      // 새 기록 모드 - 프로필에서 키 가져오기
-      _loadHeightFromProfile();
+      // 새 기록 모드: 최신 기록에서 키 가져오기
+      _loadLatestHeight();
     }
 
     // 체중/키 변경 시 BMI 자동 계산
@@ -45,20 +46,22 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     _heightController.addListener(_updateBMI);
   }
 
-  Future<void> _loadHeightFromProfile() async {
+  // 최신 기록에서 키 불러오기
+  Future<void> _loadLatestHeight() async {
     try {
       final user = await AuthService.getUser();
+      if (user == null) return;
+
+      final latestRecord = await WeightRepository.getLatestWeightRecord(user.id);
       
-      // TODO: 프로필에서 키 가져오기
-      // final profile = await ApiClient.get('/api/health/profile');
-      // _heightController.text = profile['height'].toString();
-      
-      // 임시: 170cm로 설정
-      if (_heightController.text.isEmpty) {
-        _heightController.text = '170.0';
+      if (latestRecord != null && latestRecord.height != null) {
+        setState(() {
+          _heightController.text = latestRecord.height!.toStringAsFixed(0);
+        });
       }
     } catch (e) {
-      print('프로필 로딩 오류: $e');
+      print('최신 키 정보 로드 오류: $e');
+      // 에러가 나도 계속 진행 (키는 선택 사항)
     }
   }
 
@@ -120,7 +123,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
       final record = WeightRecord(
         id: widget.record?.id,
-        mbNo: int.parse(user.id),
+        mbId: user.id,
         measuredAt: _selectedDateTime,
         weight: weight,
         height: height,
@@ -128,24 +131,35 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
 
-      // TODO: API 호출
+      // API 호출
+      bool success;
       if (widget.record == null) {
         // 새 기록 추가
-        // await ApiClient.post('/api/health/weight', data: record.toJson());
-        print('새 기록 추가: ${record.toJson()}');
+        success = await WeightRepository.addWeightRecord(record);
+        print('새 기록 추가 결과: $success');
       } else {
         // 기록 수정
-        // await ApiClient.put('/api/health/weight/${record.id}', data: record.toJson());
-        print('기록 수정: ${record.toJson()}');
+        success = await WeightRepository.updateWeightRecord(record);
+        print('기록 수정 결과: $success');
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
-          ),
-        );
-        Navigator.pop(context, true); // 성공
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true); // 성공
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('저장에 실패했습니다. 다시 시도해주세요.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -185,21 +199,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
               _buildDateTimeCard(),
               const SizedBox(height: 16),
 
+              // 키 입력
+              _buildHeightInput(),
+              const SizedBox(height: 24),
+
               // 체중 입력
               _buildWeightInput(),
               const SizedBox(height: 16),
-
-              // 키 입력
-              _buildHeightInput(),
-              const SizedBox(height: 16),
-
-              // BMI 결과
-              if (_calculatedBMI != null) _buildBMICard(),
-              if (_calculatedBMI != null) const SizedBox(height: 16),
-
-              // 메모
-              _buildNotesInput(),
-              const SizedBox(height: 24),
 
               // 저장 버튼
               SizedBox(
@@ -233,12 +239,56 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     );
   }
 
+
+
+  Widget _buildHeightInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              '키 (cm)',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _heightController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+          ],
+          decoration: InputDecoration(
+            hintText: '예: 170',
+            suffixText: 'cm',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            prefixIcon: const Icon(Icons.height),
+          ),
+          validator: (value) {
+            if (value != null && value.isNotEmpty) {
+              final height = double.tryParse(value);
+              if (height == null || height <= 0 || height > 250) {
+                return '올바른 키를 입력해주세요 (0~250cm)';
+              }
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildWeightInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '체중',
+          '체중 (kg)',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -271,141 +321,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     );
   }
 
-  Widget _buildHeightInput() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              '키',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '(선택사항 - BMI 계산용)',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _heightController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-          ],
-          decoration: InputDecoration(
-            hintText: '예: 170.0',
-            suffixText: 'cm',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            prefixIcon: const Icon(Icons.height),
-          ),
-          validator: (value) {
-            if (value != null && value.isNotEmpty) {
-              final height = double.tryParse(value);
-              if (height == null || height <= 0 || height > 250) {
-                return '올바른 키를 입력해주세요 (0~250cm)';
-              }
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
 
-  Widget _buildBMICard() {
-    final bmiStatus = WeightRecord(
-      mbNo: 0,
-      measuredAt: DateTime.now(),
-      weight: 0,
-      bmi: _calculatedBMI,
-    ).bmiStatus;
 
-    final bmiColor = _getBmiColor(_calculatedBMI);
+// 추후에 눈바디 사진 업로드 기능 개발해야함.
 
-    return Card(
-      color: bmiColor.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const Text(
-              'BMI (체질량지수)',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  _calculatedBMI!.toStringAsFixed(1),
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: bmiColor,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    bmiStatus,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: bmiColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '정상 BMI: 18.5 ~ 23.0',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNotesInput() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              '메모',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '(선택사항)',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _notesController,
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: '예: 아침 식사 전 측정',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Color _getBmiColor(double? bmi) {
     if (bmi == null) return Colors.grey;

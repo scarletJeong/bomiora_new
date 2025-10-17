@@ -16,6 +16,7 @@ class MobileLayoutWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100], // 외부 배경색
       body: Center(
         child: Container(
           width: 600, // 모바일 화면 크기로 고정
@@ -55,6 +56,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100], // 외부 배경색
       body: Center(
         child: Container(
           width: 600, // 모바일 화면 크기로 고정
@@ -70,6 +72,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
             ] : null,
           ),
           child: Scaffold(
+            backgroundColor: Colors.white, // 내부 배경색을 흰색으로
             appBar: appBar,
             body: child,
           ),

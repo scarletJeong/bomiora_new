@@ -3,7 +3,10 @@ import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
+import '../../../../data/models/health/weight_record_model.dart';
+import '../../../../data/repositories/health/weight_repository.dart';
 import '../../weight/screens/weight_list_screen.dart';
+import '../../weight/screens/weight_input_screen.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -15,10 +18,17 @@ class HealthDashboardScreen extends StatefulWidget {
 class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   // 사용자 정보
   UserModel? currentUser;
+  WeightRecord? latestWeightRecord;
+  
+  // 체중 관련 (기본값)
   double targetWeight = 74.0;
-  double currentWeight = 91.0;
-  double height = 180.0;
-  double bmi = 28.09;
+  double currentWeight = 0.0;
+  double height = 170.0;
+  double bmi = 0.0;
+  
+  // 로딩 상태
+  bool isLoading = true;
+  bool hasShownNoWeightDialog = false; // 체중 없음 알럿을 한 번만 표시하기 위한 플래그
   
   // 날짜 관련
   DateTime selectedDate = DateTime.now();
@@ -46,14 +56,117 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrentUser();
+    _loadData();
   }
 
-  Future<void> _loadCurrentUser() async {
-    final user = await AuthService.getUser();
-    setState(() {
-      currentUser = user;
-    });
+  Future<void> _loadData() async {
+    setState(() => isLoading = true);
+    
+    try {
+      // 사용자 정보 가져오기
+      final user = await AuthService.getUser();
+      
+      if (user == null) {
+        // 로그인되지 않은 경우
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('로그인이 필요합니다')),
+          );
+          Navigator.pop(context);
+        }
+        return;
+      }
+      
+      // 최신 체중 기록 가져오기
+      final weightRecord = await WeightRepository.getLatestWeightRecord(user.id);
+      
+      setState(() {
+        currentUser = user;
+        latestWeightRecord = weightRecord;
+        
+        if (weightRecord != null) {
+          currentWeight = weightRecord.weight;
+          height = weightRecord.height ?? 170.0;
+          bmi = weightRecord.bmi ?? 0.0;
+          hasShownNoWeightDialog = false; // 체중이 있으면 플래그 리셋
+        }
+        
+        isLoading = false;
+      });
+      
+      // 체중 기록이 없으면 알럿 표시 (한 번만)
+      if (weightRecord == null && mounted && !hasShownNoWeightDialog) {
+        hasShownNoWeightDialog = true; // 플래그 설정
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showNoWeightRecordDialog();
+        });
+      }
+    } catch (e) {
+      print('데이터 로딩 오류: $e');
+      setState(() => isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('데이터 로딩 실패: $e')),
+        );
+      }
+    }
+  }
+
+  // 체중 기록이 없을 때 다이얼로그 표시
+  void _showNoWeightRecordDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('체중 기록 없음'),
+        content: const Text(
+          '아직 체중 기록이 없습니다.\n지금 체중을 입력해주세요!',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // 다이얼로그 닫기
+            },
+            child: const Text('나중에'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // 다이얼로그 닫기
+              
+              // 체중 입력 페이지로 이동
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WeightInputScreen(),
+                ),
+              );
+              
+              // 입력 완료 후 체중 목록 페이지로 이동
+              if (result == true) {
+                if (!mounted) return;
+                
+                // 데이터 새로고침
+                await _loadData();
+                
+                // 위젯이 여전히 마운트되어 있는지 다시 확인
+                if (!mounted) return;
+                
+                // 체중 목록 페이지로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const WeightListScreen(),
+                  ),
+                );
+              }
+            },
+            child: const Text('체중 입력하기'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -71,8 +184,26 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          // 새로고침 버튼
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: isLoading ? null : _loadData,
+          ),
+        ],
       ),
-      child: SingleChildScrollView(
+      child: isLoading 
+        ? const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('데이터를 불러오는 중...'),
+              ],
+            ),
+          )
+        : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +395,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: isToday ? Colors.black : Colors.blue,
+              color: Colors.black, // 검정색으로 통일
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -337,15 +468,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   // 메트릭 카드
   Widget _buildMetricCard(String title, String value) {
     return GestureDetector(
-      onTap: () {
-        // 체중 카드 클릭 시 체중 기록 목록 페이지로 이동
-        if (title == '체중(kg)') {
-          Navigator.push(
+      onTap: () async {
+        // 키, 체중, BMI 카드 클릭 시 체중 기록 목록 페이지로 이동 (선택된 날짜 전달)
+        if (title == '키(cm)' || title == '체중(kg)' || title == 'BMI') {
+          if (!mounted) return;
+          
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const WeightListScreen(),
+              builder: (context) => WeightListScreen(initialDate: selectedDate),
             ),
           );
+          
+          // 체중 목록 페이지에서 돌아왔을 때 데이터 새로고침
+          if (result == true && mounted) {
+            _loadData();
+          }
         }
       },
       child: Container(
@@ -362,23 +500,27 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             ),
           ],
         ),
-        child: Column(
+        child: Stack(
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
+            Column(
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
