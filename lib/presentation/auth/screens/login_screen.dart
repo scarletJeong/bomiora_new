@@ -237,7 +237,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['success']) {
         final userData = result['data'];
-        final user = UserModel.fromJson(userData['user']);
+        
+        print('🔍 [LOGIN DEBUG] 전체 응답 데이터: $userData');
+        
+        // mb_id를 id로 매핑
+        final userJson = userData['user'];
+        
+        print('👤 [LOGIN DEBUG] 원본 user 데이터: $userJson');
+        print('📋 [LOGIN DEBUG] id (mb_no): ${userJson['id']}');
+        print('📋 [LOGIN DEBUG] mbId: ${userJson['mbId']}');
+        print('📋 [LOGIN DEBUG] mb_no: ${userJson['mb_no']}');
+        print('📋 [LOGIN DEBUG] mb_id: ${userJson['mb_id']}');
+        print('📋 [LOGIN DEBUG] email: ${userJson['email']}');
+        print('📋 [LOGIN DEBUG] name: ${userJson['name']}');
+        
+        // 무조건 mb_id 값만 사용
+        final userId = userJson['mb_id']?.toString() ?? '';
+        
+        userJson['id'] = userId;
+        
+        print('✅ [LOGIN DEBUG] 최종 매핑된 id: $userId');
+        
+        final user = UserModel.fromJson(userJson);
+        
+        print('💾 [LOGIN DEBUG] UserModel 생성 완료:');
+        print('   - id: ${user.id}');
+        print('   - email: ${user.email}');
+        print('   - name: ${user.name}');
+        print('   - phone: ${user.phone}');
+        
         final token = userData['token']; // token이 없으면 null이 됨
 
         await AuthService.saveLoginData(user: user, token: token); // token을 String?으로 전달

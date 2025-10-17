@@ -1,6 +1,6 @@
 # Flutter 프로젝트 구조 가이드 (클린 아키텍처)
 
-lib/
+lib/   
 ├── core/                          # 핵심 기능
 │   ├── constants/
 │   │   ├── api_constants.dart

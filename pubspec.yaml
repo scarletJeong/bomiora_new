@@ -19,7 +19,11 @@ dependencies:
   http: ^1.1.0
   
   # 유틸리티
-  intl: ^0.19.0
+  intl: ^0.20.2
+  
+  # 국제화 지원
+  flutter_localizations:
+    sdk: flutter
   
   # 상태관리 (필요시)
   # provider: ^6.1.1  # 현재 사용하지 않음
@@ -54,6 +58,9 @@ flutter:
 
   assets:
     - assets/images/
+
+  # 한국어 로케일 지원
+  generate: true
 
   # fonts:
   #   - family: NotoSans

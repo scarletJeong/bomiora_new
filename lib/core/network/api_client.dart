@@ -3,7 +3,16 @@ import 'package:http/http.dart' as http;
 
 class ApiClient {
   // Spring Boot 서버 연결
-  static const String baseUrl = 'http://localhost:9000';
+  // 개발: localhost, 배포: AWS EC2 서버 URL
+  static String get baseUrl {
+    // 현재 호스트가 localhost인지 확인
+    final currentHost = Uri.base.host;
+    if (currentHost.contains('localhost') || currentHost.contains('127.0.0.1')) {
+      return 'http://localhost:9000';  // 로컬 개발
+    } else {
+      return 'http://3.128.180.207:9000';  // AWS EC2 배포 (포트 9000!)
+    }
+  }
   
   // GET 요청
   static Future<http.Response> get(String endpoint) async {
