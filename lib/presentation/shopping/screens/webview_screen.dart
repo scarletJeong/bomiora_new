@@ -42,10 +42,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
           ..style.height = '100%'
           ..allowFullscreen = true
           ..allow = 'camera; microphone; geolocation';
-        
-        // iframe 로드 완료 후 처리
-        iframe.onLoad.listen((_) {
-          print('iframe 로드 완료: ${widget.url}');
           
           // CSS 스타일 주입으로 헤더 숨기기 시도
           try {
@@ -79,7 +75,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
           } catch (e) {
             print('iframe 스타일 주입 실패: $e');
           }
-        });
         
         return iframe;
       },

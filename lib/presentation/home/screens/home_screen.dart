@@ -287,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora0.mycafe24.com/shop/list.php?ca_id=10&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
+                          url: 'https://bomiora.kr/shop/list.php?ca_id=10&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
                           title: '다이어트',
                         ),
                       ),
@@ -303,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora0.mycafe24.com/shop/list.php?ca_id=20&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
+                          url: 'https://bomiora.kr/shop/list.php?ca_id=20&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
                           title: '디톡스',
                         ),
                       ),
@@ -319,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora0.mycafe24.com/shop/list.php?ca_id=80&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
+                          url: 'https://bomiora.kr/shop/list.php?ca_id=80&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
                           title: '심신안정',
                         ),
                       ),
@@ -335,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora0.mycafe24.com/shop/list.php?ca_id=50&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
+                          url: 'https://bomiora.kr/shop/list.php?ca_id=50&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
                           title: '건강/면역',
                         ),
                       ),
