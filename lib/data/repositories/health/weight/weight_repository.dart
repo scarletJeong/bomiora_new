@@ -1,7 +1,7 @@
 import 'dart:convert';
-import '../../../core/network/api_client.dart';
-import '../../../core/network/api_endpoints.dart';
-import '../../models/health/weight_record_model.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_endpoints.dart';
+import '../../../models/health/weight/weight_record_model.dart';
 
 class WeightRepository {
   // 사용자의 모든 체중 기록 가져오기

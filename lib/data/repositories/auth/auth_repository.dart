@@ -1,6 +1,6 @@
 import 'dart:convert';
-import '../../core/network/api_client.dart';
-import '../../core/network/api_endpoints.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_endpoints.dart';
 
 class AuthRepository {
   // 로그인 API 호출 (Spring Boot 서버)
