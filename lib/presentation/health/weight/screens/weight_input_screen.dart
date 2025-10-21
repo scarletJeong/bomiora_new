@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../../data/models/health/weight_record_model.dart';
+import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
-import '../../../../data/repositories/health/weight_repository.dart';
+import '../../../../data/repositories/health/weight/weight_repository.dart';
 
 class WeightInputScreen extends StatefulWidget {
   final WeightRecord? record; // null이면 새 기록, 있으면 수정
@@ -174,6 +174,71 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     }
   }
 
+  // 삭제 확인 다이얼로그
+  void _showDeleteConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('체중 기록 삭제'),
+        content: const Text('이 체중 기록을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // 다이얼로그 닫기
+              _deleteRecord(); // 삭제 실행
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 체중 기록 삭제
+  Future<void> _deleteRecord() async {
+    if (widget.record?.id == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final success = await WeightRepository.deleteWeightRecord(widget.record!.id!);
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('기록이 삭제되었습니다'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true); // 성공
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('삭제에 실패했습니다. 다시 시도해주세요.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('삭제 실패: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _weightController.dispose();
@@ -187,6 +252,16 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
         title: Text(widget.record == null ? '체중 기록하기' : '체중 수정하기'),
+        actions: widget.record != null
+            ? [
+                // 수정 모드일 때만 삭제 버튼 표시
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _showDeleteConfirmDialog,
+                  tooltip: '삭제',
+                ),
+              ]
+            : null,
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

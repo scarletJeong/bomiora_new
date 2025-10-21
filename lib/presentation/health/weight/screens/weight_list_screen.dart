@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../../data/models/health/weight_record_model.dart';
+import '../../../common/chart_layout.dart';
+import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
-import '../../../../data/repositories/health/weight_repository.dart';
+import '../../../../data/repositories/health/weight/weight_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import 'weight_input_screen.dart';
 
@@ -26,6 +27,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
   Map<String, WeightRecord> weightRecordsMap = {}; // 날짜를 키로 하는 맵
   List<WeightRecord> allRecords = []; // 모든 체중 기록 (시간 정보 포함)
   bool isLoading = true;
+  bool hasShownNoDataDialog = false; // 데이터 없음 다이얼로그를 한 번만 표시하기 위한 플래그
   
   // 현재 선택된 날짜 (기본값: 오늘)
   late DateTime selectedDate;
@@ -44,6 +46,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
     final dateKey = DateFormat('yyyy-MM-dd').format(selectedDate);
     return weightRecordsMap[dateKey];
   }
+  
+  // 그래프에서 선택된 점 (툴팁 표시용)
+  int? selectedChartPointIndex;
+  Offset? tooltipPosition;
   
   // 차트 데이터 생성
   List<Map<String, dynamic>> getChartData() {
@@ -66,6 +72,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         chartData.add({
           'date': DateFormat('HH:mm').format(record.measuredAt), // 시간 표시
           'weight': record.weight,
+          'record': record, // 실제 기록 객체 추가
         });
       }
     } else if (selectedPeriod == '주') {
@@ -81,6 +88,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
           chartData.add({
             'date': DateFormat('M.d').format(date),
             'weight': weightRecordsMap[dateKey]!.weight,
+            'record': weightRecordsMap[dateKey]!, // 실제 기록 객체 추가
           });
         }
       }
@@ -97,6 +105,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
           chartData.add({
             'date': DateFormat('M.d').format(date),
             'weight': weightRecordsMap[dateKey]!.weight,
+            'record': weightRecordsMap[dateKey]!, // 실제 기록 객체 추가
           });
         }
       }
@@ -188,6 +197,14 @@ class _WeightListScreenState extends State<WeightListScreen> {
               record.measuredAt.isAfter(weightRecordsMap[dateKey]!.measuredAt)) {
             weightRecordsMap[dateKey] = record;
           }
+        }
+        
+        // 데이터가 없으면 다이얼로그 표시 (한 번만)
+        if (records.isEmpty && mounted && !hasShownNoDataDialog) {
+          hasShownNoDataDialog = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showNoDataDialog();
+          });
         }
         
         setState(() {
@@ -367,18 +384,34 @@ class _WeightListScreenState extends State<WeightListScreen> {
     
     return GestureDetector(
       onTap: () async {
-        // 기록이 있으면 수정 모드로 이동
+        // 기록이 있으면 하루의 기록 개수 확인
         if (selectedRecord != null) {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WeightInputScreen(record: selectedRecord),
-            ),
-          );
+          // 선택된 날짜의 모든 기록 가져오기
+          final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+          final todayRecords = allRecords.where((record) {
+            final recordDateStr = DateFormat('yyyy-MM-dd').format(record.measuredAt);
+            return recordDateStr == selectedDateStr;
+          }).toList();
           
-          // 수정 후 데이터 새로고침
-          if (result == true) {
-            _loadData();
+          // 시간 순으로 정렬
+          todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+          
+          if (todayRecords.length > 1) {
+            // 여러 개면 시간별 리스트 표시
+            _showTimeSelectionBottomSheet(todayRecords);
+          } else if (todayRecords.length == 1) {
+            // 한 개면 바로 수정 페이지로 이동
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => WeightInputScreen(record: todayRecords[0]),
+              ),
+            );
+            
+            // 수정 후 데이터 새로고침
+            if (result == true) {
+              _loadData();
+            }
           }
         }
       },
@@ -695,41 +728,101 @@ class _WeightListScreenState extends State<WeightListScreen> {
         children: [
           // Y축 라벨
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Y축 값
-                SizedBox(
-                  width: 45,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: yLabels.map((label) {
-                      return Text(
-                        '${label.round()}kg',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // 차트 영역
-                Expanded(
-                  child: CustomPaint(
-                    painter: WeightChartPainter(
-                      chartData, 
-                      yLabels[3], // 최소값 (하단) - 4개 배열이므로 인덱스 3
-                      yLabels[0], // 최대값 (상단)
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Y축 값
+                    SizedBox(
+                      width: ChartConstants.yAxisLabelWidth,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: yLabels.map((label) {
+                          return Text(
+                            '${label.round()}kg',
+                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 8),
+                    // 차트 영역 (클릭 및 드래그 가능)
+                    Expanded(
+                      child: GestureDetector(
+                        onTapDown: (details) {
+                          _handleChartTap(
+                            details.localPosition, 
+                            chartData, 
+                            yLabels[3], 
+                            yLabels[0],
+                            constraints.maxWidth - ChartConstants.yAxisTotalWidth, // 차트 실제 너비
+                            constraints.maxHeight, // 차트 실제 높이
+                          );
+                        },
+                        // 드래그 시작 - 툴팁 표시
+                        onLongPressStart: (details) {
+                          _handleChartHover(
+                            details.localPosition, 
+                            chartData, 
+                            yLabels[3], 
+                            yLabels[0],
+                            constraints.maxWidth - yAxisTotalWidth,
+                            constraints.maxHeight,
+                          );
+                        },
+                        // 드래그 중 - 툴팁 업데이트
+                        onLongPressMoveUpdate: (details) {
+                          _handleChartHover(
+                            details.localPosition, 
+                            chartData, 
+                            yLabels[3], 
+                            yLabels[0],
+                            constraints.maxWidth - yAxisTotalWidth,
+                            constraints.maxHeight,
+                          );
+                        },
+                        // 드래그 끝 - 툴팁 숨기기
+                        onLongPressEnd: (details) {
+                          setState(() {
+                            selectedChartPointIndex = null;
+                            tooltipPosition = null;
+                          });
+                        },
+                        child: Stack(
+                          children: [
+                            // 차트 (전체 크기를 차지하도록)
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: WeightChartPainter(
+                                  chartData, 
+                                  yLabels[3], // 최소값 (하단) - 4개 배열이므로 인덱스 3
+                                  yLabels[0], // 최대값 (상단)
+                                  highlightedIndex: selectedChartPointIndex, // 강조할 점
+                                ),
+                              ),
+                            ),
+                            // 툴팁
+                            if (selectedChartPointIndex != null && tooltipPosition != null)
+                              _buildChartTooltip(
+                                chartData[selectedChartPointIndex!], 
+                                constraints.maxWidth - 53, // 실제 차트 너비
+                                constraints.maxHeight, // 실제 차트 높이
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
             ),
           ),
           const SizedBox(height: 8),
           // X축 라벨
           Padding(
-            padding: const EdgeInsets.only(left: 53),
+            padding: EdgeInsets.only(left: ChartConstants.yAxisTotalWidth),
             child: chartData.length <= 7
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -854,6 +947,365 @@ class _WeightListScreenState extends State<WeightListScreen> {
       ),
     );
   }
+
+  // 차트 클릭 핸들러 (차트의 점 클릭 감지)
+  void _handleChartTap(
+    Offset tapPosition, 
+    List<Map<String, dynamic>> chartData, 
+    double minWeight, 
+    double maxWeight,
+    double chartWidth,
+    double chartHeight,
+  ) {
+    if (chartData.isEmpty) return;
+    
+    // WeightChartPainter와 동일한 로직으로 점들의 위치 계산
+    double leftPadding = ChartConstants.getLeftPadding(chartData.length);
+    double rightPadding = ChartConstants.getRightPadding(chartData.length);
+    final double effectiveWidth = chartWidth - leftPadding - rightPadding;
+    
+    // 가장 가까운 점 찾기
+    int? closestIndex;
+    double minDistance = double.infinity;
+    Offset? closestPoint;
+    
+    for (int i = 0; i < chartData.length; i++) {
+      double weight = chartData[i]['weight'];
+      
+      // X 좌표 계산 (WeightChartPainter와 동일)
+      double x;
+      if (chartData.length == 1) {
+        x = leftPadding + effectiveWidth / 2;
+      } else {
+        x = leftPadding + (effectiveWidth * i / (chartData.length - 1));
+      }
+      
+      // Y 좌표 계산 (WeightChartPainter와 동일)
+      double normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
+      double y = chartHeight * normalizedWeight;
+      
+      // 클릭 위치와 점 사이의 거리 계산
+      double dx = tapPosition.dx - x;
+      double dy = tapPosition.dy - y;
+      double distance = (dx * dx + dy * dy); // 제곱 거리 (sqrt 생략으로 성능 향상)
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = i;
+        closestPoint = Offset(x, y);
+      }
+    }
+    
+    // 가장 가까운 점이 있고, 거리가 20px 이내면 툴팁 표시 (제곱 거리 400)
+    if (closestIndex != null && minDistance < 400) {
+      setState(() {
+        selectedChartPointIndex = closestIndex;
+        tooltipPosition = closestPoint;
+      });
+      
+      // 3초 후 툴팁 자동 숨기기
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            selectedChartPointIndex = null;
+            tooltipPosition = null;
+          });
+        }
+      });
+    }
+  }
+
+  // 차트 호버/드래그 핸들러 (툴팁 표시용)
+  void _handleChartHover(
+    Offset hoverPosition, 
+    List<Map<String, dynamic>> chartData, 
+    double minWeight, 
+    double maxWeight,
+    double chartWidth,
+    double chartHeight,
+  ) {
+    if (chartData.isEmpty) return;
+    
+    double leftPadding = ChartConstants.getLeftPadding(chartData.length);
+    double rightPadding = ChartConstants.getRightPadding(chartData.length);
+    final double effectiveWidth = chartWidth - leftPadding - rightPadding;
+    
+    // 가장 가까운 점 찾기
+    int? closestIndex;
+    double minDistance = double.infinity;
+    Offset? closestPoint;
+    
+    for (int i = 0; i < chartData.length; i++) {
+      double weight = chartData[i]['weight'];
+      
+      // X 좌표 계산
+      double x;
+      if (chartData.length == 1) {
+        x = leftPadding + effectiveWidth / 2;
+      } else {
+        x = leftPadding + (effectiveWidth * i / (chartData.length - 1));
+      }
+      
+      // Y 좌표 계산
+      double normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
+      double y = chartHeight * normalizedWeight;
+      
+      // 거리 계산
+      double dx = hoverPosition.dx - x;
+      double dy = hoverPosition.dy - y;
+      double distance = (dx * dx + dy * dy);
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = i;
+        closestPoint = Offset(x, y);
+      }
+    }
+    
+    // 가장 가까운 점이 있으면 툴팁 표시 (거리 제한 더 넓게: 50px = 2500)
+    if (closestIndex != null && minDistance < 2500) {
+      setState(() {
+        selectedChartPointIndex = closestIndex;
+        tooltipPosition = closestPoint;
+      });
+    } else {
+      setState(() {
+        selectedChartPointIndex = null;
+        tooltipPosition = null;
+      });
+    }
+  }
+
+  // 차트 툴팁 위젯
+  Widget _buildChartTooltip(Map<String, dynamic> data, double chartWidth, double chartHeight) {
+    if (tooltipPosition == null) return const SizedBox.shrink();
+    
+    final weight = data['weight'] as double;
+    final record = data['record'] as WeightRecord;
+    final dateLabel = data['date'] as String;
+    
+    // 측정 시간 표시 (일 기간일 때는 시간, 주/월 기간일 때는 날짜)
+    String timeLabel;
+    if (selectedPeriod == '일') {
+      timeLabel = DateFormat('HH:mm').format(record.measuredAt);
+    } else {
+      timeLabel = DateFormat('M.d').format(record.measuredAt);
+    }
+    
+    // 툴팁 크기 계산 (대략적인 크기)
+    const double tooltipWidth = 80.0;
+    const double tooltipHeight = 50.0;
+    
+    // 툴팁 위치 계산 (화면 밖으로 나가지 않도록 조정)
+    double left = tooltipPosition!.dx - tooltipWidth / 2;
+    double top = tooltipPosition!.dy - tooltipHeight - 10; // 점 위에 표시
+    
+    // 왼쪽 경계 체크
+    if (left < 0) {
+      left = 5;
+    } else if (left + tooltipWidth > chartWidth) {
+      left = chartWidth - tooltipWidth - 5;
+    }
+    
+    // 위쪽 경계 체크 (너무 위로 올라가면 아래쪽에 표시)
+    if (top < 0) {
+      top = tooltipPosition!.dy + 15; // 점 아래에 표시
+    }
+    
+    return Positioned(
+      left: left,
+      top: top,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${weight.toStringAsFixed(1)} kg',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              timeLabel,
+              style: TextStyle(
+                color: Colors.grey[300],
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 시간별 기록 선택 바텀시트
+  void _showTimeSelectionBottomSheet(List<WeightRecord> records) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 제목
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '수정할 시간 선택 (${records.length}개)',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              // 시간별 리스트
+              ...records.map((record) {
+                final timeStr = DateFormat('HH:mm').format(record.measuredAt);
+                return InkWell(
+                  onTap: () async {
+                    Navigator.pop(context); // 바텀시트 닫기
+                    
+                    // 수정 페이지로 이동
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => WeightInputScreen(record: record),
+                      ),
+                    );
+                    
+                    // 수정 후 데이터 새로고침
+                    if (result == true) {
+                      _loadData();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // 시간
+                        Row(
+                          children: [
+                            Icon(Icons.access_time, size: 20, color: Colors.grey[600]),
+                            const SizedBox(width: 12),
+                            Text(
+                              timeStr,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        // 체중
+                        Row(
+                          children: [
+                            Text(
+                              '${record.weight.toStringAsFixed(1)} kg',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.chevron_right, color: Colors.grey[400]),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 데이터 없을 때 다이얼로그 표시
+  void _showNoDataDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('체중 기록 없음'),
+        content: const Text(
+          '아직 체중 기록이 없습니다.\n지금 체중을 입력해주세요!',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // 다이얼로그 닫기
+            },
+            child: const Text('나중에'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // 다이얼로그 닫기
+              
+              // 체중 입력 페이지로 이동
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WeightInputScreen(),
+                ),
+              );
+              
+              // 입력 완료 후 데이터 새로고침
+              if (result == true && mounted) {
+                await _loadData();
+              }
+            },
+            child: const Text('체중 입력하기'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // 체중 차트 Painter
@@ -861,16 +1313,23 @@ class WeightChartPainter extends CustomPainter {
   final List<Map<String, dynamic>> data;
   final double minWeight; // Y축 최소값
   final double maxWeight; // Y축 최대값
+  final int? highlightedIndex; // 강조할 점의 인덱스
   
-  WeightChartPainter(this.data, this.minWeight, this.maxWeight);
+  WeightChartPainter(
+    this.data, 
+    this.minWeight, 
+    this.maxWeight, 
+    {this.highlightedIndex}
+  );
   
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
     
-    // X축 시작점 여백 (Y축과 떨어뜨리기)
-    const double leftPadding = 8.0;
-    final chartWidth = size.width - leftPadding;
+    // X축 여백 (데이터가 적을 때는 양쪽 여백을 늘림)
+    double leftPadding = ChartConstants.getLeftPadding(data.length);
+    double rightPadding = ChartConstants.getRightPadding(data.length);
+    final chartWidth = size.width - leftPadding - rightPadding;
     
     // 그리드 선 그리기 (3개 = 4줄)
     final gridPaint = Paint()
@@ -881,7 +1340,7 @@ class WeightChartPainter extends CustomPainter {
       double y = size.height * i / 3;
       canvas.drawLine(
         Offset(leftPadding, y),
-        Offset(size.width, y),
+        Offset(size.width - rightPadding, y),
         gridPaint,
       );
     }
@@ -921,9 +1380,28 @@ class WeightChartPainter extends CustomPainter {
       ..color = const Color(0xFF2196F3)
       ..style = PaintingStyle.fill;
     
-    for (var point in points) {
-      canvas.drawCircle(point, 5, pointPaint);
-      canvas.drawCircle(point, 3, Paint()..color = Colors.white);
+    for (int i = 0; i < points.length; i++) {
+      final point = points[i];
+      final isHighlighted = highlightedIndex != null && highlightedIndex == i;
+      
+      if (isHighlighted) {
+        // 강조된 점 - 더 크게 그리기
+        canvas.drawCircle(point, 8, pointPaint);
+        canvas.drawCircle(point, 5, Paint()..color = Colors.white);
+        // 외곽선 추가
+        canvas.drawCircle(
+          point, 
+          8, 
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      } else {
+        // 일반 점
+        canvas.drawCircle(point, 5, pointPaint);
+        canvas.drawCircle(point, 3, Paint()..color = Colors.white);
+      }
     }
   }
   
