@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/chart_layout.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/utils/image_picker_utils.dart';
 import 'weight_input_screen.dart';
 
 class WeightListScreen extends StatefulWidget {
@@ -865,6 +869,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
   // 6. 눈바디 이미지
   Widget _buildBodyImages() {
+    final frontImagePath = selectedRecord?.frontImagePath;
+    final sideImagePath = selectedRecord?.sideImagePath;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -878,43 +885,247 @@ class _WeightListScreenState extends State<WeightListScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
+            // 정면 이미지
             Expanded(
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 40,
-                    color: Colors.grey[400],
-                  ),
-                ),
+              child: _buildImageContainer(
+                '정면',
+                frontImagePath,
+                () => _selectImage('front'),
               ),
             ),
             const SizedBox(width: 12),
+            // 측면 이미지
             Expanded(
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 40,
-                    color: Colors.grey[400],
-                  ),
-                ),
+              child: _buildImageContainer(
+                '측면',
+                sideImagePath,
+                () => _selectImage('side'),
               ),
             ),
           ],
         ),
       ],
     );
+  }
+
+  // 이미지 컨테이너 위젯
+  Widget _buildImageContainer(String label, String? imagePath, VoidCallback onTap) {
+    final hasImage = imagePath != null && imagePath.isNotEmpty && ImagePickerUtils.isImageFileExists(imagePath);
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: hasImage ? Colors.grey[100] : Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasImage ? Colors.grey[300]! : Colors.grey[200]!,
+            width: 1,
+          ),
+        ),
+        child: hasImage
+            ? Stack(
+                children: [
+                  // 이미지 표시
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: kIsWeb 
+                        ? Image.network(
+                            imagePath,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildImagePlaceholder(label);
+                            },
+                          )
+                        : Image.file(
+                            File(imagePath),
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildImagePlaceholder(label);
+                            },
+                          ),
+                  ),
+                  // 삭제 버튼
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _deleteImage(imagePath),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : _buildImagePlaceholder(label),
+      ),
+    );
+  }
+
+  // 이미지 플레이스홀더
+  Widget _buildImagePlaceholder(String label) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.add_photo_alternate_outlined,
+          size: 40,
+          color: Colors.grey[400],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 이미지 선택
+  Future<void> _selectImage(String type) async {
+    try {
+      await ImagePickerUtils.showImageSourceDialog(context, (XFile? image) async {
+        if (image != null) {
+          // 웹 환경에서는 다른 방식으로 이미지 처리
+          String imagePath;
+          
+          if (kIsWeb) {
+            // 웹에서는 이미지 URL을 직접 사용
+            imagePath = image.path;
+          } else {
+            // 모바일/데스크톱에서는 파일로 저장
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final fileName = '${type}_${timestamp}.jpg';
+            final directory = Directory('${Directory.systemTemp.path}/weight_images');
+            
+            // 디렉토리가 없으면 생성
+            if (!await directory.exists()) {
+              await directory.create(recursive: true);
+            }
+            
+            final newPath = '${directory.path}/$fileName';
+            final File newFile = File(newPath);
+            
+            // 이미지 파일 복사
+            await image.readAsBytes().then((bytes) => newFile.writeAsBytes(bytes));
+            imagePath = newPath;
+          }
+          
+          // 기존 이미지가 있으면 삭제
+          if (type == 'front' && selectedRecord?.frontImagePath != null) {
+            await ImagePickerUtils.deleteImageFile(selectedRecord!.frontImagePath);
+          } else if (type == 'side' && selectedRecord?.sideImagePath != null) {
+            await ImagePickerUtils.deleteImageFile(selectedRecord!.sideImagePath);
+          }
+          
+          // 데이터베이스 업데이트
+          if (selectedRecord != null) {
+            final updatedRecord = selectedRecord!.copyWith(
+              frontImagePath: type == 'front' ? imagePath : selectedRecord!.frontImagePath,
+              sideImagePath: type == 'side' ? imagePath : selectedRecord!.sideImagePath,
+            );
+            
+            await WeightRepository.updateWeightRecord(updatedRecord);
+            _loadData(); // 데이터 새로고침
+          } else {
+            // 새 기록 생성 (체중 입력 화면으로 이동)
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => WeightInputScreen(
+                  initialImages: {
+                    'front': type == 'front' ? imagePath : null,
+                    'side': type == 'side' ? imagePath : null,
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      });
+    } catch (e) {
+      print('이미지 선택 오류: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('이미지 선택 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 이미지 삭제
+  Future<void> _deleteImage(String imagePath) async {
+    try {
+      // 확인 다이얼로그
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('이미지 삭제'),
+          content: const Text('이미지를 삭제하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('삭제'),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirmed == true && selectedRecord != null) {
+        // 파일 시스템에서 이미지 삭제
+        await ImagePickerUtils.deleteImageFile(imagePath);
+        
+        // 데이터베이스에서 이미지 경로 제거
+        final updatedRecord = selectedRecord!.copyWith(
+          frontImagePath: imagePath == selectedRecord!.frontImagePath ? null : selectedRecord!.frontImagePath,
+          sideImagePath: imagePath == selectedRecord!.sideImagePath ? null : selectedRecord!.sideImagePath,
+        );
+        
+        await WeightRepository.updateWeightRecord(updatedRecord);
+        _loadData(); // 데이터 새로고침
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('이미지가 삭제되었습니다'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('이미지 삭제 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이미지 삭제 중 오류가 발생했습니다: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   // 7. 기록하기 버튼

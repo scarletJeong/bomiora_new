@@ -45,6 +45,9 @@ dependencies:
   # 웹용 URL 런처
   url_launcher: ^6.2.1
   
+  # 이미지 선택
+  image_picker: ^1.0.4
+  
   # URL 런처
   # url_launcher: ^6.2.1  # 현재 사용하지 않음
 

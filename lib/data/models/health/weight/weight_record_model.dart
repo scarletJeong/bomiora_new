@@ -6,6 +6,8 @@ class WeightRecord {
   final double? height; // cm
   final double? bmi;
   final String? notes;
+  final String? frontImagePath; // 정면 이미지 경로
+  final String? sideImagePath; // 측면 이미지 경로
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -17,6 +19,8 @@ class WeightRecord {
     this.height,
     this.bmi,
     this.notes,
+    this.frontImagePath,
+    this.sideImagePath,
     this.createdAt,
     this.updatedAt,
   });
@@ -57,6 +61,8 @@ class WeightRecord {
       height: json['height'] != null ? (json['height'] as num).toDouble() : null,
       bmi: json['bmi'] != null ? (json['bmi'] as num).toDouble() : null,
       notes: json['notes']?.toString(),
+      frontImagePath: json['frontImagePath'] ?? json['front_image_path']?.toString(),
+      sideImagePath: json['sideImagePath'] ?? json['side_image_path']?.toString(),
       createdAt: (json['createdAt'] ?? json['created_at']) != null 
           ? _parseDateTime(json['createdAt'] ?? json['created_at']) 
           : null,
@@ -99,6 +105,8 @@ class WeightRecord {
       if (height != null) 'height': height,
       if (bmi != null) 'bmi': bmi,
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
+      if (frontImagePath != null && frontImagePath!.isNotEmpty) 'front_image_path': frontImagePath,
+      if (sideImagePath != null && sideImagePath!.isNotEmpty) 'side_image_path': sideImagePath,
     };
   }
 
@@ -110,6 +118,8 @@ class WeightRecord {
     double? height,
     double? bmi,
     String? notes,
+    String? frontImagePath,
+    String? sideImagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -121,6 +131,8 @@ class WeightRecord {
       height: height ?? this.height,
       bmi: bmi ?? this.bmi,
       notes: notes ?? this.notes,
+      frontImagePath: frontImagePath ?? this.frontImagePath,
+      sideImagePath: sideImagePath ?? this.sideImagePath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
