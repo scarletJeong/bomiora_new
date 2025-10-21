@@ -32,6 +32,7 @@ class ApiEndpoints {
   
   // 건강 관리 관련 (향후 확장용)
   static const String bloodSugarRecords = '/api/health/blood-sugar';
+  static const String bloodPressureRecords = '/api/health/blood-pressure';
   static const String weightRecords = '/api/health/weight';
   static const String healthStats = '/api/health/stats';
 }

@@ -3,10 +3,14 @@ import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
-import '../../../../data/models/health/weight_record_model.dart';
-import '../../../../data/repositories/health/weight_repository.dart';
+import '../../../../data/models/health/weight/weight_record_model.dart';
+import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
+import '../../../../data/repositories/health/weight/weight_repository.dart';
+import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
 import '../../weight/screens/weight_list_screen.dart';
 import '../../weight/screens/weight_input_screen.dart';
+import '../../blood_pressure/screens/blood_pressure_list_screen.dart';
+import '../../blood_pressure/screens/blood_pressure_input_screen.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -19,6 +23,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   // 사용자 정보
   UserModel? currentUser;
   WeightRecord? latestWeightRecord;
+  BloodPressureRecord? latestBloodPressureRecord;
   
   // 체중 관련 (기본값)
   double targetWeight = 74.0;
@@ -28,7 +33,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   
   // 로딩 상태
   bool isLoading = true;
-  bool hasShownNoWeightDialog = false; // 체중 없음 알럿을 한 번만 표시하기 위한 플래그
   
   // 날짜 관련
   DateTime selectedDate = DateTime.now();
@@ -42,8 +46,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   int steps = 6320;
   int heartRate = 96;
   int bloodSugar = 109;
-  int systolicBP = 109;
-  int diastolicBP = 82;
+  int systolicBP = 0;  // 혈압 데이터에서 가져올 예정
+  int diastolicBP = 0; // 혈압 데이터에서 가져올 예정
   
   // 식사별 칼로리
   Map<String, int> mealCalories = {
@@ -77,30 +81,36 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         return;
       }
       
-      // 최신 체중 기록 가져오기
-      final weightRecord = await WeightRepository.getLatestWeightRecord(user.id);
+      // 최신 체중 기록과 혈압 기록을 병렬로 가져오기 (성능 최적화)
+      final results = await Future.wait([
+        WeightRepository.getLatestWeightRecord(user.id),
+        BloodPressureRepository.getLatestBloodPressureRecord(user.id).catchError((e) {
+          print('혈압 기록 가져오기 오류: $e');
+          return null;
+        }),
+      ]);
+      
+      final weightRecord = results[0] as WeightRecord?;
+      final bloodPressureRecord = results[1] as BloodPressureRecord?;
       
       setState(() {
         currentUser = user;
         latestWeightRecord = weightRecord;
+        latestBloodPressureRecord = bloodPressureRecord;
         
         if (weightRecord != null) {
           currentWeight = weightRecord.weight;
           height = weightRecord.height ?? 170.0;
           bmi = weightRecord.bmi ?? 0.0;
-          hasShownNoWeightDialog = false; // 체중이 있으면 플래그 리셋
+        }
+        
+        if (bloodPressureRecord != null) {
+          systolicBP = bloodPressureRecord.systolic;
+          diastolicBP = bloodPressureRecord.diastolic;
         }
         
         isLoading = false;
       });
-      
-      // 체중 기록이 없으면 알럿 표시 (한 번만)
-      if (weightRecord == null && mounted && !hasShownNoWeightDialog) {
-        hasShownNoWeightDialog = true; // 플래그 설정
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showNoWeightRecordDialog();
-        });
-      }
     } catch (e) {
       print('데이터 로딩 오류: $e');
       setState(() => isLoading = false);
@@ -111,62 +121,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         );
       }
     }
-  }
-
-  // 체중 기록이 없을 때 다이얼로그 표시
-  void _showNoWeightRecordDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('체중 기록 없음'),
-        content: const Text(
-          '아직 체중 기록이 없습니다.\n지금 체중을 입력해주세요!',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // 다이얼로그 닫기
-            },
-            child: const Text('나중에'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context); // 다이얼로그 닫기
-              
-              // 체중 입력 페이지로 이동
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const WeightInputScreen(),
-                ),
-              );
-              
-              // 입력 완료 후 체중 목록 페이지로 이동
-              if (result == true) {
-                if (!mounted) return;
-                
-                // 데이터 새로고침
-                await _loadData();
-                
-                // 위젯이 여전히 마운트되어 있는지 다시 확인
-                if (!mounted) return;
-                
-                // 체중 목록 페이지로 이동
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WeightListScreen(),
-                  ),
-                );
-              }
-            },
-            child: const Text('체중 입력하기'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -732,8 +686,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             ),
             _buildHealthMetricCard(
               '혈압',
-              '수축기 ${systolicBP}mmHg',
-              '이완기 ${diastolicBP}mmHg',
+              latestBloodPressureRecord != null 
+                ? '수축기 ${systolicBP}mmHg'
+                : '데이터 없음',
+              latestBloodPressureRecord != null 
+                ? '이완기 ${diastolicBP}mmHg (${latestBloodPressureRecord!.status})'
+                : '혈압을 측정해주세요',
               Icons.monitor_heart,
               const Color(0xFF45B7D1),
             ),
@@ -755,7 +713,16 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return GestureDetector(
       onTap: () {
         // 해당 지표 입력 페이지로 이동
-        print('Navigate to $title input page');
+        if (title == '혈압') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BloodPressureListScreen(initialDate: selectedDate),
+            ),
+          );
+        } else {
+          print('Navigate to $title input page');
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -807,8 +774,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               Text(
                 subValue,
                 style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
+                  fontSize: title == '혈압' ? 16 : 12,
+                  fontWeight: title == '혈압' ? FontWeight.bold : FontWeight.normal,
+                  color: title == '혈압' ? Colors.black : Colors.grey[600],
                 ),
               ),
             ],
@@ -817,4 +785,5 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       ),
     );
   }
+  
 }
