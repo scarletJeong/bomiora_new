@@ -52,18 +52,42 @@ class WeightRecord {
     return WeightRecord(
       id: json['recordId'] ?? json['record_id'] ?? json['id'],
       mbId: (json['mbId'] ?? json['mb_id'] ?? '').toString(),
-      measuredAt: DateTime.parse(json['measuredAt'] ?? json['measured_at']),
+      measuredAt: _parseDateTime(json['measuredAt'] ?? json['measured_at']),
       weight: (json['weight'] as num).toDouble(),
       height: json['height'] != null ? (json['height'] as num).toDouble() : null,
       bmi: json['bmi'] != null ? (json['bmi'] as num).toDouble() : null,
       notes: json['notes']?.toString(),
       createdAt: (json['createdAt'] ?? json['created_at']) != null 
-          ? DateTime.parse(json['createdAt'] ?? json['created_at']) 
+          ? _parseDateTime(json['createdAt'] ?? json['created_at']) 
           : null,
       updatedAt: (json['updatedAt'] ?? json['updated_at']) != null 
-          ? DateTime.parse(json['updatedAt'] ?? json['updated_at']) 
+          ? _parseDateTime(json['updatedAt'] ?? json['updated_at']) 
           : null,
     );
+  }
+
+  // 안전한 날짜 파싱 함수
+  static DateTime _parseDateTime(dynamic dateValue) {
+    try {
+      if (dateValue == null) {
+        return DateTime.now(); // null이면 현재 시간 반환
+      }
+      
+      String dateStr = dateValue.toString();
+      
+      // 잘못된 날짜 형식 체크
+      if (dateStr.contains('0000-00-00') || 
+          dateStr.contains('1900-01-01') ||
+          dateStr.isEmpty) {
+        print('⚠️ 잘못된 날짜 형식 감지: $dateStr, 현재 시간으로 대체');
+        return DateTime.now();
+      }
+      
+      return DateTime.parse(dateStr);
+    } catch (e) {
+      print('❌ 날짜 파싱 오류: $dateValue, 현재 시간으로 대체');
+      return DateTime.now();
+    }
   }
 
   Map<String, dynamic> toJson() {

@@ -768,7 +768,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                             chartData, 
                             yLabels[3], 
                             yLabels[0],
-                            constraints.maxWidth - yAxisTotalWidth,
+                            constraints.maxWidth - ChartConstants.yAxisTotalWidth,
                             constraints.maxHeight,
                           );
                         },
@@ -779,7 +779,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                             chartData, 
                             yLabels[3], 
                             yLabels[0],
-                            constraints.maxWidth - yAxisTotalWidth,
+                            constraints.maxWidth - ChartConstants.yAxisTotalWidth,
                             constraints.maxHeight,
                           );
                         },
@@ -823,33 +823,40 @@ class _WeightListScreenState extends State<WeightListScreen> {
           // X축 라벨
           Padding(
             padding: EdgeInsets.only(left: ChartConstants.yAxisTotalWidth),
-            child: chartData.length <= 7
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: chartData.map((data) {
-                    return Text(
-                      data['date'],
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                    );
-                  }).toList(),
+            child: chartData.length == 1
+              ? Center(
+                  child: Text(
+                    chartData[0]['date'],
+                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                  ),
                 )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      chartData.first['date'],
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      chartData[chartData.length ~/ 2]['date'],
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      chartData.last['date'],
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
+              : chartData.length <= 7
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: chartData.map((data) {
+                      return Text(
+                        data['date'],
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      );
+                    }).toList(),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        chartData.first['date'],
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        chartData[chartData.length ~/ 2]['date'],
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        chartData.last['date'],
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -1082,7 +1089,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
     
     final weight = data['weight'] as double;
     final record = data['record'] as WeightRecord;
-    final dateLabel = data['date'] as String;
     
     // 측정 시간 표시 (일 기간일 때는 시간, 주/월 기간일 때는 날짜)
     String timeLabel;
@@ -1092,29 +1098,18 @@ class _WeightListScreenState extends State<WeightListScreen> {
       timeLabel = DateFormat('M.d').format(record.measuredAt);
     }
     
-    // 툴팁 크기 계산 (대략적인 크기)
-    const double tooltipWidth = 80.0;
-    const double tooltipHeight = 50.0;
-    
-    // 툴팁 위치 계산 (화면 밖으로 나가지 않도록 조정)
-    double left = tooltipPosition!.dx - tooltipWidth / 2;
-    double top = tooltipPosition!.dy - tooltipHeight - 10; // 점 위에 표시
-    
-    // 왼쪽 경계 체크
-    if (left < 0) {
-      left = 5;
-    } else if (left + tooltipWidth > chartWidth) {
-      left = chartWidth - tooltipWidth - 5;
-    }
-    
-    // 위쪽 경계 체크 (너무 위로 올라가면 아래쪽에 표시)
-    if (top < 0) {
-      top = tooltipPosition!.dy + 15; // 점 아래에 표시
-    }
+    // 동적 툴팁 위치 계산
+    final calculatedTooltipPosition = ChartConstants.calculateTooltipPosition(
+      tooltipPosition!,
+      ChartConstants.tooltipWidth,
+      ChartConstants.tooltipHeight,
+      chartWidth,
+      chartHeight,
+    );
     
     return Positioned(
-      left: left,
-      top: top,
+      left: calculatedTooltipPosition.dx,
+      top: calculatedTooltipPosition.dy,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
