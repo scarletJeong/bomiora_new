@@ -61,36 +61,33 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return loadingDates.contains(dateKey);
   }
 
-  // 시간 범위 계산 (공통 로직)
+  // 시간 범위 계산 (통합 로직)
   Map<String, double> _calculateTimeRange() {
-    if (_isToday()) {
-      final now = DateTime.now();
-      final currentHour = now.hour;
-      final minHourDiff = (-4.0 + timeOffset).clamp(-currentHour.toDouble(), 0.0);
-      final maxHourDiff = (2.0 + timeOffset).clamp(-4.0, 0.0);
-      return {'min': minHourDiff, 'max': maxHourDiff};
-    } else {
-      final minHourDiff = (timeOffset * 12.0).clamp(0.0, 12.0);
-      final maxHourDiff = (minHourDiff + 12.0).clamp(12.0, 23.0);
-      return {'min': minHourDiff, 'max': maxHourDiff};
-    }
+    const maxStartHour = 18; // 24시 - 6시간 = 18시 (7개 라벨)
+    final startHour = (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
+    final endHour = (startHour + 6.0).clamp(6.0, 24.0);
+    
+    return {'min': startHour, 'max': endHour};
   }
 
-  // 드래그 범위 제한 (공통 로직)
+  // 드래그 범위 제한
   double _clampDragOffset(double newOffset) {
     if (_isToday()) {
+      // 오늘: 현재 시간 - 4시간까지만
       final now = DateTime.now();
       final currentHour = now.hour;
-      final maxPastOffset = -currentHour.toDouble();
-      return newOffset.clamp(maxPastOffset, 0.0);
+      final maxStartHour = (currentHour - 4).clamp(0, 18);
+      final maxOffset = maxStartHour / 18.0;
+      return newOffset.clamp(0.0, maxOffset);
     } else {
-      return newOffset.clamp(0.0, 0.916); // 0.916 = 11/12, 최대 23시까지만
+      // 과거: 00시~24시 전체 범위
+      return newOffset.clamp(0.0, 1.0);
     }
   }
 
-  // 드래그 민감도 계산 (공통 로직)
+  // 드래그 민감도
   double _getDragSensitivity() {
-    return _isToday() ? 6.0 : 0.5;
+    return 0.5;
   }
 
   // 공통 드래그 핸들러
@@ -126,76 +123,32 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     final minHourDiff = timeRange['min']!;
     final maxHourDiff = timeRange['max']!;
     
-    print('⏰ [DEBUG] 시간 범위: ${minHourDiff} ~ ${maxHourDiff}');
-    print('📅 [DEBUG] 오늘 여부: ${_isToday()}');
-    
     List<Map<String, dynamic>> chartData = [];
     
     for (var record in dayRecords) {
       final recordHour = record.measuredAt.hour;
       final recordMinute = record.measuredAt.minute;
       
-      if (_isToday()) {
-        // 오늘: 드래그 범위에 따라 필터링
-        if (_isRecordInTimeRange(recordHour, minHourDiff, maxHourDiff)) {
-          final chartPoint = _createChartPoint(record, recordHour, recordMinute, minHourDiff, maxHourDiff);
-          chartData.add(chartPoint);
-        }
-      } else {
-        // 과거: 드래그 범위에 따라 필터링
-        if (_isRecordInTimeRange(recordHour, minHourDiff, maxHourDiff)) {
-          final chartPoint = _createChartPoint(record, recordHour, recordMinute, minHourDiff, maxHourDiff);
-          chartData.add(chartPoint);
-          print('✅ [DEBUG] 과거 기록 추가: ${recordHour}:${recordMinute.toString().padLeft(2, '0')} (범위: ${minHourDiff}~${maxHourDiff})');
-        } else {
-          print('❌ [DEBUG] 과거 기록 제외: ${recordHour}:${recordMinute.toString().padLeft(2, '0')} (범위: ${minHourDiff}~${maxHourDiff})');
-        }
-      }
+      // 통합 로직: 모든 데이터 표시 (필터링은 Painter에서)
+      final chartPoint = _createChartPoint(record, recordHour, recordMinute, minHourDiff, maxHourDiff);
+      chartData.add(chartPoint);
     }
     
     return chartData;
   }
 
-  // 기록이 시간 범위 내에 있는지 확인
-  bool _isRecordInTimeRange(int recordHour, double minHourDiff, double maxHourDiff) {
-    if (_isToday()) {
-      final now = DateTime.now();
-      final currentHour = now.hour;
-      final hourDiff = recordHour - currentHour;
-      return hourDiff >= minHourDiff && hourDiff <= maxHourDiff && hourDiff <= 0;
-    } else {
-      // 과거: 드래그 범위 내의 시간인지 확인
-      return recordHour >= minHourDiff && recordHour <= maxHourDiff;
-    }
-  }
 
-  // 차트 포인트 생성
+  // 차트 포인트 생성 (통합)
   Map<String, dynamic> _createChartPoint(BloodPressureRecord record, int recordHour, int recordMinute, double minHourDiff, double maxHourDiff) {
     final normalizedMinute = (recordMinute / 5).floor() * 5;
     final minuteRatio = normalizedMinute / 60.0;
     final range = maxHourDiff - minHourDiff;
     
-    double xPosition;
-    String dateStr;
-    
-    if (_isToday()) {
-      final now = DateTime.now();
-      final currentHour = now.hour;
-      final hourDiff = recordHour - currentHour;
-      xPosition = (hourDiff - minHourDiff) / range;
-      dateStr = '${recordHour.toString().padLeft(2, '0')}시';
-    } else {
-      // 과거: 드래그 범위 내에서 상대적 위치 계산 (분 포함)
-      xPosition = (recordHour - minHourDiff + minuteRatio) / range;
-      dateStr = '${recordHour.toString().padLeft(2, '0')}:${recordMinute.toString().padLeft(2, '0')}';
-    }
-    
-    // 오늘만 추가 분 조정
-    if (_isToday()) {
-      xPosition += minuteRatio / range;
-    }
-    
+    // 통합 로직: 시작 시간 기준으로 X축 위치 계산
+    double xPosition = (recordHour - minHourDiff + minuteRatio) / range;
     xPosition = xPosition.clamp(0.0, 1.0);
+    
+    String dateStr = '${recordHour.toString().padLeft(2, '0')}:${recordMinute.toString().padLeft(2, '0')}';
     
     return {
       'date': dateStr,
@@ -203,8 +156,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       'systolic': record.systolic,
       'diastolic': record.diastolic,
       'record': record,
-      'actualHour': recordHour,
-      'actualMinute': recordMinute,
       'normalizedMinute': normalizedMinute,
       'xPosition': xPosition,
     };
@@ -248,37 +199,17 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     }
     
     final timeRange = _calculateTimeRange();
-    final minHourDiff = timeRange['min']!.round();
-    final maxHourDiff = timeRange['max']!.round();
+    final startHour = timeRange['min']!.round();
     
     List<Widget> hourLabels = [];
     
-    if (_isToday()) {
-      // 오늘: 현재 시간 기준으로 라벨 생성
-      final now = DateTime.now();
-      final currentHour = now.hour;
-      
-      for (int i = minHourDiff; i <= maxHourDiff; i++) {
-        final targetHour = currentHour + i;
-        if (targetHour >= 0) {
-          final hourLabel = '${targetHour.toString().padLeft(2, '0')}시';
-          hourLabels.add(
-            Text(hourLabel, style: TextStyle(fontSize: 10, color: Colors.grey[600]))
-          );
-        }
-      }
-    } else {
-      // 과거: 드래그 범위에 맞는 라벨 표시
-      final startHour = minHourDiff.clamp(0, 23);
-      final endHour = maxHourDiff.clamp(0, 23);
-      
-      // 드래그 범위에 맞는 시간 라벨 표시
-      for (int hour = startHour; hour <= endHour; hour++) {
-        final hourLabel = '${hour.toString().padLeft(2, '0')}시';
-        hourLabels.add(
-          Text(hourLabel, style: TextStyle(fontSize: 10, color: Colors.grey[600]))
-        );
-      }
+    // 통합 로직: 시작 시간부터 7개 라벨 표시
+    for (int i = 0; i < 7; i++) {
+      final hour = (startHour + i).clamp(0, 24);
+      final hourLabel = hour == 24 ? '24시' : '${hour.toString().padLeft(2, '0')}시';
+      hourLabels.add(
+        Text(hourLabel, style: TextStyle(fontSize: 10, color: Colors.grey[600]))
+      );
     }
     
     return Row(
@@ -350,6 +281,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    
     if (widget.initialDate != null) {
       selectedDate = DateTime(
         widget.initialDate!.year,
@@ -357,9 +290,16 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         widget.initialDate!.day,
       );
     } else {
-      final now = DateTime.now();
       selectedDate = DateTime(now.year, now.month, now.day);
     }
+    
+    // 오늘 날짜일 경우: 현재 시간 - 4시간을 시작점으로 초기 timeOffset 설정
+    if (_isToday()) {
+      final currentHour = now.hour;
+      final startHourTarget = (currentHour - 4).clamp(0, 18);
+      timeOffset = startHourTarget / 18.0;
+    }
+    
     _loadData();
   }
 
@@ -587,9 +527,23 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       onTap: () {
          setState(() {
            selectedDate = date;
-           timeOffset = 0.0;
            selectedChartPointIndex = null;
            tooltipPosition = null;
+           
+           // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
+           final now = DateTime.now();
+           final today = DateTime(now.year, now.month, now.day);
+           final isSelectingToday = date.year == today.year && 
+                                    date.month == today.month && 
+                                    date.day == today.day;
+           
+           if (isSelectingToday) {
+             final currentHour = now.hour;
+             final startHourTarget = (currentHour - 4).clamp(0, 18);
+             timeOffset = startHourTarget / 18.0;
+           } else {
+             timeOffset = 0.0;
+           }
          });
          
          // 새로운 날짜의 데이터 로드
@@ -876,11 +830,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.favorite_border,
-              size: 48,
-              color: Colors.grey[400],
-            ),
             const SizedBox(height: 16),
             Text(
               '해당 기간에 혈압 기록이 없습니다',
@@ -1003,6 +952,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       20,  // 최소값 (고정)
                       220, // 최대값 (고정)
                       highlightedIndex: selectedChartPointIndex,
+                      isToday: _isToday(),
+                      timeOffset: timeOffset,
                     ),
                   ),
             ),
@@ -1352,20 +1303,23 @@ class BloodPressureChartPainter extends CustomPainter {
   final double minValue;
   final double maxValue;
   final int? highlightedIndex;
+  final bool isToday;
+  final double timeOffset;
   
   BloodPressureChartPainter(
     this.data, 
     this.minValue, 
     this.maxValue, 
-    {this.highlightedIndex}
+    {this.highlightedIndex, required this.isToday, required this.timeOffset}
   );
   
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
     
-    const double leftPadding = 0.0;
-    final chartWidth = size.width - leftPadding;
+    const double borderWidth = 0.5;
+    const double pointRadius = 8; // 데이터 포인트 최대 반지름
+    final chartWidth = size.width - (borderWidth * 2) - (pointRadius * 2); // 좌우 보더와 포인트 반지름 제외
     
     // 그리드 선 (고정 Y축: 20, 60, 100, 140, 180, 220)
     final gridPaint = Paint()
@@ -1385,8 +1339,8 @@ class BloodPressureChartPainter extends CustomPainter {
     for (int i = 0; i < yValues.length; i++) {
       double y = size.height * i / (yValues.length - 1);
       canvas.drawLine(
-        Offset(leftPadding, y),
-        Offset(size.width, y),
+        Offset(borderWidth + pointRadius, y),
+        Offset(chartWidth + borderWidth + pointRadius, y),
         gridPaint,
       );
     }
@@ -1396,7 +1350,8 @@ class BloodPressureChartPainter extends CustomPainter {
       double normalizedY = (220 - dashedValue) / (220 - 20);
       double y = size.height * normalizedY;
       
-      for (double x = leftPadding; x < size.width; x += 4) {
+      // 차트 영역 내에서만 점선 그리기
+      for (double x = borderWidth + pointRadius; x < chartWidth + borderWidth + pointRadius; x += 4) {
         canvas.drawLine(
           Offset(x, y),
           Offset(x + 2, y),
@@ -1414,17 +1369,39 @@ class BloodPressureChartPainter extends CustomPainter {
     List<Offset> currentDiastolic = [];
     List<int> currentIndices = [];
     
+    // X축 라벨 범위 계산 (7개 라벨 범위)
+    const maxStartHour = 18;
+    final startHour = (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
+    final endHour = startHour + 6;
+    
     for (int i = 0; i < data.length; i++) {
       if (data[i]['systolic'] == null || data[i]['diastolic'] == null) continue;
+      
+      // X축 라벨 범위 밖 데이터는 필터링
+      final recordHour = data[i]['hour'] as int?;
+      if (recordHour == null) continue;
+      
+      if (recordHour < startHour || recordHour > endHour) {
+        // 범위 밖 데이터는 세그먼트 종료
+        if (currentSystolic.isNotEmpty) {
+          systolicSegments.add(List.from(currentSystolic));
+          diastolicSegments.add(List.from(currentDiastolic));
+          indexSegments.add(List.from(currentIndices));
+          currentSystolic.clear();
+          currentDiastolic.clear();
+          currentIndices.clear();
+        }
+        continue;
+      }
       
       double x;
       if (data[i]['xPosition'] != null) {
         final xPosition = data[i]['xPosition'] as double;
-        x = leftPadding + (chartWidth * xPosition);
+        x = borderWidth + pointRadius + (chartWidth * xPosition);
       } else {
         x = data.length == 1 
-          ? leftPadding + chartWidth / 2 
-          : leftPadding + (chartWidth * i / (data.length - 1));
+          ? borderWidth + pointRadius + chartWidth / 2 
+          : borderWidth + pointRadius + (chartWidth * i / (data.length - 1));
       }
       
       int systolic = data[i]['systolic'];
@@ -1598,6 +1575,7 @@ class EmptyChartGridPainter extends CustomPainter {
       double normalizedY = (220 - dashedValue) / (220 - 20);
       double y = size.height * normalizedY;
       
+      // 차트 영역 내에서만 점선 그리기
       for (double x = 0; x < size.width; x += 4) {
         canvas.drawLine(
           Offset(x, y),
