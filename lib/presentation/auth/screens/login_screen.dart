@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
