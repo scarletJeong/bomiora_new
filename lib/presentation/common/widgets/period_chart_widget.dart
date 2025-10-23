@@ -60,7 +60,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: widget.yLabels.map((label) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
                          child: Text(
                            '${label.toStringAsFixed(0)}',
                            style: const TextStyle(

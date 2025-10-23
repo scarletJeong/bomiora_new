@@ -1134,11 +1134,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
                           const double bottomPadding = 20.0;
                           final double y = topPadding + (constraints.maxHeight - topPadding - bottomPadding) * index / (yLabels.length - 1);
                           return Positioned(
-                            top: y - 6, // 텍스트 중앙 정렬을 위해 6px 조정
+                            top: y - 11, // 텍스트 중앙 정렬을 위해 6px 조정
                             right: 0,
                             child: Text(
                               '${label.round()}',
-                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
                             ),
                           );
                         }).toList(),

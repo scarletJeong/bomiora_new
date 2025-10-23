@@ -176,9 +176,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     List<Map<String, dynamic>> chartData = [];
     final days = selectedPeriod == '주' ? 7 : 30;
     
-    // 오늘 날짜를 기준으로 과거 데이터 생성 (오늘이 맨 오른쪽)
-    final today = DateTime.now();
-    final endDate = DateTime(today.year, today.month, today.day);
+    // 선택된 날짜를 기준으로 과거 데이터 생성 (선택된 날짜가 맨 오른쪽)
+    final endDate = selectedDate;
     final startDate = endDate.subtract(Duration(days: days - 1));
     
     // 필요한 날짜들 로드
@@ -239,7 +238,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       final hour = (startHour + i).clamp(0, 24);
       final hourLabel = hour == 24 ? '24:00' : '${hour.toString().padLeft(2, '0')}:00';
       hourLabels.add(
-        Text(hourLabel, style: TextStyle(fontSize: 10, color: Colors.grey[600]))
+        Text(hourLabel, style: TextStyle(fontSize: 12, color: Colors.grey))
       );
     }
     
@@ -252,8 +251,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 주/월 X축 라벨 생성
   Widget _buildPeriodXAxisLabels(List<Map<String, dynamic>> chartData) {
     final days = selectedPeriod == '주' ? 7 : 30;
-    final today = DateTime.now();
-    final endDate = DateTime(today.year, today.month, today.day);
+    final endDate = selectedDate;
     final startDate = endDate.subtract(Duration(days: days - 1));
     
     // 모든 날짜에 대한 라벨 생성 (데이터 유무와 관계없이)
@@ -355,8 +353,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     if (currentUser == null) return;
     
     final days = selectedPeriod == '주' ? 7 : 30;
-    final today = DateTime.now();
-    final endDate = DateTime(today.year, today.month, today.day);
+    final endDate = selectedDate;
     final startDate = endDate.subtract(Duration(days: days - 1));
     
     // 필요한 날짜들 생성
@@ -911,7 +908,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         chartData: chartData,
         yLabels: yLabels,
         selectedPeriod: selectedPeriod,
+        selectedDate: selectedDate,
         timeOffset: timeOffset,
+        height: 350,
         onTimeOffsetChanged: (newOffset) {
           setState(() {
             timeOffset = newOffset;
@@ -1013,13 +1012,20 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   children: [
                     SizedBox(
                       width: ChartConstants.yAxisLabelWidth,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: yLabels.map((label) {
-                          return Text(
-                            '${label.round()}',
-                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      child: Stack(
+                        children: yLabels.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final label = entry.value;
+                          const double topPadding = 20.0;
+                          const double bottomPadding = 20.0;
+                          final double y = topPadding + (constraints.maxHeight - topPadding - bottomPadding) * index / (yLabels.length - 1);
+                          return Positioned(
+                            top: y - 10, // Adjust for text vertical alignment
+                            right: 0,
+                            child: Text(
+                              '${label.round()}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
                           );
                         }).toList(),
                       ),
@@ -1070,9 +1076,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         children: [
           Positioned.fill(
             child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!, width: 0.5),
-              ),
               child: isEmpty 
                 ? CustomPaint(painter: EmptyChartGridPainter())
                 : CustomPaint(
@@ -1502,7 +1505,9 @@ class BloodPressureChartPainter extends CustomPainter {
     
     // 실선 그리드 그리기
     for (int i = 0; i < yValues.length; i++) {
-      double y = size.height * i / (yValues.length - 1);
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
+      double y = topPadding + (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
       canvas.drawLine(
         Offset(borderWidth + pointRadius, y),
         Offset(chartWidth + borderWidth + pointRadius, y),
@@ -1513,7 +1518,9 @@ class BloodPressureChartPainter extends CustomPainter {
     // 점선 그리드 그리기
     for (int dashedValue in dashedYValues) {
       double normalizedY = (220 - dashedValue) / (220 - 20);
-      double y = size.height * normalizedY;
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
+      double y = topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
       
       // 차트 영역 내에서만 점선 그리기
       for (double x = borderWidth + pointRadius; x < chartWidth + borderWidth + pointRadius; x += 4) {
@@ -1621,11 +1628,13 @@ class BloodPressureChartPainter extends CustomPainter {
       int systolic = data[i]['systolic'];
       int diastolic = data[i]['diastolic'];
       
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
       double normalizedSystolic = (220 - systolic) / (220 - 20);
-      double ySystolic = size.height * normalizedSystolic;
+      double ySystolic = topPadding + (size.height - topPadding - bottomPadding) * normalizedSystolic;
       
       double normalizedDiastolic = (220 - diastolic) / (220 - 20);
-      double yDiastolic = size.height * normalizedDiastolic;
+      double yDiastolic = topPadding + (size.height - topPadding - bottomPadding) * normalizedDiastolic;
       
       currentSystolic.add(Offset(x, ySystolic));
       currentDiastolic.add(Offset(x, yDiastolic));
@@ -1776,7 +1785,9 @@ class EmptyChartGridPainter extends CustomPainter {
     
     // 실선 그리드 그리기
     for (int i = 0; i < yValues.length; i++) {
-      double y = size.height * i / (yValues.length - 1);
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
+      double y = topPadding + (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
       canvas.drawLine(
         Offset(0, y),
         Offset(size.width, y),
@@ -1787,7 +1798,9 @@ class EmptyChartGridPainter extends CustomPainter {
     // 점선 그리드 그리기
     for (int dashedValue in dashedYValues) {
       double normalizedY = (220 - dashedValue) / (220 - 20);
-      double y = size.height * normalizedY;
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
+      double y = topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
       
       // 차트 영역 내에서만 점선 그리기
       for (double x = 0; x < size.width; x += 4) {
