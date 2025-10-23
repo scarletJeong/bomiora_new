@@ -551,45 +551,39 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     try {
       await ImagePickerUtils.showImageSourceDialog(context, (XFile? image) async {
         if (image != null) {
-          // 웹 환경에서는 다른 방식으로 이미지 처리
-          String imagePath;
+          String? imagePath;
           
           if (kIsWeb) {
-            // 웹에서는 이미지 URL을 직접 사용
-            imagePath = image.path;
+            // 웹에서는 XFile을 직접 전달
+            try {
+              imagePath = await WeightRepository.uploadImage(image);
+            } catch (e) {
+              print('웹 이미지 업로드 실패: $e');
+              // 업로드 실패 시 blob URL 사용 (임시)
+              imagePath = image.path;
+            }
           } else {
-            // 모바일/데스크톱에서는 파일로 저장
-            final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final fileName = '${type}_${timestamp}.jpg';
-            final directory = Directory('${Directory.systemTemp.path}/weight_images');
-            
-            // 디렉토리가 없으면 생성
-            if (!await directory.exists()) {
-              await directory.create(recursive: true);
-            }
-            
-            final newPath = '${directory.path}/$fileName';
-            final File newFile = File(newPath);
-            
-            // 이미지 파일 복사
-            await image.readAsBytes().then((bytes) => newFile.writeAsBytes(bytes));
-            imagePath = newPath;
+            // 모바일에서는 실제 서버 업로드
+            final File imageFile = File(image.path);
+            imagePath = await WeightRepository.uploadImage(imageFile);
           }
           
-          // 기존 이미지가 있으면 삭제
-          if (type == 'front' && _frontImagePath != null) {
-            await ImagePickerUtils.deleteImageFile(_frontImagePath);
-          } else if (type == 'side' && _sideImagePath != null) {
-            await ImagePickerUtils.deleteImageFile(_sideImagePath);
-          }
-          
-          setState(() {
-            if (type == 'front') {
-              _frontImagePath = imagePath;
-            } else {
-              _sideImagePath = imagePath;
+          if (imagePath != null) {
+            // 기존 이미지가 있으면 삭제
+            if (type == 'front' && _frontImagePath != null) {
+              await ImagePickerUtils.deleteImageFile(_frontImagePath);
+            } else if (type == 'side' && _sideImagePath != null) {
+              await ImagePickerUtils.deleteImageFile(_sideImagePath);
             }
-          });
+            
+            setState(() {
+              if (type == 'front') {
+                _frontImagePath = imagePath;
+              } else {
+                _sideImagePath = imagePath;
+              }
+            });
+          }
         }
       });
     } catch (e) {

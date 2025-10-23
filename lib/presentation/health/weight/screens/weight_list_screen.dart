@@ -55,63 +55,129 @@ class _WeightListScreenState extends State<WeightListScreen> {
   int? selectedChartPointIndex;
   Offset? tooltipPosition;
   
+  // 차트 관련
+  double timeOffset = 0.0; // 통합된 드래그 오프셋
+  double? _dragStartX;
+  
+  // 오늘인지 확인
+  bool _isToday() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return selectedDate.year == today.year && 
+           selectedDate.month == today.month && 
+           selectedDate.day == today.day;
+  }
+
+  // 드래그 범위 제한
+  double _clampDragOffset(double newOffset) {
+    if (_isToday()) {
+      // 오늘: 현재 시간 - 4시간까지만
+      final now = DateTime.now();
+      final currentHour = now.hour;
+      final maxStartHour = (currentHour - 4).clamp(0, 18);
+      final maxOffset = maxStartHour / 18.0;
+      return newOffset.clamp(0.0, maxOffset);
+    } else if (selectedPeriod == '월') {
+      // 월별: 0부터 최대 오프셋까지 드래그 가능 (왼쪽으로 드래그해서 과거 날짜까지 볼 수 있음)
+      final visibleDays = 7;
+      final totalDays = 30;
+      final maxOffset = (totalDays - visibleDays) / totalDays; // 23/30 = 0.767
+      return newOffset.clamp(0.0, maxOffset);
+    } else {
+      // 과거 일별: 00시~24시 전체 범위
+      return newOffset.clamp(0.0, 1.0);
+    }
+  }
+
+  // 드래그 민감도
+  double _getDragSensitivity() {
+    if (selectedPeriod == '월') {
+      return 3.0; // 월별 그래프는 민감도를 더 높임
+    }
+    return 0.5; // 일별 그래프는 기존 민감도 유지
+  }
+
+  // 공통 드래그 핸들러
+  void _handleDragUpdate(double deltaX, double chartWidth) {
+    final sensitivity = _getDragSensitivity();
+    final dataDelta = -(deltaX / chartWidth) * sensitivity;
+    final newOffset = timeOffset + dataDelta;
+    
+    setState(() {
+      timeOffset = _clampDragOffset(newOffset);
+    });
+  }
+
   // 차트 데이터 생성
   List<Map<String, dynamic>> getChartData() {
-    if (allRecords.isEmpty) return [];
+    if (selectedPeriod != '일') {
+      return _getWeeklyOrMonthlyData();
+    }
+    
+    // 일별 차트: 선택된 날짜의 모든 기록 (시간별)
+    final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final todayRecords = allRecords.where((record) {
+      final recordDateStr = DateFormat('yyyy-MM-dd').format(record.measuredAt);
+      return recordDateStr == selectedDateStr;
+    }).toList();
+    
+    // 시간 순으로 정렬
+    todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
     
     List<Map<String, dynamic>> chartData = [];
+    for (var record in todayRecords) {
+      chartData.add({
+        'date': DateFormat('HH:mm').format(record.measuredAt), // 시간 표시
+        'weight': record.weight,
+        'record': record, // 실제 기록 객체 추가
+        'hour': record.measuredAt.hour,
+        'xPosition': null, // 일별 차트는 xPosition 사용 안함
+      });
+    }
     
-    if (selectedPeriod == '일') {
-      // 선택된 날짜의 모든 기록 (시간별)
-      final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-      final todayRecords = allRecords.where((record) {
+    return chartData;
+  }
+
+  // 주/월 데이터 생성 (최적화) - 하루에 최고 체중 값만 선택
+  List<Map<String, dynamic>> _getWeeklyOrMonthlyData() {
+    List<Map<String, dynamic>> chartData = [];
+    final days = selectedPeriod == '주' ? 7 : 30;
+    
+    // 오늘 날짜를 기준으로 과거 데이터 생성 (오늘이 맨 오른쪽)
+    final today = DateTime.now();
+    final endDate = DateTime(today.year, today.month, today.day);
+    final startDate = endDate.subtract(Duration(days: days - 1));
+    
+    // 모든 날짜에 대해 데이터 생성 (데이터가 없어도 빈 슬롯 생성)
+    for (int i = 0; i < days; i++) {
+      final date = startDate.add(Duration(days: i));
+      final dateKey = DateFormat('yyyy-MM-dd').format(date);
+      
+      // 해당 날짜의 모든 기록 가져오기
+      final dayRecords = allRecords.where((record) {
         final recordDateStr = DateFormat('yyyy-MM-dd').format(record.measuredAt);
-        return recordDateStr == selectedDateStr;
+        return recordDateStr == dateKey;
       }).toList();
       
-      // 시간 순으로 정렬
-      todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-      
-      for (var record in todayRecords) {
+      if (dayRecords.isNotEmpty) {
+        // 하루 중 체중이 가장 높은 기록 선택
+        dayRecords.sort((a, b) => b.weight.compareTo(a.weight));
+        final highestWeightRecord = dayRecords.first;
+        
         chartData.add({
-          'date': DateFormat('HH:mm').format(record.measuredAt), // 시간 표시
-          'weight': record.weight,
-          'record': record, // 실제 기록 객체 추가
+          'date': DateFormat('M.d').format(date),
+          'weight': highestWeightRecord.weight,
+          'record': highestWeightRecord,
+          'xPosition': i / (days - 1), // X축 위치 (0~1)
         });
-      }
-    } else if (selectedPeriod == '주') {
-      // 오늘부터 7일 전까지 (각 날짜당 마지막 기록 1개)
-      final endDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-      final startDate = endDate.subtract(const Duration(days: 6));
-      
-      for (int i = 0; i < 7; i++) {
-        final date = startDate.add(Duration(days: i));
-        final dateKey = DateFormat('yyyy-MM-dd').format(date);
-        
-        if (weightRecordsMap.containsKey(dateKey)) {
-          chartData.add({
-            'date': DateFormat('M.d').format(date),
-            'weight': weightRecordsMap[dateKey]!.weight,
-            'record': weightRecordsMap[dateKey]!, // 실제 기록 객체 추가
-          });
-        }
-      }
-    } else if (selectedPeriod == '월') {
-      // 오늘부터 30일 전까지 (각 날짜당 마지막 기록 1개)
-      final endDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-      final startDate = endDate.subtract(const Duration(days: 29));
-      
-      for (int i = 0; i < 30; i++) {
-        final date = startDate.add(Duration(days: i));
-        final dateKey = DateFormat('yyyy-MM-dd').format(date);
-        
-        if (weightRecordsMap.containsKey(dateKey)) {
-          chartData.add({
-            'date': DateFormat('M.d').format(date),
-            'weight': weightRecordsMap[dateKey]!.weight,
-            'record': weightRecordsMap[dateKey]!, // 실제 기록 객체 추가
-          });
-        }
+      } else {
+        // 데이터가 없는 날짜는 null 값으로 추가 (차트에서 제외되지만 위치는 유지)
+        chartData.add({
+          'date': DateFormat('M.d').format(date),
+          'weight': null,
+          'record': null,
+          'xPosition': i / (days - 1), // X축 위치 (0~1)
+        });
       }
     }
     
@@ -1000,65 +1066,68 @@ class _WeightListScreenState extends State<WeightListScreen> {
     );
   }
 
-  // 이미지 선택
+  // 이미지 선택 및 업로드
   Future<void> _selectImage(String type) async {
     try {
       await ImagePickerUtils.showImageSourceDialog(context, (XFile? image) async {
         if (image != null) {
-          // 웹 환경에서는 다른 방식으로 이미지 처리
-          String imagePath;
+          String? imageUrl;
           
           if (kIsWeb) {
-            // 웹에서는 이미지 URL을 직접 사용
-            imagePath = image.path;
+            // 웹에서는 XFile을 직접 전달
+            try {
+              imageUrl = await WeightRepository.uploadImage(image);
+            } catch (e) {
+              print('웹 이미지 업로드 실패: $e');
+              // 업로드 실패 시 blob URL 사용 (임시)
+              imageUrl = image.path;
+            }
           } else {
-            // 모바일/데스크톱에서는 파일로 저장
-            final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final fileName = '${type}_${timestamp}.jpg';
-            final directory = Directory('${Directory.systemTemp.path}/weight_images');
-            
-            // 디렉토리가 없으면 생성
-            if (!await directory.exists()) {
-              await directory.create(recursive: true);
+            // 모바일에서는 실제 파일 업로드
+            final File imageFile = File(image.path);
+            imageUrl = await WeightRepository.uploadImage(imageFile);
+          }
+          
+          if (imageUrl != null) {
+            // 기존 이미지가 있으면 삭제 (선택사항)
+            if (type == 'front' && selectedRecord?.frontImagePath != null) {
+              // TODO: 기존 이미지 파일 삭제
+            } else if (type == 'side' && selectedRecord?.sideImagePath != null) {
+              // TODO: 기존 이미지 파일 삭제
             }
             
-            final newPath = '${directory.path}/$fileName';
-            final File newFile = File(newPath);
-            
-            // 이미지 파일 복사
-            await image.readAsBytes().then((bytes) => newFile.writeAsBytes(bytes));
-            imagePath = newPath;
-          }
-          
-          // 기존 이미지가 있으면 삭제
-          if (type == 'front' && selectedRecord?.frontImagePath != null) {
-            await ImagePickerUtils.deleteImageFile(selectedRecord!.frontImagePath);
-          } else if (type == 'side' && selectedRecord?.sideImagePath != null) {
-            await ImagePickerUtils.deleteImageFile(selectedRecord!.sideImagePath);
-          }
-          
-          // 데이터베이스 업데이트
-          if (selectedRecord != null) {
-            final updatedRecord = selectedRecord!.copyWith(
-              frontImagePath: type == 'front' ? imagePath : selectedRecord!.frontImagePath,
-              sideImagePath: type == 'side' ? imagePath : selectedRecord!.sideImagePath,
-            );
-            
-            await WeightRepository.updateWeightRecord(updatedRecord);
-            _loadData(); // 데이터 새로고침
-          } else {
-            // 새 기록 생성 (체중 입력 화면으로 이동)
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => WeightInputScreen(
-                  initialImages: {
-                    'front': type == 'front' ? imagePath : null,
-                    'side': type == 'side' ? imagePath : null,
-                  },
+            // 데이터베이스 업데이트
+            if (selectedRecord != null) {
+              final updatedRecord = selectedRecord!.copyWith(
+                frontImagePath: type == 'front' ? imageUrl : selectedRecord!.frontImagePath,
+                sideImagePath: type == 'side' ? imageUrl : selectedRecord!.sideImagePath,
+              );
+              
+              await WeightRepository.updateWeightRecord(updatedRecord);
+              _loadData(); // 데이터 새로고침
+            } else {
+              // 새 기록 생성 (체중 입력 화면으로 이동)
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WeightInputScreen(
+                    initialImages: {
+                      'front': type == 'front' ? imageUrl : null,
+                      'side': type == 'side' ? imageUrl : null,
+                    },
+                  ),
                 ),
-              ),
-            );
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('이미지 업로드에 실패했습니다'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         }
       });
