@@ -92,56 +92,60 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   }
 
   Widget _buildChartArea() {
-    return Stack(
-      children: [
-        GestureDetector(
-          onTapDown: (details) => _handleChartTap(details.localPosition),
-          onTap: () {
-            // 빈 공간을 탭하면 툴팁 닫기
-            if (widget.selectedChartPointIndex != null) {
-              widget.onTooltipChanged(null, null);
-            }
-          },
-          onPanUpdate: (details) => _handleDragUpdate(details.delta.dx),
-          child: CustomPaint(
-            painter: PeriodChartPainter(
-              chartData: widget.chartData,
-              yLabels: widget.yLabels,
-              timeOffset: widget.timeOffset,
-              selectedPeriod: widget.selectedPeriod,
-              selectedPointIndex: widget.selectedChartPointIndex,
-              dataType: widget.dataType,
-              yAxisCount: widget.yAxisCount,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final chartAreaWidth = constraints.maxWidth;
+        final chartAreaHeight = constraints.maxHeight;
+        
+        return Stack(
+          children: [
+            GestureDetector(
+              onTapDown: (details) => _handleChartTapWithSize(details.localPosition, chartAreaWidth, chartAreaHeight),
+              onTap: () {
+                // 빈 공간을 탭하면 툴팁 닫기
+                if (widget.selectedChartPointIndex != null) {
+                  widget.onTooltipChanged(null, null);
+                }
+              },
+              onPanUpdate: (details) => _handleDragUpdate(details.delta.dx),
+              child: CustomPaint(
+                painter: PeriodChartPainter(
+                  chartData: widget.chartData,
+                  yLabels: widget.yLabels,
+                  timeOffset: widget.timeOffset,
+                  selectedPeriod: widget.selectedPeriod,
+                  selectedPointIndex: widget.selectedChartPointIndex,
+                  dataType: widget.dataType,
+                  yAxisCount: widget.yAxisCount,
+                ),
+                size: Size(chartAreaWidth, chartAreaHeight),
+              ),
             ),
-            size: Size(
-              MediaQuery.of(context).size.width - 43, // Y축 라벨 너비 제외 (35 + 8)
-              widget.height - 32, // 패딩 제외 (16 * 2)
-            ),
-          ),
-        ),
-         // 툴팁 오버레이
-         if (widget.selectedChartPointIndex != null && widget.tooltipPosition != null)
-           Positioned(
-             left: _calculateTooltipLeft(widget.tooltipPosition!.dx),
-             top: _calculateTooltipTop(widget.tooltipPosition!.dy),
-             child: _buildChartTooltip(),
-           ),
-      ],
+             // 툴팁 오버레이
+             if (widget.selectedChartPointIndex != null && widget.tooltipPosition != null)
+               Positioned(
+                 left: _calculateTooltipLeft(widget.tooltipPosition!.dx),
+                 top: _calculateTooltipTop(widget.tooltipPosition!.dy),
+                 child: _buildChartTooltip(),
+               ),
+          ],
+        );
+      },
     );
   }
 
   double _calculateTooltipLeft(double pointX) {
-    final chartWidth = MediaQuery.of(context).size.width - 43;
-    final tooltipWidth = 80.0; // 툴팁 예상 너비 줄임
+    final chartWidth = MediaQuery.of(context).size.width - 43 - 32; // Y축 라벨 + 패딩 제외
+    final tooltipWidth = 100.0; // 툴팁 너비 증가
     
     // 점 중앙에 툴팁 배치 시도
     double left = pointX - tooltipWidth / 2;
     
     // 그래프 영역을 벗어나면 조정
-    if (left < 0) {
-      left = 5; // 왼쪽 여백
-    } else if (left + tooltipWidth > chartWidth) {
-      left = chartWidth - tooltipWidth - 5; // 오른쪽 여백
+    if (left < 10) {
+      left = 10; // 왼쪽 여백
+    } else if (left + tooltipWidth > chartWidth - 10) {
+      left = chartWidth - tooltipWidth - 10; // 오른쪽 여백
     }
     
     return left;
@@ -149,13 +153,13 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
 
   double _calculateTooltipTop(double pointY) {
     final chartHeight = widget.height - 32.0; // 패딩 제외
-    final tooltipHeight = 50.0; // 툴팁 예상 높이 줄임
+    final tooltipHeight = 60.0; // 툴팁 높이 증가
     
     // 점 위쪽에 툴팁 배치 시도
     double top = pointY - tooltipHeight - 10;
     
     // 그래프 영역을 벗어나면 점 아래쪽에 배치
-    if (top < 0) {
+    if (top < 10) {
       top = pointY + 10;
     }
     
@@ -209,20 +213,24 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     }
   }
 
-  void _handleChartTap(Offset tapPosition) {
+  void _handleChartTapWithSize(Offset tapPosition, double chartWidth, double chartHeight) {
     if (widget.chartData.isEmpty) return;
+    
+    print('🔍 클릭 위치: tapPosition = $tapPosition');
     
     const double leftPadding = 10.0;
     const double rightPadding = 10.0;
     const double topPadding = 20.0;
     const double bottomPadding = 20.0;
     
+    final effectiveWidth = chartWidth - leftPadding - rightPadding;
+    
+    print('🔍 chartWidth=$chartWidth, effectiveWidth=$effectiveWidth');
+    
     int? closestIndex;
     double minDistance = double.infinity;
     Offset? closestPoint;
     
-    final chartWidth = MediaQuery.of(context).size.width - 43;
-    final chartHeight = widget.height - 32; // 패딩 제외 (16 * 2)
     final minValue = widget.yLabels[widget.yAxisCount - 1];
     final maxValue = widget.yLabels[0];
     
@@ -232,34 +240,45 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
       
       if (value == null) continue;
       
-      // X 좌표 계산
+      // X 좌표 계산 (일별과 동일한 방식)
       double x;
-      final xPosition = data['xPosition'] as double;
-      final visibleDays = 7;
-      final totalDays = widget.selectedPeriod == '주' ? 7 : 30;
-      
-      // 주별과 월별 모두 동일한 방식으로 처리
-      if (widget.selectedPeriod == '월') {
-        final maxOffset = (totalDays - visibleDays) / totalDays;
-        final currentOffset = widget.timeOffset.clamp(0.0, maxOffset);
-        final startIndex = (currentOffset * totalDays).floor();
-        final endIndex = startIndex + visibleDays;
+      if (data['xPosition'] != null) {
+        // 주별/월별 차트: xPosition 사용
+        final xPosition = data['xPosition'] as double;
+        final visibleDays = 7;
+        final totalDays = widget.selectedPeriod == '주' ? 7 : 30;
         
-        final dataIndex = (xPosition * totalDays).round();
-        
-        if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-        
-        final relativeIndex = dataIndex - startIndex;
-        final adjustedRatio = relativeIndex / (visibleDays - 1);
-        x = leftPadding + (chartWidth - leftPadding - rightPadding) * adjustedRatio;
+        if (widget.selectedPeriod == '월') {
+          // 월별: 현재 보이는 7개 날짜만 표시
+          final maxOffset = (totalDays - visibleDays) / totalDays;
+          final currentOffset = widget.timeOffset.clamp(0.0, maxOffset);
+          final startIndex = (currentOffset * totalDays).floor();
+          final endIndex = startIndex + visibleDays;
+          
+          // xPosition을 인덱스로 변환
+          final dataIndex = (xPosition * totalDays).round();
+          
+          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
+          
+          // 현재 보이는 범위 내에서의 상대적 위치 계산
+          final relativeIndex = dataIndex - startIndex;
+          final adjustedRatio = relativeIndex / (visibleDays - 1);
+          x = leftPadding + (effectiveWidth * adjustedRatio);
+        } else {
+          // 주별: 모든 데이터가 보이므로 직접 계산
+          final dataIndex = (xPosition * totalDays).round();
+          final adjustedRatio = dataIndex / (totalDays - 1);
+          x = leftPadding + (effectiveWidth * adjustedRatio);
+        }
+      } else if (widget.chartData.length == 1) {
+        // 단일 데이터
+        x = leftPadding + effectiveWidth / 2;
       } else {
-        // 주별: 모든 데이터가 보이므로 직접 계산
-        final dataIndex = (xPosition * totalDays).round();
-        final adjustedRatio = dataIndex / (totalDays - 1);
-        x = leftPadding + (chartWidth - leftPadding - rightPadding) * adjustedRatio;
+        // 여러 데이터
+        x = leftPadding + (effectiveWidth * i / (widget.chartData.length - 1));
       }
       
-      // Y 좌표 계산 (패딩 적용)
+      // Y 좌표 계산
       final normalizedValue = (maxValue - value) / (maxValue - minValue);
       final y = topPadding + (chartHeight - topPadding - bottomPadding) * normalizedValue;
       
@@ -268,6 +287,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
       final dy = tapPosition.dy - y;
       final distance = dx * dx + dy * dy;
       
+      print('🔍 점 $i: date=${data['date']}, x=$x, y=$y, distance=$distance');
       
       if (distance < minDistance) {
         minDistance = distance;
@@ -276,10 +296,14 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
       }
     }
     
-    // 가장 가까운 점이 있으면 무조건 툴팁 표시
-    if (closestIndex != null) {
+    print('🔍 결과: closestIndex=$closestIndex, minDistance=$minDistance');
+    
+    // 일별 그래프와 동일한 조건 (minDistance < 1000)
+    if (closestIndex != null && minDistance < 1000) {
       widget.onTooltipChanged(closestIndex, closestPoint);
-    } 
+    } else {
+      widget.onTooltipChanged(null, null);
+    }
   }
 
   Widget _buildChartTooltip() {
@@ -301,7 +325,8 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     }
     
     
-    // 혈압은 measuredAt, 체중은 createdAt 사용
+    // 차트 데이터의 날짜 사용 (X축 라벨과 일치)
+    final chartDate = data['date'] as String;
     final dateTime = widget.dataType == 'bloodPressure' 
         ? (record.measuredAt is DateTime 
             ? record.measuredAt as DateTime 
@@ -309,8 +334,19 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
         : (record.createdAt is DateTime 
             ? record.createdAt as DateTime 
             : DateTime.parse(record.createdAt.toString()));
-    final dateStr = DateFormat('M/d').format(dateTime);
     final timeStr = DateFormat('HH:mm').format(dateTime);
+    
+    // 월별 그래프에서 툴팁 데이터 출력
+    if (widget.selectedPeriod == '월') {
+      print('🔍 월별 툴팁 데이터:');
+      print('   - 차트 날짜: ${data['date']}');
+      print('   - 실제 측정 날짜: ${DateFormat('M/d').format(dateTime)}');
+      print('   - 측정 시간: $timeStr');
+      print('   - 수축기: ${data['systolic']}');
+      print('   - 이완기: ${data['diastolic']}');
+      print('   - xPosition: ${data['xPosition']}');
+      print('   - record: $record');
+    }
     
     return Container(
       padding: const EdgeInsets.all(8),
@@ -330,7 +366,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$dateStr $timeStr',
+            '$chartDate $timeStr',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -338,14 +374,24 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
             ),
           ),
           const SizedBox(height: 4),
-           Text(
-             '${value.toStringAsFixed(0)}',
-             style: const TextStyle(
-               color: Colors.white,
-               fontSize: 14,
-               fontWeight: FontWeight.bold,
-             ),
-           ),
+          if (widget.dataType == 'bloodPressure')
+            Text(
+              '${data['systolic']}/${data['diastolic']} mmHg',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          else
+            Text(
+              '${value.toStringAsFixed(0)} kg',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
         ],
       ),
     );
@@ -409,14 +455,16 @@ class PeriodChartPainter extends CustomPainter {
     }
     
     // 데이터 포인트 계산 및 필터링
-    List<Offset> points = [];
+    List<Offset> systolicPoints = [];
+    List<Offset> diastolicPoints = [];
     List<int> validIndices = [];
     
     for (int i = 0; i < chartData.length; i++) {
       final data = chartData[i];
-      final value = data[dataType == 'bloodPressure' ? 'systolic' : 'weight'];
+      final systolicValue = data[dataType == 'bloodPressure' ? 'systolic' : 'weight'];
+      final diastolicValue = dataType == 'bloodPressure' ? data['diastolic'] : null;
       
-      if (value == null) continue;
+      if (systolicValue == null) continue;
       
       // X 좌표 계산
       double x;
@@ -446,51 +494,97 @@ class PeriodChartPainter extends CustomPainter {
       }
       
       // Y 좌표 계산 (패딩 적용)
-      final normalizedValue = (maxValue - value) / (maxValue - minValue);
-      final y = topPadding + (size.height - topPadding - bottomPadding) * normalizedValue;
+      final normalizedSystolic = (maxValue - systolicValue) / (maxValue - minValue);
+      final ySystolic = topPadding + (size.height - topPadding - bottomPadding) * normalizedSystolic;
       
-      points.add(Offset(x, y));
+      systolicPoints.add(Offset(x, ySystolic));
       validIndices.add(i);
+      
+      // 혈압인 경우 이완기도 계산
+      if (dataType == 'bloodPressure' && diastolicValue != null) {
+        final normalizedDiastolic = (maxValue - diastolicValue) / (maxValue - minValue);
+        final yDiastolic = topPadding + (size.height - topPadding - bottomPadding) * normalizedDiastolic;
+        diastolicPoints.add(Offset(x, yDiastolic));
+      }
     }
     
-    if (points.isEmpty) return;
+    if (systolicPoints.isEmpty) return;
     
     // 선 그리기
-    final linePaint = Paint()
+    final systolicLinePaint = Paint()
       ..color = dataType == 'bloodPressure' ? Colors.red : Colors.blue
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
     
-    for (int i = 0; i < points.length - 1; i++) {
-      canvas.drawLine(points[i], points[i + 1], linePaint);
+    for (int i = 0; i < systolicPoints.length - 1; i++) {
+      canvas.drawLine(systolicPoints[i], systolicPoints[i + 1], systolicLinePaint);
+    }
+    
+    // 혈압인 경우 이완기 선도 그리기
+    if (dataType == 'bloodPressure' && diastolicPoints.isNotEmpty) {
+      final diastolicLinePaint = Paint()
+        ..color = Colors.blue
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+      
+      for (int i = 0; i < diastolicPoints.length - 1; i++) {
+        canvas.drawLine(diastolicPoints[i], diastolicPoints[i + 1], diastolicLinePaint);
+      }
     }
     
     // 점 그리기
-    final pointPaint = Paint()
+    final systolicPointPaint = Paint()
       ..color = dataType == 'bloodPressure' ? Colors.red : Colors.blue
+      ..style = PaintingStyle.fill;
+    
+    final diastolicPointPaint = Paint()
+      ..color = Colors.blue
       ..style = PaintingStyle.fill;
     
     final selectedPointPaint = Paint()
       ..color = dataType == 'bloodPressure' ? Colors.red : Colors.blue
       ..style = PaintingStyle.fill;
     
-    for (int i = 0; i < points.length; i++) {
-      final point = points[i];
+    for (int i = 0; i < systolicPoints.length; i++) {
+      final systolicPoint = systolicPoints[i];
       final isSelected = validIndices[i] == selectedPointIndex;
       
-      canvas.drawCircle(
-        point,
-        isSelected ? 6.0 : 4.0,
-        isSelected ? selectedPointPaint : pointPaint,
-      );
-      
-      // 선택된 점 주변에 흰색 테두리
+      // 수축기 점 그리기 (일별 그래프와 동일한 스타일)
       if (isSelected) {
-        final borderPaint = Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.fill;
-        canvas.drawCircle(point, 6.0, borderPaint);
-        canvas.drawCircle(point, 4.0, selectedPointPaint);
+        canvas.drawCircle(systolicPoint, 8, systolicPointPaint);
+        canvas.drawCircle(systolicPoint, 5, Paint()..color = Colors.white);
+        canvas.drawCircle(
+          systolicPoint, 
+          8, 
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      } else {
+        canvas.drawCircle(systolicPoint, 5, systolicPointPaint);
+        canvas.drawCircle(systolicPoint, 3, Paint()..color = Colors.white);
+      }
+      
+      // 혈압인 경우 이완기 점도 그리기
+      if (dataType == 'bloodPressure' && i < diastolicPoints.length) {
+        final diastolicPoint = diastolicPoints[i];
+        
+        if (isSelected) {
+          canvas.drawCircle(diastolicPoint, 8, diastolicPointPaint);
+          canvas.drawCircle(diastolicPoint, 5, Paint()..color = Colors.white);
+          canvas.drawCircle(
+            diastolicPoint, 
+            8, 
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2,
+          );
+        } else {
+          canvas.drawCircle(diastolicPoint, 5, diastolicPointPaint);
+          canvas.drawCircle(diastolicPoint, 3, Paint()..color = Colors.white);
+        }
       }
     }
   }

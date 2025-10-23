@@ -21,6 +21,7 @@ class BloodPressureListScreen extends StatefulWidget {
 class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   String selectedPeriod = '일';
   UserModel? currentUser;
+  List<BloodPressureRecord> allRecords = []; // 전체 혈압 기록
   Map<String, BloodPressureRecord> bloodPressureRecordsMap = {}; // 날짜별 요약 기록
   Map<String, List<BloodPressureRecord>> dailyRecordsCache = {}; // 날짜별 상세 기록 캐시
   Set<String> loadingDates = {}; // 로딩 중인 날짜들
@@ -171,7 +172,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     };
   }
 
-  // 주/월 데이터 생성 (최적화) - 하루에 최고 수축기 값만 선택
+  // 주/월 데이터 생성 (체중과 동일한 방식) - 하루에 최고 수축기 값만 선택
   List<Map<String, dynamic>> _getWeeklyOrMonthlyData() {
     List<Map<String, dynamic>> chartData = [];
     final days = selectedPeriod == '주' ? 7 : 30;
@@ -180,20 +181,16 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     final endDate = selectedDate;
     final startDate = endDate.subtract(Duration(days: days - 1));
     
-    // 필요한 날짜들 로드
-    List<DateTime> datesToLoad = [];
-    for (int i = 0; i < days; i++) {
-      datesToLoad.add(startDate.add(Duration(days: i)));
-    }
-    _loadRecordsForDates(datesToLoad);
-    
     // 모든 날짜에 대해 데이터 생성 (데이터가 없어도 빈 슬롯 생성)
     for (int i = 0; i < days; i++) {
       final date = startDate.add(Duration(days: i));
       final dateKey = DateFormat('yyyy-MM-dd').format(date);
       
-      // 해당 날짜의 모든 기록 가져오기
-      final dayRecords = dailyRecordsCache[dateKey] ?? [];
+      // 해당 날짜의 모든 기록 가져오기 (allRecords에서)
+      final dayRecords = allRecords.where((record) {
+        final recordDateStr = DateFormat('yyyy-MM-dd').format(record.measuredAt);
+        return recordDateStr == dateKey;
+      }).toList();
       
       if (dayRecords.isNotEmpty) {
         // 하루 중 수축기가 가장 높은 기록 선택
@@ -378,13 +375,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       currentUser = await AuthService.getUser();
       
       if (currentUser != null) {
-        // 전체 데이터가 있는지 먼저 확인
-        final allRecords = await BloodPressureRepository.getBloodPressureRecords(currentUser!.id);
+        // 전체 혈압 기록 로드
+        allRecords = await BloodPressureRepository.getBloodPressureRecords(currentUser!.id);
         
         // 현재 선택된 날짜와 주변 날짜들만 로드
         await _loadRecordsForDates(displayDates);
         
-        // 전체 데이터가 없을 때만 다이얼로그 표시 (한 번만)
+        // 데이터가 없을 때만 다이얼로그 표시 (한 번만)
         if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
           hasShownNoDataDialog = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -408,48 +405,56 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     }
   }
 
-  // 특정 날짜들의 기록 로드 (캐시 없이 매번 DB에서 가져오기)
+  // 특정 날짜들의 기록 로드 (병렬 처리로 최적화)
   Future<void> _loadRecordsForDates(List<DateTime> dates) async {
     if (currentUser == null) return;
 
+    // 병렬로 처리할 날짜들 필터링
+    List<DateTime> datesToLoad = [];
     for (var date in dates) {
       final dateKey = DateFormat('yyyy-MM-dd').format(date);
-      
-      // 로딩 중이면 스킵 (동시 로딩 방지)
-      if (loadingDates.contains(dateKey)) {
-        continue;
+      if (!loadingDates.contains(dateKey) && !dailyRecordsCache.containsKey(dateKey)) {
+        datesToLoad.add(date);
+        loadingDates.add(dateKey);
       }
+    }
+
+    if (datesToLoad.isEmpty) return;
+
+    // 병렬로 모든 날짜의 데이터 로드
+    final futures = datesToLoad.map((date) => _loadSingleDateRecord(date));
+    await Future.wait(futures);
+  }
+
+  // 단일 날짜의 기록 로드
+  Future<void> _loadSingleDateRecord(DateTime date) async {
+    final dateKey = DateFormat('yyyy-MM-dd').format(date);
+    
+    try {
+      // 해당 날짜의 기록만 가져오기
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
       
-      // 로딩 상태 추가
-      loadingDates.add(dateKey);
+      final records = await BloodPressureRepository.getBloodPressureRecordsByDateRange(
+        currentUser!.id,
+        startOfDay,
+        endOfDay,
+      );
+    
+      // 캐시에 저장
+      dailyRecordsCache[dateKey] = records;
       
-      try {
-        // 해당 날짜의 기록만 가져오기
-        final startOfDay = DateTime(date.year, date.month, date.day);
-        final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
-        
-        final records = await BloodPressureRepository.getBloodPressureRecordsByDateRange(
-          currentUser!.id,
-          startOfDay,
-          endOfDay,
-        );
-      
-        
-        // 캐시에 저장
-        dailyRecordsCache[dateKey] = records;
-        
-        // 요약 맵 업데이트 (가장 최근 기록)
-        if (records.isNotEmpty) {
-          records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-          bloodPressureRecordsMap[dateKey] = records.first;
-        }
-      } catch (e) {
-        print('❌ API 오류 ($dateKey): $e');
-        dailyRecordsCache[dateKey] = [];
-      } finally {
-        // 로딩 상태 제거
-        loadingDates.remove(dateKey);
+      // 요약 맵 업데이트 (가장 최근 기록)
+      if (records.isNotEmpty) {
+        records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+        bloodPressureRecordsMap[dateKey] = records.first;
       }
+    } catch (e) {
+      print('❌ API 오류 ($dateKey): $e');
+      dailyRecordsCache[dateKey] = [];
+    } finally {
+      // 로딩 상태 제거
+      loadingDates.remove(dateKey);
     }
   }
 
