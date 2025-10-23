@@ -13,6 +13,8 @@ class PeriodChartWidget extends StatefulWidget {
   final Offset? tooltipPosition;
   final String dataType; // 'bloodPressure' 또는 'weight'
   final int yAxisCount; // Y축 개수 (혈압: 4개, 체중: 4개 등)
+  final DateTime selectedDate; // 선택된 날짜
+  final double height; // 차트 높이
 
   const PeriodChartWidget({
     Key? key,
@@ -26,6 +28,8 @@ class PeriodChartWidget extends StatefulWidget {
     this.tooltipPosition,
     required this.dataType,
     required this.yAxisCount,
+    required this.selectedDate,
+    required this.height,
   }) : super(key: key);
 
   @override
@@ -36,7 +40,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 250,
+      height: widget.height,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[50],
@@ -79,7 +83,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
           const SizedBox(height: 10),
           // X축 라벨
           Padding(
-            padding: const EdgeInsets.only(left: 43.0),
+            padding: const EdgeInsets.only(left: 43.0, bottom: 10.0),
             child: _buildPeriodXAxisLabels(),
           ),
         ],
@@ -111,7 +115,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
             ),
             size: Size(
               MediaQuery.of(context).size.width - 43, // Y축 라벨 너비 제외 (35 + 8)
-              250,
+              widget.height - 32, // 패딩 제외 (16 * 2)
             ),
           ),
         ),
@@ -144,7 +148,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   }
 
   double _calculateTooltipTop(double pointY) {
-    final chartHeight = 250.0;
+    final chartHeight = widget.height - 32.0; // 패딩 제외
     final tooltipHeight = 50.0; // 툴팁 예상 높이 줄임
     
     // 점 위쪽에 툴팁 배치 시도
@@ -167,7 +171,9 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(days, (i) {
-          final date = DateTime.now().subtract(Duration(days: days - 1 - i));
+          final endDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+          final startDate = endDate.subtract(Duration(days: days - 1));
+          final date = startDate.add(Duration(days: i));
           return Text(
             '${date.month}/${date.day}',
             style: const TextStyle(
@@ -178,7 +184,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
         }),
       );
     } else {
-      // 월별: 현재 보이는 범위만 표시
+      // 월별: 선택된 날짜 기준으로 표시 (선택된 날짜가 맨 오른쪽에 보이도록)
       final maxOffset = (days - visibleDays) / days;
       final currentOffset = widget.timeOffset.clamp(0.0, maxOffset);
       final startIndex = (currentOffset * days).floor();
@@ -188,7 +194,9 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(visibleDays, (i) {
           final dayIndex = startIndex + i;
-          final date = DateTime.now().subtract(Duration(days: days - 1 - dayIndex));
+          final endDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+          final startDate = endDate.subtract(Duration(days: days - 1));
+          final date = startDate.add(Duration(days: dayIndex));
           return Text(
             '${date.month}/${date.day}',
             style: const TextStyle(
@@ -214,7 +222,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     Offset? closestPoint;
     
     final chartWidth = MediaQuery.of(context).size.width - 43;
-    final chartHeight = 250.0 - 32; // 패딩 제외 (16 * 2)
+    final chartHeight = widget.height - 32; // 패딩 제외 (16 * 2)
     final minValue = widget.yLabels[widget.yAxisCount - 1];
     final maxValue = widget.yLabels[0];
     

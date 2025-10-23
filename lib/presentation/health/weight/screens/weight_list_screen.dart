@@ -144,9 +144,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
     List<Map<String, dynamic>> chartData = [];
     final days = selectedPeriod == '주' ? 7 : 30;
     
-    // 오늘 날짜를 기준으로 과거 데이터 생성 (오늘이 맨 오른쪽)
-    final today = DateTime.now();
-    final endDate = DateTime(today.year, today.month, today.day);
+    // 선택된 날짜를 기준으로 과거 데이터 생성 (선택된 날짜가 맨 오른쪽)
+    final endDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
     final startDate = endDate.subtract(Duration(days: days - 1));
     
     // 모든 날짜에 대해 데이터 생성 (데이터가 없어도 빈 슬롯 생성)
@@ -277,8 +276,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
   // 주/월 X축 라벨 생성
   Widget _buildPeriodXAxisLabels(List<Map<String, dynamic>> chartData) {
     final days = selectedPeriod == '주' ? 7 : 30;
-    final today = DateTime.now();
-    final endDate = DateTime(today.year, today.month, today.day);
+    final endDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
     final startDate = endDate.subtract(Duration(days: days - 1));
     
     // 모든 날짜에 대한 라벨 생성 (데이터 유무와 관계없이)
@@ -354,14 +352,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
       selectedDate = DateTime(now.year, now.month, now.day);
     }
     
-    // 월별 그래프 초기 설정 (오늘 날짜가 맨 오른쪽에 보이도록)
-    if (selectedPeriod == '월') {
-      final visibleDays = 7;
-      final totalDays = 30;
-      final maxOffset = (totalDays - visibleDays) / totalDays;
-      timeOffset = maxOffset;
-    }
-    
     _loadData();
   }
 
@@ -378,6 +368,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
       if (currentUser != null) {
         // 체중 기록 목록 가져오기
         final records = await WeightRepository.getWeightRecords(currentUser!.id);
+        
         
         // 모든 기록 저장 (시간 정보 포함)
         allRecords = records;
@@ -872,7 +863,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               final visibleDays = 7;
               final totalDays = 30;
               final maxOffset = (totalDays - visibleDays) / totalDays;
-              timeOffset = maxOffset; // 오늘 날짜가 맨 오른쪽에 보이도록
+              timeOffset = maxOffset; // 선택된 날짜가 맨 오른쪽에 보이도록
             } else if (period == '주') {
               // 주별 그래프는 초기 오프셋 없음
               timeOffset = 0.0;
@@ -919,6 +910,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
   Widget _buildChart() {
     final chartData = getChartData();
     final yLabels = getYAxisLabels();
+    
     
     // 주/월 차트는 항상 차트 표시 (데이터가 없어도 빈 차트)
     if (selectedPeriod != '일' && chartData.isEmpty) {
@@ -1107,6 +1099,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
         tooltipPosition: tooltipPosition,
         dataType: 'weight',
         yAxisCount: yLabels.length,
+        selectedDate: selectedDate,
+        height: 250.0,
       );
     }
     
@@ -1132,13 +1126,20 @@ class _WeightListScreenState extends State<WeightListScreen> {
                     // Y축 값
                     SizedBox(
                       width: ChartConstants.yAxisLabelWidth,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: yLabels.map((label) {
-                          return Text(
-                            '${label.round()}kg',
-                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      child: Stack(
+                        children: yLabels.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final label = entry.value;
+                          const double topPadding = 20.0;
+                          const double bottomPadding = 20.0;
+                          final double y = topPadding + (constraints.maxHeight - topPadding - bottomPadding) * index / (yLabels.length - 1);
+                          return Positioned(
+                            top: y - 6, // 텍스트 중앙 정렬을 위해 6px 조정
+                            right: 0,
+                            child: Text(
+                              '${label.round()}',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                            ),
                           );
                         }).toList(),
                       ),
@@ -1506,15 +1507,16 @@ class _WeightListScreenState extends State<WeightListScreen> {
       // X 좌표 계산
       double x;
       if (selectedPeriod == '일') {
-        // 일별: 시간 기반 계산
-        final hour = data['hour'] as int;
-        final startHour = (timeOffset * 18).round();
-        final endHour = startHour + 4;
+        // 일별: 간단한 인덱스 기반 계산
+        const double leftPadding = 10.0;
+        const double rightPadding = 10.0;
+        final effectiveWidth = chartWidth - leftPadding - rightPadding;
         
-        if (hour < startHour || hour > endHour) continue;
-        
-        final hourRatio = (hour - startHour) / (endHour - startHour);
-        x = chartWidth * hourRatio;
+        if (chartData.length == 1) {
+          x = leftPadding + effectiveWidth / 2;
+        } else {
+          x = leftPadding + effectiveWidth * i / (chartData.length - 1);
+        }
       } else {
         // 주/월별: xPosition 기반 계산
         final xPosition = data['xPosition'] as double;
@@ -1597,15 +1599,16 @@ class _WeightListScreenState extends State<WeightListScreen> {
       // X 좌표 계산
       double x;
       if (selectedPeriod == '일') {
-        // 일별: 시간 기반 계산
-        final hour = data['hour'] as int;
-        final startHour = (timeOffset * 18).round();
-        final endHour = startHour + 4;
+        // 일별: 간단한 인덱스 기반 계산
+        const double leftPadding = 10.0;
+        const double rightPadding = 10.0;
+        final effectiveWidth = chartWidth - leftPadding - rightPadding;
         
-        if (hour < startHour || hour > endHour) continue;
-        
-        final hourRatio = (hour - startHour) / (endHour - startHour);
-        x = 10.0 + (chartWidth - 20.0) * hourRatio;
+        if (chartData.length == 1) {
+          x = leftPadding + effectiveWidth / 2;
+        } else {
+          x = leftPadding + effectiveWidth * i / (chartData.length - 1);
+        }
       } else {
         // 주/월별: xPosition 기반 계산
         final xPosition = data['xPosition'] as double;
@@ -1944,7 +1947,9 @@ class WeightChartPainter extends CustomPainter {
     const double rightPadding = 10.0;
     
     for (int i = 0; i <= 3; i++) {
-      final y = size.height * i / 3;
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
+      final y = topPadding + (size.height - topPadding - bottomPadding) * i / 3;
       canvas.drawLine(
         Offset(leftPadding, y),  // 왼쪽 패딩 추가
         Offset(size.width - rightPadding, y),  // 오른쪽 패딩 추가
@@ -1965,15 +1970,12 @@ class WeightChartPainter extends CustomPainter {
       // X 좌표 계산
       double x;
       if (selectedPeriod == '일') {
-        // 일별: 시간 기반 계산
-        final hour = data['hour'] as int;
-        final startHour = (timeOffset * 18).round();
-        final endHour = startHour + 4;
-        
-        if (hour < startHour || hour > endHour) continue;
-        
-        final hourRatio = (hour - startHour) / (endHour - startHour);
-        x = leftPadding + (size.width - leftPadding - rightPadding) * hourRatio;
+        // 일별: 간단한 인덱스 기반 계산
+        if (chartData.length == 1) {
+          x = leftPadding + (size.width - leftPadding - rightPadding) / 2;
+        } else {
+          x = leftPadding + (size.width - leftPadding - rightPadding) * i / (chartData.length - 1);
+        }
       } else {
         // 주/월별: xPosition 기반 계산
         final xPosition = data['xPosition'] as double;
@@ -2001,8 +2003,10 @@ class WeightChartPainter extends CustomPainter {
       }
       
       // Y 좌표 계산
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
       final normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
-      final y = size.height * normalizedWeight;
+      final y = topPadding + (size.height - topPadding - bottomPadding) * normalizedWeight;
       
       points.add(Offset(x, y));
       validIndices.add(i);

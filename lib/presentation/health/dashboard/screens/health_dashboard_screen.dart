@@ -690,7 +690,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ? '수축기 ${systolicBP}mmHg'
                 : '데이터 없음',
               latestBloodPressureRecord != null 
-                ? '이완기 ${diastolicBP}mmHg (${latestBloodPressureRecord!.status})'
+                ? '이완기 ${diastolicBP}mmHg'
                 : '혈압을 측정해주세요',
               Icons.monitor_heart,
               const Color(0xFF45B7D1),
