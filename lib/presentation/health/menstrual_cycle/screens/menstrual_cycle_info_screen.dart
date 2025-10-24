@@ -95,7 +95,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           : _currentRecord == null
               ? _buildNoDataView()
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),  // 좌우 20px 패딩
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

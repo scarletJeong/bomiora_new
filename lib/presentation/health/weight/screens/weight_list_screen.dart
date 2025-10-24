@@ -435,7 +435,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(0),
+              padding: const EdgeInsets.symmetric(horizontal: 20),  // 좌우 20px 패딩
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -283,7 +283,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             : null,
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(25),
         child: Form(
           key: _formKey,
           child: Column(
