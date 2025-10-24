@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/date_top_widget.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
+import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
+import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
+import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
+import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../weight/screens/weight_list_screen.dart';
 import '../../weight/screens/weight_input_screen.dart';
 import '../../blood_pressure/screens/blood_pressure_list_screen.dart';
 import '../../blood_pressure/screens/blood_pressure_input_screen.dart';
+import '../../blood_sugar/screens/blood_sugar_list_screen.dart';
+import '../../blood_sugar/screens/blood_sugar_input_screen.dart';
+import '../../menstrual_cycle/screens/menstrual_cycle_info_screen.dart';
+import '../../steps/screens/steps_today_screen.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -24,6 +33,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   UserModel? currentUser;
   WeightRecord? latestWeightRecord;
   BloodPressureRecord? latestBloodPressureRecord;
+  BloodSugarRecord? latestBloodSugarRecord;
+  MenstrualCycleRecord? latestMenstrualCycleRecord;
   
   // 체중 관련 (기본값)
   double targetWeight = 74.0;
@@ -81,22 +92,34 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         return;
       }
       
-      // 최신 체중 기록과 혈압 기록을 병렬로 가져오기 (성능 최적화)
+      // 최신 체중 기록, 혈압 기록, 혈당 기록, 생리주기 기록을 병렬로 가져오기 (성능 최적화)
       final results = await Future.wait([
         WeightRepository.getLatestWeightRecord(user.id),
         BloodPressureRepository.getLatestBloodPressureRecord(user.id).catchError((e) {
           print('혈압 기록 가져오기 오류: $e');
           return null;
         }),
+        BloodSugarRepository.getLatestBloodSugarRecord(user.id).catchError((e) {
+          print('혈당 기록 가져오기 오류: $e');
+          return null;
+        }),
+        MenstrualCycleRepository.getLatestMenstrualCycleRecord(user.id).catchError((e) {
+          print('생리주기 기록 가져오기 오류: $e');
+          return null;
+        }),
       ]);
       
       final weightRecord = results[0] as WeightRecord?;
       final bloodPressureRecord = results[1] as BloodPressureRecord?;
+      final bloodSugarRecord = results[2] as BloodSugarRecord?;
+      final menstrualCycleRecord = results[3] as MenstrualCycleRecord?;
       
       setState(() {
         currentUser = user;
         latestWeightRecord = weightRecord;
         latestBloodPressureRecord = bloodPressureRecord;
+        latestBloodSugarRecord = bloodSugarRecord;
+        latestMenstrualCycleRecord = menstrualCycleRecord;
         
         if (weightRecord != null) {
           currentWeight = weightRecord.weight;
@@ -281,124 +304,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          // 날짜 네비게이션
-          _buildDateNavigation(),
+            // 날짜 네비게이션
+            DateTopWidget(
+              selectedDate: selectedDate,
+              onDateChanged: (newDate) {
+                setState(() {
+                  selectedDate = newDate;
+                });
+              },
+              primaryColor: Colors.black,
+              secondaryColor: Colors.grey[400],
+            ),
         ],
       ),
     );
   }
 
-  // 날짜 네비게이션 위젯
-  Widget _buildDateNavigation() {
-    final now = DateTime.now();
-    final isToday = selectedDate.year == now.year && 
-                   selectedDate.month == now.month && 
-                   selectedDate.day == now.day;
-    
-    final yesterday = selectedDate.subtract(const Duration(days: 1));
-    final tomorrow = selectedDate.add(const Duration(days: 1));
-    
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // 이전 날짜
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              selectedDate = yesterday;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.chevron_left, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  '${yesterday.month}.${yesterday.day.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // 현재 선택된 날짜
-        GestureDetector(
-          onTap: () async {
-            final pickedDate = await showDatePicker(
-              context: context,
-              initialDate: selectedDate,
-              firstDate: DateTime(2020),
-              lastDate: DateTime.now(),
-            );
-            if (pickedDate != null) {
-              setState(() {
-                selectedDate = pickedDate;
-              });
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.black, // 검정색으로 통일
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${selectedDate.month}.${selectedDate.day.toString().padLeft(2, '0')}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        
-        // 다음 날짜 (오늘 이후는 비활성화)
-        GestureDetector(
-          onTap: tomorrow.isAfter(now) ? null : () {
-            setState(() {
-              selectedDate = tomorrow;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: tomorrow.isAfter(now) ? Colors.grey[50] : Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${tomorrow.month}.${tomorrow.day.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: tomorrow.isAfter(now) ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right, 
-                  size: 16, 
-                  color: tomorrow.isAfter(now) ? Colors.grey[400] : Colors.grey,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   // 키, 체중, BMI 섹션
   Widget _buildBodyMetricsSection() {
@@ -679,10 +600,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             ),
             _buildHealthMetricCard(
               '혈당',
-              '${bloodSugar}mg/dL',
-              '점심식사 후',
-              Icons.water_drop,
-              const Color(0xFF4ECDC4),
+              latestBloodSugarRecord != null 
+                ? '${latestBloodSugarRecord!.bloodSugar}mg/dL'
+                : '데이터 없음',
+              latestBloodSugarRecord != null 
+                ? '${BloodSugarRecord.getMeasurementTypeKorean(latestBloodSugarRecord!.measurementType)} • ${DateFormat('HH:mm').format(latestBloodSugarRecord!.measuredAt)}'
+                : '혈당을 측정해주세요',
+              Icons.monitor_heart,
+              const Color(0xFFE91E63),
             ),
             _buildHealthMetricCard(
               '혈압',
@@ -697,8 +622,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             ),
             _buildHealthMetricCard(
               '생리주기',
-              '월경 예정일 3일전',
-              '(1/12~1/16)',
+              latestMenstrualCycleRecord != null 
+                ? '${latestMenstrualCycleRecord!.currentCycleDay}일차'
+                : '데이터 없음',
+              latestMenstrualCycleRecord != null 
+                ? '${DateFormat('M.d').format(latestMenstrualCycleRecord!.nextPeriodStart)} 예정'
+                : '생리주기를 기록해주세요',
               Icons.calendar_today,
               const Color(0xFF96CEB4),
             ),
@@ -718,6 +647,27 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => BloodPressureListScreen(initialDate: selectedDate),
+            ),
+          );
+        } else if (title == '혈당') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BloodSugarListScreen(initialDate: selectedDate),
+            ),
+          );
+        } else if (title == '생리주기') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MenstrualCycleInfoScreen(),
+            ),
+          );
+        } else if (title == '걸음수') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StepsTodayScreen(initialDate: selectedDate),
             ),
           );
         } else {

@@ -34,5 +34,7 @@ class ApiEndpoints {
   static const String bloodSugarRecords = '/api/health/blood-sugar';
   static const String bloodPressureRecords = '/api/health/blood-pressure';
   static const String weightRecords = '/api/health/weight';
+  static const String menstrualCycleRecords = '/api/health/menstrual-cycle';
+  static const String stepsRecords = '/api/health/steps';
   static const String healthStats = '/api/health/stats';
 }

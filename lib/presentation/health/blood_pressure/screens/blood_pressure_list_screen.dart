@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/btn_record.dart';
+import '../../../common/widgets/date_top_widget.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/period_chart_widget.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
@@ -525,11 +527,41 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDateSelector(),
+                  DateTopWidget(
+                    selectedDate: selectedDate,
+                    onDateChanged: (newDate) {
+                      setState(() {
+                        selectedDate = newDate;
+                        selectedChartPointIndex = null;
+                        tooltipPosition = null;
+                        
+                        // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
+                        final now = DateTime.now();
+                        final today = DateTime(now.year, now.month, now.day);
+                        final isSelectingToday = newDate.year == today.year && 
+                                                 newDate.month == today.month && 
+                                                 newDate.day == today.day;
+                        
+                        if (isSelectingToday) {
+                          final currentHour = now.hour;
+                          final startHourTarget = (currentHour - 4).clamp(0, 18);
+                          timeOffset = startHourTarget / 18.0;
+                        } else {
+                          timeOffset = 0.0;
+                        }
+                      });
+                      
+                      // 새로운 날짜의 데이터 로드
+                      _loadDataForSelectedDate();
+                    },
+                    recordsMap: bloodPressureRecordsMap,
+                    primaryColor: Colors.black,
+                    secondaryColor: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
                   _buildBloodPressureDisplay(),
                   const SizedBox(height: 24),
@@ -537,7 +569,22 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   const SizedBox(height: 24),
                   _buildChart(),
                   const SizedBox(height: 32),
-                  _buildAddButton(),
+                  BtnRecord(
+                    text: '+ 기록하기',
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BloodPressureInputScreen(),
+                        ),
+                      );
+                      
+                      if (result == true) {
+                        _loadData();
+                      }
+                    },
+                    backgroundColor: const Color(0xFF2196F3),
+                  ),
                 ],
               ),
             ),
@@ -545,110 +592,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-  // 날짜 선택 슬라이더
-  Widget _buildDateSelector() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final isToday = selectedDate.year == today.year && 
-                    selectedDate.month == today.month && 
-                    selectedDate.day == today.day;
-
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 9),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildDateItem(displayDates[0], false),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDateItem(displayDates[1], true),
-              if (isToday)
-                Container(
-                  margin: const EdgeInsets.only(left: 0),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    '오늘',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          _buildDateItem(displayDates[2], false),
-        ],
-      ),
-    );
-  }
-
-  // 날짜 아이템 위젯
-  Widget _buildDateItem(DateTime date, bool isCenter) {
-    final dateKey = DateFormat('yyyy-MM-dd').format(date);
-    final hasRecord = bloodPressureRecordsMap.containsKey(dateKey);
-    final dateStr = DateFormat('M.d').format(date);
-    
-    return GestureDetector(
-      onTap: () {
-         setState(() {
-           selectedDate = date;
-           selectedChartPointIndex = null;
-           tooltipPosition = null;
-           
-           // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
-           final now = DateTime.now();
-           final today = DateTime(now.year, now.month, now.day);
-           final isSelectingToday = date.year == today.year && 
-                                    date.month == today.month && 
-                                    date.day == today.day;
-           
-           if (isSelectingToday) {
-             final currentHour = now.hour;
-             final startHourTarget = (currentHour - 4).clamp(0, 18);
-             timeOffset = startHourTarget / 18.0;
-           } else {
-             timeOffset = 0.0;
-           }
-         });
-         
-         // 새로운 날짜의 데이터 로드
-         _loadDataForSelectedDate();
-      },
-      child: Container(
-        width: isCenter ? 80 : 60,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              dateStr,
-              style: TextStyle(
-                fontSize: isCenter ? 18 : 14,
-                fontWeight: isCenter ? FontWeight.bold : FontWeight.normal,
-                color: isCenter ? Colors.black : Colors.grey[400],
-              ),
-            ),
-            if (hasRecord)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: isCenter ? Colors.black : Colors.grey[400],
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // 혈압 표시
   Widget _buildBloodPressureDisplay() {
@@ -1271,42 +1214,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-  // 기록하기 버튼
-  Widget _buildAddButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const BloodPressureInputScreen(),
-            ),
-          );
-          
-          if (result == true) {
-            _loadData();
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2196F3),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child: const Text(
-          '+ 기록하기',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
 
   // 시간별 기록 선택 바텀시트
   void _showTimeSelectionBottomSheet(List<BloodPressureRecord> records) {

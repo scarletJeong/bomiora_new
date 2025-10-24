@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/btn_record.dart';
+import '../../../common/widgets/date_top_widget.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/period_chart_widget.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
@@ -433,12 +435,25 @@ class _WeightListScreenState extends State<WeightListScreen> {
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 0. 날짜 선택 슬라이더
-                  _buildDateSelector(),
+        // 0. 날짜 선택 슬라이더
+        DateTopWidget(
+          selectedDate: selectedDate,
+          onDateChanged: (newDate) {
+            setState(() {
+              selectedDate = newDate;
+              selectedChartPointIndex = null;
+              tooltipPosition = null;
+            });
+            _loadData();
+          },
+          recordsMap: weightRecordsMap,
+          primaryColor: Colors.black,
+          secondaryColor: Colors.grey[400],
+        ),
                   const SizedBox(height: 16),
                   
                   // 1. 오늘의 체중
@@ -466,103 +481,30 @@ class _WeightListScreenState extends State<WeightListScreen> {
               const SizedBox(height: 24),
               
               // 7. 기록하기 버튼
-              _buildAddButton(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 0. 날짜 선택 슬라이더 (3개만 표시: 어제 - 오늘 - 내일)
-  Widget _buildDateSelector() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final isToday = selectedDate.year == today.year && 
-                    selectedDate.month == today.month && 
-                    selectedDate.day == today.day;
-
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 9), // 양쪽 9px
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // 양 끝으로 배치
-        children: [
-          // 왼쪽 날짜 (어제)
-          _buildDateItem(displayDates[0], false),
-          
-          // 가운데 날짜 (선택된 날짜)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDateItem(displayDates[1], true),
-              if (isToday) // 오늘이면 "오늘" 표시
-                Container(
-                  margin: const EdgeInsets.only(left: 0),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    '오늘',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+              BtnRecord(
+                text: '+ 기록하기',
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WeightInputScreen(),
                     ),
-                  ),
-                ),
+                  );
+                  
+                  // 기록 추가 후 데이터 새로고침
+                  if (result == true) {
+                    _loadData();
+                  }
+                },
+                backgroundColor: const Color(0xFF2196F3),
+              ),
             ],
           ),
-          
-          // 오른쪽 날짜 (내일)
-          _buildDateItem(displayDates[2], false),
-        ],
-      ),
-    );
-  }
-
-  // 날짜 아이템 위젯
-  Widget _buildDateItem(DateTime date, bool isCenter) {
-    final dateKey = DateFormat('yyyy-MM-dd').format(date);
-    final hasRecord = weightRecordsMap.containsKey(dateKey);
-    final dateStr = DateFormat('M.d').format(date);
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedDate = date;
-        });
-      },
-      child: Container(
-        width: isCenter ? 80 : 60,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              dateStr,
-              style: TextStyle(
-                fontSize: isCenter ? 18 : 14,
-                fontWeight: isCenter ? FontWeight.bold : FontWeight.normal,
-                color: isCenter ? Colors.black : Colors.grey[400],
-              ),
-            ),
-            if (hasRecord)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: isCenter ? Colors.black : Colors.grey[400],
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
         ),
       ),
     );
   }
+
 
   // 1. 오늘의 체중
   Widget _buildWeightDisplay() {
@@ -1444,43 +1386,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
     }
   }
 
-  // 7. 기록하기 버튼
-  Widget _buildAddButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const WeightInputScreen(),
-            ),
-          );
-          
-          // 기록 추가 후 데이터 새로고침
-          if (result == true) {
-            _loadData();
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2196F3),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child: const Text(
-          '+ 기록하기',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
 
   // 차트 클릭 핸들러 (차트의 점 클릭 감지)
   void _handleChartTap(

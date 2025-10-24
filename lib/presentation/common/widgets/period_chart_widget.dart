@@ -11,7 +11,7 @@ class PeriodChartWidget extends StatefulWidget {
   final Function(int?, Offset?) onTooltipChanged;
   final int? selectedChartPointIndex;
   final Offset? tooltipPosition;
-  final String dataType; // 'bloodPressure' 또는 'weight'
+  final String dataType; // 'bloodPressure', 'weight', 또는 'bloodSugar'
   final int yAxisCount; // Y축 개수 (혈압: 4개, 체중: 4개 등)
   final DateTime selectedDate; // 선택된 날짜
   final double height; // 차트 높이
@@ -41,7 +41,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   Widget build(BuildContext context) {
     return Container(
       height: widget.height,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
@@ -236,7 +236,8 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     
     for (int i = 0; i < widget.chartData.length; i++) {
       final data = widget.chartData[i];
-      final value = data[widget.dataType == 'bloodPressure' ? 'systolic' : 'weight'];
+      final value = data[widget.dataType == 'bloodPressure' ? 'systolic' : 
+                        widget.dataType == 'bloodSugar' ? 'bloodSugar' : 'weight'];
       
       if (value == null) continue;
       
@@ -316,7 +317,8 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     }
     
     final data = widget.chartData[widget.selectedChartPointIndex!];
-    final value = data[widget.dataType == 'bloodPressure' ? 'systolic' : 'weight'];
+    final value = data[widget.dataType == 'bloodPressure' ? 'systolic' : 
+                      widget.dataType == 'bloodSugar' ? 'bloodSugar' : 'weight'];
     final record = data['record'];
     
     if (value == null || record == null) {
@@ -377,6 +379,15 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
           if (widget.dataType == 'bloodPressure')
             Text(
               '${data['systolic']}/${data['diastolic']} mmHg',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          else if (widget.dataType == 'bloodSugar')
+            Text(
+              '${value.toStringAsFixed(0)} mg/dL',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -461,7 +472,8 @@ class PeriodChartPainter extends CustomPainter {
     
     for (int i = 0; i < chartData.length; i++) {
       final data = chartData[i];
-      final systolicValue = data[dataType == 'bloodPressure' ? 'systolic' : 'weight'];
+      final systolicValue = data[dataType == 'bloodPressure' ? 'systolic' : 
+                                dataType == 'bloodSugar' ? 'bloodSugar' : 'weight'];
       final diastolicValue = dataType == 'bloodPressure' ? data['diastolic'] : null;
       
       if (systolicValue == null) continue;
@@ -512,7 +524,8 @@ class PeriodChartPainter extends CustomPainter {
     
     // 선 그리기
     final systolicLinePaint = Paint()
-      ..color = dataType == 'bloodPressure' ? Colors.red : Colors.blue
+      ..color = dataType == 'bloodPressure' ? Colors.red : 
+                dataType == 'bloodSugar' ? Colors.pink : Colors.blue
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
     
@@ -534,7 +547,8 @@ class PeriodChartPainter extends CustomPainter {
     
     // 점 그리기
     final systolicPointPaint = Paint()
-      ..color = dataType == 'bloodPressure' ? Colors.red : Colors.blue
+      ..color = dataType == 'bloodPressure' ? Colors.red : 
+                dataType == 'bloodSugar' ? Colors.pink : Colors.blue
       ..style = PaintingStyle.fill;
     
     final diastolicPointPaint = Paint()
@@ -542,7 +556,8 @@ class PeriodChartPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     
     final selectedPointPaint = Paint()
-      ..color = dataType == 'bloodPressure' ? Colors.red : Colors.blue
+      ..color = dataType == 'bloodPressure' ? Colors.red : 
+                dataType == 'bloodSugar' ? Colors.pink : Colors.blue
       ..style = PaintingStyle.fill;
     
     for (int i = 0; i < systolicPoints.length; i++) {
