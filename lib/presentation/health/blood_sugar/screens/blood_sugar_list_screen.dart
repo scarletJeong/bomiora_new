@@ -5,27 +5,27 @@ import '../../../common/widgets/btn_record.dart';
 import '../../../common/widgets/date_top_widget.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/period_chart_widget.dart';
-import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
+import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
-import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
+import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
 import '../../../../data/services/auth_service.dart';
-import 'blood_pressure_input_screen.dart';
+import 'blood_sugar_input_screen.dart';
 
-class BloodPressureListScreen extends StatefulWidget {
+class BloodSugarListScreen extends StatefulWidget {
   final DateTime? initialDate;
   
-  const BloodPressureListScreen({super.key, this.initialDate});
+  const BloodSugarListScreen({super.key, this.initialDate});
 
   @override
-  State<BloodPressureListScreen> createState() => _BloodPressureListScreenState();
+  State<BloodSugarListScreen> createState() => _BloodSugarListScreenState();
 }
 
-class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
+class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   String selectedPeriod = '일';
   UserModel? currentUser;
-  List<BloodPressureRecord> allRecords = []; // 전체 혈압 기록
-  Map<String, BloodPressureRecord> bloodPressureRecordsMap = {}; // 날짜별 요약 기록
-  Map<String, List<BloodPressureRecord>> dailyRecordsCache = {}; // 날짜별 상세 기록 캐시
+  List<BloodSugarRecord> allRecords = []; // 전체 혈당 기록
+  Map<String, BloodSugarRecord> bloodSugarRecordsMap = {}; // 날짜별 요약 기록
+  Map<String, List<BloodSugarRecord>> dailyRecordsCache = {}; // 날짜별 상세 기록 캐시
   Set<String> loadingDates = {}; // 로딩 중인 날짜들
   bool isLoading = true;
   bool hasShownNoDataDialog = false;
@@ -46,9 +46,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     ];
   }
   
-  BloodPressureRecord? get selectedRecord {
+  BloodSugarRecord? get selectedRecord {
     final dateKey = DateFormat('yyyy-MM-dd').format(selectedDate);
-    return bloodPressureRecordsMap[dateKey];
+    return bloodSugarRecordsMap[dateKey];
   }
   
   // 오늘인지 확인
@@ -58,6 +58,15 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return selectedDate.year == today.year && 
            selectedDate.month == today.month && 
            selectedDate.day == today.day;
+  }
+
+  // 오늘의 혈당 데이터 가져오기
+  List<BloodSugarRecord> getTodayRecords() {
+    final today = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    return allRecords.where((record) {
+      final recordDate = DateTime(record.measuredAt.year, record.measuredAt.month, record.measuredAt.day);
+      return recordDate.isAtSameMomentAs(today);
+    }).toList();
   }
 
   // 특정 날짜가 로딩 중인지 확인
@@ -150,9 +159,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return chartData;
   }
 
-
   // 차트 포인트 생성 (통합)
-  Map<String, dynamic> _createChartPoint(BloodPressureRecord record, int recordHour, int recordMinute, double minHourDiff, double maxHourDiff) {
+  Map<String, dynamic> _createChartPoint(BloodSugarRecord record, int recordHour, int recordMinute, double minHourDiff, double maxHourDiff) {
     final normalizedMinute = (recordMinute / 5).floor() * 5;
     final minuteRatio = normalizedMinute / 60.0;
     final range = maxHourDiff - minHourDiff;
@@ -166,15 +174,15 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return {
       'date': dateStr,
       'hour': recordHour,
-      'systolic': record.systolic,
-      'diastolic': record.diastolic,
+      'bloodSugar': record.bloodSugar,
+      'measurementType': record.measurementType,
       'record': record,
       'normalizedMinute': normalizedMinute,
       'xPosition': xPosition,
     };
   }
 
-  // 주/월 데이터 생성 (체중과 동일한 방식) - 하루에 최고 수축기 값만 선택
+  // 주/월 데이터 생성 - 공복혈당 중 최고값만 선택
   List<Map<String, dynamic>> _getWeeklyOrMonthlyData() {
     List<Map<String, dynamic>> chartData = [];
     final days = selectedPeriod == '주' ? 7 : 30;
@@ -195,23 +203,40 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       }).toList();
       
       if (dayRecords.isNotEmpty) {
-        // 하루 중 수축기가 가장 높은 기록 선택
-        dayRecords.sort((a, b) => b.systolic.compareTo(a.systolic));
-        final highestSystolicRecord = dayRecords.first;
+        // 공복혈당만 필터링
+        final fastingRecords = dayRecords.where((record) => record.measurementType == '공복').toList();
         
-        chartData.add({
-          'date': DateFormat('M.d').format(date),
-          'systolic': highestSystolicRecord.systolic,
-          'diastolic': highestSystolicRecord.diastolic,
-          'record': highestSystolicRecord,
-          'xPosition': i / days, // X축 위치 (0~1)
-        });
+        if (fastingRecords.isNotEmpty) {
+          // 공복혈당 중 가장 높은 값 선택
+          fastingRecords.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
+          final highestFastingRecord = fastingRecords.first;
+          
+          chartData.add({
+            'date': DateFormat('M.d').format(date),
+            'bloodSugar': highestFastingRecord.bloodSugar,
+            'measurementType': highestFastingRecord.measurementType,
+            'record': highestFastingRecord,
+            'xPosition': i / days, // X축 위치 (0~1)
+          });
+        } else {
+          // 공복혈당이 없으면 일반 혈당 중 최고값 선택
+          dayRecords.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
+          final highestRecord = dayRecords.first;
+          
+          chartData.add({
+            'date': DateFormat('M.d').format(date),
+            'bloodSugar': highestRecord.bloodSugar,
+            'measurementType': highestRecord.measurementType,
+            'record': highestRecord,
+            'xPosition': i / days, // X축 위치 (0~1)
+          });
+        }
       } else {
         // 데이터가 없는 날짜는 null 값으로 추가 (차트에서 제외되지만 위치는 유지)
         chartData.add({
           'date': DateFormat('M.d').format(date),
-          'systolic': null,
-          'diastolic': null,
+          'bloodSugar': null,
+          'measurementType': null,
           'record': null,
           'xPosition': i / days, // X축 위치 (0~1)
         });
@@ -304,14 +329,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     }
   }
   
-  // Y축 범위 계산 (고정 범위)
+  // Y축 범위 계산 (혈당 기준)
   List<double> getYAxisLabels() {
-    return [220, 180, 140, 100, 60, 20];
+    return [300, 250, 200, 150, 100, 50]; // 혈당 범위: 50-300 mg/dL
   }
   
   // 점선 Y축 라벨
   List<double> getDashedYAxisLabels() {
-    return [200, 160, 120, 80, 40];
+    return [275, 225, 175, 125, 75];
   }
 
   @override
@@ -336,7 +361,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       timeOffset = startHourTarget / 18.0;
     }
     
-    // 월별 그래프 초기 오프셋 설정 (오늘 날짜가 맨 오른쪽에 보이도록) jjy
+    // 월별 그래프 초기 오프셋 설정 (오늘 날짜가 맨 오른쪽에 보이도록)
     if (selectedPeriod == '월') {
       final visibleDays = 7;
       final totalDays = 30;
@@ -377,8 +402,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       currentUser = await AuthService.getUser();
       
       if (currentUser != null) {
-        // 전체 혈압 기록 로드
-        allRecords = await BloodPressureRepository.getBloodPressureRecords(currentUser!.id);
+        // 전체 혈당 기록 로드
+        allRecords = await BloodSugarRepository.getBloodSugarRecords(currentUser!.id);
         
         // 현재 선택된 날짜와 주변 날짜들만 로드
         await _loadRecordsForDates(displayDates);
@@ -400,7 +425,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         });
       }
     } catch (e) {
-      print('혈압 기록 로드 오류: $e');
+      print('혈당 기록 로드 오류: $e');
       setState(() {
         isLoading = false;
       });
@@ -437,7 +462,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       final startOfDay = DateTime(date.year, date.month, date.day);
       final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
       
-      final records = await BloodPressureRepository.getBloodPressureRecordsByDateRange(
+      final records = await BloodSugarRepository.getBloodSugarRecordsByDateRange(
         currentUser!.id,
         startOfDay,
         endOfDay,
@@ -449,7 +474,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       // 요약 맵 업데이트 (가장 최근 기록)
       if (records.isNotEmpty) {
         records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-        bloodPressureRecordsMap[dateKey] = records.first;
+        bloodSugarRecordsMap[dateKey] = records.first;
       }
     } catch (e) {
       print('❌ API 오류 ($dateKey): $e');
@@ -478,7 +503,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
       final endOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 23, 59, 59);
       
-      final records = await BloodPressureRepository.getBloodPressureRecordsByDateRange(
+      final records = await BloodSugarRepository.getBloodSugarRecordsByDateRange(
         currentUser!.id,
         startOfDay,
         endOfDay,
@@ -491,7 +516,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       
       if (records.isNotEmpty) {
         records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-        bloodPressureRecordsMap[dateKey] = records.first;
+        bloodSugarRecordsMap[dateKey] = records.first;
       }
       
       setState(() {}); // UI 업데이트
@@ -513,7 +538,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          '혈압',
+          '혈당',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -527,7 +552,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),  // 좌우 20px 패딩
+              padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -558,12 +583,12 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       // 새로운 날짜의 데이터 로드
                       _loadDataForSelectedDate();
                     },
-                    recordsMap: bloodPressureRecordsMap,
+                    recordsMap: bloodSugarRecordsMap,
                     primaryColor: Colors.black,
                     secondaryColor: Colors.grey[400],
                   ),
                   const SizedBox(height: 16),
-                  _buildBloodPressureDisplay(),
+                  _buildBloodSugarDisplay(),
                   const SizedBox(height: 24),
                   _buildPeriodButtons(),
                   const SizedBox(height: 24),
@@ -575,12 +600,15 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const BloodPressureInputScreen(),
+                          builder: (context) => const BloodSugarInputScreen(),
                         ),
                       );
                       
-                      if (result == true) {
-                        _loadData();
+                      // 기록 후 항상 데이터 새로고침
+                      if (result == true || result == null) {
+                        await _loadData();
+                        // 현재 선택된 날짜의 데이터도 다시 로드
+                        await _loadDataForSelectedDate();
                       }
                     },
                     backgroundColor: const Color(0xFF2196F3),
@@ -592,16 +620,26 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-
-  // 혈압 표시
-  Widget _buildBloodPressureDisplay() {
-    final systolic = selectedRecord?.systolic ?? 0;
-    final diastolic = selectedRecord?.diastolic ?? 0;
+  // 혈당 표시
+  Widget _buildBloodSugarDisplay() {
     final dateStr = DateFormat('yyyy년 M월 d일').format(selectedDate);
+    
+    // 오늘의 혈당 데이터 가져오기
+    final todayRecords = getTodayRecords();
+    
+    // 공복혈당 찾기
+    final fastingRecord = todayRecords.where((record) => record.measurementType == '공복').isNotEmpty
+        ? todayRecords.where((record) => record.measurementType == '공복').first
+        : null;
+    
+    // 식후혈당 찾기
+    final postMealRecord = todayRecords.where((record) => record.measurementType == '식후').isNotEmpty
+        ? todayRecords.where((record) => record.measurementType == '식후').first
+        : null;
     
     return GestureDetector(
       onTap: () async {
-        if (selectedRecord != null) {
+        if (fastingRecord != null || postMealRecord != null) {
           final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
           final todayRecords = dailyRecordsCache[selectedDateStr] ?? [];
           
@@ -613,12 +651,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             final result = await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => BloodPressureInputScreen(record: todayRecords[0]),
+                builder: (context) => BloodSugarInputScreen(record: todayRecords[0]),
               ),
             );
             
-            if (result == true) {
-              _loadData();
+            // 수정 후 항상 데이터 새로고침
+            if (result == true || result == null) {
+              await _loadData();
+              await _loadDataForSelectedDate();
             }
           }
         }
@@ -652,7 +692,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 수축기
+                // 공복혈당
                 Column(
                   children: [
                     Row(
@@ -660,16 +700,16 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          systolic > 0 ? systolic.toString() : '-',
+                          fastingRecord != null ? fastingRecord.bloodSugar.toString() : '-',
                           style: const TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
-                            color: Colors.red,
+                            color: Color(0xFFE91E63), // 핑크색
                           ),
                         ),
-                        if (systolic > 0)
+                        if (fastingRecord != null)
                           Text(
-                            ' mmHg',
+                            ' mg/dL',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[800],
@@ -682,14 +722,18 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red[50],
+                        color: fastingRecord != null 
+                            ? const Color(0xFFE91E63).withOpacity(0.1)
+                            : Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        '수축기',
+                      child: Text(
+                        '공복',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.red,
+                          color: fastingRecord != null 
+                              ? const Color(0xFFE91E63)
+                              : Colors.grey,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -697,7 +741,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   ],
                 ),
                 const SizedBox(width: 32),
-                // 이완기
+                // 식후혈당
                 Column(
                   children: [
                     Row(
@@ -705,16 +749,18 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          diastolic > 0 ? diastolic.toString() : '-',
-                          style: const TextStyle(
+                          postMealRecord != null ? postMealRecord.bloodSugar.toString() : '-',
+                          style: TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: postMealRecord != null 
+                                ? const Color(0xFF2196F3) // 파란색
+                                : Colors.grey,
                           ),
                         ),
-                        if (diastolic > 0)
+                        if (postMealRecord != null)
                           Text(
-                            ' mmHg',
+                            ' mg/dL',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[800],
@@ -727,14 +773,18 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: postMealRecord != null 
+                            ? const Color(0xFF2196F3).withOpacity(0.1)
+                            : Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        '이완기',
+                      child: Text(
+                        '식후',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.blue,
+                          color: postMealRecord != null 
+                              ? const Color(0xFF2196F3)
+                              : Colors.grey,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -743,7 +793,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 ),
               ],
             ),
-            if (selectedRecord != null)
+            if (fastingRecord != null || postMealRecord != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Text(
@@ -783,15 +833,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             // 차트 포인트 선택 초기화
             selectedChartPointIndex = null;
             tooltipPosition = null;
-            //jjy 0.7666666666666667
-            // 월별 그래프 선택 시 초기 오프셋 설정 jjy 
+            
+            // 월별 그래프 선택 시 초기 오프셋 설정
             if (period == '월') {
               final visibleDays = 7;
               final totalDays = 30;
               final maxOffset = (totalDays - visibleDays) / totalDays;
               timeOffset = maxOffset; // 오늘 날짜가 맨 오른쪽에 보이도록
-              print('jjy timeOffset: $timeOffset');
-              // timeOffset = 0.0;
             } else if (period == '주') {
               // 주별 그래프는 초기 오프셋 없음
               timeOffset = 0.0;
@@ -864,7 +912,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         },
         selectedChartPointIndex: selectedChartPointIndex,
         tooltipPosition: tooltipPosition,
-        dataType: 'bloodPressure',
+        dataType: 'bloodSugar',
         yAxisCount: yLabels.length,
       );
     }
@@ -900,7 +948,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           children: [
             const SizedBox(height: 16),
             Text(
-              '해당 기간에 혈압 기록이 없습니다',
+              '해당 기간에 혈당 기록이 없습니다',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -909,7 +957,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '혈압을 측정해보세요',
+              '혈당을 측정해보세요',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[500],
@@ -1006,8 +1054,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         _handleChartTapToggle(
           details.localPosition, 
           chartData, 
-          20,  // 최소값 (고정)
-          220, // 최대값 (고정)
+          50,  // 최소값 (혈당 기준)
+          300, // 최대값 (혈당 기준)
           constraints.maxWidth - ChartConstants.yAxisTotalWidth,
           constraints.maxHeight,
         );
@@ -1019,10 +1067,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               child: isEmpty 
                 ? CustomPaint(painter: EmptyChartGridPainter())
                 : CustomPaint(
-                    painter: BloodPressureChartPainter(
+                    painter: BloodSugarChartPainter(
                       chartData, 
-                      20,  // 최소값 (고정)
-                      220, // 최대값 (고정)
+                      50,  // 최소값 (혈당 기준)
+                      300, // 최대값 (혈당 기준)
                       highlightedIndex: selectedChartPointIndex,
                       isToday: _isToday(),
                       timeOffset: timeOffset,
@@ -1060,7 +1108,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     Offset? closestPoint;
     
     for (int i = 0; i < chartData.length; i++) {
-      if (chartData[i]['systolic'] == null || chartData[i]['diastolic'] == null) continue;
+      if (chartData[i]['bloodSugar'] == null) continue;
       
       double x;
       if (chartData[i]['xPosition'] != null) {
@@ -1098,8 +1146,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         x = leftPadding + (effectiveWidth * i / (chartData.length - 1));
       }
       
-      int systolic = chartData[i]['systolic'] as int;
-      double normalizedValue = (220 - systolic) / (220 - 20);
+      int bloodSugar = chartData[i]['bloodSugar'];
+      double normalizedValue = (300 - bloodSugar) / (300 - 50);
       double y = chartHeight * normalizedValue;
       
       double dx = tapPosition.dx - x;
@@ -1135,13 +1183,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Widget _buildChartTooltip(Map<String, dynamic> data, double chartWidth, double chartHeight) {
     if (tooltipPosition == null) return const SizedBox.shrink();
     
-    if (data['systolic'] == null || data['diastolic'] == null) {
+    if (data['bloodSugar'] == null) {
       return const SizedBox.shrink();
     }
     
-    final systolic = data['systolic'] as int;
-    final diastolic = data['diastolic'] as int;
-    final record = data['record'] as BloodPressureRecord?;
+    final bloodSugar = data['bloodSugar'] as int;
+    final measurementType = data['measurementType'] as String?;
+    final record = data['record'] as BloodSugarRecord?;
     
     String dateLabel;
     if (selectedPeriod != '일' && record != null) {
@@ -1185,7 +1233,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '$systolic / $diastolic mmHg',
+              '$bloodSugar mg/dL',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 15,
@@ -1194,7 +1242,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              dateLabel,
+              measurementType != null ? '$dateLabel ($measurementType)' : dateLabel,
               style: TextStyle(
                 color: Colors.grey[300],
                 fontSize: 11,
@@ -1206,9 +1254,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-
   // 시간별 기록 선택 바텀시트
-  void _showTimeSelectionBottomSheet(List<BloodPressureRecord> records) {
+  void _showTimeSelectionBottomSheet(List<BloodSugarRecord> records) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -1254,12 +1301,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => BloodPressureInputScreen(record: record),
+                        builder: (context) => BloodSugarInputScreen(record: record),
                       ),
                     );
                     
-                    if (result == true) {
-                      _loadData();
+                    // 수정 후 항상 데이터 새로고침
+                    if (result == true || result == null) {
+                      await _loadData();
+                      await _loadDataForSelectedDate();
                     }
                   },
                   child: Container(
@@ -1284,31 +1333,31 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '(${record.measurementType})',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
                           ],
                         ),
                         Row(
                           children: [
                             Text(
-                              '${record.systolic}',
+                              '${record.bloodSugar}',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.red,
+                                color: Color(0xFFE91E63),
                               ),
                             ),
                             Text(
-                              ' / ',
+                              ' mg/dL',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 color: Colors.grey[600],
-                              ),
-                            ),
-                            Text(
-                              '${record.diastolic}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1334,9 +1383,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('혈압 기록 없음'),
+        title: const Text('혈당 기록 없음'),
         content: const Text(
-          '아직 혈압 기록이 없습니다.\n지금 혈압을 입력해주세요!',
+          '아직 혈당 기록이 없습니다.\n지금 혈당을 입력해주세요!',
           style: TextStyle(fontSize: 16),
         ),
         actions: [
@@ -1353,15 +1402,17 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const BloodPressureInputScreen(),
+                  builder: (context) => const BloodSugarInputScreen(),
                 ),
               );
               
-              if (result == true && mounted) {
+              // 기록 후 항상 데이터 새로고침
+              if ((result == true || result == null) && mounted) {
                 await _loadData();
+                await _loadDataForSelectedDate();
               }
             },
-            child: const Text('혈압 입력하기'),
+            child: const Text('혈당 입력하기'),
           ),
         ],
       ),
@@ -1369,8 +1420,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 }
 
-// 혈압 차트 Painter
-class BloodPressureChartPainter extends CustomPainter {
+// 혈당 차트 Painter
+class BloodSugarChartPainter extends CustomPainter {
   final List<Map<String, dynamic>> data;
   final double minValue;
   final double maxValue;
@@ -1378,7 +1429,7 @@ class BloodPressureChartPainter extends CustomPainter {
   final bool isToday;
   final double timeOffset;
   
-  BloodPressureChartPainter(
+  BloodSugarChartPainter(
     this.data, 
     this.minValue, 
     this.maxValue, 
@@ -1393,19 +1444,19 @@ class BloodPressureChartPainter extends CustomPainter {
     const double pointRadius = 8; // 데이터 포인트 최대 반지름
     final chartWidth = size.width - (borderWidth * 2) - (pointRadius * 2); // 좌우 보더와 포인트 반지름 제외
     
-    // 그리드 선 (고정 Y축: 20, 60, 100, 140, 180, 220)
+    // 그리드 선 (혈당 기준 Y축: 50, 100, 150, 200, 250, 300)
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
     
-    // 점선 그리드 (40, 80, 120, 160, 200)
+    // 점선 그리드 (75, 125, 175, 225, 275)
     final dashedGridPaint = Paint()
       ..color = Colors.grey[200]!
       ..strokeWidth = 0.5;
     
-    // 고정 Y축 값들
-    final yValues = [220, 180, 140, 100, 60, 20];
-    final dashedYValues = [200, 160, 120, 80, 40];
+    // 고정 Y축 값들 (혈당 기준)
+    final yValues = [300, 250, 200, 150, 100, 50];
+    final dashedYValues = [275, 225, 175, 125, 75];
     
     // 실선 그리드 그리기
     for (int i = 0; i < yValues.length; i++) {
@@ -1421,7 +1472,7 @@ class BloodPressureChartPainter extends CustomPainter {
     
     // 점선 그리드 그리기
     for (int dashedValue in dashedYValues) {
-      double normalizedY = (220 - dashedValue) / (220 - 20);
+      double normalizedY = (300 - dashedValue) / (300 - 50);
       const double topPadding = 20.0;
       const double bottomPadding = 20.0;
       double y = topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
@@ -1437,12 +1488,10 @@ class BloodPressureChartPainter extends CustomPainter {
     }
     
     // 데이터 포인트 계산 - 연속된 데이터 그룹으로 분리
-    List<List<Offset>> systolicSegments = [];
-    List<List<Offset>> diastolicSegments = [];
+    List<List<Offset>> bloodSugarSegments = [];
     List<List<int>> indexSegments = [];
     
-    List<Offset> currentSystolic = [];
-    List<Offset> currentDiastolic = [];
+    List<Offset> currentBloodSugar = [];
     List<int> currentIndices = [];
     
     // X축 라벨 범위 계산 (7개 라벨 범위) - 일별 차트에서만 적용
@@ -1451,19 +1500,17 @@ class BloodPressureChartPainter extends CustomPainter {
     final endHour = startHour + 6;
     
     for (int i = 0; i < data.length; i++) {
-      if (data[i]['systolic'] == null || data[i]['diastolic'] == null) continue;
+      if (data[i]['bloodSugar'] == null) continue;
       
       // 일별 차트에서만 시간 범위 필터링 적용
       final recordHour = data[i]['hour'] as int?;
       if (recordHour != null) {
         if (recordHour < startHour || recordHour > endHour) {
           // 범위 밖 데이터는 세그먼트 종료
-          if (currentSystolic.isNotEmpty) {
-            systolicSegments.add(List.from(currentSystolic));
-            diastolicSegments.add(List.from(currentDiastolic));
+          if (currentBloodSugar.isNotEmpty) {
+            bloodSugarSegments.add(List.from(currentBloodSugar));
             indexSegments.add(List.from(currentIndices));
-            currentSystolic.clear();
-            currentDiastolic.clear();
+            currentBloodSugar.clear();
             currentIndices.clear();
           }
           continue;
@@ -1483,12 +1530,10 @@ class BloodPressureChartPainter extends CustomPainter {
         
         if (xPosition < startRatio || xPosition > endRatio) {
           // 범위 밖 데이터는 세그먼트 종료
-          if (currentSystolic.isNotEmpty) {
-            systolicSegments.add(List.from(currentSystolic));
-            diastolicSegments.add(List.from(currentDiastolic));
+          if (currentBloodSugar.isNotEmpty) {
+            bloodSugarSegments.add(List.from(currentBloodSugar));
             indexSegments.add(List.from(currentIndices));
-            currentSystolic.clear();
-            currentDiastolic.clear();
+            currentBloodSugar.clear();
             currentIndices.clear();
           }
           continue;
@@ -1529,25 +1574,19 @@ class BloodPressureChartPainter extends CustomPainter {
           : borderWidth + pointRadius + (chartWidth * i / (data.length - 1));
       }
       
-      int systolic = data[i]['systolic'];
-      int diastolic = data[i]['diastolic'];
+      int bloodSugar = data[i]['bloodSugar'];
       
       const double topPadding = 20.0;
       const double bottomPadding = 20.0;
-      double normalizedSystolic = (220 - systolic) / (220 - 20);
-      double ySystolic = topPadding + (size.height - topPadding - bottomPadding) * normalizedSystolic;
+      double normalizedBloodSugar = (300 - bloodSugar) / (300 - 50);
+      double yBloodSugar = topPadding + (size.height - topPadding - bottomPadding) * normalizedBloodSugar;
       
-      double normalizedDiastolic = (220 - diastolic) / (220 - 20);
-      double yDiastolic = topPadding + (size.height - topPadding - bottomPadding) * normalizedDiastolic;
-      
-      currentSystolic.add(Offset(x, ySystolic));
-      currentDiastolic.add(Offset(x, yDiastolic));
+      currentBloodSugar.add(Offset(x, yBloodSugar));
       currentIndices.add(i);
     }
     
-    if (currentSystolic.isNotEmpty) {
-      systolicSegments.add(currentSystolic);
-      diastolicSegments.add(currentDiastolic);
+    if (currentBloodSugar.isNotEmpty) {
+      bloodSugarSegments.add(currentBloodSugar);
       indexSegments.add(currentIndices);
     }
     
@@ -1555,38 +1594,9 @@ class BloodPressureChartPainter extends CustomPainter {
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
     
-    // 수축기 부드러운 곡선 그리기 (Catmull-Rom 스플라인)
-    linePaint.color = Colors.red;
-    for (var segment in systolicSegments) {
-      if (segment.length == 1) continue;
-      
-      final path = Path();
-      path.moveTo(segment[0].dx, segment[0].dy);
-      
-      if (segment.length == 2) {
-        path.lineTo(segment[1].dx, segment[1].dy);
-      } else {
-        for (int i = 0; i < segment.length - 1; i++) {
-          final p0 = i > 0 ? segment[i - 1] : segment[i];
-          final p1 = segment[i];
-          final p2 = segment[i + 1];
-          final p3 = i < segment.length - 2 ? segment[i + 2] : segment[i + 1];
-          
-          final cp1x = p1.dx + (p2.dx - p0.dx) / 6;
-          final cp1y = p1.dy + (p2.dy - p0.dy) / 6;
-          final cp2x = p2.dx - (p3.dx - p1.dx) / 6;
-          final cp2y = p2.dy - (p3.dy - p1.dy) / 6;
-          
-          path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.dx, p2.dy);
-        }
-      }
-      
-      canvas.drawPath(path, linePaint);
-    }
-    
-    // 이완기 부드러운 곡선 그리기 (Catmull-Rom 스플라인)
-    linePaint.color = Colors.blue;
-    for (var segment in diastolicSegments) {
+    // 혈당 부드러운 곡선 그리기 (Catmull-Rom 스플라인)
+    linePaint.color = const Color(0xFFE91E63); // 핑크색
+    for (var segment in bloodSugarSegments) {
       if (segment.length == 1) continue;
       
       final path = Path();
@@ -1614,25 +1624,24 @@ class BloodPressureChartPainter extends CustomPainter {
     }
     
     // 포인트 그리기 (세그먼트별로)
-    for (int segIdx = 0; segIdx < systolicSegments.length; segIdx++) {
-      final systolicPoints = systolicSegments[segIdx];
-      final diastolicPoints = diastolicSegments[segIdx];
+    for (int segIdx = 0; segIdx < bloodSugarSegments.length; segIdx++) {
+      final bloodSugarPoints = bloodSugarSegments[segIdx];
       final dataIndices = indexSegments[segIdx];
       
-      for (int i = 0; i < systolicPoints.length; i++) {
+      for (int i = 0; i < bloodSugarPoints.length; i++) {
         final originalIndex = dataIndices[i];
         final isHighlighted = highlightedIndex != null && highlightedIndex == originalIndex;
         
-        // 수축기 점 (빨간색)
-        final systolicPaint = Paint()
-          ..color = Colors.red
+        // 혈당 점 (핑크색)
+        final bloodSugarPaint = Paint()
+          ..color = const Color(0xFFE91E63)
           ..style = PaintingStyle.fill;
         
         if (isHighlighted) {
-          canvas.drawCircle(systolicPoints[i], 8, systolicPaint);
-          canvas.drawCircle(systolicPoints[i], 5, Paint()..color = Colors.white);
+          canvas.drawCircle(bloodSugarPoints[i], 8, bloodSugarPaint);
+          canvas.drawCircle(bloodSugarPoints[i], 5, Paint()..color = Colors.white);
           canvas.drawCircle(
-            systolicPoints[i], 
+            bloodSugarPoints[i], 
             8, 
             Paint()
               ..color = Colors.white
@@ -1640,29 +1649,8 @@ class BloodPressureChartPainter extends CustomPainter {
               ..strokeWidth = 2,
           );
         } else {
-          canvas.drawCircle(systolicPoints[i], 5, systolicPaint);
-          canvas.drawCircle(systolicPoints[i], 3, Paint()..color = Colors.white);
-        }
-        
-        // 이완기 점 (파란색)
-        final diastolicPaint = Paint()
-          ..color = Colors.blue
-          ..style = PaintingStyle.fill;
-        
-        if (isHighlighted) {
-          canvas.drawCircle(diastolicPoints[i], 8, diastolicPaint);
-          canvas.drawCircle(diastolicPoints[i], 5, Paint()..color = Colors.white);
-          canvas.drawCircle(
-            diastolicPoints[i], 
-            8, 
-            Paint()
-              ..color = Colors.white
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
-          );
-        } else {
-          canvas.drawCircle(diastolicPoints[i], 5, diastolicPaint);
-          canvas.drawCircle(diastolicPoints[i], 3, Paint()..color = Colors.white);
+          canvas.drawCircle(bloodSugarPoints[i], 5, bloodSugarPaint);
+          canvas.drawCircle(bloodSugarPoints[i], 3, Paint()..color = Colors.white);
         }
       }
     }
@@ -1684,8 +1672,8 @@ class EmptyChartGridPainter extends CustomPainter {
       ..color = Colors.grey[200]!
       ..strokeWidth = 0.5;
     
-    final yValues = [220, 180, 140, 100, 60, 20];
-    final dashedYValues = [200, 160, 120, 80, 40];
+    final yValues = [300, 250, 200, 150, 100, 50]; // 혈당 기준
+    final dashedYValues = [275, 225, 175, 125, 75];
     
     // 실선 그리드 그리기
     for (int i = 0; i < yValues.length; i++) {
@@ -1701,7 +1689,7 @@ class EmptyChartGridPainter extends CustomPainter {
     
     // 점선 그리드 그리기
     for (int dashedValue in dashedYValues) {
-      double normalizedY = (220 - dashedValue) / (220 - 20);
+      double normalizedY = (300 - dashedValue) / (300 - 50);
       const double topPadding = 20.0;
       const double bottomPadding = 20.0;
       double y = topPadding + (size.height - topPadding - bottomPadding) * normalizedY;

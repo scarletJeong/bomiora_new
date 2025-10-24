@@ -2,28 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
+import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/services/auth_service.dart';
-import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
+import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
 
-class BloodPressureInputScreen extends StatefulWidget {
-  final BloodPressureRecord? record; // null이면 새 기록, 있으면 수정
+class BloodSugarInputScreen extends StatefulWidget {
+  final BloodSugarRecord? record; // null이면 새 기록, 있으면 수정
 
-  const BloodPressureInputScreen({super.key, this.record});
+  const BloodSugarInputScreen({super.key, this.record});
 
   @override
-  State<BloodPressureInputScreen> createState() => _BloodPressureInputScreenState();
+  State<BloodSugarInputScreen> createState() => _BloodSugarInputScreenState();
 }
 
-class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
+class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _systolicController = TextEditingController();
-  final _diastolicController = TextEditingController();
-  final _pulseController = TextEditingController();
+  final _bloodSugarController = TextEditingController();
 
   DateTime _selectedDateTime = DateTime.now();
+  String _selectedMeasurementType = '공복';
   String? _calculatedStatus;
   bool _isSaving = false;
+
+  final List<String> _measurementTypes = ['공복', '식전', '식후', '취침전', '평상시'];
 
   @override
   void initState() {
@@ -31,25 +32,22 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     
     if (widget.record != null) {
       // 수정 모드
-      _systolicController.text = widget.record!.systolic.toString();
-      _diastolicController.text = widget.record!.diastolic.toString();
-      _pulseController.text = widget.record!.pulse.toString();
+      _bloodSugarController.text = widget.record!.bloodSugar.toString();
       _selectedDateTime = widget.record!.measuredAt;
+      _selectedMeasurementType = widget.record!.measurementType;
       _calculatedStatus = widget.record!.status;
     }
 
-    // 혈압 변경 시 상태 자동 계산
-    _systolicController.addListener(_updateStatus);
-    _diastolicController.addListener(_updateStatus);
+    // 혈당 변경 시 상태 자동 계산
+    _bloodSugarController.addListener(_updateStatus);
   }
 
   void _updateStatus() {
-    final systolic = int.tryParse(_systolicController.text);
-    final diastolic = int.tryParse(_diastolicController.text);
+    final bloodSugar = int.tryParse(_bloodSugarController.text);
 
-    if (systolic != null && diastolic != null) {
+    if (bloodSugar != null) {
       setState(() {
-        _calculatedStatus = BloodPressureRecord.calculateStatus(systolic, diastolic);
+        _calculatedStatus = BloodSugarRecord.calculateStatus(bloodSugar, _selectedMeasurementType);
       });
     } else {
       setState(() {
@@ -99,28 +97,25 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
         throw Exception('로그인이 필요합니다');
       }
 
-      final systolic = int.parse(_systolicController.text);
-      final diastolic = int.parse(_diastolicController.text);
-      final pulse = int.parse(_pulseController.text);
+      final bloodSugar = int.parse(_bloodSugarController.text);
 
-      final record = BloodPressureRecord(
+      final record = BloodSugarRecord(
         id: widget.record?.id,
         mbId: user.id,
         measuredAt: _selectedDateTime,
-        systolic: systolic,
-        diastolic: diastolic,
-        pulse: pulse,
+        bloodSugar: bloodSugar,
+        measurementType: _selectedMeasurementType,
       );
 
       // API 호출
       bool success;
       if (widget.record == null) {
         // 새 기록 추가
-        success = await BloodPressureRepository.addBloodPressureRecord(record);
+        success = await BloodSugarRepository.addBloodSugarRecord(record);
         print('새 기록 추가 결과: $success');
       } else {
         // 기록 수정
-        success = await BloodPressureRepository.updateBloodPressureRecord(record);
+        success = await BloodSugarRepository.updateBloodSugarRecord(record);
         print('기록 수정 결과: $success');
       }
 
@@ -160,8 +155,8 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('혈압 기록 삭제'),
-        content: const Text('이 혈압 기록을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.'),
+        title: const Text('혈당 기록 삭제'),
+        content: const Text('이 혈당 기록을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -180,14 +175,14 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     );
   }
 
-  // 혈압 기록 삭제
+  // 혈당 기록 삭제
   Future<void> _deleteRecord() async {
     if (widget.record?.id == null) return;
 
     setState(() => _isSaving = true);
 
     try {
-      final success = await BloodPressureRepository.deleteBloodPressureRecord(widget.record!.id!);
+      final success = await BloodSugarRepository.deleteBloodSugarRecord(widget.record!.id!);
 
       if (mounted) {
         if (success) {
@@ -222,9 +217,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
   @override
   void dispose() {
-    _systolicController.dispose();
-    _diastolicController.dispose();
-    _pulseController.dispose();
+    _bloodSugarController.dispose();
     super.dispose();
   }
 
@@ -232,7 +225,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
-        title: Text(widget.record == null ? '혈압 기록하기' : '혈압 수정하기'),
+        title: Text(widget.record == null ? '혈당 기록하기' : '혈당 수정하기'),
         actions: widget.record != null
             ? [
                 // 수정 모드일 때만 삭제 버튼 표시
@@ -255,19 +248,15 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
               _buildDateTimeCard(),
               const SizedBox(height: 16),
 
-              // 수축기 혈압 입력
-              _buildSystolicInput(),
+              // 측정 유형 선택
+              _buildMeasurementTypeCard(),
               const SizedBox(height: 16),
 
-              // 이완기 혈압 입력
-              _buildDiastolicInput(),
+              // 혈당 수치 입력
+              _buildBloodSugarInput(),
               const SizedBox(height: 16),
 
-              // 심박수 
-              _buildPulseInput(),
-              const SizedBox(height: 16),
-
-              // 혈압 상태 표시
+              // 혈당 상태 표시
               if (_calculatedStatus != null)
                 _buildStatusCard(),
               
@@ -305,112 +294,102 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     );
   }
 
-  Widget _buildSystolicInput() {
+  Widget _buildMeasurementTypeCard() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '수축기 혈압 (mmHg)',
+          '측정 유형',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: _systolicController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-          decoration: InputDecoration(
-            hintText: '예: 120',
-            suffixText: 'mmHg',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  children: _measurementTypes.map((type) {
+                    final isSelected = _selectedMeasurementType == type;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedMeasurementType = type;
+                          });
+                          _updateStatus(); // 상태 재계산
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.orange : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? Colors.orange : Colors.grey[300]!,
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                BloodSugarRecord.getMeasurementTypeIcon(type),
+                                style: const TextStyle(fontSize: 20),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                BloodSugarRecord.getMeasurementTypeKorean(type),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
-            prefixIcon: const Icon(Icons.favorite, color: Colors.red),
           ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '수축기 혈압을 입력해주세요';
-            }
-            final systolic = int.tryParse(value);
-            if (systolic == null || systolic < 50 || systolic > 250) {
-              return '올바른 수축기 혈압을 입력해주세요 (50~250mmHg)';
-            }
-            return null;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildDiastolicInput() {
+  Widget _buildBloodSugarInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '이완기 혈압 (mmHg)',
+          '혈당 (mg/dL)',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         TextFormField(
-          controller: _diastolicController,
+          controller: _bloodSugarController,
           keyboardType: TextInputType.number,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
           ],
           decoration: InputDecoration(
-            hintText: '예: 80',
-            suffixText: 'mmHg',
+            hintText: '수치를 입력하세요',
+            suffixText: 'mg/dL',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            prefixIcon: const Icon(Icons.favorite, color: Colors.blue),
+            prefixIcon: const Icon(Icons.monitor_heart, color: Colors.red),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return '이완기 혈압을 입력해주세요';
+              return '혈당 수치를 입력해주세요';
             }
-            final diastolic = int.tryParse(value);
-            if (diastolic == null || diastolic < 30 || diastolic > 150) {
-              return '올바른 이완기 혈압을 입력해주세요 (30~150mmHg)';
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPulseInput() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '심박수 (bpm)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _pulseController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-          decoration: InputDecoration(
-            hintText: '예: 72',
-            suffixText: 'bpm',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            prefixIcon: const Icon(Icons.monitor_heart),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '심박수를 입력해주세요';
-            }
-            final pulse = int.tryParse(value);
-            if (pulse == null || pulse < 30 || pulse > 200) {
-              return '올바른 심박수수을 입력해주세요 (30~200bpm)';
+            final bloodSugar = int.tryParse(value);
+            if (bloodSugar == null || bloodSugar < 20 || bloodSugar > 600) {
+              return '올바른 혈당 수치를 입력해주세요 (20~600mg/dL)';
             }
             return null;
           },
@@ -425,18 +404,14 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       case '정상':
         statusColor = Colors.green;
         break;
-      case '주의':
-        statusColor = Colors.yellow[700]!;
-        break;
-      case '고혈압 전단계':
+      case '당뇨 전단계':
         statusColor = Colors.orange;
         break;
-      case '1단계 고혈압':
-      case '2단계 고혈압':
+      case '당뇨':
         statusColor = Colors.red;
         break;
-      case '고혈압 위기':
-        statusColor = Colors.red[900]!;
+      case '저혈당':
+        statusColor = Colors.blue;
         break;
       default:
         statusColor = Colors.grey;
@@ -458,7 +433,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '혈압 상태: $_calculatedStatus',
+                  '혈당 상태: $_calculatedStatus',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -484,20 +459,15 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   String _getStatusDescription(String status) {
     switch (status) {
       case '정상':
-        return '정상 혈압 범위입니다.';
-      case '주의':
-        return '약간 높은 편입니다. 생활습관 개선이 필요합니다.';
-      case '고혈압 전단계':
-        return '고혈압 전단계입니다. 관리가 필요합니다.';
-      case '1단계 고혈압':
-        return '1단계 고혈압입니다. 의사와 상담하세요.';
-      case '2단계 고혈압':
-        return '2단계 고혈압입니다. 즉시 의사와 상담하세요.';
-      case '고혈압 위기':
-        return '고혈압 위기! 응급 상황입니다. 즉시 병원에 가세요.';
+        return '정상 혈당 범위입니다.';
+      case '당뇨 전단계':
+        return '당뇨 전단계입니다. 생활습관 개선이 필요합니다.';
+      case '당뇨':
+        return '당뇨 범위입니다. 의사와 상담하세요.';
+      case '저혈당':
+        return '저혈당입니다. 즉시 당분을 섭취하세요.';
       default:
         return '';
     }
   }
 }
-
