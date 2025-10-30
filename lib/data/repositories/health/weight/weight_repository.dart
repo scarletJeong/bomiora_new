@@ -90,23 +90,26 @@ class WeightRepository {
     }
   }
 
-  // 체중 기록 목록 조회
+  // 체중 기록 목록 조회 (최적화: 한 번에 모든 데이터 로드)
   static Future<List<WeightRecord>> getWeightRecords(String mbId) async {
     try {
+      print('🔍 체중 기록 조회 시작 - mbId: $mbId');
+      
       final response = await ApiClient.get('${ApiEndpoints.weightRecords}?mb_id=$mbId');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final List<dynamic> records = data['data'];
+          print('✅ 체중 기록 ${records.length}개 로드 완료');
           return records.map((json) => WeightRecord.fromJson(json)).toList();
         }
       }
       
-      print('체중 기록 조회 실패: ${response.statusCode}');
+      print('❌ 체중 기록 조회 실패: ${response.statusCode}');
       return [];
     } catch (e) {
-      print('체중 기록 조회 오류: $e');
+      print('❌ 체중 기록 조회 오류: $e');
       return [];
     }
   }

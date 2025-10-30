@@ -4,38 +4,31 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../models/health/blood_pressure/blood_pressure_record_model.dart';
 
 class BloodPressureRepository {
-  // 사용자의 모든 혈압 기록 가져오기
+  // 사용자의 모든 혈압 기록 가져오기 (최적화: 한 번에 모든 데이터 로드)
   static Future<List<BloodPressureRecord>> getBloodPressureRecords(String userId) async {
     try {
-      print('🔍 [DEBUG] 혈압 기록 가져오기 시작 - userId: $userId');
-      print('📡 [DEBUG] API 호출: ${ApiEndpoints.bloodPressureRecords}?mb_id=$userId');
+      print('🔍 혈압 기록 조회 시작 - userId: $userId');
       
       final response = await ApiClient.get('${ApiEndpoints.bloodPressureRecords}?mb_id=$userId');
-      
-      print('📡 [DEBUG] 응답 상태: ${response.statusCode}');
-      print('📦 [DEBUG] 응답 본문: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        print('✅ [DEBUG] 파싱된 데이터: $data');
-        
         // 응답 구조에 따라 처리
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          print('📊 [DEBUG] 혈압 기록 개수: ${records.length}');
+          print('✅ 혈압 기록 ${records.length}개 로드 완료');
           return records.map((json) => BloodPressureRecord.fromJson(json)).toList();
         } else if (data is List) {
           // 배열로 직접 반환되는 경우
-          print('📊 [DEBUG] 배열로 직접 반환 - 혈압 기록 개수: ${data.length}');
+          print('✅ 혈압 기록 ${data.length}개 로드 완료');
           return data.map((json) => BloodPressureRecord.fromJson(json)).toList();
         }
       }
       
-      print('⚠️ [DEBUG] 혈압 기록이 없거나 오류 발생');
       return [];
     } catch (e) {
-      print('❌ 혈압 기록 가져오기 오류: $e');
+      print('❌ 혈압 기록 조회 오류: $e');
       return [];
     }
   }

@@ -1,23 +1,24 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../models/health/steps/steps_record_model.dart';
-import '../../../services/api_service.dart';
+import '../../../../core/network/api_client.dart';
 
 class StepsRepository {
-  static const String _baseUrl = ApiService.baseUrl;
+  // ApiClient의 동적 baseUrl 사용
+  static String get _baseUrl => ApiClient.baseUrl;
 
   // 오늘의 걸음수 기록 가져오기
   static Future<StepsRecord?> getTodayStepsRecord(int userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/steps/today/$userId'),
+        Uri.parse('$_baseUrl/api/steps/today/$userId'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return StepsRecord.fromJson(data['data']);
+        if (data != null) {
+          return StepsRecord.fromJson(data);
         }
       }
       return null;
@@ -32,14 +33,14 @@ class StepsRepository {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
       final response = await http.get(
-        Uri.parse('$_baseUrl/steps/date/$userId/$dateStr'),
+        Uri.parse('$_baseUrl/api/steps/date/$userId?date=$dateStr'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return StepsRecord.fromJson(data['data']);
+        if (data != null) {
+          return StepsRecord.fromJson(data);
         }
       }
       return null;
@@ -53,7 +54,7 @@ class StepsRepository {
   static Future<bool> saveStepsRecord(StepsRecord record) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/steps'),
+        Uri.parse('$_baseUrl/api/steps'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(record.toJson()),
       );
@@ -69,7 +70,7 @@ class StepsRepository {
   static Future<bool> updateStepsRecord(StepsRecord record) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/steps/${record.id}'),
+        Uri.parse('$_baseUrl/api/steps/${record.id}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(record.toJson()),
       );
@@ -85,14 +86,14 @@ class StepsRepository {
   static Future<StepsStatistics?> getStepsStatistics(int userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/steps/statistics/$userId'),
+        Uri.parse('$_baseUrl/api/steps/statistics/$userId'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return StepsStatistics.fromJson(data['data']);
+        if (data != null) {
+          return StepsStatistics.fromJson(data);
         }
       }
       return null;
@@ -106,18 +107,16 @@ class StepsRepository {
   static Future<List<StepsRecord>> getWeeklyStepsRecords(int userId, DateTime startDate) async {
     try {
       final startDateStr = startDate.toIso8601String().split('T')[0];
-      final endDate = startDate.add(const Duration(days: 6));
-      final endDateStr = endDate.toIso8601String().split('T')[0];
       
       final response = await http.get(
-        Uri.parse('$_baseUrl/steps/weekly/$userId?start_date=$startDateStr&end_date=$endDateStr'),
+        Uri.parse('$_baseUrl/api/steps/weekly/$userId?startDate=$startDateStr'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return (data['data'] as List<dynamic>)
+        if (data != null && data is List<dynamic>) {
+          return (data as List)
               .map((item) => StepsRecord.fromJson(item))
               .toList();
         }
@@ -136,14 +135,14 @@ class StepsRepository {
       final monthNum = month.month;
       
       final response = await http.get(
-        Uri.parse('$_baseUrl/steps/monthly/$userId/$year/$monthNum'),
+        Uri.parse('$_baseUrl/api/steps/monthly/$userId?year=$year&month=$monthNum'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return (data['data'] as List<dynamic>)
+        if (data != null && data is List<dynamic>) {
+          return (data as List)
               .map((item) => StepsRecord.fromJson(item))
               .toList();
         }
@@ -159,7 +158,7 @@ class StepsRepository {
   static Future<bool> deleteStepsRecord(int recordId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/steps/$recordId'),
+        Uri.parse('$_baseUrl/api/steps/$recordId'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -174,7 +173,7 @@ class StepsRepository {
   static Future<bool> setStepsGoal(int userId, int goalSteps) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/steps/goal'),
+        Uri.parse('$_baseUrl/api/steps'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': userId,
@@ -193,14 +192,14 @@ class StepsRepository {
   static Future<int?> getStepsGoal(int userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/steps/goal/$userId'),
+        Uri.parse('$_baseUrl/api/steps/today/$userId'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return data['data']['goal_steps'];
+        if (data != null && data['dailyGoal'] != null) {
+          return data['dailyGoal'];
         }
       }
       return null;
