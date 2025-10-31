@@ -26,7 +26,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   List<BloodSugarRecord> allRecords = []; // 전체 혈당 기록
   Map<String, BloodSugarRecord> bloodSugarRecordsMap = {}; // 날짜별 요약 기록
   Map<String, List<BloodSugarRecord>> dailyRecordsCache = {}; // 날짜별 상세 기록 캐시
-  Set<String> loadingDates = {}; // 로딩 중인 날짜들
   bool isLoading = true;
   bool hasShownNoDataDialog = false;
   late DateTime selectedDate;
@@ -67,11 +66,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       final recordDate = DateTime(record.measuredAt.year, record.measuredAt.month, record.measuredAt.day);
       return recordDate.isAtSameMomentAs(today);
     }).toList();
-  }
-
-  // 특정 날짜가 로딩 중인지 확인
-  bool _isLoadingDate(String dateKey) {
-    return loadingDates.contains(dateKey);
   }
 
   // 시간 범위 계산 (통합 로직)
@@ -130,11 +124,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     }
     
     final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-    
-    // 로딩 중이면 빈 배열 반환
-    if (loadingDates.contains(selectedDateStr)) {
-      return [];
-    }
     
     // 캐시에서 데이터 가져오기 (없으면 빈 배열)
     final dayRecords = dailyRecordsCache[selectedDateStr] ?? [];
@@ -372,27 +361,13 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     _loadData();
   }
 
-  // 주/월 데이터 로드
-  Future<void> _loadPeriodData() async {
-    if (currentUser == null) return;
-    
-    final days = selectedPeriod == '주' ? 7 : 30;
-    final endDate = selectedDate;
-    final startDate = endDate.subtract(Duration(days: days - 1));
-    
-    // 필요한 날짜들 생성
-    List<DateTime> datesToLoad = [];
-    for (int i = 0; i < days; i++) {
-      datesToLoad.add(startDate.add(Duration(days: i)));
-    }
-    
-    // 해당 기간의 데이터 로드
-    await _loadRecordsForDates(datesToLoad);
-    
-    setState(() {}); // UI 업데이트
+  // 주/월 데이터 로드 (메모리에서 필터링)
+  void _loadPeriodData() {
+    // 이미 allRecords에 모든 데이터가 있으므로 UI만 업데이트
+    setState(() {});
   }
 
-  // 데이터 로드 (최적화: 필요한 날짜만 로드)
+  // 데이터 로드 (최적화: 전체 데이터를 한 번만 로드)
   Future<void> _loadData() async {
     setState(() {
       isLoading = true;
@@ -402,11 +377,11 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       currentUser = await AuthService.getUser();
       
       if (currentUser != null) {
-        // 전체 혈당 기록 로드
+        // 전체 혈당 기록 한 번만 로드
         allRecords = await BloodSugarRepository.getBloodSugarRecords(currentUser!.id);
         
-        // 현재 선택된 날짜와 주변 날짜들만 로드
-        await _loadRecordsForDates(displayDates);
+        // 메모리에서 날짜별로 캐싱 (API 호출 없이 필터링)
+        _cacheRecordsFromMemory();
         
         // 데이터가 없을 때만 다이얼로그 표시 (한 번만)
         if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
@@ -432,101 +407,52 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     }
   }
 
-  // 특정 날짜들의 기록 로드 (병렬 처리로 최적화)
-  Future<void> _loadRecordsForDates(List<DateTime> dates) async {
-    if (currentUser == null) return;
-
-    // 병렬로 처리할 날짜들 필터링
-    List<DateTime> datesToLoad = [];
-    for (var date in dates) {
-      final dateKey = DateFormat('yyyy-MM-dd').format(date);
-      if (!loadingDates.contains(dateKey) && !dailyRecordsCache.containsKey(dateKey)) {
-        datesToLoad.add(date);
-        loadingDates.add(dateKey);
-      }
-    }
-
-    if (datesToLoad.isEmpty) return;
-
-    // 병렬로 모든 날짜의 데이터 로드
-    final futures = datesToLoad.map((date) => _loadSingleDateRecord(date));
-    await Future.wait(futures);
-  }
-
-  // 단일 날짜의 기록 로드
-  Future<void> _loadSingleDateRecord(DateTime date) async {
-    final dateKey = DateFormat('yyyy-MM-dd').format(date);
+  // 메모리에서 날짜별로 캐싱 (API 호출 없이 필터링)
+  void _cacheRecordsFromMemory() {
+    dailyRecordsCache.clear();
+    bloodSugarRecordsMap.clear();
     
-    try {
-      // 해당 날짜의 기록만 가져오기
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    for (var record in allRecords) {
+      final dateKey = DateFormat('yyyy-MM-dd').format(record.measuredAt);
       
-      final records = await BloodSugarRepository.getBloodSugarRecordsByDateRange(
-        currentUser!.id,
-        startOfDay,
-        endOfDay,
-      );
-    
-      // 캐시에 저장
-      dailyRecordsCache[dateKey] = records;
+      // 날짜별 리스트에 추가
+      if (!dailyRecordsCache.containsKey(dateKey)) {
+        dailyRecordsCache[dateKey] = [];
+      }
+      dailyRecordsCache[dateKey]!.add(record);
       
       // 요약 맵 업데이트 (가장 최근 기록)
-      if (records.isNotEmpty) {
-        records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-        bloodSugarRecordsMap[dateKey] = records.first;
+      if (!bloodSugarRecordsMap.containsKey(dateKey) || 
+          record.measuredAt.isAfter(bloodSugarRecordsMap[dateKey]!.measuredAt)) {
+        bloodSugarRecordsMap[dateKey] = record;
       }
-    } catch (e) {
-      print('❌ API 오류 ($dateKey): $e');
-      dailyRecordsCache[dateKey] = [];
-    } finally {
-      // 로딩 상태 제거
-      loadingDates.remove(dateKey);
     }
   }
 
-  // 날짜 변경 시 추가 데이터 로드 (캐시 없이 매번 DB에서 가져오기)
-  Future<void> _loadDataForSelectedDate() async {
-    if (currentUser == null) return;
-    
+  // 날짜 변경 시 데이터 로드 (메모리에서 필터링)
+  void _loadDataForSelectedDate() {
     final dateKey = DateFormat('yyyy-MM-dd').format(selectedDate);
     
-    // 로딩 중이면 스킵 (동시 로딩 방지)
-    if (loadingDates.contains(dateKey)) {
+    // 이미 캐시에 있으면 UI만 업데이트
+    if (dailyRecordsCache.containsKey(dateKey)) {
+      setState(() {});
       return;
     }
     
-    // 로딩 상태 추가
-    loadingDates.add(dateKey);
+    // 메모리에서 필터링하여 캐시에 추가
+    final records = allRecords.where((record) {
+      final recordDateKey = DateFormat('yyyy-MM-dd').format(record.measuredAt);
+      return recordDateKey == dateKey;
+    }).toList();
     
-    try {
-      final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-      final endOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 23, 59, 59);
-      
-      final records = await BloodSugarRepository.getBloodSugarRecordsByDateRange(
-        currentUser!.id,
-        startOfDay,
-        endOfDay,
-      );
-      
-      print('📥 [API] $dateKey: ${records.length}개 기록 로드');
-      
-      // 매번 새로 로드 (캐시에 저장)
-      dailyRecordsCache[dateKey] = records;
-      
-      if (records.isNotEmpty) {
-        records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-        bloodSugarRecordsMap[dateKey] = records.first;
-      }
-      
-      setState(() {}); // UI 업데이트
-    } catch (e) {
-      print('❌ API 오류 ($dateKey): $e');
-      dailyRecordsCache[dateKey] = [];
-    } finally {
-      // 로딩 상태 제거
-      loadingDates.remove(dateKey);
+    dailyRecordsCache[dateKey] = records;
+    
+    if (records.isNotEmpty) {
+      records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+      bloodSugarRecordsMap[dateKey] = records.first;
     }
+    
+    setState(() {});
   }
 
   @override
@@ -607,8 +533,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                       // 기록 후 항상 데이터 새로고침
                       if (result == true || result == null) {
                         await _loadData();
-                        // 현재 선택된 날짜의 데이터도 다시 로드
-                        await _loadDataForSelectedDate();
                       }
                     },
                     backgroundColor: const Color(0xFF2196F3),
@@ -658,7 +582,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
             // 수정 후 항상 데이터 새로고침
             if (result == true || result == null) {
               await _loadData();
-              await _loadDataForSelectedDate();
             }
           }
         }
@@ -1308,7 +1231,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                     // 수정 후 항상 데이터 새로고침
                     if (result == true || result == null) {
                       await _loadData();
-                      await _loadDataForSelectedDate();
                     }
                   },
                   child: Container(
@@ -1409,7 +1331,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
               // 기록 후 항상 데이터 새로고침
               if ((result == true || result == null) && mounted) {
                 await _loadData();
-                await _loadDataForSelectedDate();
               }
             },
             child: const Text('혈당 입력하기'),
