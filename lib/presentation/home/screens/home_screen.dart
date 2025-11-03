@@ -8,8 +8,10 @@ import '../widgets/bottom_banner.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../shopping/screens/hybrid_shopping_screen.dart';
-import '../../shopping/screens/webview_screen.dart';
+import '../../shopping/screens/product_list_screen.dart';
 import '../../health/dashboard/screens/health_dashboard_screen.dart';
+import '../../health/telemedicine/screens/telemedicine_webview_screen.dart';
+import '../../user/questionnaire/screens/questionnaire_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -87,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.dashboard),
-              title: const Text('건강대시보드'),
+              title: const Text('건강대시보드1'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -161,7 +163,8 @@ class _HomeScreenState extends State<HomeScreen> {
       print('데이터 로드 실패: $e');
     }
   }
-
+  
+  // 3 메뉴판
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -230,35 +233,94 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('홈'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentIndex = 0;
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.shopping_cart),
-              title: const Text('장바구니'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentIndex = 2;
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('마이페이지'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentIndex = 3;
-                });
-              },
+            // 메뉴 그리드
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 4,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.8,
+                children: [
+                  _buildMenuGridItem(
+                    icon: Icons.home,
+                    label: '홈',
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentIndex = 0;
+                      });
+                    },
+                  ),
+                  _buildMenuGridItem(
+                    icon: Icons.assignment,
+                    label: '문진표',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const QuestionnaireListScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuGridItem(
+                    icon: Icons.local_shipping,
+                    label: '주문배송',
+                    onTap: () {
+                      Navigator.pop(context);
+                      // 주문배송 페이지로 이동
+                    },
+                  ),
+                  _buildMenuGridItem(
+                    icon: Icons.shopping_cart,
+                    label: '장바구니',
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentIndex = 2;
+                      });
+                    },
+                  ),
+                  _buildMenuGridItem(
+                    icon: Icons.card_giftcard,
+                    label: '쿠폰',
+                    onTap: () {
+                      Navigator.pop(context);
+                      // 쿠폰 페이지로 이동
+                    },
+                  ),
+                  _buildMenuGridItem(
+                    icon: Icons.stars,
+                    label: '마일리지',
+                    onTap: () {
+                      Navigator.pop(context);
+                      // 마일리지 페이지로 이동
+                    },
+                  ),
+                  _buildMenuGridItem(
+                    icon: Icons.person,
+                    label: 'Mypage',
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentIndex = 3;
+                      });
+                    },
+                  ),
+                  _buildMenuGridItem(
+                    icon: Icons.headset_mic,
+                    label: '고객센터',
+                    onTap: () {
+                      Navigator.pop(context);
+                      // 고객센터 페이지로 이동
+                    },
+                  ),
+                ],
+              ),
             ),
             const Divider(),
             ListTile(
@@ -283,14 +345,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: const Text('다이어트'),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora.kr/shop/list.php?ca_id=10&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
-                          title: '다이어트',
-                        ),
-                      ),
+                      '/product-list',
+                      arguments: {
+                        'categoryId': '10',
+                        'categoryName': '다이어트',
+                        'productKind': 'prescription',
+                      },
                     );
                   },
                 ),
@@ -299,14 +361,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: const Text('디톡스'),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora.kr/shop/list.php?ca_id=20&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
-                          title: '디톡스',
-                        ),
-                      ),
+                      '/product-list',
+                      arguments: {
+                        'categoryId': '20',
+                        'categoryName': '디톡스',
+                        'productKind': 'prescription',
+                      },
                     );
                   },
                 ),
@@ -315,14 +377,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: const Text('심신안정'),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora.kr/shop/list.php?ca_id=80&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
-                          title: '심신안정',
-                        ),
-                      ),
+                      '/product-list',
+                      arguments: {
+                        'categoryId': '80',
+                        'categoryName': '심신안정',
+                        'productKind': 'prescription',
+                      },
                     );
                   },
                 ),
@@ -331,14 +393,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: const Text('건강/면역'),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const WebViewScreen(
-                          url: 'https://bomiora.kr/shop/list.php?ca_id=50&it_kind=prescription&mobile_app=1&hide_header=1&hide_footer=1',
-                          title: '건강/면역',
-                        ),
-                      ),
+                      '/product-list',
+                      arguments: {
+                        'categoryId': '50',
+                        'categoryName': '건강/면역',
+                        'productKind': 'prescription',
+                      },
                     );
                   },
                 ),
@@ -440,8 +502,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 // 통계 섹션
                 const StatsSection(),
                 
-                // 모바일 제품 소개 슬라이더
-                const MobileProductSlider(),
                 
                 // 인기상품 섹션
                 const PopularProducts(),
@@ -521,115 +581,35 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
 
-// 모바일 제품 소개 슬라이더
-class MobileProductSlider extends StatelessWidget {
-  const MobileProductSlider({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 400,
-      child: Column(
-        children: [
-          Expanded(
-            child: _buildProductSlide(
-              title: "한의사가\n자신있게 처방하는\n다이어트 솔루션",
-              subtitle: "과거에 과체중으로 스트레스를 받던 한의사가\n직접 복용하고, 개발한 다이어트 한약",
-              productName: "보미 다이어트환",
-              color: const Color(0xFF007FAE),
-              features: [
-                "굶지않는 한방 다이어트",
-                "내 몸을 위한 건강한 체중감량", 
-                "기초대사량 증가, 신진대사 활발",
-                "체지방 분해, 식욕억제, 부종감소, 포만감"
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: _buildProductSlide(
-              title: "한의사가\n자신있게 처방하는\n디톡스 솔루션",
-              subtitle: "과거에 과체중으로 스트레스를 받던 한의사가\n직접 복용하고, 개발한 디톡스 한약",
-              productName: "보미 디톡스환",
-              color: const Color(0xFF499C28),
-              features: [
-                "붓기개선과 변비예방",
-                "노폐물, 체지방 배출",
-                "붓기감소, 체중감소, 미백작용",
-                "혈액순환 개선, 변비개선"
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductSlide({
-    required String title,
-    required String subtitle,
-    required String productName,
-    required Color color,
-    required List<String> features,
+  Widget _buildMenuGridItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
+    return GestureDetector(
+      onTap: onTap,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Icon(
+            icon,
+            size: 32,
+            color: Colors.grey[600],
+          ),
+          const SizedBox(height: 8),
           Text(
-            title,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              height: 1.3,
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              productName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ...features.map((feature) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    feature,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-          )).toList(),
         ],
       ),
     );
   }
 }
+
