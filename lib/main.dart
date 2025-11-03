@@ -5,6 +5,8 @@ import 'presentation/home/screens/home_screen.dart';
 import 'presentation/auth/screens/login_screen.dart';
 import 'data/services/auth_service.dart';
 import 'presentation/common/widgets/mobile_layout_wrapper.dart';
+import 'presentation/shopping/screens/product_detail_screen.dart';
+import 'presentation/shopping/screens/product_list_screen.dart';
 
 void main() {
   runApp(const BomioraApp());
@@ -37,6 +39,37 @@ class BomioraApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const MobileLayoutWrapper(),
+      },
+      onGenerateRoute: (settings) {
+        // 동적 라우트 처리
+        final routeName = settings.name ?? '';
+        final uri = Uri.parse(routeName);
+        
+        // 제품 목록 페이지: /product-list
+        if (uri.pathSegments.length == 1 && uri.pathSegments[0] == 'product-list') {
+          final arguments = settings.arguments as Map<String, dynamic>? ?? {};
+          return MaterialPageRoute(
+            builder: (context) => ProductListScreen.fromArguments(arguments),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
+        }
+        
+        // 제품 상세 페이지: /product/:it_id
+        if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'product') {
+          final productId = uri.pathSegments[1];
+          return MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(productId: productId),
+            settings: RouteSettings(
+              name: routeName, // URL 업데이트를 위해 route name 설정 (예: /product/1691479590)
+              arguments: settings.arguments,
+            ),
+          );
+        }
+        
+        return null;
       },
       debugShowCheckedModeBanner: false,
     );

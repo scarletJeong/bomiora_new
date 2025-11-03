@@ -8,24 +8,39 @@ class ApiClient {
   // Spring Boot 서버 연결
   // 개발: localhost, 배포: AWS EC2 서버 URL
   static String get baseUrl {
-    // 현재 호스트가 localhost인지 확인
     final currentHost = Uri.base.host;
-    if (currentHost.contains('localhost') || currentHost.contains('127.0.0.1')) {
+    final currentPort = Uri.base.port;
+    
+    // 현재 브라우저 URL이 localhost인지 확인
+    if (currentHost.contains('localhost') || 
+        currentHost.contains('127.0.0.1') || 
+        currentHost.isEmpty) {
       return 'http://localhost:9000';  // 로컬 개발
     } else {
-      return 'https://bomiora.net:9000';  // 도메인 기반 HTTPS
+      return 'https://bomiora.net:9000';  // 실제 서버
     }
   }
   
   // GET 요청
-  static Future<http.Response> get(String endpoint) async {
+  static Future<http.Response> get(String endpoint, {Map<String, String>? additionalHeaders}) async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Flutter-App/1.0',
+    };
+    
+    // 추가 헤더가 있으면 병합
+    if (additionalHeaders != null) {
+      headers.addAll(additionalHeaders);
+    }
+    
+    final url = '$baseUrl$endpoint';
+    print('🌐 API 요청: $url');
+    print('📋 헤더: $headers');
+    
     return await http.get(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': 'Flutter-App/1.0',
-      },
+      Uri.parse(url),
+      headers: headers,
     );
   }
   

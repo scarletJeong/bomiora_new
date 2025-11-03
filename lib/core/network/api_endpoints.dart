@@ -10,6 +10,13 @@ class ApiEndpoints {
   static const String popularProducts = '/api/products/popular';
   static const String newProducts = '/api/products/new';
   static const String productDetail = '/api/products/detail';
+  static String productListByCategory(String categoryId, {String? productKind}) {
+    String endpoint = '/api/products/list?ca_id=$categoryId';
+    if (productKind != null && productKind.isNotEmpty) {
+      endpoint += '&it_kind=$productKind';
+    }
+    return endpoint;
+  }
   
   // 장바구니 관련 (기존 Cafe24 서버)
   static const String addToCart = '/api/cart/add';
@@ -21,6 +28,13 @@ class ApiEndpoints {
   static const String mainReviews = '/api/reviews/main';
   static const String productReviews = '/api/reviews/product';
   static const String addReview = '/api/reviews/add';
+  static String productReviewsByKind(String productId, {String? reviewKind}) {
+    String endpoint = '/api/reviews/product?it_id=$productId';
+    if (reviewKind != null && reviewKind.isNotEmpty) {
+      endpoint += '&is_rvkind=$reviewKind';
+    }
+    return endpoint;
+  }
   
   // 체험단 관련 (기존 Cafe24 서버)
   static const String testerItems = '/api/tester/items';
@@ -37,4 +51,11 @@ class ApiEndpoints {
   static const String menstrualCycleRecords = '/api/health/menstrual-cycle';
   static const String stepsRecords = '/api/health/steps';
   static const String healthStats = '/api/health/stats';
+  
+  // 포인트 관련
+  static String userPoint(String userId) => '/api/user/point?mb_id=$userId';
+  static const String config = '/api/config';
+  
+  // 상품 옵션 관련
+  static String productOptions(String productId) => '/api/products/$productId/options';
 }
