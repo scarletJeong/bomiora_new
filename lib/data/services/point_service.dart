@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../models/point/point_history_model.dart';
 
 /// 포인트 관련 공통 서비스
 class PointService {
@@ -34,6 +35,38 @@ class PointService {
     } catch (e) {
       print('❌ 포인트 조회 오류: $e');
       return null;
+    }
+  }
+
+  /// 포인트 내역 조회
+  static Future<List<PointHistory>> getPointHistory(String userId) async {
+    try {
+      print('📋 포인트 내역 조회 시작 - userId: $userId');
+      
+      final response = await ApiClient.get(ApiEndpoints.pointHistory(userId));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> historyJson = data['data'];
+          final history = historyJson
+              .map((json) => PointHistory.fromJson(json))
+              .toList();
+          
+          // 날짜 내림차순 정렬 (최신순)
+          history.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+          
+          print('✅ 포인트 내역 조회 완료: ${history.length}개');
+          return history;
+        }
+      }
+      
+      print('⚠️ 포인트 내역 조회 실패: ${response.statusCode}');
+      return [];
+    } catch (e) {
+      print('❌ 포인트 내역 조회 오류: $e');
+      return [];
     }
   }
   

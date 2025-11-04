@@ -54,7 +54,15 @@ class ApiEndpoints {
   
   // 포인트 관련
   static String userPoint(String userId) => '/api/user/point?mb_id=$userId';
+  static String pointHistory(String userId) => '/api/user/point/history?mb_id=$userId';
   static const String config = '/api/config';
+  
+  // 쿠폰 관련
+  static String userCoupons(String userId) => '/api/user/coupons?mb_id=$userId';
+  static String availableCoupons(String userId) => '/api/user/coupons/available?mb_id=$userId';
+  static String usedCoupons(String userId) => '/api/user/coupons/used?mb_id=$userId';
+  static String expiredCoupons(String userId) => '/api/user/coupons/expired?mb_id=$userId';
+  static const String registerCoupon = '/api/user/coupons/register';
   
   // 상품 옵션 관련
   static String productOptions(String productId) => '/api/products/$productId/options';
