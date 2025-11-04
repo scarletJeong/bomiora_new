@@ -149,7 +149,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           '건강 대시보드',
@@ -160,6 +160,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: true,
         actions: [
           // 새로고침 버튼
@@ -255,7 +257,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       width: 20,
                       height: 20,
                       decoration: const BoxDecoration(
-                        color: Colors.blue,
+                        color: Color(0xFFFF3787),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(

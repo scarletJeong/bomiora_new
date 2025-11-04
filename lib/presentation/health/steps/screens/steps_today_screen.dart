@@ -78,7 +78,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -93,6 +93,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black),

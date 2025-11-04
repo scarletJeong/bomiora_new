@@ -29,7 +29,7 @@ class BtnRecord extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? const Color(0xFF2196F3),
+          backgroundColor: backgroundColor ?? const Color(0xFFFF3787),
           foregroundColor: textColor ?? Colors.white,
           padding: padding ?? const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(

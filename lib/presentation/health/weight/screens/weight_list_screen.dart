@@ -430,6 +430,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
       ),
       child: isLoading
         ? const Center(child: CircularProgressIndicator())
@@ -496,7 +498,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                     _loadData();
                   }
                 },
-                backgroundColor: const Color(0xFF2196F3),
+                backgroundColor: const Color(0xFFFF3787),
               ),
             ],
           ),
@@ -830,7 +832,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.grey[300],
+            color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300],
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
@@ -1920,7 +1922,7 @@ class WeightChartPainter extends CustomPainter {
     // 선 그리기 (2개 이상의 포인트가 있을 때만)
     if (points.length > 1) {
       final linePaint = Paint()
-        ..color = const Color(0xFF2196F3)
+        ..color = const Color(0xFFFF3787)
         ..strokeWidth = 2.5
         ..style = PaintingStyle.stroke;
       

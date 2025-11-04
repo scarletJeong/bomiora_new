@@ -54,7 +54,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
@@ -65,6 +65,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),

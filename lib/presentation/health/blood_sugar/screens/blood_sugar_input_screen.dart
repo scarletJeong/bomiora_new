@@ -226,6 +226,11 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
         title: Text(widget.record == null ? '혈당 기록하기' : '혈당 수정하기'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: widget.record != null
             ? [
                 // 수정 모드일 때만 삭제 버튼 표시

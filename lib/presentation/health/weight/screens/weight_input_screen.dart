@@ -271,6 +271,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
         title: Text(widget.record == null ? '체중 기록하기' : '체중 수정하기'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: widget.record != null
             ? [
                 // 수정 모드일 때만 삭제 버튼 표시

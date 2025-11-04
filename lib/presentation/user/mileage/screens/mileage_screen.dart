@@ -86,26 +86,26 @@ class _MileageScreenState extends State<MileageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('포인트'),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: Colors.black,
-          actions: [
+    return MobileAppLayoutWrapper(
+      appBar: AppBar(
+        title: const Text('포인트'),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: _loadData,
             ),
           ],
         ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _currentUser == null
-                ? _buildLoginRequired()
-                : _buildContent(),
-      ),
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _currentUser == null
+              ? _buildLoginRequired()
+              : _buildContent(),
     );
   }
 

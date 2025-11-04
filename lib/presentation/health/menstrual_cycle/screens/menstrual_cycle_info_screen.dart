@@ -59,7 +59,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           '생리주기',
@@ -70,6 +70,8 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),

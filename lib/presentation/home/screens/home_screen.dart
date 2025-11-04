@@ -9,9 +9,12 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../shopping/screens/hybrid_shopping_screen.dart';
 import '../../shopping/screens/product_list_screen.dart';
+import '../../shopping/screens/category_screen.dart';
 import '../../health/dashboard/screens/health_dashboard_screen.dart';
 import '../../health/telemedicine/screens/telemedicine_webview_screen.dart';
-import '../../user/questionnaire/screens/questionnaire_list_screen.dart';
+import '../../user/healthprofile/screens/health_profile_list_screen.dart';
+import '../../user/coupon/screens/coupon_screen.dart';
+import '../../user/mileage/screens/mileage_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_currentUser != null) ...[
               CircleAvatar(
                 radius: 30,
-                backgroundColor: Colors.blue,
+                backgroundColor: const Color(0xFFFF3787),
                 child: Text(
                   _currentUser!.name.isNotEmpty 
                       ? _currentUser!.name[0].toUpperCase()
@@ -206,12 +209,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       drawer: Drawer(
+        backgroundColor: Colors.white,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(
-                color: Colors.blue,
+                color: Color(0xFFFFDBEA),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const QuestionnaireListScreen(),
+                          builder: (context) => const HealthProfileListScreen(),
                         ),
                       );
                     },
@@ -290,7 +294,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '쿠폰',
                     onTap: () {
                       Navigator.pop(context);
-                      // 쿠폰 페이지로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CouponScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -298,7 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '마일리지',
                     onTap: () {
                       Navigator.pop(context);
-                      // 마일리지 페이지로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MileageScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -446,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: const Color(0xFFFF3787),
         unselectedItemColor: Colors.grey,
         onTap: (index) {
           setState(() {
@@ -460,11 +474,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag),
-            label: '상품',
+            label: '카테고리',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: '장바구니',
+            icon: Icon(Icons.favorite),
+            label: '찜',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
@@ -480,9 +494,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _buildHomePage();
       case 1:
-        return _buildProductPage();
+        return _buildCategoryPage();
       case 2:
-        return _buildCartPage();
+        return _buildWishlistPage();
       case 3:
         return _buildMyPage();
       default:
@@ -519,41 +533,24 @@ class _HomeScreenState extends State<HomeScreen> {
           );
   }
 
-  Widget _buildProductPage() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.shopping_bag, size: 64, color: Colors.blue),
-          SizedBox(height: 16),
-          Text(
-            '상품 페이지',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '상품 목록이 여기에 표시됩니다',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
+  Widget _buildCategoryPage() {
+    return const CategoryScreen();
   }
 
-  Widget _buildCartPage() {
+  Widget _buildWishlistPage() {
     return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shopping_cart, size: 64, color: Colors.blue),
+          Icon(Icons.favorite, size: 64, color: Color(0xFFFF3787)),
           SizedBox(height: 16),
           Text(
-            '장바구니',
+            '찜',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
           Text(
-            '장바구니 내용이 여기에 표시됩니다',
+            '찜한 상품이 여기에 표시됩니다',
             style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ],
@@ -566,7 +563,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.person, size: 64, color: Colors.blue),
+          Icon(Icons.person, size: 64, color: Color(0xFFFF3787)),
           SizedBox(height: 16),
           Text(
             '마이페이지',

@@ -448,6 +448,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
       ),
       child: isLoading
         ? const Center(child: CircularProgressIndicator())
@@ -509,7 +511,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                         _loadData();
                       }
                     },
-                    backgroundColor: const Color(0xFF2196F3),
+                    backgroundColor: const Color(0xFFFF3787),
                   ),
                 ],
               ),
@@ -635,7 +637,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                           style: const TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: const Color(0xFFFF3787),
                           ),
                         ),
                         if (diastolic > 0)
@@ -653,14 +655,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: const Color(0xFFFF3787).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
                         '이완기',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.blue,
+                          color: const Color(0xFFFF3787),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -745,7 +747,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.grey[300],
+            color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300],
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
@@ -1234,7 +1236,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue,
+                                color: const Color(0xFFFF3787),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1511,7 +1513,7 @@ class BloodPressureChartPainter extends CustomPainter {
     }
     
     // 이완기 부드러운 곡선 그리기 (Catmull-Rom 스플라인)
-    linePaint.color = Colors.blue;
+    linePaint.color = const Color(0xFFFF3787);
     for (var segment in diastolicSegments) {
       if (segment.length == 1) continue;
       
@@ -1572,7 +1574,7 @@ class BloodPressureChartPainter extends CustomPainter {
         
         // 이완기 점 (파란색)
         final diastolicPaint = Paint()
-          ..color = Colors.blue
+          ..color = const Color(0xFFFF3787)
           ..style = PaintingStyle.fill;
         
         if (isHighlighted) {

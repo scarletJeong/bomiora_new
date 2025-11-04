@@ -473,6 +473,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
       ),
       child: isLoading
         ? const Center(child: CircularProgressIndicator())
@@ -535,7 +537,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         await _loadData();
                       }
                     },
-                    backgroundColor: const Color(0xFF2196F3),
+                    backgroundColor: const Color(0xFFFF3787),
                   ),
                 ],
               ),
@@ -677,7 +679,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
                             color: postMealRecord != null 
-                                ? const Color(0xFF2196F3) // 파란색
+                                ? const Color(0xFFFF3787)
                                 : Colors.grey,
                           ),
                         ),
@@ -697,7 +699,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: postMealRecord != null 
-                            ? const Color(0xFF2196F3).withOpacity(0.1)
+                            ? const Color(0xFFFF3787).withOpacity(0.1)
                             : Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -706,7 +708,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           color: postMealRecord != null 
-                              ? const Color(0xFF2196F3)
+                              ? const Color(0xFFFF3787)
                               : Colors.grey,
                           fontWeight: FontWeight.w600,
                         ),
@@ -790,7 +792,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.grey[300],
+            color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300],
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
