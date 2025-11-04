@@ -12,9 +12,9 @@ class ApiConstants {
   static const String userProfile = '/user/profile';
   static const String updateProfile = '/user/profile';
   
-  // 문진표 관련
-  static const String questionnaire = '/questionnaire';
-  static const String questionnaireByUser = '/questionnaire/user';
+  // 건강 프로필 관련
+  static const String healthProfile = '/healthprofile';
+  static const String healthProfileByUser = '/healthprofile/user';
   
   // 건강 데이터 관련
   static const String healthData = '/health';

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../../../data/services/auth_service.dart';
-import '../../../../data/services/questionnaire_service.dart';
+import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
-import 'questionnaire_form_screen.dart';
+import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 
-class QuestionnaireListScreen extends StatefulWidget {
-  const QuestionnaireListScreen({super.key});
+class HealthProfileListScreen extends StatefulWidget {
+  const HealthProfileListScreen({super.key});
 
   @override
-  State<QuestionnaireListScreen> createState() => _QuestionnaireListScreenState();
+  State<HealthProfileListScreen> createState() => _HealthProfileListScreenState();
 }
 
-class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
+class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   UserModel? _currentUser;
   HealthProfileModel? _healthProfile;
   bool _isLoading = true;
@@ -57,7 +57,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
 
   Future<void> _loadHealthProfile() async {
     try {
-      _healthProfile = await QuestionnaireService.getHealthProfile(_currentUser!.id);
+      _healthProfile = await HealthProfileService.getHealthProfile(_currentUser!.id);
     } catch (e) {
       // 문진표가 없거나 오류가 발생한 경우
       _healthProfile = null;
@@ -66,33 +66,25 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('문진표'),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: Colors.black,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadData,
-            ),
-          ],
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _currentUser == null
-                ? _buildLoginRequired()
-                : _buildContent(),
-        floatingActionButton: _currentUser != null
-            ? FloatingActionButton(
-                onPressed: _navigateToForm,
-                backgroundColor: Colors.blue,
-                child: const Icon(Icons.add, color: Colors.white),
-              )
-            : null,
+    return MobileAppLayoutWrapper(
+      appBar: AppBar(
+        title: const Text('문진표'),
+        elevation: 0,
+        scrolledUnderElevation: 0, // 스크롤 시 AppBar 색상 변경 방지
+        surfaceTintColor: Colors.transparent, // Material 3의 tint 효과 제거
+        foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+          ),
+        ],
       ),
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _currentUser == null
+              ? _buildLoginRequired()
+              : _buildContent(),
     );
   }
 
@@ -210,8 +202,8 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
             title: '기본 정보',
             icon: Icons.person,
             children: [
-              _buildInfoRow('생년월일', profile.answer1),
-              _buildInfoRow('성별', profile.answer2),
+              _buildInfoRow('생년월일', _formatBirthDate(profile.answer1)),
+              _buildInfoRow('성별', _formatGender(profile.answer2)),
               _buildInfoRow('키', '${profile.answer4}cm'),
               _buildInfoRow('현재 몸무게', '${profile.answer5}kg'),
             ],
@@ -237,7 +229,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
             icon: Icons.restaurant,
             children: [
               _buildInfoRow('하루 끼니', profile.answer7),
-              _buildInfoRow('식사 시간', profile.answer71),
+              _buildInfoRow('식사 시간', _formatMealTime(profile.answer71)),
               _buildInfoRow('식습관', profile.answer8),
               _buildInfoRow('자주 먹는 음식', profile.answer9),
             ],
@@ -264,7 +256,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
               title: '다이어트 경험',
               icon: Icons.history,
               children: [
-                _buildInfoRow('기존 다이어트약 복용', profile.answer13),
+                _buildInfoRow('기존 다이어트약 복용', _formatDietExperience(profile.answer13)),
                 if (profile.answer13Medicine.isNotEmpty)
                   _buildInfoRow('복용한 다이어트약명', profile.answer13Medicine),
                 if (profile.answer13Period.isNotEmpty)
@@ -298,7 +290,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
               icon: const Icon(Icons.edit),
               label: const Text('문진표 수정하기'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: const Color(0xFFFF3787),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
@@ -315,7 +307,9 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
     required List<Widget> children,
   }) {
     return Card(
+      color: const Color(0xFFFFF5F5), // 연한 핑크색 배경 문진표 카드 색상
       elevation: 2,
+      surfaceTintColor: Colors.transparent, // Material 3의 tint 효과 제거
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -385,11 +379,57 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  /// 생년월일 포맷팅 (YYYYMMDD -> YYYY-MM-DD)
+  String _formatBirthDate(String birthDate) {
+    if (birthDate.isEmpty) return '-';
+    if (birthDate.length == 8) {
+      // YYYYMMDD 형식
+      return '${birthDate.substring(0, 4)}-${birthDate.substring(4, 6)}-${birthDate.substring(6, 8)}';
+    }
+    return birthDate;
+  }
+
+  /// 성별 포맷팅 (M -> 남성, F -> 여성)
+  String _formatGender(String gender) {
+    if (gender.isEmpty) return '-';
+    if (gender == 'M') return '남성';
+    if (gender == 'F') return '여성';
+    return gender;
+  }
+
+  /// 식사시간 포맷팅 (| 기준으로 파싱하여 표시)
+  String _formatMealTime(String mealTime) {
+    if (mealTime.isEmpty) return '-';
+    
+    final parts = mealTime.split('|');
+    final meal1 = parts.length > 0 && parts[0].isNotEmpty ? parts[0] : null;
+    final meal2 = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
+    final meal3 = parts.length > 2 && parts[2].isNotEmpty ? parts[2] : null;
+    final mealOther = parts.length > 3 && parts[3].isNotEmpty ? parts[3] : null;
+    
+    final List<String> displayParts = [];
+    if (meal1 != null) displayParts.add('1식: $meal1');
+    if (meal2 != null) displayParts.add('2식: $meal2');
+    if (meal3 != null) displayParts.add('3식: $meal3');
+    if (mealOther != null) displayParts.add('기타: $mealOther');
+    
+    if (displayParts.isEmpty) return '-';
+    return displayParts.join(', ');
+  }
+
+  /// 다이어트 경험 포맷팅 (1 -> 없음, 2 -> 있음)
+  String _formatDietExperience(String experience) {
+    if (experience.isEmpty) return '-';
+    if (experience == '1') return '없음';
+    if (experience == '2') return '있음';
+    return experience;
+  }
+
   void _navigateToForm() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const QuestionnaireFormScreen(),
+        builder: (context) => const HealthProfileFormScreen(),
       ),
     );
     
@@ -402,7 +442,7 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => QuestionnaireFormScreen(
+        builder: (context) => HealthProfileFormScreen(
           existingProfile: _healthProfile,
         ),
       ),
@@ -413,3 +453,4 @@ class _QuestionnaireListScreenState extends State<QuestionnaireListScreen> {
     }
   }
 }
+

@@ -52,60 +52,93 @@ class HealthProfileModel {
   });
 
   factory HealthProfileModel.fromJson(Map<String, dynamic> json) {
-    return HealthProfileModel(
-      pfNo: json['pf_no'],
-      mbId: json['mb_id'] ?? '',
-      answer1: json['answer_1'] ?? '',
-      answer2: json['answer_2'] ?? '',
-      answer3: json['answer_3'] ?? '',
-      answer4: json['answer_4'] ?? '',
-      answer5: json['answer_5'] ?? '',
-      answer6: json['answer_6'] ?? '',
-      answer7: json['answer_7'] ?? '',
-      answer8: json['answer_8'] ?? '',
-      answer9: json['answer_9'] ?? '',
-      answer10: json['answer_10'] ?? '',
-      answer11: json['answer_11'] ?? '',
-      answer12: json['answer_12'] ?? '',
-      answer13: json['answer_13'] ?? '',
-      answer13Period: json['answer_13_period'] ?? '',
-      answer13Dosage: json['answer_13_dosage'] ?? '',
-      answer13Medicine: json['answer_13_medicine'] ?? '',
-      answer71: json['answer_7_1'] ?? '',
-      answer13Sideeffect: json['answer_13_sideeffect'] ?? '',
-      pfWdatetime: DateTime.parse(json['pf_wdatetime'] ?? '2024-01-01 00:00:00'),
-      pfMdatetime: DateTime.parse(json['pf_mdatetime'] ?? '2024-01-01 00:00:00'),
-      pfIp: json['pf_ip'] ?? '',
-      pfMemo: json['pf_memo'] ?? '',
+    // camelCase와 snake_case 모두 지원
+    print('=== HealthProfileModel.fromJson 파싱 시작 ===');
+    print('입력 JSON: $json');
+    
+    // pfNo 파싱 (camelCase 또는 snake_case)
+    final pfNo = json['pfNo'] ?? json['pf_no'];
+    print('pfNo: $pfNo');
+    
+    // DateTime 파싱 헬퍼 함수
+    DateTime? parseDateTime(dynamic value) {
+      if (value == null) return null;
+      try {
+        if (value is String) {
+          // ISO 8601 형식 또는 일반 날짜 형식 처리
+          if (value.contains('T')) {
+            return DateTime.parse(value);
+          } else {
+            return DateTime.parse(value.replaceAll(' ', 'T'));
+          }
+        }
+        return null;
+      } catch (e) {
+        print('날짜 파싱 오류: $value, 오류: $e');
+        return null;
+      }
+    }
+    
+    final result = HealthProfileModel(
+      pfNo: pfNo is int ? pfNo : (pfNo != null ? int.tryParse(pfNo.toString()) : null),
+      mbId: json['mbId'] ?? json['mb_id'] ?? '',
+      answer1: json['answer1'] ?? json['answer_1'] ?? '',
+      answer2: json['answer2'] ?? json['answer_2'] ?? '',
+      answer3: json['answer3'] ?? json['answer_3'] ?? '',
+      answer4: json['answer4'] ?? json['answer_4'] ?? '',
+      answer5: json['answer5'] ?? json['answer_5'] ?? '',
+      answer6: json['answer6'] ?? json['answer_6'] ?? '',
+      answer7: json['answer7'] ?? json['answer_7'] ?? '',
+      answer8: json['answer8'] ?? json['answer_8'] ?? '',
+      answer9: json['answer9'] ?? json['answer_9'] ?? '',
+      answer10: json['answer10'] ?? json['answer_10'] ?? '',
+      answer11: json['answer11'] ?? json['answer_11'] ?? '',
+      answer12: json['answer12'] ?? json['answer_12'] ?? '',
+      answer13: json['answer13'] ?? json['answer_13'] ?? '',
+      answer13Period: json['answer13Period'] ?? json['answer_13_period'] ?? '',
+      answer13Dosage: json['answer13Dosage'] ?? json['answer_13_dosage'] ?? '',
+      answer13Medicine: json['answer13Medicine'] ?? json['answer_13_medicine'] ?? '',
+      answer71: json['answer71'] ?? json['answer_7_1'] ?? '',
+      answer13Sideeffect: json['answer13Sideeffect'] ?? json['answer_13_sideeffect'] ?? '',
+      pfWdatetime: parseDateTime(json['pfWdatetime'] ?? json['pf_wdatetime']) ?? DateTime.now(),
+      pfMdatetime: parseDateTime(json['pfMdatetime'] ?? json['pf_mdatetime']) ?? DateTime.now(),
+      pfIp: json['pfIp'] ?? json['pf_ip'] ?? '',
+      pfMemo: json['pfMemo'] ?? json['pf_memo'] ?? '',
     );
+    
+    print('=== 파싱 완료 ===');
+    print('pfNo: ${result.pfNo}, mbId: ${result.mbId}');
+    print('answer1: ${result.answer1}, answer2: ${result.answer2}');
+    
+    return result;
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'pf_no': pfNo,
-      'mb_id': mbId,
-      'answer_1': answer1,
-      'answer_2': answer2,
-      'answer_3': answer3,
-      'answer_4': answer4,
-      'answer_5': answer5,
-      'answer_6': answer6,
-      'answer_7': answer7,
-      'answer_8': answer8,
-      'answer_9': answer9,
-      'answer_10': answer10,
-      'answer_11': answer11,
-      'answer_12': answer12,
-      'answer_13': answer13,
-      'answer_13_period': answer13Period,
-      'answer_13_dosage': answer13Dosage,
-      'answer_13_medicine': answer13Medicine,
-      'answer_7_1': answer71,
-      'answer_13_sideeffect': answer13Sideeffect,
-      'pf_wdatetime': pfWdatetime.toIso8601String(),
-      'pf_mdatetime': pfMdatetime.toIso8601String(),
-      'pf_ip': pfIp,
-      'pf_memo': pfMemo,
+      'pfNo': pfNo,
+      'mbId': mbId,
+      'answer1': answer1,
+      'answer2': answer2,
+      'answer3': answer3,
+      'answer4': answer4,
+      'answer5': answer5,
+      'answer6': answer6,
+      'answer7': answer7,
+      'answer8': answer8,
+      'answer9': answer9,
+      'answer10': answer10,
+      'answer11': answer11,
+      'answer12': answer12,
+      'answer13': answer13,
+      'answer13Period': answer13Period,
+      'answer13Dosage': answer13Dosage,
+      'answer13Medicine': answer13Medicine,
+      'answer71': answer71,
+      'answer13Sideeffect': answer13Sideeffect,
+      'pfWdatetime': pfWdatetime.toIso8601String(),
+      'pfMdatetime': pfMdatetime.toIso8601String(),
+      'pfIp': pfIp,
+      'pfMemo': pfMemo,
     };
   }
 
@@ -164,11 +197,11 @@ class HealthProfileModel {
   }
 }
 
-// 문진표 질문 모델
-class QuestionnaireQuestion {
+// 건강 프로필 질문 모델
+class HealthProfileQuestion {
   final String id;
   final String question;
-  final String type; // 'text', 'radio', 'checkbox', 'number', 'date', 'grid'
+  final String type; // 'text', 'radio', 'checkbox', 'number', 'date', 'grid', 'birthdate', 'mealtime'
   final List<String>? options;
   final bool isRequired;
   final String? placeholder;
@@ -176,7 +209,7 @@ class QuestionnaireQuestion {
   final int? columns; // 그리드 레이아웃용 컬럼 수
   final bool allowMultiple; // 중복 선택 가능 여부
 
-  QuestionnaireQuestion({
+  HealthProfileQuestion({
     required this.id,
     required this.question,
     required this.type,
@@ -189,15 +222,16 @@ class QuestionnaireQuestion {
   });
 }
 
-// 문진표 섹션 모델
-class QuestionnaireSection {
+// 건강 프로필 섹션 모델
+class HealthProfileSection {
   final String title;
   final String description;
-  final List<QuestionnaireQuestion> questions;
+  final List<HealthProfileQuestion> questions;
 
-  QuestionnaireSection({
+  HealthProfileSection({
     required this.title,
     required this.description,
     required this.questions,
   });
 }
+

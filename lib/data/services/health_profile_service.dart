@@ -1,35 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../../../core/network/api_client.dart';
-import '../../presentation/user/questionnaire/models/health_profile_model.dart';
+import '../../core/network/api_client.dart';
+import '../../presentation/user/healthprofile/models/health_profile_model.dart';
 
-class QuestionnaireService {
+class HealthProfileService {
   // ApiClient의 동적 baseUrl 사용 (로컬: localhost:9000, 서버: bomiora.net:9000)
   
   // 문진표 조회
   static Future<HealthProfileModel?> getHealthProfile(String userId) async {
     try {
-      print('=== QuestionnaireService.getHealthProfile 호출 ===');
-      print('요청 URL: ${ApiClient.baseUrl}/api/questionnaire/$userId');
-      print('사용자 ID: $userId');
+      final response = await ApiClient.get('/api/healthprofile/$userId');
       
-      final response = await ApiClient.get('/api/questionnaire/$userId');
-      
-      print('HTTP 응답 상태 코드: ${response.statusCode}');
-      print('HTTP 응답 본문: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('JSON 파싱 결과: $data');
         
         if (data['success'] == true && data['data'] != null) {
-          print('문진표 데이터 발견!');
           return HealthProfileModel.fromJson(data['data']);
         }
-        print('문진표 데이터 없음');
         return null;
       } else {
-        print('HTTP 오류: ${response.statusCode}');
         throw Exception('문진표 조회 실패: ${response.statusCode}');
       }
     } catch (e) {
@@ -41,7 +31,7 @@ class QuestionnaireService {
   // 문진표 저장
   static Future<bool> saveHealthProfile(HealthProfileModel profile) async {
     try {
-      final response = await ApiClient.post('/api/questionnaire', profile.toJson());
+      final response = await ApiClient.post('/api/healthprofile', profile.toJson());
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -57,15 +47,25 @@ class QuestionnaireService {
   // 문진표 수정
   static Future<bool> updateHealthProfile(HealthProfileModel profile) async {
     try {
-      final response = await ApiClient.put('/api/questionnaire/${profile.pfNo}', profile.toJson());
+      print('=== HealthProfileService.updateHealthProfile 호출 ===');
+      print('pfNo: ${profile.pfNo}');
+      print('요청 URL: ${ApiClient.baseUrl}/api/healthprofile/${profile.pfNo}');
       
-      if (response.statusCode == 200) {
+      // PUT 대신 POST로 변경 (pfNo를 포함하여 전송)
+      // 백엔드에서 pfNo가 있으면 업데이트, 없으면 생성하도록 처리
+      final response = await ApiClient.post('/api/healthprofile', profile.toJson());
+      
+      print('HTTP 응답 상태 코드: ${response.statusCode}');
+      print('HTTP 응답 본문: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data['success'] == true;
       } else {
         throw Exception('문진표 수정 실패: ${response.statusCode}');
       }
     } catch (e) {
+      print('문진표 수정 중 오류 발생: $e');
       throw Exception('문진표 수정 중 오류 발생: $e');
     }
   }
@@ -73,7 +73,7 @@ class QuestionnaireService {
   // 문진표 삭제
   static Future<bool> deleteHealthProfile(int profileId) async {
     try {
-      final response = await ApiClient.delete('/api/questionnaire/$profileId');
+      final response = await ApiClient.delete('/api/healthprofile/$profileId');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -178,3 +178,4 @@ class QuestionnaireService {
     }
   }
 }
+
