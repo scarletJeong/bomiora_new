@@ -7,7 +7,7 @@ import '../widgets/tester_section.dart';
 import '../widgets/bottom_banner.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
-import '../../shopping/screens/hybrid_shopping_screen.dart';
+import '../../shopping/screens/cart_screen.dart';
 import '../../shopping/screens/product_list_screen.dart';
 import '../../shopping/screens/category_screen.dart';
 import '../../health/dashboard/screens/health_dashboard_screen.dart';
@@ -15,6 +15,9 @@ import '../../health/telemedicine/screens/telemedicine_webview_screen.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 import '../../user/coupon/screens/coupon_screen.dart';
 import '../../user/mileage/screens/mileage_screen.dart';
+import '../../customer_service/screens/customer_service_screen.dart';
+import '../../shopping/wish/screens/wish_list_screen.dart';
+import '../../user/myPage/screens/my_page_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,89 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _showUserMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_currentUser != null) ...[
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: const Color(0xFFFF3787),
-                child: Text(
-                  _currentUser!.name.isNotEmpty 
-                      ? _currentUser!.name[0].toUpperCase()
-                      : 'U',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _currentUser!.name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                _currentUser!.email,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('마이페이지'),
-              onTap: () {
-                Navigator.pop(context);
-                // 마이페이지로 이동
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.dashboard),
-              title: const Text('건강대시보드1'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HealthDashboardScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('설정'),
-              onTap: () {
-                Navigator.pop(context);
-                // 설정 페이지로 이동
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('로그아웃', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _handleLogout();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<void> _handleLogout() async {
     final confirmed = await showDialog<bool>(
@@ -195,17 +115,11 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const HybridShoppingScreen(),
+                  builder: (context) => const CartScreen(),
                 ),
               );
             },
           ),
-              IconButton(
-                icon: const Icon(Icons.person, color: Colors.black),
-                onPressed: () {
-                  _showUserMenu(context);
-                },
-              ),
         ],
       ),
       drawer: Drawer(
@@ -284,9 +198,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '장바구니',
                     onTap: () {
                       Navigator.pop(context);
-                      setState(() {
-                        _currentIndex = 2;
-                      });
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -330,7 +247,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '고객센터',
                     onTap: () {
                       Navigator.pop(context);
-                      // 고객센터 페이지로 이동
+                      // 고객센터 페이지로 이동 - FAQ 탭 먼저 표시
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CustomerServiceScreen(initialTabIndex: 0),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -441,7 +364,13 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('온라인 문의'),
               onTap: () {
                 Navigator.pop(context);
-                // 온라인 문의 페이지로 이동
+                // 온라인 문의 페이지로 이동 - 내 문의내역 탭 먼저 표시
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CustomerServiceScreen(initialTabIndex: 1),
+                  ),
+                );
               },
             ),
             const Divider(),
@@ -538,45 +467,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildWishlistPage() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.favorite, size: 64, color: Color(0xFFFF3787)),
-          SizedBox(height: 16),
-          Text(
-            '찜',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '찜한 상품이 여기에 표시됩니다',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
+    return const WishListScreen();
   }
 
   Widget _buildMyPage() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.person, size: 64, color: Color(0xFFFF3787)),
-          SizedBox(height: 16),
-          Text(
-            '마이페이지',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '회원 정보가 여기에 표시됩니다',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
+    return const MyPageScreen();
   }
 
   Widget _buildMenuGridItem({

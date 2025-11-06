@@ -23,6 +23,7 @@ class ApiEndpoints {
   static const String getCart = '/api/cart';
   static const String updateCartItem = '/api/cart/update';
   static const String removeCartItem = '/api/cart/remove';
+  static const String generateOrderId = '/api/cart/generate-order-id';
   
   // 찜 관련 (기존 Cafe24 서버)
   static const String getWishList = '/api/wish/list';

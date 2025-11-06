@@ -17,6 +17,7 @@ class _PopularProductsState extends State<PopularProducts> {
     super.initState();
     // 임시로 로딩 완료 처리
     Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return; // 위젯이 dispose된 경우 setState 호출 방지
       setState(() {
         isLoading = false;
       });
@@ -95,7 +96,6 @@ class _PopularProductsState extends State<PopularProducts> {
     return GestureDetector(
       onTap: () {
         // 상품 상세 페이지로 이동
-        print('Navigate to product: $rank');
       },
       child: Container(
         decoration: BoxDecoration(

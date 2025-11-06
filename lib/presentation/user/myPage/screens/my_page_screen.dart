@@ -34,6 +34,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _loadCurrentUser() async {
     final user = await AuthService.getUser();
+    if (!mounted) return;
+    
     setState(() {
       _currentUser = user;
     });
@@ -48,6 +50,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     // 쿠폰 개수
     try {
       final coupons = await CouponService.getUserCoupons(userId);
+      if (!mounted) return;
+      
       setState(() {
         _couponCount = coupons.length;
       });
@@ -58,6 +62,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     // 포인트
     try {
       final point = await PointService.getUserPoint(userId);
+      if (!mounted) return;
+      
       setState(() {
         _userPoint = point;
       });

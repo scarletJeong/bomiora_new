@@ -126,7 +126,7 @@ class _WishListScreenState extends State<WishListScreen> {
 
   Widget _buildCategoryFilter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -134,12 +134,19 @@ class _WishListScreenState extends State<WishListScreen> {
         ),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          _buildRadioButton('전체', 'all'),
-          const SizedBox(width: 24),
-          _buildRadioButton('비대면 진료', 'prescription'),
-          const SizedBox(width: 24),
-          _buildRadioButton('제품', 'product'),
+          Flexible(
+            child: _buildRadioButton('전체', 'all'),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: _buildRadioButton('비대면 진료', 'prescription'),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: _buildRadioButton('제품', 'product'),
+          ),
         ],
       ),
     );
@@ -150,25 +157,29 @@ class _WishListScreenState extends State<WishListScreen> {
     return GestureDetector(
       onTap: () => _handleCategoryChange(value),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 20,
-            height: 20,
+            width: 18,
+            height: 18,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
                 color: isSelected ? Colors.black : Colors.grey[400]!,
-                width: isSelected ? 6 : 2,
+                width: isSelected ? 5 : 2,
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              color: isSelected ? Colors.black : Colors.grey[700],
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? Colors.black : Colors.grey[700],
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
