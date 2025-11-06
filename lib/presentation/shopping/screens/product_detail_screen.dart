@@ -14,6 +14,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../../user/questionnaire/screens/questionnaire_form_screen.dart';
 
@@ -250,30 +251,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(40), // AppBar 높이 축소
-        child: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, size: 20),
-            onPressed: () => Navigator.pop(context),
+    return MobileLayoutWrapper(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(40), // AppBar 높이 축소
+          child: AppBar(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
           ),
         ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _hasError
+                ? _buildErrorState()
+                : _product == null
+                    ? _buildErrorState()
+                    : _buildProductDetail(),
+        bottomNavigationBar: _product == null
+            ? null
+            : _buildBottomActionBar(),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _hasError
-              ? _buildErrorState()
-              : _product == null
-                  ? _buildErrorState()
-                  : _buildProductDetail(),
-      bottomNavigationBar: _product == null
-          ? null
-          : _buildBottomActionBar(),
     );
   }
 
@@ -1510,7 +1513,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const QuestionnaireFormScreen(),
+        builder: (context) => QuestionnaireFormScreen(),
       ),
     );
     

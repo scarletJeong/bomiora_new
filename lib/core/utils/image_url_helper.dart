@@ -22,10 +22,10 @@ class ImageUrlHelper {
         
         // localhost인 경우 로컬 웹 서버 사용 (XAMPP)
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-          // 이미지는 XAMPP 웹 서버(포트 80)를 통해 제공
-          // Flutter 앱이 localhost:5000에서 실행되더라도 이미지는 localhost(포트 80)에서 가져옴
+          // 이미지는 XAMPP 웹 서버를 통해 제공 (https 사용)
+          // Flutter 앱이 localhost:5000에서 실행되더라도 이미지는 localhost(https)에서 가져옴
           // CORS 헤더가 XAMPP Apache에 설정되어 있어야 함
-          return 'http://localhost/bomiora/www';
+          return 'https://localhost/bomiora/www';
         } else {
           // 프로덕션: 실제 도메인
           return 'https://bomiora.kr';
@@ -53,17 +53,19 @@ class ImageUrlHelper {
     
     // 상대 경로인 경우 base URL과 조합
     String normalizedPath = imageUrl;
-    if (!normalizedPath.startsWith('/')) {
+    
+    // data/item/이 없으면 추가
+    if (!normalizedPath.contains('/data/item/')) {
+      if (normalizedPath.startsWith('/')) {
+        normalizedPath = '/data/item$normalizedPath';
+      } else {
+        normalizedPath = '/data/item/$normalizedPath';
+      }
+    } else if (!normalizedPath.startsWith('/')) {
       normalizedPath = '/$normalizedPath';
     }
     
-    // imageBaseUrl의 프로토콜을 https로 변경 (로컬 환경에서)
-    String baseUrl = imageBaseUrl;
-    if (baseUrl.startsWith('http://localhost')) {
-      baseUrl = baseUrl.replaceFirst('http://', 'https://');
-    }
-    
-    return '$baseUrl$normalizedPath';
+    return '${imageBaseUrl}$normalizedPath';
   }
 
   /// 썸네일 이미지 경로 정규화 (data/item/ 경로 포함)
@@ -85,12 +87,7 @@ class ImageUrlHelper {
       if (!path.startsWith('/')) {
         path = '/$path';
       }
-      // imageBaseUrl의 프로토콜을 https로 변경 (로컬 환경에서)
-      String baseUrl = imageBaseUrl;
-      if (baseUrl.startsWith('http://localhost')) {
-        baseUrl = baseUrl.replaceFirst('http://', 'https://');
-      }
-      return '$baseUrl$path';
+      return '${imageBaseUrl}$path';
     }
     
     // 상대 경로 처리
@@ -141,51 +138,53 @@ class ImageUrlHelper {
       path = '/$path';
     }
     
-    // imageBaseUrl의 프로토콜을 https로 변경 (로컬 환경에서)
-    String baseUrl = imageBaseUrl;
-    if (baseUrl.startsWith('http://localhost')) {
-      baseUrl = baseUrl.replaceFirst('http://', 'https://');
-    }
-    
-    return '$baseUrl$path';
+    return '${imageBaseUrl}$path';
   }
 
   /// 프로덕션 URL을 현재 환경에 맞는 URL로 변환
-  /// 예: https://bomiora.kr/data/editor/... -> https://localhost/bomiora/www/data/editor/... (로컬 환경)
+  /// 예: https://bomiora.kr/data/editor/... -> http://localhost/bomiora/www/data/editor/... (로컬 환경)
   ///     https://bomiora.kr/data/editor/... -> https://bomiora.kr/data/editor/... (프로덕션)
   static String convertToLocalUrl(String url) {
     if (url.contains('bomiora.kr')) {
-      // 원본 URL의 프로토콜 추출 (https 또는 http)
       Uri uri = Uri.parse(url);
-      String protocol = uri.scheme; // 'https' 또는 'http'
       String path = uri.path;
       
-      // 현재 환경에 맞는 base URL 사용
+      // 현재 환경에 맞는 base URL 사용 (로컬은 http, 프로덕션은 https)
       String baseUrl = imageBaseUrl;
       
-      // baseUrl이 localhost로 시작하면 원본 프로토콜 유지하면서 localhost로 변경
-      if (baseUrl.startsWith('http://localhost')) {
-        // 원본 프로토콜(https) 유지하면서 localhost로 변환
-        // http://localhost/bomiora/www -> https://localhost/bomiora/www
-        String localBase = baseUrl.replaceFirst('http://', '$protocol://');
-        
-        // 경로 조합
-        if (path.startsWith('/')) {
-          return '$localBase$path';
-        } else {
-          return '$localBase/$path';
-        }
+      // 경로 조합
+      if (path.startsWith('/')) {
+        return '$baseUrl$path';
       } else {
-        // 프로덕션 환경: 원본 프로토콜 유지
-        if (path.startsWith('/')) {
-          return '$protocol://bomiora.kr$path';
-        } else {
-          return '$protocol://bomiora.kr/$path';
-        }
+        return '$baseUrl/$path';
       }
     }
     
-    // localhost URL은 그대로 유지 (프로토콜 변경하지 않음)
+    // localhost URL은 그대로 유지
     return url;
+  }
+
+  /// 간단한 이미지 URL 반환 (일반적인 용도)
+  /// 이미 전체 URL이면 그대로 반환, 아니면 normalizeImageUrl 사용
+  static String getImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return '${imageBaseUrl}/data/item/no_img.png';
+    }
+    
+    // localhost URL 수정 (잘못된 형태)
+    if (imageUrl.contains('localhost/bomiora/www/')) {
+      String fixedUrl = imageUrl
+          .replaceAll('https://localhost/bomiora/www/', '$imageBaseUrl/data/item/')
+          .replaceAll('http://localhost/bomiora/www/', '$imageBaseUrl/data/item/');
+      return normalizeImageUrl(fixedUrl);
+    }
+    
+    // 이미 전체 URL인 경우
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    
+    // 상대 경로인 경우 normalizeImageUrl 사용
+    return normalizeImageUrl(imageUrl);
   }
 }

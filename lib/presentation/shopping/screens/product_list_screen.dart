@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/product/product_model.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 import 'product_detail_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
@@ -128,7 +129,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return MobileAppLayoutWrapper(
       appBar: AppBar(
         title: Text(widget.categoryName),
         backgroundColor: Colors.white,
@@ -139,7 +140,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _buildBody(),
+      child: _buildBody(),
     );
   }
 

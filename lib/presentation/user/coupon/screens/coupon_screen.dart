@@ -135,26 +135,24 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('쿠폰'),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: Colors.black,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadData,
-            ),
-          ],
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _currentUser == null
-                ? _buildLoginRequired()
-                : _buildContent(),
+    return MobileAppLayoutWrapper(
+      appBar: AppBar(
+        title: const Text('쿠폰'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+          ),
+        ],
       ),
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _currentUser == null
+              ? _buildLoginRequired()
+              : _buildContent(),
     );
   }
 
