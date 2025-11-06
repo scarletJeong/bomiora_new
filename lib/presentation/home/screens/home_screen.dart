@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _buildMenuGridItem(
                     icon: Icons.stars,
-                    label: '마일리지',
+                    label: '포인트',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(

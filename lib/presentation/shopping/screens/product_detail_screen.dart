@@ -16,7 +16,7 @@ import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
-import '../../user/questionnaire/screens/questionnaire_form_screen.dart';
+import '../../user/healthprofile/screens/health_profile_form_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -1513,7 +1513,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => QuestionnaireFormScreen(),
+        builder: (context) => HealthProfileFormScreen(),
       ),
     );
     

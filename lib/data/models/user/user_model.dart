@@ -17,7 +17,10 @@ class UserModel {
     final id = json['id']?.toString() ?? '';
     final email = json['email'] ?? json['mb_email'] ?? '';
     final name = json['name'] ?? json['mb_name'] ?? '';
-    final phone = json['phone']?.toString() ?? json['mb_phone']?.toString();
+    //  mb_hp 필드 추가 (API에서 mb_hp로 응답함)
+    final phone = json['phone']?.toString() ?? 
+                  json['mb_phone']?.toString() ?? 
+                  json['mb_hp']?.toString();
     
     print('🏗️ [UserModel.fromJson] 파싱 결과:');
     print('   - id: $id');
