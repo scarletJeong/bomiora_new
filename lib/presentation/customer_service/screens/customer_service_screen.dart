@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'faq_screen.dart';
 import 'contact_list_screen.dart';
 import 'contact_form_screen.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class CustomerServiceScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -51,8 +52,7 @@ class _CustomerServiceScreenState extends State<CustomerServiceScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+    return MobileAppLayoutWrapper(
       appBar: AppBar(
         title: const Text(
           '고객센터',
@@ -86,7 +86,7 @@ class _CustomerServiceScreenState extends State<CustomerServiceScreen>
           ],
         ),
       ),
-      body: TabBarView(
+      child: TabBarView(
         controller: _tabController,
         children: [
           const FaqScreen(),

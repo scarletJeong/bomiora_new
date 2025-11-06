@@ -12,9 +12,14 @@ class Contact {
   final int wrParent;
   final String? caName;
   final int wrHit;
+  final String? wrOption; // html1, html2, secret 등의 옵션
+  final int? wrIsComment; // 답변 여부 (0=답변없음, 1=답변있음)
   
-  // 답변 여부 (댓글이 있으면 답변 완료)
-  bool get hasReply => wrComment > 0;
+  // 답변 여부 (wr_is_comment = 1 이면 답변 있음)
+  bool get hasReply => wrIsComment == 1;
+  
+  // HTML 포함 여부 (wr_option에 'html1' 또는 'html2' 포함)
+  bool get isHtml => wrOption?.contains('html') ?? false;
 
   Contact({
     required this.wrId,
@@ -30,6 +35,8 @@ class Contact {
     required this.wrParent,
     this.caName,
     required this.wrHit,
+    this.wrOption,
+    this.wrIsComment,
   });
 
   factory Contact.fromJson(Map<String, dynamic> json) {
@@ -47,6 +54,8 @@ class Contact {
       wrParent: json['wr_parent'] ?? 0,
       caName: json['ca_name'],
       wrHit: json['wr_hit'] ?? 0,
+      wrOption: json['wr_option'],
+      wrIsComment: json['wr_is_comment'],
     );
   }
 
@@ -65,7 +74,29 @@ class Contact {
       'wr_parent': wrParent,
       'ca_name': caName,
       'wr_hit': wrHit,
+      'wr_option': wrOption,
+      'wr_is_comment': wrIsComment,
     };
+  }
+  
+  /// HTML 태그 제거하여 순수 텍스트만 반환
+  String getPlainTextContent() {
+    if (!isHtml) {
+      return wrContent;
+    }
+    
+    // HTML 태그 제거
+    String plainText = wrContent
+        .replaceAll(RegExp(r'<[^>]*>'), '') // 모든 HTML 태그 제거
+        .replaceAll(RegExp(r'&nbsp;'), ' ') // &nbsp; → 공백
+        .replaceAll(RegExp(r'&lt;'), '<')
+        .replaceAll(RegExp(r'&gt;'), '>')
+        .replaceAll(RegExp(r'&amp;'), '&')
+        .replaceAll(RegExp(r'&quot;'), '"')
+        .replaceAll(RegExp(r'&#39;'), "'")
+        .trim();
+    
+    return plainText;
   }
 }
 

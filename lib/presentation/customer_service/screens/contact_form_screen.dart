@@ -84,21 +84,9 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          '문의하기',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-      body: Form(
+    return Container(
+      color: Colors.white,
+      child: Form(
         key: _formKey,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

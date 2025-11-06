@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class ContactDetailScreen extends StatefulWidget {
   final int wrId;
@@ -40,10 +41,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
           _isLoading = false;
         });
         
-        // 답변이 있으면 답변 목록도 로드
-        if (contact.hasReply) {
-          _loadReplies();
-        }
+        // 항상 답변 목록 로드 시도 (wr_comment가 업데이트되지 않을 수 있음)
+        _loadReplies();
       } else {
         setState(() {
           _errorMessage = '문의를 불러오는데 실패했습니다.';
@@ -60,18 +59,30 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
 
   Future<void> _loadReplies() async {
     try {
+      print('💬 [답변 로드] wr_id: ${widget.wrId}');
       final replies = await ContactService.getContactReplies(widget.wrId);
-      setState(() {
-        _replies = replies;
-      });
+      print('💬 [답변 로드] 답변 개수: ${replies.length}');
+      
+      if (mounted) {
+        setState(() {
+          _replies = replies;
+        });
+      }
+      
+      if (replies.isNotEmpty) {
+        print('✅ [답변 로드] 답변 표시 완료');
+      } else {
+        print('⚠️ [답변 로드] 답변 없음 (아직 답변이 달리지 않았거나 DB에 없음)');
+      }
     } catch (e) {
+      print('❌ [답변 로드] 실패: $e');
       // 답변 로드 실패는 무시 (문의 자체는 표시)
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return MobileAppLayoutWrapper(
       appBar: AppBar(
         title: const Text(
           '문의 상세',
@@ -85,7 +96,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: _isLoading
+      child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
               ? Center(
@@ -180,7 +191,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                               border: Border.all(color: Colors.grey[200]!),
                             ),
                             child: Text(
-                              _contact!.wrContent,
+                              _contact!.getPlainTextContent(), // HTML 파싱하여 순수 텍스트만 표시
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[800],
@@ -189,8 +200,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                             ),
                           ),
                           
-                          // 답변이 있는 경우
-                          if (_contact!.hasReply) ...[
+                          // 답변 표시 (실제 답변 배열로 판단)
+                          if (_replies.isNotEmpty) ...[
                             const SizedBox(height: 32),
                             const Divider(),
                             const SizedBox(height: 16),
@@ -205,32 +216,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                             const SizedBox(height: 12),
                             
                             // 답변 목록
-                            if (_replies.isNotEmpty)
-                              ..._replies.map((reply) => _buildReplyCard(reply))
-                            else
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.green[50],
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.green[200]!),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.check_circle, color: Colors.green[700]),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '답변이 등록되었습니다.',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.green[700],
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            ..._replies.map((reply) => _buildReplyCard(reply)),
                           ] else ...[
                             const SizedBox(height: 32),
                             Container(
@@ -300,7 +286,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            reply.wrContent,
+            reply.getPlainTextContent(), // HTML 파싱하여 순수 텍스트만 표시
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[800],

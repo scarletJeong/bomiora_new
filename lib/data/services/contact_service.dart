@@ -81,6 +81,15 @@ class ContactService {
         throw Exception('로그인이 필요합니다.');
       }
 
+      // wr_5에 휴대폰 번호 저장 (- 제거하고 숫자만)
+      String phoneNumber = '';
+      if (user.phone != null && user.phone!.isNotEmpty) {
+        phoneNumber = user.phone!.replaceAll(RegExp(r'[^0-9]'), ''); // 숫자만 추출
+        print('   - 추출된 번호: $phoneNumber');
+      } else {
+        print('   - ⚠️ 전화번호가 없습니다! 재로그인이 필요할 수 있습니다.');
+      }
+
       final response = await ApiClient.post(
         ApiEndpoints.createContact,
         {
@@ -89,6 +98,8 @@ class ContactService {
           'wr_email': user.email ?? '',
           'wr_subject': subject,
           'wr_content': content,
+          'wr_5': phoneNumber, // 휴대폰 번호 (숫자만)
+          'wr_option': 'secret', // 비밀글로 설정 (웹에서 비밀글 아이콘 표시)
         },
       );
 
