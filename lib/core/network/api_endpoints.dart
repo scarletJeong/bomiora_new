@@ -24,6 +24,11 @@ class ApiEndpoints {
   static const String updateCartItem = '/api/cart/update';
   static const String removeCartItem = '/api/cart/remove';
   
+  // 찜 관련 (기존 Cafe24 서버)
+  static const String getWishList = '/api/wish/list';
+  static const String addToWish = '/api/wish/toggle';
+  static const String removeFromWish = '/api/wish/remove';
+  
   // 리뷰 관련 (기존 Cafe24 서버)
   static const String mainReviews = '/api/reviews/main';
   static const String productReviews = '/api/reviews/product';
@@ -66,4 +71,10 @@ class ApiEndpoints {
   
   // 상품 옵션 관련
   static String productOptions(String productId) => '/api/products/$productId/options';
+  
+  // 문의 관련
+  static const String getMyContacts = '/api/contact/list';
+  static const String getContactDetail = '/api/contact';
+  static const String getContactReplies = '/api/contact';
+  static const String createContact = '/api/contact/create';
 }

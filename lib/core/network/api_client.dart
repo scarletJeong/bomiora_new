@@ -34,12 +34,8 @@ class ApiClient {
       headers.addAll(additionalHeaders);
     }
     
-    final url = '$baseUrl$endpoint';
-    print('🌐 API 요청: $url');
-    print('📋 헤더: $headers');
-    
     return await http.get(
-      Uri.parse(url),
+      Uri.parse('$baseUrl$endpoint'),
       headers: headers,
     );
   }
@@ -71,7 +67,7 @@ class ApiClient {
   }
   
   // DELETE 요청
-  static Future<http.Response> delete(String endpoint) async {
+  static Future<http.Response> delete(String endpoint, {Map<String, dynamic>? data}) async {
     return await http.delete(
       Uri.parse('$baseUrl$endpoint'),
       headers: {
@@ -79,6 +75,7 @@ class ApiClient {
         'Accept': 'application/json',
         'User-Agent': 'Flutter-App/1.0',
       },
+      body: data != null ? json.encode(data) : null,
     );
   }
 
