@@ -108,6 +108,7 @@ class ContactListScreenState extends State<ContactListScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
+      color: const Color(0xFFFDF1F7), // 연한 파스텔 핑크
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey[200]!),

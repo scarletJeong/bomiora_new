@@ -22,9 +22,7 @@ class ImageUrlHelper {
         
         // localhost인 경우 로컬 웹 서버 사용 (XAMPP)
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-          // 이미지는 XAMPP 웹 서버를 통해 제공 (https 사용)
-          // Flutter 앱이 localhost:5000에서 실행되더라도 이미지는 localhost(https)에서 가져옴
-          // CORS 헤더가 XAMPP Apache에 설정되어 있어야 함
+          // 로컬 개발 환경에서는 HTTP 사용 (SSL 인증서 문제 방지)
           return 'https://localhost/bomiora/www';
         } else {
           // 프로덕션: 실제 도메인
@@ -46,9 +44,9 @@ class ImageUrlHelper {
       return '';
     }
     
-    // 이미 전체 URL인 경우 그대로 반환
+    // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
+      return convertToLocalUrl(imageUrl);
     }
     
     // 상대 경로인 경우 base URL과 조합
@@ -76,9 +74,9 @@ class ImageUrlHelper {
       return null;
     }
     
-    // 이미 전체 URL인 경우 그대로 반환
+    // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
+      return convertToLocalUrl(imagePath);
     }
     
     // 이미 data/item/이 포함된 경우 정규화만 수행
@@ -193,9 +191,9 @@ class ImageUrlHelper {
       return normalizeImageUrl(fixedUrl);
     }
     
-    // 이미 전체 URL인 경우
+    // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
+      return convertToLocalUrl(imageUrl);
     }
     
     // 상대 경로인 경우 normalizeImageUrl 사용

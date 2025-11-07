@@ -9,7 +9,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../shopping/screens/cart_screen.dart';
 import '../../shopping/screens/product_list_screen.dart';
-import '../../shopping/screens/category_screen.dart';
+import '../../shopping/showcase/screens/showcase_screen.dart';
 import '../../health/dashboard/screens/health_dashboard_screen.dart';
 import '../../health/telemedicine/screens/telemedicine_webview_screen.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
@@ -18,6 +18,7 @@ import '../../user/mileage/screens/mileage_screen.dart';
 import '../../customer_service/screens/customer_service_screen.dart';
 import '../../shopping/wish/screens/wish_list_screen.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
+import '../../event/screens/event_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -95,6 +96,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu, color: Colors.black),
@@ -129,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(
-                color: Color(0xFFFFDBEA),
+                color: Color(0xFFFDF1F7), // 메인 배너 배경색
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            const Divider(),
             ExpansionTile(
               //leading: const Icon(Icons.local_hospital),
               title: const Text('비대면 진료'),
@@ -360,6 +364,20 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.celebration),
+              title: const Text('이벤트'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EventListScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
               leading: const Icon(Icons.help),
               title: const Text('온라인 문의'),
               onTap: () {
@@ -373,7 +391,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            const Divider(),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('설정'),
@@ -463,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryPage() {
-    return const CategoryScreen();
+    return const ShowcaseScreen();
   }
 
   Widget _buildWishlistPage() {
