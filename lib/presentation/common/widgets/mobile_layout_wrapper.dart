@@ -55,42 +55,39 @@ class MobileAppLayoutWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // AppBar의 backgroundColor를 기본값으로 설정 (null이면 하얀색)
     PreferredSizeWidget? wrappedAppBar = appBar;
     if (appBar != null && appBar is AppBar) {
       final originalAppBar = appBar as AppBar;
-      // backgroundColor가 명시적으로 설정되지 않았으면 하얀색으로 설정
-      if (originalAppBar.backgroundColor == null) {
-        wrappedAppBar = AppBar(
-          key: originalAppBar.key,
-          leading: originalAppBar.leading,
-          automaticallyImplyLeading: originalAppBar.automaticallyImplyLeading,
-          title: originalAppBar.title,
-          actions: originalAppBar.actions,
-          flexibleSpace: originalAppBar.flexibleSpace,
-          bottom: originalAppBar.bottom,
-          elevation: originalAppBar.elevation,
-          scrolledUnderElevation: 0, // 스크롤 시 AppBar 색상 변경 방지
-          shadowColor: originalAppBar.shadowColor,
-          surfaceTintColor: Colors.transparent, // Material 3의 tint 효과 제거
-          shape: originalAppBar.shape,
-          backgroundColor: Colors.white, // 기본값: 하얀색
-          foregroundColor: originalAppBar.foregroundColor,
-          iconTheme: originalAppBar.iconTheme,
-          actionsIconTheme: originalAppBar.actionsIconTheme,
-          primary: originalAppBar.primary,
-          centerTitle: originalAppBar.centerTitle,
-          excludeHeaderSemantics: originalAppBar.excludeHeaderSemantics,
-          titleSpacing: originalAppBar.titleSpacing,
-          toolbarOpacity: originalAppBar.toolbarOpacity,
-          bottomOpacity: originalAppBar.bottomOpacity,
-          toolbarHeight: originalAppBar.toolbarHeight,
-          leadingWidth: originalAppBar.leadingWidth,
-          toolbarTextStyle: originalAppBar.toolbarTextStyle,
-          titleTextStyle: originalAppBar.titleTextStyle,
-          systemOverlayStyle: originalAppBar.systemOverlayStyle,
-        );
-      }
+      // 항상 AppBar를 재생성하여 스크롤 시 색상 변경 방지
+      wrappedAppBar = AppBar(
+        key: originalAppBar.key,
+        leading: originalAppBar.leading,
+        automaticallyImplyLeading: originalAppBar.automaticallyImplyLeading,
+        title: originalAppBar.title,
+        actions: originalAppBar.actions,
+        flexibleSpace: originalAppBar.flexibleSpace,
+        bottom: originalAppBar.bottom,
+        elevation: originalAppBar.elevation ?? 0,
+        scrolledUnderElevation: 0,
+        shadowColor: originalAppBar.shadowColor,
+        surfaceTintColor: Colors.transparent,
+        shape: originalAppBar.shape,
+        backgroundColor: originalAppBar.backgroundColor ?? Colors.white,
+        foregroundColor: originalAppBar.foregroundColor,
+        iconTheme: originalAppBar.iconTheme,
+        actionsIconTheme: originalAppBar.actionsIconTheme,
+        primary: originalAppBar.primary,
+        centerTitle: originalAppBar.centerTitle,
+        excludeHeaderSemantics: originalAppBar.excludeHeaderSemantics,
+        titleSpacing: originalAppBar.titleSpacing,
+        toolbarOpacity: originalAppBar.toolbarOpacity,
+        bottomOpacity: originalAppBar.bottomOpacity,
+        toolbarHeight: originalAppBar.toolbarHeight,
+        leadingWidth: originalAppBar.leadingWidth,
+        toolbarTextStyle: originalAppBar.toolbarTextStyle,
+        titleTextStyle: originalAppBar.titleTextStyle,
+        systemOverlayStyle: originalAppBar.systemOverlayStyle,
+      );
     }
     
     return Scaffold(
