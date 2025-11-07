@@ -78,4 +78,9 @@ class ApiEndpoints {
   static const String getContactDetail = '/api/contact';
   static const String getContactReplies = '/api/contact';
   static const String createContact = '/api/contact/create';
+  
+  // 이벤트 관련
+  static const String getActiveEvents = '/api/event/active';
+  static const String getEndedEvents = '/api/event/ended';
+  static const String getEventDetail = '/api/event';
 }
