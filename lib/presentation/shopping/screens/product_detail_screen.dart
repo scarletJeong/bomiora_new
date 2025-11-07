@@ -17,6 +17,7 @@ import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../../user/healthprofile/screens/health_profile_form_screen.dart';
+import 'prescription_booking/prescription_profile_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -1508,17 +1509,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  /// 문진표 작성 페이지로 이동
+  /// 처방 예약 페이지로 이동
   void _navigateToQuestionnaire() async {
+    if (_product == null) return;
+    
+    // 선택된 옵션 정보를 Map으로 변환
+    final selectedOptionsData = _selectedOptions.map((option, quantity) => MapEntry(
+      option.displayText,
+      {
+        'quantity': quantity,
+        'price': option.price,
+      },
+    ));
+    
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HealthProfileFormScreen(),
+        builder: (context) => PrescriptionProfileScreen(
+          productId: _product!.id,
+          productName: _product!.name,
+          selectedOptions: selectedOptionsData,
+        ),
       ),
     );
     
     if (result == true) {
-      // 문진표 작성 완료 후 처리 (필요시)
+      // 예약 완료 후 처리 (필요시)
     }
   }
 
