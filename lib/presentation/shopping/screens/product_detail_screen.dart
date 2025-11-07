@@ -185,7 +185,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       final options = await ProductOptionRepository.getProductOptions(widget.productId);
       print('📦 [옵션] 로드된 옵션 개수: ${options.length}');
       for (var option in options) {
-        print('  - 옵션 ID: ${option.id}, 이름: ${option.displayText}, 가격: ${option.price}원');
+        print('  - 옵션 ID: ${option.id}');
+        print('    상위 옵션: ${option.step}');
+        print('    하위 옵션: ${option.subOption}');
+        print('    표시명: ${option.displayText}');
+        print('    가격: ${option.price}원');
       }
       setState(() {
         _productOptions = options;
@@ -1740,6 +1744,21 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
       print('    • $step: ${options.length}개 옵션');
     });
     
+    // 옵션 주제가 1개거나 단계 그룹이 1개만 있으면 자동 선택
+    if (widget.subjects.length == 1 || _stepGroups.length == 1) {
+      if (_stepGroups.isNotEmpty) {
+        _selectedStep = _stepGroups.first;
+        print('📋 [옵션 바텀시트] 단계가 1개뿐이므로 자동 선택: $_selectedStep');
+        print('📋 [옵션 바텀시트] 옵션 주제 개수: ${widget.subjects.length}, 단계 그룹 개수: ${_stepGroups.length}');
+        
+        // 옵션 주제가 1개일 때는 자동으로 확장된 리스트 표시
+        if (widget.subjects.length == 1) {
+          _expandedSubject = widget.subjects.first;
+          print('📋 [옵션 바텀시트] 옵션 주제가 1개이므로 자동으로 리스트 펼침: $_expandedSubject');
+        }
+      }
+    }
+    
     // 단계가 선택되어 있으면 해당 단계의 개월수 목록 업데이트
     _updateMonthsGroups();
   }
@@ -1775,7 +1794,7 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
   
   /// 두 번째 드롭다운(개월수)이 활성화되었는지 확인
   bool get _isMonthsEnabled {
-    return _selectedStep != null && widget.subjects.length >= 2;
+    return _selectedStep != null;
   }
   
   @override
@@ -1946,6 +1965,15 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
                           final isFirstSubject = subjectIndex == 0;
                           final isSecondSubject = subjectIndex == 1;
                           
+                          // 옵션 주제가 1개만 있는 경우: 단계 선택 UI 숨기고 바로 개월수 선택 UI 표시
+                          if (widget.subjects.length == 1) {
+                            if (_isMonthsEnabled) {
+                              return _buildMonthsSelectionDropdown(subject);
+                            }
+                            return const SizedBox.shrink();
+                          }
+                          
+                          // 옵션 주제가 2개 이상인 경우: 기존 로직 유지
                           // 첫 번째 subject: 단계 선택
                           if (isFirstSubject) {
                             return _buildStepSelectionDropdown(subject);
@@ -2268,13 +2296,108 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
     );
   }
   
-  /// 확장된 옵션 리스트 빌드 (같은 바텀 시트 내에서 표시)
+   /// 확장된 옵션 리스트 빌드 (같은 바텀 시트 내에서 표시)
   Widget _buildExpandedOptionsList() {
     if (_expandedSubject == null) return const SizedBox.shrink();
     
     final subjectIndex = widget.subjects.indexOf(_expandedSubject!);
     final isFirstSubject = subjectIndex == 0;
     final isSecondSubject = subjectIndex == 1;
+    
+    // 옵션 주제가 1개일 때: 개월수 리스트 바로 표시
+    if (widget.subjects.length == 1 && _selectedStep != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              _expandedSubject!,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ..._monthsGroups.map((months) {
+            final isSelected = _selectedMonths == months;
+            final optionForMonths = _groupedOptionsByMonths[months]?.first;
+            
+            if (optionForMonths == null) return const SizedBox.shrink();
+            
+            return InkWell(
+              onTap: () {
+                print('🔘 [옵션 바텀시트] 개월수 선택: ${months}개월');
+                print('  - 선택된 옵션: ID=${optionForMonths.id}, 가격=${optionForMonths.price}원');
+                // 옵션 추가
+                _addOption(optionForMonths);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: isSelected 
+                      ? const Color(0xFFFF4081).withOpacity(0.05)
+                      : Colors.white,
+                  border: Border.all(
+                    color: isSelected 
+                        ? const Color(0xFFFF4081)
+                        : Colors.grey[300]!,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${months}개월',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? const Color(0xFFFF4081) : Colors.black87,
+                            ),
+                          ),
+                          if (optionForMonths.price > 0) ...[
+                            const SizedBox(height: 4),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (optionForMonths.price > 0)
+                          Text(
+                            '+${optionForMonths.formattedPrice.replaceAll('원', '')}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? const Color(0xFFFF4081) : Colors.black87,
+                            ),
+                          ),
+                        if (isSelected) ...[
+                          const SizedBox(height: 4),
+                          Icon(
+                            Icons.check_circle,
+                            color: const Color(0xFFFF4081),
+                            size: 20,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      );
+    }
     
     // 첫 번째 subject: 단계 선택 리스트
     if (isFirstSubject) {
@@ -2405,13 +2528,6 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
                           ),
                           if (optionForMonths != null && optionForMonths.price > 0) ...[
                             const SizedBox(height: 4),
-                            Text(
-                              '오늘출발 주문 마감으로 내일 출발!',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue[400],
-                              ),
-                            ),
                           ],
                         ],
                       ),

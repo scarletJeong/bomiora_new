@@ -1,8 +1,9 @@
 class ProductOption {
   final String id; // io_id
   final String productId; // it_id
-  final String step; // 단계 (숫자 앞까지, io_id에서 추출)
-  final int? months; // 개월수 (숫자 부분, io_id에서 추출)
+  final String step; // 상위 옵션 (마지막 숫자 앞까지, io_id에서 추출)
+  final int? months; // 개월수 (숫자 부분만, io_id에서 추출)
+  final String subOption; // 하위 옵션 전체 텍스트 (마지막 숫자부터 끝까지)
   final int price; // 옵션 가격
   final int stock; // 재고
   final String? type; // 옵션 타입
@@ -16,6 +17,7 @@ class ProductOption {
     required this.productId,
     required this.step,
     this.months,
+    required this.subOption,
     required this.price,
     required this.stock,
     this.type,
@@ -24,39 +26,85 @@ class ProductOption {
   factory ProductOption.fromJson(Map<String, dynamic> json) {
     final ioId = json['id']?.toString() ?? '';
     
-    // io_id에서 단계와 개월수 추출 (항상 직접 파싱)
+    // io_id에서 상위 옵션, 하위 옵션, 개월수 추출 (항상 직접 파싱)
     final step = _extractStep(ioId);
+    final subOption = _extractSubOption(ioId);
     final months = _extractMonths(ioId);
     
     return ProductOption(
       id: ioId,
       productId: json['productId']?.toString() ?? json['it_id']?.toString() ?? '',
-      step: step, // 항상 Flutter에서 직접 파싱
-      months: months, // 항상 Flutter에서 직접 파싱
+      step: step, // 상위 옵션
+      months: months, // 숫자만
+      subOption: subOption, // 하위 옵션 전체 텍스트
       price: _parseInt(json['price'] ?? 0),
       stock: _parseInt(json['stock'] ?? 0),
       type: json['type']?.toString(),
     );
   }
   
-  /// io_id에서 단계 추출 (첫 번째 숫자 앞까지)
-  /// 예: "디톡스 플러스1개월" -> "디톡스 플러스"
-  ///     "디톡스2개월(-10%)" -> "디톡스"
+  /// io_id에서 상위 옵션 추출 (마지막 숫자 앞까지)
+  /// 예: "[01단계]소프트_Soft1개월" -> "[01단계]소프트_Soft"
+  ///     "[03단계]하드_Hard2개월" -> "[03단계]하드_Hard"
   static String _extractStep(String ioId) {
     if (ioId.isEmpty) return '';
-    // 첫 번째 숫자부터 끝까지 제거하여 숫자 앞까지의 문자열 추출
-    return ioId.replaceAll(RegExp(r'\d+.*'), '');
+    // ']' 다음부터 마지막 숫자 앞까지 추출
+    final closeBracketIndex = ioId.lastIndexOf(']');
+    if (closeBracketIndex == -1) {
+      // ']'가 없으면 마지막 숫자 앞까지
+      return ioId.replaceAll(RegExp(r'\d+[^0-9]*$'), '');
+    }
+    
+    // ']' 이후 부분
+    final afterBracket = ioId.substring(closeBracketIndex + 1);
+    // 마지막 숫자 시작 위치 찾기
+    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(afterBracket);
+    if (lastNumberMatch != null) {
+      // ']'까지 + 마지막 숫자 앞까지
+      return ioId.substring(0, closeBracketIndex + 1) + 
+             afterBracket.substring(0, lastNumberMatch.start);
+    }
+    
+    return ioId;
   }
   
-  /// io_id에서 개월수 추출 (첫 번째 숫자 부분만)
-  /// 예: "디톡스 플러스1개월" -> 1
-  ///     "디톡스2개월(-10%)" -> 2
+  /// io_id에서 하위 옵션 전체 텍스트 추출 (마지막 숫자부터 끝까지)
+  /// 예: "[01단계]소프트_Soft1개월" -> "1개월"
+  ///     "[03단계]하드_Hard2개월" -> "2개월"
+  static String _extractSubOption(String ioId) {
+    if (ioId.isEmpty) return '';
+    // ']' 이후 부분에서 마지막 숫자부터 끝까지
+    final closeBracketIndex = ioId.lastIndexOf(']');
+    if (closeBracketIndex == -1) {
+      // ']'가 없으면 마지막 숫자부터 끝까지
+      final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
+      if (lastNumberMatch != null) {
+        return ioId.substring(lastNumberMatch.start);
+      }
+      return '';
+    }
+    
+    // ']' 이후 부분
+    final afterBracket = ioId.substring(closeBracketIndex + 1);
+    // 마지막 숫자 시작 위치 찾기
+    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(afterBracket);
+    if (lastNumberMatch != null) {
+      return afterBracket.substring(lastNumberMatch.start);
+    }
+    
+    return afterBracket;
+  }
+  
+  /// io_id에서 하위 옵션(개월수 포함) 추출
+  /// 예: "[01단계]소프트_Soft1개월" -> 1 (숫자만)
+  ///     "[03단계]하드_Hard2개월" -> 2 (숫자만)
   static int? _extractMonths(String ioId) {
     if (ioId.isEmpty) return null;
-    // 첫 번째로 나오는 숫자 부분만 추출
-    final match = RegExp(r'\d+').firstMatch(ioId);
-    if (match != null) {
-      return int.tryParse(match.group(0)!);
+    // 마지막 숫자 부분 추출
+    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
+    if (lastNumberMatch != null) {
+      final numberStr = lastNumberMatch.group(0)!.replaceAll(RegExp(r'[^0-9]'), '');
+      return int.tryParse(numberStr);
     }
     return null;
   }
@@ -69,10 +117,10 @@ class ProductOption {
     return 0;
   }
   
-  /// 표시용 옵션 텍스트 생성
+  /// 표시용 옵션 텍스트 생성 (상위옵션 / 하위옵션)
   String get displayText {
-    if (months != null) {
-      return '$step${months}개월';
+    if (subOption.isNotEmpty) {
+      return '$step / $subOption';
     }
     return step;
   }

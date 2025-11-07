@@ -288,34 +288,34 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     }
     _formData['answer_7_1'] = profile.answer71;
     
-    // answer_8 (식습관) - 콤마로 구분된 문자열을 List로 변환
+    // answer_8 (식습관) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer8.isNotEmpty) {
-      _formData['answer_8'] = profile.answer8.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      _formData['answer_8'] = profile.answer8.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     } else {
       _formData['answer_8'] = [];
     }
     
-    // answer_9 (자주 먹는 음식) - 콤마로 구분된 문자열을 List로 변환
+    // answer_9 (자주 먹는 음식) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer9.isNotEmpty) {
-      _formData['answer_9'] = profile.answer9.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      _formData['answer_9'] = profile.answer9.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     } else {
       _formData['answer_9'] = [];
     }
     
     _formData['answer_10'] = profile.answer10;
     
-    // answer_11 (질병) - 콤마로 구분된 문자열을 List로 변환
+    // answer_11 (질병) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer11.isNotEmpty) {
-      _formData['answer_11'] = profile.answer11.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      _formData['answer_11'] = profile.answer11.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     } else {
       _formData['answer_11'] = [];
     }
     
-    // 복용중인 약 처리 (기타 항목 파싱)
+    // 복용중인 약 처리 (기타 항목 파싱) - 파이프(|)로 구분
     if (profile.answer12.isNotEmpty) {
       // answer_12가 문자열인 경우 List로 변환
-      if (profile.answer12.contains(',')) {
-        final parts = profile.answer12.split(',');
+      if (profile.answer12.contains('|')) {
+        final parts = profile.answer12.split('|');
         final List<String> answer12List = [];
         String? otherValue;
         
@@ -339,7 +339,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         if (profile.answer12 == '기타') {
           _formData['answer_12'] = ['기타'];
         } else {
-          _formData['answer_12'] = profile.answer12;
+          _formData['answer_12'] = [profile.answer12];
         }
       }
     } else {
@@ -411,7 +411,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+                              color: Color(0xFFFF3787),
                             ),
                           ),
                         ],
@@ -420,7 +420,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       LinearProgressIndicator(
                         value: (_currentPage + 1) / _sections.length,
                         backgroundColor: Colors.grey[300],
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF3787)),
                       ),
                     ],
                   ),
@@ -468,7 +468,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                             ? _submitForm
                             : _nextPage,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: const Color(0xFFFF3787),
                           foregroundColor: Colors.white,
                         ),
                         child: Text(_currentPage == _sections.length - 1 ? '완료' : '다음'),
@@ -774,9 +774,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? Color(0xFFFFE5E5) : Colors.white,
+              color: isSelected ? const Color(0xFFFFE5EE) : Colors.white,
               border: Border.all(
-                color: isSelected ? Color(0xFFFF9999) : Colors.grey.shade300,
+                color: isSelected ? const Color(0xFFFF3787) : Colors.grey.shade300,
                 width: isSelected ? 2 : 1,
               ),
               borderRadius: BorderRadius.circular(8),
@@ -785,7 +785,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               child: Text(
                 option,
                 style: TextStyle(
-                  color: isSelected ? Color(0xFFFF6B6B) : Colors.black87,
+                  color: isSelected ? const Color(0xFFFF3787) : Colors.black87,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 14,
                 ),
@@ -848,7 +848,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               content: Text(_existingProfile != null 
                   ? '문진표가 수정되었습니다' 
                   : '문진표가 저장되었습니다'),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFFFF3787),
             ),
           );
           Navigator.pop(context, true);
@@ -871,6 +871,41 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   }
 
   Future<void> _saveHealthProfile() async {
+    print('========================================');
+    print('📝 [문진표 ${_existingProfile != null ? '수정' : '생성'}] 전송할 데이터 확인');
+    print('========================================');
+    print('기본 정보:');
+    print('  - 생년월일: ${_formData['birth_year']}-${_formData['birth_month']}-${_formData['birth_day']}');
+    print('  - 성별: ${_formData['answer_2']}');
+    print('  - 목표 체중: ${_formData['answer_3']}kg');
+    print('  - 키: ${_formData['answer_4']}cm');
+    print('  - 현재 체중: ${_formData['answer_5']}kg');
+    print('  - 다이어트 기간: ${_formData['answer_6']}');
+    print('');
+    print('식습관:');
+    print('  - 하루 식사 횟수: ${_formData['answer_7']}');
+    print('  - 식사 시간: ${_formData['meal_1']}/${_formData['meal_2']}/${_formData['meal_3']}/${_formData['meal_other']}');
+    print('  - 식습관: ${_formData['answer_8']}');
+    print('  - 자주 먹는 음식: ${_formData['answer_9']}');
+    print('');
+    print('운동/건강:');
+    print('  - 운동 빈도: ${_formData['answer_10']}');
+    print('  - 질병: ${_formData['answer_11']}');
+    print('  - 복용 중인 약: ${_formData['answer_12']}');
+    print('  - 복용약(기타): ${_formData['answer_12_other']}');
+    print('');
+    print('다이어트 경험:');
+    print('  - 다이어트약 복용 경험: ${_formData['answer_13']}');
+    print('  - 약 이름: ${_formData['answer_13_medicine']}');
+    print('  - 복용 기간: ${_formData['answer_13_period']}');
+    print('  - 복용 횟수: ${_formData['answer_13_dosage']}');
+    print('  - 부작용: ${_formData['answer_13_sideeffect']}');
+    print('');
+    if (_existingProfile != null) {
+      print('수정 대상 문진표 번호: ${_existingProfile!.pfNo}');
+    }
+    print('========================================');
+    
     // 생년월일 합치기 (YYYYMMDD 형식)
     final birthYear = _formData['birth_year'] ?? '';
     final birthMonth = _formData['birth_month'] ?? '';
@@ -1212,16 +1247,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     );
   }
 
-  /// List를 문자열로 변환 (allowMultiple 필드용)
+  /// List를 문자열로 변환 (allowMultiple 필드용) - 파이프(|)로 구분
   String _formatListToString(dynamic value) {
     if (value == null) return '';
     if (value is List) {
-      return value.join(', ');
+      return value.join('|');
     }
     return value.toString();
   }
 
-  /// 복용중인 약(answer_12) 포맷팅
+  /// 복용중인 약(answer_12) 포맷팅 - 파이프(|)로 구분
   String _formatAnswer12(dynamic answer12, String? otherValue) {
     if (answer12 == null) return '';
     
@@ -1234,7 +1269,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           result.add(item.toString());
         }
       }
-      return result.join(', ');
+      return result.join('|');
     }
     
     // List가 아닌 경우

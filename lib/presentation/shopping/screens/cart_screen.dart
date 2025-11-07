@@ -366,82 +366,75 @@ class _CartScreenState extends State<CartScreen> {
                           child: Row(
                             children: [
                               // 전체 선택 체크박스
-                              Flexible(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Checkbox(
-                                      value: selectAll && selectedItems.length == cartItems.length,
-                                      onChanged: (bool? value) {
-                                        setState(() {
-                                          selectAll = value ?? false;
-                                          if (selectAll) {
-                                            selectedItems = cartItems.map((item) => item.ctId).toSet();
-                                          } else {
-                                            selectedItems.clear();
-                                          }
-                                        });
-                                      },
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: selectAll && selectedItems.length == cartItems.length,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        selectAll = value ?? false;
+                                        if (selectAll) {
+                                          selectedItems = cartItems.map((item) => item.ctId).toSet();
+                                        } else {
+                                          selectedItems.clear();
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  const Text(
+                                    '전체선택',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black87,
                                     ),
-                                    const Flexible(
-                                      child: Text(
-                                        '전체선택',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.black87,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              // 품절삭제, 선택삭제 버튼
-                              Flexible(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    TextButton(
-                                      onPressed: () {
-                                        // TODO: 품절 상품 삭제 기능 구현
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('품절삭제 기능은 추후 구현 예정입니다')),
-                                        );
-                                      },
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: const Text(
-                                        '품절삭제',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.black87,
-                                        ),
+                              const Spacer(),
+                              // 품절삭제, 선택삭제 버튼 (오른쪽 정렬)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextButton(
+                                    onPressed: () {
+                                      // TODO: 품절 상품 삭제 기능 구현
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('품절삭제 기능은 추후 구현 예정입니다')),
+                                      );
+                                    },
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text(
+                                      '품절삭제',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black87,
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    TextButton(
-                                      onPressed: selectedItems.isEmpty
-                                          ? null
-                                          : () => _deleteSelectedItems(),
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: Text(
-                                        '선택삭제',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: selectedItems.isEmpty ? Colors.grey : Colors.red,
-                                        ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  TextButton(
+                                    onPressed: selectedItems.isEmpty
+                                        ? null
+                                        : () => _deleteSelectedItems(),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      '선택삭제',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: selectedItems.isEmpty ? Colors.grey : Colors.red,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -537,6 +530,16 @@ class _CartScreenState extends State<CartScreen> {
                                     ),
                                   ),
                                 ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                '결제를 완료하셔야 예약이 확정됩니다.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFFFF3787),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
