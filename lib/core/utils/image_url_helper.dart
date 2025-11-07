@@ -142,12 +142,26 @@ class ImageUrlHelper {
   }
 
   /// 프로덕션 URL을 현재 환경에 맞는 URL로 변환
-  /// 예: https://bomiora.kr/data/editor/... -> http://localhost/bomiora/www/data/editor/... (로컬 환경)
-  ///     https://bomiora.kr/data/editor/... -> https://bomiora.kr/data/editor/... (프로덕션)
+  /// 예: https://bomiora.kr/data/item/... -> http://localhost/bomiora/www/data/item/... (로컬 환경)
+  /// 단, data/editor/ 경로는 백엔드 프록시를 통해 로드 (CORS 우회)
   static String convertToLocalUrl(String url) {
-    if (url.contains('bomiora.kr')) {
+    if (url.contains('bomiora.kr') || url.contains('www.bomiora.kr') || url.contains('bomiora0.mycafe24.com')) {
       Uri uri = Uri.parse(url);
       String path = uri.path;
+      
+      // data/editor/ 경로는 백엔드 프록시를 통해 로드 (이벤트 이미지 등)
+      if (path.contains('/data/editor/')) {
+        if (kIsWeb) {
+          final currentHost = Uri.base.host;
+          // 로컬 개발 환경에서는 백엔드 프록시 사용
+          if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
+            final proxyUrl = 'http://localhost:9000/api/proxy/image?url=${Uri.encodeComponent(url)}';
+            return proxyUrl;
+          }
+        }
+        // 프로덕션 환경에서는 원격 URL 그대로 사용
+        return url;
+      }
       
       // 현재 환경에 맞는 base URL 사용 (로컬은 http, 프로덕션은 https)
       String baseUrl = imageBaseUrl;
