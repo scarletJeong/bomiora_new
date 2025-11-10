@@ -46,21 +46,10 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
     
-    print('📖 [AuthService.getUser] 사용자 정보 읽기 시작');
-    print('   - 저장된 JSON: $userJson');
-    
     if (userJson != null) {
       try {
-        final userData = json.decode(userJson);
-        print('   - 파싱된 데이터: $userData');
-        
+        final userData = json.decode(userJson);     
         final user = UserModel.fromJson(userData);
-        
-        print('✅ [AuthService.getUser] 사용자 정보 반환:');
-        print('   - id: ${user.id}');
-        print('   - email: ${user.email}');
-        print('   - name: ${user.name}');
-        
         return user;
       } catch (e) {
         print('❌ 사용자 정보 파싱 오류: $e');

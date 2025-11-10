@@ -12,7 +12,6 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    print('🏗️ [UserModel.fromJson] 입력 데이터: $json');
     
     final id = json['id']?.toString() ?? '';
     final email = json['email'] ?? json['mb_email'] ?? '';
@@ -21,12 +20,6 @@ class UserModel {
     final phone = json['phone']?.toString() ?? 
                   json['mb_phone']?.toString() ?? 
                   json['mb_hp']?.toString();
-    
-    print('🏗️ [UserModel.fromJson] 파싱 결과:');
-    print('   - id: $id');
-    print('   - email: $email');
-    print('   - name: $name');
-    print('   - phone: $phone');
     
     return UserModel(
       id: id,

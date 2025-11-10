@@ -468,10 +468,10 @@ class _CartScreenState extends State<CartScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       const Text(
-                                        '결제가 완료되셔야 예약이 확정됩니다',
+                                        '결제가 완료되셔야 예약이 확정됩니다.',
                                         style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.black87,
+                                          fontSize: 12,
+                                          color: Color(0xFFFF3787),
                                         ),
                                         textAlign: TextAlign.center,
                                         maxLines: 2,
@@ -525,22 +525,13 @@ class _CartScreenState extends State<CartScreen> {
                                   child: const Text(
                                     '결제하기',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                '결제를 완료하셔야 예약이 확정됩니다.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFFFF3787),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
+                              
                             ],
                           ),
                         ),
