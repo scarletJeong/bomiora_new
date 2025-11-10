@@ -839,7 +839,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       });
       
       try {
-        // TODO: API 호출로 데이터 저장
         await _saveHealthProfile();
         
         if (mounted) {

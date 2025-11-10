@@ -36,7 +36,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           _currentUser = user;
         });
         
-        // TODO: 실제 API 호출로 문진표 데이터 가져오기
         await _loadHealthProfile();
       }
     } catch (e) {
