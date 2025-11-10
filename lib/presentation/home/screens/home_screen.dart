@@ -19,6 +19,7 @@ import '../../customer_service/screens/customer_service_screen.dart';
 import '../../shopping/wish/screens/wish_list_screen.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
 import '../../event/screens/event_list_screen.dart';
+import '../../user/delivery/delivery_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -193,7 +194,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '주문배송',
                     onTap: () {
                       Navigator.pop(context);
-                      // 주문배송 페이지로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DeliveryListScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
