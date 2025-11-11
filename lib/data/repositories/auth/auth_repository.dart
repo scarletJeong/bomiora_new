@@ -1,17 +1,29 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 
 class AuthRepository {
+  /// 비밀번호를 SHA1로 해시 처리 (PHP 서버와 호환)
+  static String hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha1.convert(bytes);
+    return digest.toString();
+  }
+
   // 로그인 API 호출 (Spring Boot 서버)
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
     try {
+      // 평문 비밀번호를 전송 (Spring Boot에서 PBKDF2로 검증)
+      print('🔐 [LOGIN] 이메일: $email');
+      print('🔐 [LOGIN] 비밀번호: [보호됨]');
+      
       final response = await ApiClient.post(ApiEndpoints.login, {
         'email': email,
-        'password': password,
+        'password': password, // 평문 비밀번호 전송 (HTTPS로 보호)
       });
 
       if (response.statusCode == 200) {
@@ -29,27 +41,8 @@ class AuthRepository {
         };
       }
     } catch (e) {
-      // API 서버 연결 실패 시 데모 모드로 전환
-      print('API 서버 연결 실패, 데모 모드로 전환: $e');
-      
-      // 테스트 계정으로 자동 로그인 (배포용)
-      if (email == 'test@naver.com' || email.isNotEmpty) {
-        return {
-          'success': true,
-          'data': {
-            'success': true,
-            'user': {
-              'mb_no': 1,
-              'mb_id': 'test', // mb_id 추가!
-              'mb_email': email,
-              'mb_name': '테스트 사용자',
-              'mb_phone': '010-1234-5678',
-            },
-            'token': 'demo_token_12345',
-          },
-          'error': null,
-        };
-      }
+      // API 서버 연결 실패 시 에러 반환
+      print('❌ API 서버 연결 실패: $e');
       
       return {
         'success': false,
@@ -66,9 +59,13 @@ class AuthRepository {
     String? phone,
   }) async {
     try {
+      // 평문 비밀번호를 전송 (Spring Boot에서 PBKDF2로 해싱)
+      print('🔐 [REGISTER] 이메일: $email');
+      print('🔐 [REGISTER] 비밀번호: [보호됨]');
+      
       final response = await ApiClient.post(ApiEndpoints.register, {
         'email': email,
-        'password': password,
+        'password': password, // 평문 비밀번호 전송 (HTTPS로 보호)
         'name': name,
         'phone': phone,
       });
