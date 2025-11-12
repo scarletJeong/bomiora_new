@@ -4,12 +4,13 @@ import 'package:flutter_html/flutter_html.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/review/review_model.dart';
-import '../../../data/repositories/review/review_repository.dart';
+import '../../../data/services/review_service.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/html_parser.dart' as custom_html_parser;
 import '../../../core/utils/point_helper.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/wish_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/product/product_option_model.dart';
@@ -44,9 +45,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   PageController? _pageController;
   
   // 리뷰 관련 상태
-  List<Review> _reviews = [];
-  List<Review> _supporterReviews = [];
-  List<Review> _generalReviews = [];
+  List<ReviewModel> _reviews = [];
+  List<ReviewModel> _supporterReviews = [];
+  List<ReviewModel> _generalReviews = [];
   Map<String, dynamic>? _reviewStats;
   bool _isLoadingReviews = false;
   int? _userPoint; // 현재 사용자 보유 포인트
@@ -60,8 +61,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadProductDetail();
-    _loadReviews();
+    _loadProductDetail().then((_) {
+      // 제품 정보 로드 후 리뷰 로드 (it_org_id 확인을 위해)
+      _loadReviews();
+    });
     _loadUserPoint();
     _loadConfig();
     _loadProductOptions();
@@ -115,27 +118,55 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     });
 
     try {
+      // it_org_id가 있으면 원본 제품 ID 사용, 없으면 현재 제품 ID 사용
+      String reviewProductId = widget.productId;
+      if (_product != null && _product!.additionalInfo != null) {
+        final itOrgId = _product!.additionalInfo!['it_org_id']?.toString();
+        if (itOrgId != null && itOrgId.isNotEmpty) {
+          reviewProductId = itOrgId;
+          print('📦 [리뷰 조회] it_org_id 사용: $reviewProductId (원본: ${widget.productId})');
+        }
+      }
+      
       // 전체 리뷰 가져오기
-      final allReviews = await ReviewRepository.getProductReviews(
-        productId: widget.productId,
+      final result = await ReviewService.getProductReviews(
+        itId: reviewProductId,
+        page: 0,
+        size: 50,
       );
       
-      // 서포터 리뷰와 일반 리뷰 분류
-      final supporter = allReviews.where((r) => r.isSupporterReview).toList();
-      final general = allReviews.where((r) => r.isGeneralReview).toList();
-      
-      // 리뷰 통계 가져오기
-      final stats = await ReviewRepository.getReviewStats(widget.productId);
-      
-      setState(() {
-        _reviews = allReviews;
-        _supporterReviews = supporter;
-        _generalReviews = general;
-        _reviewStats = stats;
-        _isLoadingReviews = false;
-      });
-      
+      if (result['success'] == true) {
+        final allReviews = result['reviews'] as List<ReviewModel>;
+        
+        // 서포터 리뷰와 일반 리뷰 분류
+        final supporter = allReviews.where((r) => r.isSupporterReview).toList();
+        final general = allReviews.where((r) => r.isGeneralReview).toList();
+        
+        // 리뷰 통계 가져오기
+        final statsResult = await ReviewService.getProductReviewStats(
+          itId: reviewProductId,
+        );
+        
+        setState(() {
+          _reviews = allReviews;
+          _supporterReviews = supporter;
+          _generalReviews = general;
+          if (statsResult['success'] == true && statsResult['stats'] != null) {
+            final stats = statsResult['stats'] as ReviewStatsModel;
+            _reviewStats = {
+              'totalCount': stats.totalCount,
+              'totalAverage': stats.averageScore,
+            };
+          }
+          _isLoadingReviews = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingReviews = false;
+        });
+      }
     } catch (e) {
+      print('리뷰 로드 오류: $e');
       setState(() {
         _isLoadingReviews = false;
       });
@@ -197,6 +228,65 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     } catch (e) {
       print('⚠️ [옵션] 로드 실패: $e');
       // 옵션 로드 실패 시 무시
+    }
+  }
+
+  /// 찜하기 토글
+  Future<void> _toggleFavorite() async {
+    if (_product == null) return;
+
+    try {
+      final wasFavorite = _isFavorite;
+      
+      // 즉시 UI 업데이트 (낙관적 업데이트)
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+
+      // API 호출
+      if (wasFavorite) {
+        // 찜하기 해제
+        await WishService.removeFromWish(widget.productId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('찜하기 해제 완료'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(milliseconds: 500),
+            ),
+          );
+        }
+      } else {
+        // 찜하기 추가
+        await WishService.addToWish(widget.productId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('찜하기 완료'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(milliseconds: 500),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // 실패 시 원래 상태로 되돌리기
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('오류가 발생했습니다: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -1222,7 +1312,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Widget _buildReviewItem(Review review) {
+  Widget _buildReviewItem(ReviewModel review) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -1239,7 +1329,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             children: [
               Expanded(
                 child: Text(
-                  review.userName,
+                  review.isName ?? '익명',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -1250,8 +1340,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               // 별점 표시
               Row(
                 children: List.generate(5, (index) {
+                  final rating = review.averageScore ?? 0;
                   return Icon(
-                    index < review.rating.round()
+                    index < rating.round()
                         ? Icons.star
                         : Icons.star_border,
                     size: 16,
@@ -1262,20 +1353,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             ],
           ),
           const SizedBox(height: 8),
-          // 리뷰 제목
-          if (review.subject.isNotEmpty)
+          // 리뷰 제목 (좋았던 점)
+          if (review.isPositiveReviewText != null && review.isPositiveReviewText!.isNotEmpty)
             Text(
-              review.subject,
+              review.isPositiveReviewText!,
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.black87,
               ),
             ),
-          if (review.subject.isNotEmpty) const SizedBox(height: 8),
-          // 리뷰 내용
+          if (review.isPositiveReviewText != null && review.isPositiveReviewText!.isNotEmpty) const SizedBox(height: 8),
+          // 아쉬운 점
+          if (review.isNegativeReviewText != null && review.isNegativeReviewText!.isNotEmpty)
           Text(
-            review.content,
+              review.isNegativeReviewText!,
             style: TextStyle(
               fontSize: 13,
               color: Colors.grey[700],
@@ -1288,8 +1380,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           // 날짜 및 도움수
           Row(
             children: [
+              if (review.isTime != null)
               Text(
-                '${review.createdAt.year}.${review.createdAt.month.toString().padLeft(2, '0')}.${review.createdAt.day.toString().padLeft(2, '0')}',
+                  '${review.isTime!.year}.${review.isTime!.month.toString().padLeft(2, '0')}.${review.isTime!.day.toString().padLeft(2, '0')}',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[500],
@@ -1305,7 +1398,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${review.helpfulCount}',
+                    '${review.isGood ?? 0}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[500],
@@ -1419,11 +1512,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ? const Color(0xFFFF4081)
                       : Colors.grey[600],
                 ),
-                onPressed: () {
-                  setState(() {
-                    _isFavorite = !_isFavorite;
-                  });
-                },
+                onPressed: () => _toggleFavorite(),
               ),
             ),
             const SizedBox(width: 12),
