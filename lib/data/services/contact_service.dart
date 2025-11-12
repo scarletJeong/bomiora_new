@@ -98,6 +98,7 @@ class ContactService {
           'wr_email': user.email ?? '',
           'wr_subject': subject,
           'wr_content': content,
+          'wr_password': user.password, // 사용자 비밀번호 사용, 없으면 ID 사용
           'wr_5': phoneNumber, // 휴대폰 번호 (숫자만)
           'wr_option': 'secret', // 비밀글로 설정 (웹에서 비밀글 아이콘 표시)
         },
@@ -106,6 +107,33 @@ class ContactService {
       return json.decode(response.body);
     } catch (e) {
       throw Exception('문의 작성 실패: $e');
+    }
+  }
+
+  /// 문의 수정
+  static Future<Map<String, dynamic>> updateContact({
+    required int wrId,
+    required String subject,
+    required String content,
+  }) async {
+    try {
+      final user = await AuthService.getUser();
+
+      if (user == null) {
+        throw Exception('로그인이 필요합니다.');
+      }
+
+      final response = await ApiClient.put(
+        ApiEndpoints.updateContact(wrId),
+        {
+          'wr_subject': subject,
+          'wr_content': content,
+        },
+      );
+
+      return json.decode(response.body);
+    } catch (e) {
+      throw Exception('문의 수정 실패: $e');
     }
   }
 }

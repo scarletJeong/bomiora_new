@@ -255,6 +255,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final userId = userJson['mb_id']?.toString() ?? '';
         
         userJson['id'] = userId;
+        // 비밀번호 저장
+        userJson['password'] = _passwordController.text;
         
         print('✅ [LOGIN DEBUG] 최종 매핑된 id: $userId');
         

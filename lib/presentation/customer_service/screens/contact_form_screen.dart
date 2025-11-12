@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/contact_service.dart';
+import '../../../data/models/contact/contact_model.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class ContactFormScreen extends StatefulWidget {
-  final VoidCallback? onSuccess; // 등록 성공 시 호출할 콜백
+  final VoidCallback? onSuccess; // 등록/수정 성공 시 호출할 콜백
+  final Contact? contact; // 수정 모드일 때 기존 문의 데이터
   
-  const ContactFormScreen({super.key, this.onSuccess});
+  const ContactFormScreen({
+    super.key, 
+    this.onSuccess,
+    this.contact, // null이면 작성 모드, 있으면 수정 모드
+  });
 
   @override
   State<ContactFormScreen> createState() => _ContactFormScreenState();
@@ -15,6 +22,18 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   final _subjectController = TextEditingController();
   final _contentController = TextEditingController();
   bool _isSubmitting = false;
+
+  bool get _isEditMode => widget.contact != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // 수정 모드일 때 기존 데이터로 초기화
+    if (_isEditMode) {
+      _subjectController.text = widget.contact!.wrSubject;
+      _contentController.text = widget.contact!.getPlainTextContent();
+    }
+  }
 
   @override
   void dispose() {
@@ -33,32 +52,56 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     });
 
     try {
-      final result = await ContactService.createContact(
-        subject: _subjectController.text.trim(),
-        content: _contentController.text.trim(),
-      );
+      Map<String, dynamic> result;
+      
+      if (_isEditMode) {
+        // 수정 모드
+        result = await ContactService.updateContact(
+          wrId: widget.contact!.wrId,
+          subject: _subjectController.text.trim(),
+          content: _contentController.text.trim(),
+        );
+      } else {
+        // 작성 모드
+        result = await ContactService.createContact(
+          subject: _subjectController.text.trim(),
+          content: _contentController.text.trim(),
+        );
+      }
 
       if (mounted) {
         if (result['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                '문의가 등록되었습니다.\n문의하신 내용은 빠른 시일 내에 답변드리겠습니다.\n답변은 "내 문의내역"에서 확인하실 수 있습니다.',
+                _isEditMode 
+                  ? '문의가 수정되었습니다.'
+                  : '문의가 등록되었습니다.\n문의하신 내용은 빠른 시일 내에 답변드리겠습니다.\n답변은 "내 문의내역"에서 확인하실 수 있습니다.',
               ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 4),
+              duration: Duration(seconds: _isEditMode ? 2 : 4),
             ),
           );
-          // 콜백이 있으면 콜백 호출 (탭 변경), 없으면 이전 페이지로 돌아감
-          if (widget.onSuccess != null) {
-            widget.onSuccess!();
-          } else {
+          // 수정 모드일 때는 이전 페이지로 돌아감
+          if (_isEditMode) {
+            if (widget.onSuccess != null) {
+              widget.onSuccess!();
+            }
             Navigator.pop(context, true);
+          } else {
+            // 작성 모드일 때는 콜백이 있으면 콜백 호출 (탭 변경), 없으면 이전 페이지로 돌아감
+            if (widget.onSuccess != null) {
+              widget.onSuccess!();
+            } else {
+              Navigator.pop(context, true);
+            }
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? '문의 등록에 실패했습니다.'),
+              content: Text(
+                result['message'] ?? (_isEditMode ? '문의 수정에 실패했습니다.' : '문의 등록에 실패했습니다.'),
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -68,7 +111,11 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('문의 등록 중 오류가 발생했습니다: $e'),
+            content: Text(
+              _isEditMode 
+                ? '문의 수정 중 오류가 발생했습니다: $e'
+                : '문의 등록 중 오류가 발생했습니다: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -84,6 +131,31 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 수정 모드일 때는 독립적인 화면으로 표시 (AppBar 포함)
+    if (_isEditMode) {
+      return MobileAppLayoutWrapper(
+        appBar: AppBar(
+          title: const Text(
+            '문의 수정',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+        ),
+        child: _buildForm(),
+      );
+    }
+    
+    // 작성 모드일 때는 기존대로 (TabBarView 안에서 사용)
+    return _buildForm();
+  }
+
+  Widget _buildForm() {
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
@@ -182,9 +254,9 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
-                          '등록',
-                          style: TextStyle(
+                      : Text(
+                          _isEditMode ? '수정' : '등록',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),

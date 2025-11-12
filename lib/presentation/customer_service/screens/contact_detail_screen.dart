@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
+import '../../../data/services/auth_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import 'contact_form_screen.dart';
 
 class ContactDetailScreen extends StatefulWidget {
   final int wrId;
@@ -20,6 +22,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
   List<Contact> _replies = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool? _canEditContact; // 수정 가능 여부 캐시
 
   @override
   void initState() {
@@ -40,6 +43,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
           _contact = contact;
           _isLoading = false;
         });
+        
+        // 수정 가능 여부 확인
+        await _checkCanEdit();
         
         // 항상 답변 목록 로드 시도 (wr_comment가 업데이트되지 않을 수 있음)
         _loadReplies();
@@ -67,6 +73,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         setState(() {
           _replies = replies;
         });
+        // 답변 로드 후 수정 가능 여부 재확인
+        _checkCanEdit();
       }
       
       if (replies.isNotEmpty) {
@@ -79,6 +87,67 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
       // 답변 로드 실패는 무시 (문의 자체는 표시)
     }
   }
+
+  Future<void> _checkCanEdit() async {
+    if (_contact == null) {
+      if (mounted) {
+        setState(() {
+          _canEditContact = false;
+        });
+      }
+      return;
+    }
+    
+    // 답변이 있으면 수정 불가
+    if (_replies.isNotEmpty || _contact!.hasReply) {
+      if (mounted) {
+        setState(() {
+          _canEditContact = false;
+        });
+      }
+      return;
+    }
+    
+    // 본인 문의인지 확인
+    final user = await AuthService.getUser();
+    if (user == null) {
+      if (mounted) {
+        setState(() {
+          _canEditContact = false;
+        });
+      }
+      return;
+    }
+    
+    if (mounted) {
+      setState(() {
+        _canEditContact = user.id == _contact!.mbId;
+      });
+    }
+  }
+
+  Future<void> _navigateToEdit() async {
+    if (_contact == null) return;
+    
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContactFormScreen(
+          contact: _contact,
+          onSuccess: () {
+            // 수정 후 상세 페이지 새로고침
+            _loadContactDetail();
+          },
+        ),
+      ),
+    );
+    
+    // 수정 완료 후 돌아왔을 때 새로고침
+    if (mounted && result == true) {
+      _loadContactDetail();
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -172,14 +241,36 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           const Divider(),
                           const SizedBox(height: 16),
                           
-                          // 문의 내용
-                          Text(
-                            '문의 내용',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[800],
-                            ),
+                          // 문의 내용 (제목과 수정 버튼)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                '문의 내용',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                              if (_canEditContact == true)
+                                TextButton.icon(
+                                  onPressed: _navigateToEdit,
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                  ),
+                                  label: const Text('수정'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFFFF3787),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 12),
                           Container(

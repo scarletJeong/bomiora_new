@@ -3,12 +3,14 @@ class UserModel {
   final String email;
   final String name;
   final String? phone;
+  final String? password; // 비밀번호 저장
 
   UserModel({
     required this.id,
     required this.email,
     required this.name,
-    this.phone
+    this.phone,
+    this.password,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,12 +22,14 @@ class UserModel {
     final phone = json['phone']?.toString() ?? 
                   json['mb_phone']?.toString() ?? 
                   json['mb_hp']?.toString();
+    final password = json['password']?.toString();
     
     return UserModel(
       id: id,
       email: email,
       name: name,
       phone: phone,
+      password: password,
     );
   }
 
@@ -34,7 +38,8 @@ class UserModel {
       'id': id,
       'email': email,
       'name': name,
-      'phone': phone
+      'phone': phone,
+      if (password != null) 'password': password,
     };
   }
 
@@ -42,13 +47,15 @@ class UserModel {
     String? id,
     String? email,
     String? name,
-    String? phone
+    String? phone,
+    String? password,
   }) {
     return UserModel(
       id: id ?? this.id,
       email: email ?? this.email,
       name: name ?? this.name,
-      phone: phone ?? this.phone
+      phone: phone ?? this.phone,
+      password: password ?? this.password,
     );
   }
 }
