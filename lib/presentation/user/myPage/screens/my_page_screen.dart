@@ -4,10 +4,15 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/services/point_service.dart';
+import '../../../../data/services/review_service.dart';
+import '../../../../data/services/contact_service.dart';
 import '../../healthprofile/screens/health_profile_list_screen.dart';
 import '../../settings/screens/terms_of_service_screen.dart';
 import '../../settings/screens/privacy_policy_screen.dart';
 import '../../../customer_service/screens/customer_service_screen.dart';
+import '../../review/my_reviews_screen.dart';
+import '../../coupon/screens/coupon_screen.dart';
+import '../../mileage/screens/mileage_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -71,7 +76,37 @@ class _MyPageScreenState extends State<MyPageScreen> {
       print('포인트 조회 오류: $e');
     }
     
-    // TODO: 주문·예약, 리뷰, 문의 개수는 추후 API 연동
+    // 리뷰 개수
+    try {
+      final result = await ReviewService.getMemberReviews(
+        mbId: userId,
+        page: 0,
+        size: 1,
+      );
+      if (!mounted) return;
+      
+      if (result['success'] == true) {
+        setState(() {
+          _reviewCount = result['totalElements'] ?? 0;
+        });
+      }
+    } catch (e) {
+      print('리뷰 개수 조회 오류: $e');
+    }
+    
+    // 문의 개수
+    try {
+      final contacts = await ContactService.getMyContacts();
+      if (!mounted) return;
+      
+      setState(() {
+        _contactCount = contacts.length;
+      });
+    } catch (e) {
+      print('문의 개수 조회 오류: $e');
+    }
+    
+    // TODO: 주문·예약 개수는 추후 API 연동
   }
   
   String _formatPoint(int point) {
@@ -248,11 +283,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                     _buildStatCard(
                       icon: Icons.rate_review,
-                      iconColor: Colors.grey,
+                      iconColor: const Color(0xFFFF4081),
                       label: '리뷰',
                       value: '$_reviewCount',
                       onTap: () {
-                        // TODO: 리뷰 목록 페이지로 이동
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MyReviewsScreen(),
+                          ),
+                        ).then((value) {
+                          // 리뷰 화면에서 돌아왔을 때 통계 새로고침
+                          if (_currentUser != null) {
+                            _loadMyPageStats(_currentUser!.id);
+                          }
+                        });
                       },
                     ),
                     _buildStatCard(
@@ -276,7 +321,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '쿠폰',
                       value: '$_couponCount장',
                       onTap: () {
-                        Navigator.pushNamed(context, '/coupon');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CouponScreen(),
+                          ),
+                        ).then((value) {
+                          // 쿠폰 화면에서 돌아왔을 때 통계 새로고침
+                          if (_currentUser != null) {
+                            _loadMyPageStats(_currentUser!.id);
+                          }
+                        });
                       },
                     ),
                     _buildStatCard(
@@ -285,7 +340,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '포인트',
                       value: _userPoint != null ? '${_formatPoint(_userPoint!)}원' : '0원',
                       onTap: () {
-                        Navigator.pushNamed(context, '/mileage');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MileageScreen(),
+                          ),
+                        ).then((value) {
+                          // 포인트 화면에서 돌아왔을 때 통계 새로고침
+                          if (_currentUser != null) {
+                            _loadMyPageStats(_currentUser!.id);
+                          }
+                        });
                       },
                     ),
                   ],

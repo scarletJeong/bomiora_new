@@ -8,7 +8,7 @@ class ReviewRepository {
   /// 
   /// [productId] 제품 ID (it_id)
   /// [reviewKind] 리뷰 종류: 'general' (전체), 'supporter' (서포터), null (전체)
-  static Future<List<Review>> getProductReviews({
+  static Future<List<ReviewModel>> getProductReviews({
     required String productId,
     String? reviewKind,
     int page = 1,
@@ -44,7 +44,7 @@ class ReviewRepository {
         }
         
         print('✅ 리뷰 ${reviews.length}개 로드 완료');
-        return reviews.map((json) => Review.fromJson(json)).toList();
+        return reviews.map((json) => ReviewModel.fromJson(json)).toList();
       }
       
       print('⚠️ 리뷰 목록 조회 실패: ${response.statusCode}');
@@ -72,11 +72,15 @@ class ReviewRepository {
       double supporterAvg = 0;
       
       if (reviews.isNotEmpty) {
-        totalAvg = reviews.map((r) => r.averageScore).reduce((a, b) => a + b) / reviews.length;
+        totalAvg = reviews
+            .map((r) => r.averageScore ?? 0.0)
+            .reduce((a, b) => a + b) / reviews.length;
       }
       
       if (supporterReviews.isNotEmpty) {
-        supporterAvg = supporterReviews.map((r) => r.averageScore).reduce((a, b) => a + b) / supporterReviews.length;
+        supporterAvg = supporterReviews
+            .map((r) => r.averageScore ?? 0.0)
+            .reduce((a, b) => a + b) / supporterReviews.length;
       }
       
       // 만족도 계산 (is_recommend == 'y')

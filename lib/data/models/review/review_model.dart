@@ -1,164 +1,165 @@
-class Review {
-  final int id;
-  final String productId; // it_id
-  final String userId; // mb_id
-  final String userName; // is_name
-  final String reviewType; // is_gubun: 'P' or 'G'
-  final int score1; // 효과
-  final int score2; // 가성비
-  final int score3; // 향/맛
-  final int score4; // 편리함
-  final String subject; // is_subject
-  final String content; // is_content
-  final int helpfulCount; // is_good (도움수)
-  final DateTime createdAt; // is_time
-  final DateTime updatedAt; // is_update_time
-  final int confirmStatus; // is_confirm
-  final String purchaseMethod; // is_pay_mthod: 'solo' or 'group'
-  final String weightLoss; // is_outage_num (감량체중)
-  final String negativeText; // is_negative_review_text
-  final String positiveText; // is_positive_review_text
-  final String tipText; // is_more_review_text
-  final String recommend; // is_recommend: 'y' or 'n'
-  final bool isDirectUse; // is_rv_check
-  final String reviewKind; // is_rvkind: 'general' or 'supporter'
-  final String birthday; // is_birthday
-  final String height; // is_height
-  final String weight; // is_weight
-  final List<String> images; // is_img1 ~ is_img10
-
-  Review({
-    required this.id,
-    required this.productId,
-    required this.userId,
-    required this.userName,
-    required this.reviewType,
-    required this.score1,
-    required this.score2,
-    required this.score3,
-    required this.score4,
-    required this.subject,
-    required this.content,
-    required this.helpfulCount,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.confirmStatus,
-    required this.purchaseMethod,
-    required this.weightLoss,
-    required this.negativeText,
-    required this.positiveText,
-    required this.tipText,
-    required this.recommend,
-    required this.isDirectUse,
-    required this.reviewKind,
-    required this.birthday,
-    required this.height,
-    required this.weight,
-    required this.images,
+/// 리뷰 모델
+class ReviewModel {
+  final int? isId;
+  final String itId;
+  final String mbId;
+  final String? isName;
+  final DateTime? isTime;
+  final int? isConfirm;
+  
+  // 평점 (각 5점 만점)
+  final int isScore1; // 효과
+  final int isScore2; // 가성비
+  final int isScore3; // 맛/향
+  final int isScore4; // 편리함
+  final double? averageScore; // 평균 평점
+  
+  // 리뷰 종류
+  final String isRvkind; // 'general' or 'supporter'
+  
+  // 추천 여부
+  final String isRecommend; // 'y' or 'n'
+  final int? isGood; // 도움이 돼요 카운트
+  
+  // 리뷰 내용
+  final String? isPositiveReviewText; // 좋았던 점
+  final String? isNegativeReviewText; // 아쉬운 점
+  final String? isMoreReviewText; // 꿀팁
+  
+  // 이미지들
+  final List<String> images;
+  
+  // 사용자 정보
+  final DateTime? isBirthday;
+  final int? isWeight;
+  final int? isHeight;
+  final String? isPayMthod; // 'solo': 내돈내산
+  final int? isOutageNum; // 감량 kg
+  
+  final int? odId; // 주문 ID
+  
+  // 편의 getter들
+  bool get isSupporterReview => isRvkind == 'supporter';
+  bool get isGeneralReview => isRvkind == 'general';
+  bool get isSatisfied => isRecommend == 'y';
+  int get score1 => isScore1;
+  int get score2 => isScore2;
+  int get score3 => isScore3;
+  int get score4 => isScore4;
+  
+  ReviewModel({
+    this.isId,
+    required this.itId,
+    required this.mbId,
+    this.isName,
+    this.isTime,
+    this.isConfirm,
+    required this.isScore1,
+    required this.isScore2,
+    required this.isScore3,
+    required this.isScore4,
+    this.averageScore,
+    required this.isRvkind,
+    required this.isRecommend,
+    this.isGood,
+    this.isPositiveReviewText,
+    this.isNegativeReviewText,
+    this.isMoreReviewText,
+    this.images = const [],
+    this.isBirthday,
+    this.isWeight,
+    this.isHeight,
+    this.isPayMthod,
+    this.isOutageNum,
+    this.odId,
   });
-
-  factory Review.fromJson(Map<String, dynamic> json) {
-    // 이미지 리스트 생성 (is_img1 ~ is_img10)
-    final images = <String>[];
-    for (int i = 1; i <= 10; i++) {
-      final imgKey = 'is_img$i';
-      final imgUrl = json[imgKey]?.toString();
-      if (imgUrl != null && imgUrl.isNotEmpty) {
-        images.add(imgUrl);
-      }
+  
+  /// JSON에서 모델로 변환
+  factory ReviewModel.fromJson(Map<String, dynamic> json) {
+    List<String> imageList = [];
+    if (json['images'] != null) {
+      imageList = List<String>.from(json['images']);
     }
-
-    return Review(
-      id: json['is_id'] ?? 0,
-      productId: json['it_id']?.toString() ?? '',
-      userId: json['mb_id']?.toString() ?? '',
-      userName: json['is_name']?.toString() ?? '',
-      reviewType: json['is_gubun']?.toString() ?? 'G',
-      score1: json['is_score1'] ?? 0,
-      score2: json['is_score2'] ?? 0,
-      score3: json['is_score3'] ?? 0,
-      score4: json['is_score4'] ?? 0,
-      subject: json['is_subject']?.toString() ?? '',
-      content: json['is_content']?.toString() ?? '',
-      helpfulCount: json['is_good'] ?? 0,
-      createdAt: json['is_time'] != null
-          ? DateTime.parse(json['is_time'].toString())
-          : DateTime.now(),
-      updatedAt: json['is_update_time'] != null
-          ? DateTime.parse(json['is_update_time'].toString())
-          : DateTime.now(),
-      confirmStatus: json['is_confirm'] ?? 0,
-      purchaseMethod: json['is_pay_mthod']?.toString() ?? 'solo',
-      weightLoss: json['is_outage_num']?.toString() ?? '0',
-      negativeText: json['is_negative_review_text']?.toString() ?? '',
-      positiveText: json['is_positive_review_text']?.toString() ?? '',
-      tipText: json['is_more_review_text']?.toString() ?? '',
-      recommend: json['is_recommend']?.toString() ?? 'n',
-      isDirectUse: (json['is_rv_check'] ?? 0) == 1,
-      reviewKind: json['is_rvkind']?.toString() ?? 'general',
-      birthday: json['is_birthday']?.toString() ?? '',
-      height: json['is_height']?.toString() ?? '',
-      weight: json['is_weight']?.toString() ?? '',
-      images: images,
+    
+    return ReviewModel(
+      isId: json['isId'],
+      itId: json['itId'] ?? '',
+      mbId: json['mbId'] ?? '',
+      isName: json['isName'],
+      isTime: json['isTime'] != null ? DateTime.parse(json['isTime']) : null,
+      isConfirm: json['isConfirm'],
+      isScore1: json['isScore1'] ?? 0,
+      isScore2: json['isScore2'] ?? 0,
+      isScore3: json['isScore3'] ?? 0,
+      isScore4: json['isScore4'] ?? 0,
+      averageScore: json['averageScore']?.toDouble(),
+      isRvkind: json['isRvkind'] ?? 'general',
+      isRecommend: json['isRecommend'] ?? 'y',
+      isGood: json['isGood'] ?? 0,
+      isPositiveReviewText: json['isPositiveReviewText'],
+      isNegativeReviewText: json['isNegativeReviewText'],
+      isMoreReviewText: json['isMoreReviewText'],
+      images: imageList,
+      isBirthday: json['isBirthday'] != null ? DateTime.parse(json['isBirthday']) : null,
+      isWeight: json['isWeight'],
+      isHeight: json['isHeight'],
+      isPayMthod: json['isPayMthod'],
+      isOutageNum: json['isOutageNum'],
+      odId: json['odId'],
     );
   }
-
+  
+  /// 모델에서 JSON으로 변환
   Map<String, dynamic> toJson() {
     return {
-      'is_id': id,
-      'it_id': productId,
-      'mb_id': userId,
-      'is_name': userName,
-      'is_gubun': reviewType,
-      'is_score1': score1,
-      'is_score2': score2,
-      'is_score3': score3,
-      'is_score4': score4,
-      'is_subject': subject,
-      'is_content': content,
-      'is_good': helpfulCount,
-      'is_time': createdAt.toIso8601String(),
-      'is_update_time': updatedAt.toIso8601String(),
-      'is_confirm': confirmStatus,
-      'is_pay_mthod': purchaseMethod,
-      'is_outage_num': weightLoss,
-      'is_negative_review_text': negativeText,
-      'is_positive_review_text': positiveText,
-      'is_more_review_text': tipText,
-      'is_recommend': recommend,
-      'is_rv_check': isDirectUse ? 1 : 0,
-      'is_rvkind': reviewKind,
-      'is_birthday': birthday,
-      'is_height': height,
-      'is_weight': weight,
+      if (isId != null) 'isId': isId,
+      'itId': itId,
+      'mbId': mbId,
+      if (isName != null) 'isName': isName,
+      if (isTime != null) 'isTime': isTime!.toIso8601String(),
+      if (isConfirm != null) 'isConfirm': isConfirm,
+      'isScore1': isScore1,
+      'isScore2': isScore2,
+      'isScore3': isScore3,
+      'isScore4': isScore4,
+      if (averageScore != null) 'averageScore': averageScore,
+      'isRvkind': isRvkind,
+      'isRecommend': isRecommend,
+      if (isGood != null) 'isGood': isGood,
+      if (isPositiveReviewText != null) 'isPositiveReviewText': isPositiveReviewText,
+      if (isNegativeReviewText != null) 'isNegativeReviewText': isNegativeReviewText,
+      if (isMoreReviewText != null) 'isMoreReviewText': isMoreReviewText,
+      'images': images,
+      if (isBirthday != null) 'isBirthday': isBirthday!.toIso8601String().split('T')[0],
+      if (isWeight != null) 'isWeight': isWeight,
+      if (isHeight != null) 'isHeight': isHeight,
+      if (isPayMthod != null) 'isPayMthod': isPayMthod,
+      if (isOutageNum != null) 'isOutageNum': isOutageNum,
+      if (odId != null) 'odId': odId,
     };
-  }
-
-  // 전체 평균 점수 계산
-  double get averageScore {
-    final scores = [score1, score2, score3, score4].where((s) => s > 0).toList();
-    if (scores.isEmpty) return 0.0;
-    return scores.reduce((a, b) => a + b) / scores.length;
-  }
-
-  // 별점 (5점 만점)
-  double get rating {
-    return averageScore;
-  }
-
-  // 만족 여부 (is_recommend가 'y'인 경우)
-  bool get isSatisfied {
-    return recommend == 'y';
-  }
-
-  // 서포터 리뷰 여부
-  bool get isSupporterReview {
-    return reviewKind == 'supporter';
-  }
-
-  // 일반 리뷰 여부
-  bool get isGeneralReview {
-    return reviewKind == 'general';
   }
 }
 
+/// 리뷰 통계 모델
+class ReviewStatsModel {
+  final int totalCount;
+  final double averageScore;
+  final int? generalCount;
+  final int? supporterCount;
+  
+  ReviewStatsModel({
+    required this.totalCount,
+    required this.averageScore,
+    this.generalCount,
+    this.supporterCount,
+  });
+  
+  factory ReviewStatsModel.fromJson(Map<String, dynamic> json) {
+    return ReviewStatsModel(
+      totalCount: json['totalCount'] ?? 0,
+      averageScore: (json['averageScore'] ?? 0.0).toDouble(),
+      generalCount: json['generalCount'],
+      supporterCount: json['supporterCount'],
+    );
+  }
+}

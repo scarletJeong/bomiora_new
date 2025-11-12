@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../data/models/review/review_model.dart';
+import '../../../data/services/review_service.dart';
+import '../../shopping/screens/product_detail_screen.dart';
 
 class ReviewSection extends StatefulWidget {
   const ReviewSection({super.key});
@@ -8,8 +11,13 @@ class ReviewSection extends StatefulWidget {
 }
 
 class _ReviewSectionState extends State<ReviewSection> {
-  List<Map<String, dynamic>> reviews = [];
+  List<ReviewModel> reviews = [];
   bool isLoading = true;
+  int _supporterCount = 0;
+  int _generalCount = 0;
+  
+  // 기본 상품 ID (보미오라 다이어트환)
+  final String defaultProductId = '1686290723';
 
   @override
   void initState() {
@@ -19,33 +27,46 @@ class _ReviewSectionState extends State<ReviewSection> {
 
   Future<void> _loadReviews() async {
     try {
-      // 임시로 더미 데이터 사용
-      await Future.delayed(const Duration(seconds: 1));
-      setState(() {
-        reviews = [
-          {
-            'id': 1,
-            'userName': '김사용자',
-            'rating': 5,
-            'content': '정말 좋은 상품이에요!',
-            'productName': '상품1',
-            'createdAt': DateTime.now().subtract(const Duration(days: 1)),
-          },
-          {
-            'id': 2,
-            'userName': '이고객',
-            'rating': 4,
-            'content': '만족스러운 구매였습니다.',
-            'productName': '상품2',
-            'createdAt': DateTime.now().subtract(const Duration(days: 2)),
-          },
-        ];
-        isLoading = false;
-      });
+      // 서포터 리뷰와 일반 리뷰 개수 조회
+      final supporterResult = await ReviewService.getProductReviews(
+        itId: defaultProductId,
+        rvkind: 'supporter',
+        page: 0,
+        size: 1, // 개수만 필요
+      );
+      
+      final generalResult = await ReviewService.getProductReviews(
+        itId: defaultProductId,
+        rvkind: 'general',
+        page: 0,
+        size: 1, // 개수만 필요
+      );
+      
+      // 실제 리뷰 데이터 로드 (서포터 리뷰만)
+      final result = await ReviewService.getProductReviews(
+        itId: defaultProductId,
+        rvkind: 'supporter',
+        page: 0,
+        size: 6, // 최대 6개만 로드
+      );
+      
+      if (mounted) {
+        setState(() {
+          if (result['success'] == true) {
+            reviews = result['reviews'] as List<ReviewModel>;
+          }
+          _supporterCount = supporterResult['totalElements'] ?? 0;
+          _generalCount = generalResult['totalElements'] ?? 0;
+          isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
+      print('리뷰 로드 오류: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -88,6 +109,45 @@ class _ReviewSectionState extends State<ReviewSection> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          
+          // 서포터/일반 리뷰 개수 표시
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF4081).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '서포터 리뷰 $_supporterCount개',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFFF4081),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '일반 리뷰 $_generalCount개',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 30),
           
           // 리뷰 그리드
@@ -116,8 +176,15 @@ class _ReviewSectionState extends State<ReviewSection> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                // 리뷰 페이지로 이동
-                print('Navigate to reviews page');
+                // 상품 상세 페이지로 이동 (리뷰 탭)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProductDetailScreen(
+                      productId: defaultProductId,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF007FAE),
@@ -141,11 +208,18 @@ class _ReviewSectionState extends State<ReviewSection> {
     );
   }
 
-  Widget _buildReviewCard(Map<String, dynamic> review) {
+  Widget _buildReviewCard(ReviewModel review) {
     return GestureDetector(
       onTap: () {
-        // 리뷰 상세 페이지로 이동
-        print('Navigate to review: ${review['mr_no']}');
+        // 상품 상세 페이지로 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(
+              productId: review.itId,
+            ),
+          ),
+        );
       },
       child: Container(
         decoration: BoxDecoration(
@@ -163,20 +237,43 @@ class _ReviewSectionState extends State<ReviewSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 리뷰 이미지
+            // 리뷰 이미지 (있으면 표시, 없으면 기본 이미지)
             Expanded(
               flex: 3,
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
+                  color: Colors.grey[200],
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12),
                   ),
-                  image: DecorationImage(
-                    image: NetworkImage(review['mr_img']),
-                    fit: BoxFit.cover,
-                  ),
                 ),
+                child: review.images.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                        child: Image.network(
+                          review.images.first,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(
+                                Icons.rate_review,
+                                size: 40,
+                                color: Colors.grey[400],
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : Center(
+                        child: Icon(
+                          Icons.rate_review,
+                          size: 40,
+                          color: Colors.grey[400],
+                        ),
+                      ),
               ),
             ),
             
@@ -185,12 +282,13 @@ class _ReviewSectionState extends State<ReviewSection> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: List.generate(5, (index) {
+                  final rating = review.averageScore ?? 0;
                   return Icon(
-                    index < (review['use_avg'] ?? 0).floor()
+                    index < rating.round()
                         ? Icons.star
                         : Icons.star_border,
                     size: 16,
-                    color: Colors.amber,
+                    color: const Color(0xFFFF4081),
                   );
                 }),
               ),
@@ -204,24 +302,25 @@ class _ReviewSectionState extends State<ReviewSection> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 리뷰 제목
+                    // 작성자명
                     Text(
-                      review['mr_title'] ?? '',
+                      review.isName ?? '익명',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     
-                    // 리뷰 요약
+                    // 리뷰 내용
                     Expanded(
                       child: Text(
-                        review['mr_summary'] ?? '',
+                        review.isPositiveReviewText ?? '',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Colors.grey,
                         ),
                         maxLines: 2,

@@ -20,6 +20,7 @@ import '../../shopping/wish/screens/wish_list_screen.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
 import '../../event/screens/event_list_screen.dart';
 import '../../user/delivery/delivery_list_screen.dart';
+import '../../review/screens/all_reviews_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -366,7 +367,13 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('리뷰'),
               onTap: () {
                 Navigator.pop(context);
-                // 리뷰 페이지로 이동
+                // 전체 리뷰 페이지로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AllReviewsScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
