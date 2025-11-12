@@ -222,139 +222,76 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
       ),
       child: Column(
         children: [
-          // 쿠폰 아이콘 (2개 겹친 태그)
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // 뒤쪽 태그
-              Transform.rotate(
-                angle: -0.1,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFFF4081),
-                        Color(0xFFFF6BA3),
-                      ],
+          // 쿠폰 아이콘 (단일 태그 형태)
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFF4081),
+                  Color(0xFFFF6BA3),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.pink.withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // 노란색 끈 (상단)
+                Positioned(
+                  top: 4,
+                  left: 15,
+                  right: 15,
+                  child: Container(
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Colors.yellow[600],
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.pink.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
                   ),
-                  child: Stack(
+                ),
+                // 3줄 바코드 스타일 (중앙)
+                const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // 노란색 끈
-                      Positioned(
-                        top: 8,
-                        left: 20,
-                        right: 20,
-                        child: Container(
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.yellow[600],
-                            borderRadius: BorderRadius.circular(2),
-                          ),
+                      SizedBox(
+                        width: 20,
+                        height: 3,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: Colors.white),
                         ),
                       ),
-                      // 퍼센트 기호
-                      const Center(
-                        child: Text(
-                          '%',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      SizedBox(height: 2),
+                      SizedBox(
+                        width: 20,
+                        height: 3,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: Colors.white),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      SizedBox(
+                        width: 20,
+                        height: 3,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: Colors.white),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              // 앞쪽 태그
-              Transform.rotate(
-                angle: 0.1,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFFF4081),
-                        Color(0xFFFF6BA3),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.pink.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      // 노란색 끈
-                      Positioned(
-                        top: 4,
-                        left: 15,
-                        right: 15,
-                        child: Container(
-                          height: 3,
-                          decoration: BoxDecoration(
-                            color: Colors.yellow[600],
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                      // 3줄 바코드 스타일
-                      const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 20,
-                              height: 3,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(color: Colors.white),
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            SizedBox(
-                              width: 20,
-                              height: 3,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(color: Colors.white),
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            SizedBox(
-                              width: 20,
-                              height: 3,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 24),
           // 내 쿠폰 텍스트
