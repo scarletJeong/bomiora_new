@@ -20,6 +20,7 @@ import '../../blood_sugar/screens/blood_sugar_list_screen.dart';
 import '../../blood_sugar/screens/blood_sugar_input_screen.dart';
 import '../../menstrual_cycle/screens/menstrual_cycle_info_screen.dart';
 import '../../steps/screens/steps_today_screen.dart';
+import '../../food/screens/food_screen.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -409,8 +410,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   Widget _buildMealSection() {
     return GestureDetector(
       onTap: () {
-        // 식사 입력 페이지로 이동
-        print('Navigate to meal input page');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const TodayDietScreen(),
+          ),
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(20),
