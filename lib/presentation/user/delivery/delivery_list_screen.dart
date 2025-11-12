@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import 'delivery_detail_screen.dart';
+import '../review/review_write_screen.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
@@ -764,11 +765,58 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
   }
 
   /// 리뷰 쓰기
-  void _writeReview(int odId) {
-    // TODO: 리뷰 작성 화면으로 이동
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('리뷰 작성 기능 준비 중입니다.')),
-    );
+  Future<void> _writeReview(int odId) async {
+    try {
+      // 로그인 확인
+      final user = await AuthService.getUser();
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('로그인이 필요합니다.')),
+          );
+        }
+        return;
+      }
+      final userId = user.id;
+      
+      // 주문 상세 정보 조회
+      final result = await OrderService.getOrderDetail(
+        odId: odId,
+        mbId: userId,
+      );
+      
+      if (result['success'] != true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? '주문 정보를 불러올 수 없습니다.')),
+          );
+        }
+        return;
+      }
+      
+      final orderDetail = result['order'] as OrderDetailModel;
+      
+      // 리뷰 작성 화면으로 이동
+      if (mounted) {
+        final reviewWritten = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReviewWriteScreen(orderDetail: orderDetail),
+          ),
+        );
+        
+        // 리뷰 작성 완료 시 주문 목록 새로고침
+        if (reviewWritten == true) {
+          _loadOrders();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('리뷰 작성 화면을 열 수 없습니다: $e')),
+        );
+      }
+    }
   }
 
   /// 주문 상태별 색상
