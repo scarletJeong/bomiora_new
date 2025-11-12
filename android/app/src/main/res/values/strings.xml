@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">보미오라</string>
+    
+    <!-- FoodLens SDK AccessToken -->
+    <string name="foodlens_access_token">de5b3bf499c443c9acfb654ee93f7eaa</string>
+</resources>
+
