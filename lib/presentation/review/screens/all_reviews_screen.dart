@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
+import '../../../core/utils/image_url_helper.dart';
 import 'review_detail_screen.dart';
 
 /// 전체 리뷰 목록 화면
@@ -42,7 +43,57 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
     _tabController.addListener(_onTabChanged);
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-    _loadReviews();
+    _loadInitialData(); // 초기 데이터 로드 (카운트 + 리뷰)
+  }
+  
+  /// 초기 데이터 로드 (모든 리뷰 카운트와 서포터 리뷰)
+  Future<void> _loadInitialData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 서포터 리뷰 카운트와 데이터 로드
+      final supporterResult = await ReviewService.getAllReviews(
+        rvkind: 'supporter',
+        page: 0,
+        size: 20,
+      );
+      
+      // 일반 리뷰 카운트만 로드 (데이터는 탭 전환시 로드)
+      final generalResult = await ReviewService.getAllReviews(
+        rvkind: 'general',
+        page: 0,
+        size: 1, // 카운트만 필요하므로 1개만
+      );
+
+      if (mounted) {
+        setState(() {
+          // 서포터 리뷰 설정
+          if (supporterResult['success'] == true) {
+            _supporterReviews = supporterResult['reviews'] as List<ReviewModel>;
+            _supporterCount = supporterResult['totalElements'] ?? 0;
+            _calculateAverageScores(_supporterReviews);
+          }
+          
+          // 일반 리뷰 카운트 설정
+          if (generalResult['success'] == true) {
+            _generalCount = generalResult['totalElements'] ?? 0;
+          }
+          
+          _currentPage = 1; // 이미 첫 페이지를 로드했으므로
+          _hasMore = supporterResult['hasNext'] ?? false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('초기 데이터 로드 오류: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -56,11 +107,17 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) {
-      setState(() {
-        _currentPage = 0;
-        _hasMore = true;
-      });
-      _loadReviews(refresh: true);
+      // 탭 전환시: 해당 탭의 리뷰가 없으면 로드
+      final needsLoad = (_tabController.index == 0 && _supporterReviews.isEmpty) ||
+                        (_tabController.index == 1 && _generalReviews.isEmpty);
+      
+      if (needsLoad) {
+        setState(() {
+          _currentPage = 0;
+          _hasMore = true;
+        });
+        _loadReviews();
+      }
     }
   }
 
@@ -78,6 +135,10 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
     if (_isLoading) return;
     if (!refresh && !_hasMore) return;
 
+    // 현재 탭의 리뷰가 비어있으면 무조건 로드 (탭 전환시)
+    final isTabSwitch = (_tabController.index == 0 && _supporterReviews.isEmpty && !refresh) ||
+                        (_tabController.index == 1 && _generalReviews.isEmpty && !refresh);
+
     setState(() {
       _isLoading = true;
       if (refresh) {
@@ -94,11 +155,14 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
     try {
       // 탭에 따라 리뷰 종류 결정
       String rvkind = _tabController.index == 0 ? 'supporter' : 'general';
+      
+      // 탭 전환시에는 0페이지부터 시작
+      int pageToLoad = isTabSwitch ? 0 : _currentPage;
 
       // 전체 리뷰 조회 (모든 상품의 리뷰)
       final result = await ReviewService.getAllReviews(
         rvkind: rvkind,
-        page: _currentPage,
+        page: pageToLoad,
         size: 20,
       );
 
@@ -108,25 +172,28 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
         
         setState(() {
           if (_tabController.index == 0) {
-            if (refresh) {
+            if (refresh || isTabSwitch) {
               _supporterReviews = newReviews;
               _supporterCount = totalElements;
               // 서포터 리뷰 평균 계산
               _calculateAverageScores(newReviews);
+              _currentPage = 1; // 다음 페이지 준비
             } else {
               _supporterReviews.addAll(newReviews);
+              _currentPage++;
             }
           } else {
-            if (refresh) {
+            if (refresh || isTabSwitch) {
               _generalReviews = newReviews;
               _generalCount = totalElements;
               // 일반 리뷰 평균 계산
               _calculateAverageScores(newReviews);
+              _currentPage = 1; // 다음 페이지 준비
             } else {
               _generalReviews.addAll(newReviews);
+              _currentPage++;
             }
           }
-          _currentPage++;
           _hasMore = result['hasNext'] ?? false;
         });
       }
@@ -503,16 +570,27 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(12),
                         ),
-                        child: Image.network(
-                          review.images.first,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Icon(
-                                Icons.rate_review,
-                                size: 40,
-                                color: Colors.grey[400],
-                              ),
+                        child: Builder(
+                          builder: (context) {
+                            final originalUrl = review.images.first;
+                            final convertedUrl = ImageUrlHelper.getReviewImageUrl(originalUrl);
+                            print('🖼️ [리뷰 이미지]');
+                            print('  원본: $originalUrl');
+                            print('  변환: $convertedUrl');
+                            return Image.network(
+                              convertedUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                print('❌ [리뷰 이미지 로드 실패] $convertedUrl');
+                                print('  에러: $error');
+                                return Center(
+                                  child: Icon(
+                                    Icons.rate_review,
+                                    size: 40,
+                                    color: Colors.grey[400],
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),

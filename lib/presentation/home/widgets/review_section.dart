@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../shopping/screens/product_detail_screen.dart';
 
 class ReviewSection extends StatefulWidget {
@@ -253,16 +254,27 @@ class _ReviewSectionState extends State<ReviewSection> {
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(12),
                         ),
-                        child: Image.network(
-                          review.images.first,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Icon(
-                                Icons.rate_review,
-                                size: 40,
-                                color: Colors.grey[400],
-                              ),
+                        child: Builder(
+                          builder: (context) {
+                            final originalUrl = review.images.first;
+                            final convertedUrl = ImageUrlHelper.getReviewImageUrl(originalUrl);
+                            print('🏠 [홈 리뷰 이미지]');
+                            print('  원본: $originalUrl');
+                            print('  변환: $convertedUrl');
+                            return Image.network(
+                              convertedUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                print('❌ [홈 리뷰 이미지 로드 실패] $convertedUrl');
+                                print('  에러: $error');
+                                return Center(
+                                  child: Icon(
+                                    Icons.rate_review,
+                                    size: 40,
+                                    color: Colors.grey[400],
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../shopping/screens/product_detail_screen.dart';
 
 /// 리뷰 상세보기 화면
@@ -389,7 +390,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
               return ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  _review.images[index],
+                  ImageUrlHelper.getReviewImageUrl(_review.images[index]),
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(

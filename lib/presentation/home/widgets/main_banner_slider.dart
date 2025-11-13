@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shopping/screens/product_detail_screen.dart';
 
 class MainBannerSlider extends StatefulWidget {
   const MainBannerSlider({super.key});
@@ -16,7 +17,7 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
       imageUrl: 'assets/images/banners/mobile/m_banner00.jpg',
       title: '보미오라 다이어트',
       subtitle: '건강한 체중감량의 시작',
-      link: '/shop/item.php?it_id=1686290723',
+      productId: '1686290723',
     ),
     BannerItem(
       imageUrl: 'assets/images/banners/mobile/m_banner01.jpg',
@@ -80,9 +81,16 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
               final banner = banners[index];
               return GestureDetector(
                 onTap: () {
-                  if (banner.link != null) {
-                    // 상품 페이지로 이동
-                    print('Navigate to: ${banner.link}');
+                  if (banner.productId != null) {
+                    // 상품 상세 페이지로 이동
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductDetailScreen(
+                          productId: banner.productId!,
+                        ),
+                      ),
+                    );
                   }
                 },
                 child: Container(
@@ -185,12 +193,12 @@ class BannerItem {
   final String imageUrl;
   final String title;
   final String subtitle;
-  final String? link;
+  final String? productId;
 
   BannerItem({
     required this.imageUrl,
     required this.title,
     required this.subtitle,
-    this.link,
+    this.productId,
   });
 }
