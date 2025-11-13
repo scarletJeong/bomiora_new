@@ -119,7 +119,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     // 캐시에서 데이터 가져오기 (없으면 빈 배열)
     final dayRecords = dailyRecordsCache[selectedDateStr] ?? [];
     
-    dayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+    // 시간 내림차순 정렬 (최신 시간이 먼저)
+    dayRecords.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
     
     final timeRange = _calculateTimeRange();
     final minHourDiff = timeRange['min']!;
@@ -533,7 +534,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
           final todayRecords = dailyRecordsCache[selectedDateStr] ?? [];
           
-          todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+          // 시간 내림차순 정렬 (최신 시간이 먼저)
+          todayRecords.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
           
           if (todayRecords.length > 1) {
             _showTimeSelectionBottomSheet(todayRecords);
@@ -1216,30 +1218,51 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                         ),
                         Row(
                           children: [
-                            Text(
-                              '${record.systolic}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
+                            // TODO: 수축기 배지 - 추후 이미지로 교체 (assets/images/health/systolic_badge.png)
+                            // 현재는 Container로 구현됨
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.withOpacity(0.3)),
                               ),
-                            ),
-                            Text(
-                              ' / ',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Text(
-                              '${record.diastolic}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFFF3787),
+                              child: Text(
+                                '${record.systolic}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
+                            // 구분선
+                            Container(
+                              width: 1,
+                              height: 20,
+                              color: Colors.grey[300],
+                            ),
+                            const SizedBox(width: 8),
+                            // TODO: 이완기 배지 - 추후 이미지로 교체 (assets/images/health/diastolic_badge.png)
+                            // 현재는 Container로 구현됨
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF3787).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFFF3787).withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                '${record.diastolic}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFFF3787),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             Icon(Icons.chevron_right, color: Colors.grey[400]),
                           ],
                         ),
