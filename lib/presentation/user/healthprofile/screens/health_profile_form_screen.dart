@@ -8,10 +8,12 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 
 class HealthProfileFormScreen extends StatefulWidget {
   final HealthProfileModel? existingProfile;
+  final int? initialSectionIndex; // 초기 섹션 인덱스 (특정 섹션만 수정 시)
   
   const HealthProfileFormScreen({
     super.key,
     this.existingProfile,
+    this.initialSectionIndex,
   });
 
   @override
@@ -20,7 +22,7 @@ class HealthProfileFormScreen extends StatefulWidget {
 
 class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final PageController _pageController = PageController();
+  late final PageController _pageController;
   
   UserModel? _currentUser;
   HealthProfileModel? _existingProfile; // 기존 문진표 정보 저장
@@ -39,6 +41,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   @override
   void initState() {
     super.initState();
+    // PageController를 초기 섹션 인덱스로 초기화
+    final initialPage = widget.initialSectionIndex ?? 0;
+    _pageController = PageController(initialPage: initialPage);
+    _currentPage = initialPage;
+    
     _loadUser();
     _initializeSections();
   }
@@ -380,104 +387,162 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 특정 섹션만 수정하는 모드인지 확인
+    final isSingleSectionMode = widget.initialSectionIndex != null;
+    
     return MobileAppLayoutWrapper(
       appBar: AppBar(
-        title: Text(_existingProfile != null ? '문진표 수정' : '문진표 작성'),
+        title: Text(
+          isSingleSectionMode 
+              ? '${_sections.isNotEmpty && _currentPage < _sections.length ? _sections[_currentPage].title : ''} 수정'
+              : (_existingProfile != null ? '문진표 수정' : '문진표 작성')
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
       ),
       child: _currentUser == null
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // 진행률 표시
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${_currentPage + 1} / ${_sections.length}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '${((_currentPage + 1) / _sections.length * 100).toInt()}%',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFFF3787),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: (_currentPage + 1) / _sections.length,
-                        backgroundColor: Colors.grey[300],
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF3787)),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // 폼 내용
-                Expanded(
-                  child: Form(
-                    key: _formKey,
-                    child: PageView.builder(
-                      controller: _pageController,
-                      onPageChanged: (page) {
-                        setState(() {
-                          _currentPage = page;
-                        });
-                      },
-                      itemCount: _sections.length,
-                      itemBuilder: (context, index) {
-                        return _buildSectionPage(_sections[index]);
-                      },
+          : isSingleSectionMode
+              ? _buildSingleSectionMode()
+              : _buildFullFormMode(),
+    );
+  }
+
+  // 전체 폼 모드 (기존 방식)
+  Widget _buildFullFormMode() {
+    return Column(
+      children: [
+        // 진행률 표시
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${_currentPage + 1} / ${_sections.length}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-                
-                // 네비게이션 버튼
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (_currentPage > 0)
-                        ElevatedButton(
-                          onPressed: _previousPage,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[300],
-                            foregroundColor: Colors.black,
-                          ),
-                          child: const Text('이전'),
-                        )
-                      else
-                        const SizedBox(width: 80),
-                      
-                      ElevatedButton(
-                        onPressed: _currentPage == _sections.length - 1
-                            ? _submitForm
-                            : _nextPage,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF3787),
-                          foregroundColor: Colors.white,
-                        ),
-                        child: Text(_currentPage == _sections.length - 1 ? '완료' : '다음'),
-                      ),
-                    ],
+                  Text(
+                    '${((_currentPage + 1) / _sections.length * 100).toInt()}%',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFF3787),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: (_currentPage + 1) / _sections.length,
+                backgroundColor: Colors.grey[300],
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF3787)),
+              ),
+            ],
+          ),
+        ),
+        
+        // 폼 내용
+        Expanded(
+          child: Form(
+            key: _formKey,
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (page) {
+                setState(() {
+                  _currentPage = page;
+                });
+              },
+              itemCount: _sections.length,
+              itemBuilder: (context, index) {
+                return _buildSectionPage(_sections[index]);
+              },
             ),
+          ),
+        ),
+        
+        // 네비게이션 버튼
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (_currentPage > 0)
+                ElevatedButton(
+                  onPressed: _previousPage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[300],
+                    foregroundColor: Colors.black,
+                  ),
+                  child: const Text('이전'),
+                )
+              else
+                const SizedBox(width: 80),
+              
+              ElevatedButton(
+                onPressed: _currentPage == _sections.length - 1
+                    ? _submitForm
+                    : _nextPage,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF3787),
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(_currentPage == _sections.length - 1 ? '완료' : '다음'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 단일 섹션 수정 모드 (새로운 방식)
+  Widget _buildSingleSectionMode() {
+    if (_currentPage >= _sections.length) {
+      return const Center(child: Text('섹션을 찾을 수 없습니다'));
+    }
+    
+    final section = _sections[_currentPage];
+    
+    return Column(
+      children: [
+        // 폼 내용
+        Expanded(
+          child: Form(
+            key: _formKey,
+            child: _buildSectionPage(section),
+          ),
+        ),
+        
+        // 완료 버튼 (바로 표시)
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _submitForm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF3787),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                '완료',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -847,7 +912,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               content: Text(_existingProfile != null 
                   ? '문진표가 수정되었습니다' 
                   : '문진표가 저장되었습니다'),
-              backgroundColor: const Color(0xFFFF3787),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              width: 568, // 600px - 32px (양쪽 16px 여백)
+              duration: const Duration(seconds: 2),
             ),
           );
           Navigator.pop(context, true);
@@ -858,6 +926,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             SnackBar(
               content: Text('저장 중 오류가 발생했습니다: $e'),
               backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              width: 568, // 600px - 32px (양쪽 16px 여백)
+              duration: const Duration(seconds: 3),
             ),
           );
         }

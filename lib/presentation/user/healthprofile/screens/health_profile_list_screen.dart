@@ -44,6 +44,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           SnackBar(
             content: Text('데이터 로드 중 오류가 발생했습니다: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            width: 568, // 600px - 32px (양쪽 16px 여백)
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -200,6 +203,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           _buildInfoCard(
             title: '기본 정보',
             icon: Icons.person,
+            sectionIndex: 0,
             children: [
               _buildInfoRow('생년월일', _formatBirthDate(profile.answer1)),
               _buildInfoRow('성별', _formatGender(profile.answer2)),
@@ -214,6 +218,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           _buildInfoCard(
             title: '다이어트 목표',
             icon: Icons.flag,
+            sectionIndex: 1,
             children: [
               _buildInfoRow('목표 감량 체중', '${profile.answer3}kg'),
               _buildInfoRow('예상 기간', profile.answer6),
@@ -226,6 +231,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           _buildInfoCard(
             title: '식습관',
             icon: Icons.restaurant,
+            sectionIndex: 2,
             children: [
               _buildInfoRow('하루 끼니', profile.answer7),
               _buildInfoRow('식사 시간', _formatMealTime(profile.answer71)),
@@ -240,6 +246,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           _buildInfoCard(
             title: '운동 및 건강',
             icon: Icons.fitness_center,
+            sectionIndex: 3,
             children: [
               _buildInfoRow('운동 습관', profile.answer10),
               _buildInfoRow('질병', profile.answer11.isEmpty ? '없음' : profile.answer11),
@@ -254,6 +261,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             _buildInfoCard(
               title: '다이어트 경험',
               icon: Icons.history,
+              sectionIndex: 4,
               children: [
                 _buildInfoRow('기존 다이어트약 복용', _formatDietExperience(profile.answer13)),
                 if (profile.answer13Medicine.isNotEmpty)
@@ -304,6 +312,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     required String title,
     required IconData icon,
     required List<Widget> children,
+    int? sectionIndex, // 섹션 인덱스 (null이면 수정 불가능한 카드)
   }) {
     return Card(
       color: const Color(0xFFFFF5F5), // 연한 핑크색 배경 문진표 카드 색상
@@ -312,31 +321,55 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.blue,
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: sectionIndex != null 
+            ? () => _navigateToEditSection(sectionIndex)
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    color: Colors.blue,
+                    size: 24,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...children,
-          ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (sectionIndex != null) ...[
+                    const Icon(
+                      Icons.edit,
+                      size: 20,
+                      color: Color(0xFFFF3787),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '수정',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: const Color(0xFFFF3787),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...children,
+            ],
+          ),
         ),
       ),
     );
@@ -443,6 +476,22 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       MaterialPageRoute(
         builder: (context) => HealthProfileFormScreen(
           existingProfile: _healthProfile,
+        ),
+      ),
+    );
+    
+    if (result == true) {
+      _loadData();
+    }
+  }
+
+  void _navigateToEditSection(int sectionIndex) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HealthProfileFormScreen(
+          existingProfile: _healthProfile,
+          initialSectionIndex: sectionIndex,
         ),
       ),
     );
