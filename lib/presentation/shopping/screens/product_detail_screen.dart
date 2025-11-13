@@ -101,12 +101,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           }
         }
       });
+      
+      // 찜하기 상태 확인
+      await _checkFavoriteStatus();
     } catch (e) {
       setState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = '제품 정보를 불러오는데 실패했습니다: $e';
       });
+    }
+  }
+
+  /// 찜하기 상태 확인
+  Future<void> _checkFavoriteStatus() async {
+    try {
+      final wishList = await WishService.getWishList();
+      
+      // 현재 상품이 찜 목록에 있는지 확인
+      final isFavorite = wishList.any((item) {
+        // it_id 필드로 비교
+        final itemId = item['it_id']?.toString() ?? '';
+        return itemId == widget.productId;
+      });
+      
+      setState(() {
+        _isFavorite = isFavorite;
+      });
+      
+      print('📌 [찜하기] 상태 확인 완료 - 상품 ID: ${widget.productId}, 찜 상태: $_isFavorite');
+    } catch (e) {
+      print('⚠️ [찜하기] 상태 확인 실패: $e');
+      // 에러 발생 시 기본값(false) 유지
     }
   }
 
