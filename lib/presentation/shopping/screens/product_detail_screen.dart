@@ -279,6 +279,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               content: Text('찜하기 해제 완료'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
+              width: 568, // 600px - 32px (양쪽 16px 여백)
               duration: Duration(milliseconds: 500),
             ),
           );
@@ -292,6 +293,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               content: Text('찜하기 완료'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
+              width: 568, // 600px - 32px (양쪽 16px 여백)
               duration: Duration(milliseconds: 500),
             ),
           );
@@ -309,6 +311,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             content: Text('오류가 발생했습니다: ${e.toString()}'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
+            width: 568, // 600px - 32px (양쪽 16px 여백)
             duration: const Duration(seconds: 2),
           ),
         );
@@ -1617,7 +1620,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         onAddToCart: () {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('장바구니에 추가되었습니다.')),
+            const SnackBar(
+              content: Text('장바구니에 추가되었습니다.'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              width: 568, // 600px - 32px (양쪽 16px 여백)
+              duration: Duration(seconds: 2),
+            ),
           );
         },
         onReserve: () {
@@ -1661,7 +1670,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void _proceedWithReservation() {
     if (_selectedOptions.isEmpty || _product == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('옵션을 선택해주세요.')),
+        const SnackBar(
+          content: Text('옵션을 선택해주세요.'),
+          behavior: SnackBarBehavior.floating,
+          width: 568, // 600px - 32px (양쪽 16px 여백)
+          duration: Duration(seconds: 2),
+        ),
       );
       return;
     }
@@ -1694,6 +1708,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        width: 568, // 600px - 32px (양쪽 16px 여백)
         duration: const Duration(seconds: 5),
       ),
     );
