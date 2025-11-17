@@ -136,7 +136,12 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
       
       if (result['success'] == true) {
         setState(() {
-          _orders = result['orders'] as List<OrderListModel>;
+          final ordersList = result['orders'] ?? [];
+          if (ordersList is List<OrderListModel>) {
+            _orders = ordersList;
+          } else {
+            _orders = [];
+          }
           _currentPage = result['currentPage'] ?? 0;
           _totalPages = result['totalPages'] ?? 0;
           _hasNext = result['hasNext'] ?? false;

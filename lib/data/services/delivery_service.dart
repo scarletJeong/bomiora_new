@@ -19,11 +19,6 @@ class OrderService {
     int size = 10,
   }) async {
     try {
-      print('📦 [주문 목록 조회] 요청');
-      print('  - mbId: $mbId');
-      print('  - period: $period');
-      print('  - status: $status');
-      print('  - page: $page, size: $size');
 
       // 쿼리 파라미터를 URL에 직접 추가
       final queryString = 'mbId=$mbId&period=$period&status=$status&page=$page&size=$size';
@@ -31,8 +26,6 @@ class OrderService {
       final response = await ApiClient.get(
         '/api/orders?$queryString',
       );
-
-      print('📡 [주문 목록 조회] 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -44,9 +37,7 @@ class OrderService {
               .map((order) => OrderListModel.fromJson(order))
               .toList();
         }
-        
-        print('✅ [주문 목록 조회] 성공: ${orders.length}개');
-        
+      
         return {
           'success': true,
           'orders': orders,

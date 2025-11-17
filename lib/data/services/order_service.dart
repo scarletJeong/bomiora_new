@@ -1,5 +1,4 @@
 import 'dart:convert';
-import '../models/order/order_model.dart';
 import '../../core/network/api_client.dart';
 
 /// 주문/배송 서비스
@@ -19,45 +18,23 @@ class OrderService {
     int size = 10,
   }) async {
     try {
-      print('📦 [주문 목록 조회] 요청');
-      print('  - mbId: $mbId');
-      print('  - period: $period');
-      print('  - status: $status');
-      print('  - page: $page, size: $size');
 
-      final queryParams = {
-        'mbId': mbId,
-        'period': period.toString(),
-        'status': status,
-        'page': page.toString(),
-        'size': size.toString(),
-      };
-
-      final response = await ApiClient.get(
-        '/orders',
-        queryParameters: queryParams,
-      );
-
-      print('📡 [주문 목록 조회] 응답 상태: ${response.statusCode}');
+      // URL에 쿼리 파라미터 직접 포함
+      final queryString = 'mbId=$mbId&period=$period&status=$status&page=$page&size=$size';
+      final response = await ApiClient.get('/api/orders?$queryString');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
         // 주문 목록 파싱
-        List<OrderListModel> orders = [];
-        if (data['orders'] != null) {
-          orders = (data['orders'] as List)
-              .map((order) => OrderListModel.fromJson(order))
-              .toList();
-        }
-        
-        print('✅ [주문 목록 조회] 성공: ${orders.length}개');
+        final orders = data['orders'] ?? [];
         
         return {
           'success': true,
           'orders': orders,
           'currentPage': data['currentPage'] ?? 0,
           'totalPages': data['totalPages'] ?? 0,
+          'totalElements': data['totalElements'] ?? 0,
           'totalItems': data['totalItems'] ?? 0,
           'hasNext': data['hasNext'] ?? false,
         };
@@ -91,22 +68,18 @@ class OrderService {
       print('  - odId: $odId');
       print('  - mbId: $mbId');
 
-      final response = await ApiClient.get(
-        '/orders/$odId',
-        queryParameters: {'mbId': mbId},
-      );
+      final response = await ApiClient.get('/api/orders/$odId?mbId=$mbId');
 
       print('📡 [주문 상세 조회] 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final order = OrderDetailModel.fromJson(data);
         
         print('✅ [주문 상세 조회] 성공');
         
         return {
           'success': true,
-          'order': order,
+          'order': data,
         };
       } else {
         print('❌ [주문 상세 조회] 실패: ${response.statusCode}');
@@ -139,8 +112,8 @@ class OrderService {
       print('  - mbId: $mbId');
 
       final response = await ApiClient.post(
-        '/orders/$odId/cancel',
-        body: {'mbId': mbId},
+        '/api/orders/$odId/cancel',
+        {'mbId': mbId},
       );
 
       print('📡 [주문 취소] 응답 상태: ${response.statusCode}');
@@ -184,8 +157,8 @@ class OrderService {
       print('  - mbId: $mbId');
 
       final response = await ApiClient.post(
-        '/orders/$odId/confirm',
-        body: {'mbId': mbId},
+        '/api/orders/$odId/confirm',
+        {'mbId': mbId},
       );
 
       print('📡 [구매 확정] 응답 상태: ${response.statusCode}');
