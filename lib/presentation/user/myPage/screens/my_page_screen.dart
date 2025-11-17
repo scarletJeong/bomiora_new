@@ -8,6 +8,7 @@ import '../../../../data/services/review_service.dart';
 import '../../../../data/services/contact_service.dart';
 import '../../../../data/services/order_service.dart';
 import '../../healthprofile/screens/health_profile_list_screen.dart';
+import '../../../health/dashboard/screens/health_dashboard_screen.dart';
 import '../../../settings/settings_screen.dart';
 import 'profile_settings_screen.dart';
 import '../../../customer_service/screens/customer_service_screen.dart';
@@ -414,9 +415,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 icon: Icons.dashboard_outlined,
                 title: '건강대시보드',
                 onTap: () {
-                  // TODO: 건강대시보드 페이지로 이동
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('건강대시보드는 추후 구현 예정입니다.')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HealthDashboardScreen(),
+                    ),
                   );
                 },
               ),
