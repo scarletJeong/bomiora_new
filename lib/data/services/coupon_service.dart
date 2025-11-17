@@ -136,5 +136,56 @@ class CouponService {
       };
     }
   }
+  
+  /// 도움쿠폰 다운로드
+  static Future<Map<String, dynamic>> downloadHelpCoupon({
+    required String mbId,
+    required String itId,
+    required int isId,
+  }) async {
+    try {
+      print('🎫 도움쿠폰 다운로드 시작 - mbId: $mbId, itId: $itId, isId: $isId');
+      
+      final response = await ApiClient.post(
+        ApiEndpoints.downloadHelpCoupon,
+        {
+          'mbId': mbId,
+          'itId': itId,
+          'isId': isId,
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['success'] == true) {
+          print('✅ 도움쿠폰 다운로드 완료');
+          return {
+            'success': true,
+            'message': data['message'],
+            'downloadCount': data['downloadCount'],
+            'cpId': data['cpId'],
+          };
+        } else {
+          print('❌ 도움쿠폰 다운로드 실패: ${data['message']}');
+          return {
+            'success': false,
+            'message': data['message'] ?? '쿠폰 다운로드에 실패했습니다.',
+          };
+        }
+      }
+      
+      return {
+        'success': false,
+        'message': '쿠폰 다운로드에 실패했습니다.',
+      };
+    } catch (e) {
+      print('❌ 도움쿠폰 다운로드 오류: $e');
+      return {
+        'success': false,
+        'message': '쿠폰 다운로드 중 오류가 발생했습니다.',
+      };
+    }
+  }
 }
 

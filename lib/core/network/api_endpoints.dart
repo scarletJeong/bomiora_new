@@ -69,6 +69,7 @@ class ApiEndpoints {
   static String usedCoupons(String userId) => '/api/user/coupons/used?mb_id=$userId';
   static String expiredCoupons(String userId) => '/api/user/coupons/expired?mb_id=$userId';
   static const String registerCoupon = '/api/user/coupons/register';
+  static const String downloadHelpCoupon = '/api/user/coupons/help-coupon';
   
   // 상품 옵션 관련
   static String productOptions(String productId) => '/api/products/$productId/options';

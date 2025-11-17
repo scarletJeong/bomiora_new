@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
+import '../../../data/services/coupon_service.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/snackbar_utils.dart';
 import '../../shopping/screens/product_detail_screen.dart';
 
 /// 리뷰 상세보기 화면
@@ -21,11 +26,38 @@ class ReviewDetailScreen extends StatefulWidget {
 class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
   late ReviewModel _review;
   bool _isLoading = false;
+  bool _hasUserHelpful = false; // 사용자가 이미 추천했는지
 
   @override
   void initState() {
     super.initState();
     _review = widget.review;
+    _checkUserHelpful();
+  }
+  
+  /// 사용자가 이미 추천했는지 확인
+  Future<void> _checkUserHelpful() async {
+    if (_review.isId == null || _review.isGeneralReview == false) return;
+    
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) return;
+      
+      final response = await ApiClient.get(
+        '/api/user/reviews/${_review.isId}/helpful/check?mbId=${user.id}&itId=${_review.itId}',
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) {
+          setState(() {
+            _hasUserHelpful = data['hasHelpful'] == true;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ 추천 여부 확인 에러: $e');
+    }
   }
 
   @override
@@ -49,28 +81,6 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
           ),
-          actions: [
-            // 상품 보기 버튼
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductDetailScreen(
-                      productId: _review.itId,
-                    ),
-                  ),
-                );
-              },
-              child: const Text(
-                '상품보기',
-                style: TextStyle(
-                  color: Color(0xFFFF4081),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
         ),
         body: SingleChildScrollView(
           child: Column(
@@ -78,12 +88,26 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             children: [
               // 작성자 정보
               _buildAuthorInfo(),
-              
+
               // 평점
               _buildRatingSection(),
               
               // 리뷰 내용
               _buildReviewContent(),
+              
+              // 추천 섹션 (일반: 도움이 돼요, 서포터: 도움쿠폰)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                color: Colors.white,
+                child: _review.isGeneralReview
+                    ? Center(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: _buildHelpfulButton(),
+                        ),
+                      )
+                    : _buildHelpCouponBanner(),
+              ),
               
               // 이미지
               if (_review.images.isNotEmpty) _buildImageSection(),
@@ -96,7 +120,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: _buildBottomBar(),
+        bottomNavigationBar: _buildProductBottomBar(),
       ),
     );
   }
@@ -137,6 +161,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    // 서포터 뱃지
                     if (_review.isSupporterReview)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -156,6 +181,47 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                           ),
                         ),
                       ),
+                    // 일반 리뷰: 내돈내산 또는 평가단 뱃지
+                    if (_review.isGeneralReview && _review.isPayMthod != null) ...[
+                      if (_review.isPayMthod == 'solo')
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            '내돈내산',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ),
+                      if (_review.isPayMthod == 'group')
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            '평가단',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -174,7 +240,8 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
       ),
     );
   }
-
+          
+          
   /// 평점 섹션
   Widget _buildRatingSection() {
     return Container(
@@ -336,14 +403,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
+            Text(
                 _review.isMoreReviewText!,
                 style: const TextStyle(
                   fontSize: 14,
@@ -351,7 +411,6 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                   height: 1.6,
                 ),
               ),
-            ),
           ],
         ],
       ),
@@ -466,8 +525,184 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
     );
   }
 
-  /// 하단 바 (도움이 돼요)
-  Widget _buildBottomBar() {
+  /// 도움 쿠폰 배너
+  Widget _buildHelpCouponBanner() {
+    final downloadCount = _review.czDownload ?? 0;
+    
+    return InkWell(
+      onTap: _downloadHelpCoupon,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF0F5), // 연한 핑크 배경
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFFFB3D9), // 핑크 점선 느낌
+            width: 0.5,
+            strokeAlign: BorderSide.strokeAlignInside,
+          ),
+        ),
+        child: Row(
+          children: [
+            // 쿠폰 아이콘
+            const Icon(
+              Icons.local_offer,
+              color: Color(0xFFFF4081),
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            // 쿠폰 정보
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '■ 5% 할인 도움쿠폰',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFF4081),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$downloadCount명이 받았어요 · 유효기간 7일',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFFF7AAD),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 다운로드 버튼
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF4081),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.download,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 도움 쿠폰 다운로드
+  Future<void> _downloadHelpCoupon() async {
+    if (_review.isId == null) return;
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      // 현재 사용자 정보 가져오기
+      final user = await AuthService.getUser();
+      if (user == null) {
+        if (mounted) {
+          SnackBarUtils.showError(context, '로그인이 필요합니다.');
+        }
+        return;
+      }
+      
+      // 도움쿠폰 다운로드 API 호출
+      final result = await CouponService.downloadHelpCoupon(
+        mbId: user.id,
+        itId: _review.itId,
+        isId: _review.isId!,
+      );
+      
+      if (!mounted) return;
+      
+      if (result['success'] == true) {
+        // 성공 시 다운로드 카운트 업데이트
+        setState(() {
+          _review = ReviewModel(
+            isId: _review.isId,
+            itId: _review.itId,
+            itName: _review.itName,
+            mbId: _review.mbId,
+            isName: _review.isName,
+            isTime: _review.isTime,
+            isConfirm: _review.isConfirm,
+            isScore1: _review.isScore1,
+            isScore2: _review.isScore2,
+            isScore3: _review.isScore3,
+            isScore4: _review.isScore4,
+            isRvkind: _review.isRvkind,
+            isRecommend: _review.isRecommend,
+            isGood: _review.isGood,
+            czDownload: result['downloadCount'] ?? 0,
+            isPositiveReviewText: _review.isPositiveReviewText,
+            isNegativeReviewText: _review.isNegativeReviewText,
+            isMoreReviewText: _review.isMoreReviewText,
+            images: _review.images,
+            isHeight: _review.isHeight,
+            isWeight: _review.isWeight,
+            isPayMthod: _review.isPayMthod,
+            isOutageNum: _review.isOutageNum,
+            odId: _review.odId,
+          );
+        });
+        
+        SnackBarUtils.showSuccess(context, result['message'] ?? '쿠폰이 발급되었습니다.');
+      } else {
+        SnackBarUtils.showError(context, result['message'] ?? '쿠폰 다운로드에 실패했습니다.');
+      }
+    } catch (e) {
+      print('❌ 도움쿠폰 다운로드 에러: $e');
+      if (mounted) {
+        SnackBarUtils.showError(context, '쿠폰 다운로드 중 오류가 발생했습니다.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  /// 도움이 돼요 버튼
+  Widget _buildHelpfulButton() {
+    // 이미 추천했으면 비활성화
+    final isDisabled = _isLoading || _hasUserHelpful;
+    
+    return OutlinedButton.icon(
+      onPressed: isDisabled ? null : _handleHelpful,
+      icon: Icon(
+        _hasUserHelpful ? Icons.thumb_up : Icons.thumb_up_outlined,
+        size: 20,
+        color: isDisabled ? Colors.grey : const Color(0xFFFF4081),
+      ),
+      label: Text(
+        _hasUserHelpful ? '추천했어요 (${_review.isGood ?? 0})' : '도움이 돼요 (${_review.isGood ?? 0})',
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: isDisabled ? Colors.grey : const Color(0xFFFF4081),
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        side: BorderSide(
+          color: isDisabled ? Colors.grey[300]! : const Color(0xFFFF4081),
+        ),
+        backgroundColor: _hasUserHelpful ? const Color(0xFFFF4081).withOpacity(0.05) : null,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  /// 하단 바 (제품 보러가기로 변경)
+  Widget _buildProductBottomBar() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -481,36 +716,29 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: _isLoading ? null : _handleHelpful,
-              icon: Icon(
-                Icons.thumb_up,
-                size: 20,
-                color: _isLoading ? Colors.grey : const Color(0xFFFF4081),
-              ),
-              label: Text(
-                '도움이 돼요 (${_review.isGood ?? 0})',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: _isLoading ? Colors.grey : const Color(0xFFFF4081),
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                side: BorderSide(
-                  color: _isLoading ? Colors.grey[300]! : const Color(0xFFFF4081),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            '/product/${_review.itId}',
+          );
+        },
+        icon: const Icon(Icons.shopping_bag_outlined, size: 20),
+        label: const Text(
+          '이 제품 보러가기',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF3787),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
       ),
     );
   }
@@ -524,7 +752,17 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
     });
 
     try {
-      final result = await ReviewService.incrementReviewHelpful(_review.isId!);
+      // 현재 사용자 정보 가져오기
+      final user = await AuthService.getUser();
+      if (user == null) {
+        if (mounted) {
+          SnackBarUtils.showError(context, '로그인이 필요합니다.');
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+      
+      final result = await ReviewService.incrementReviewHelpful(_review.isId!, user.id);
 
       if (mounted) {
         if (result['success'] == true) {
@@ -557,23 +795,18 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             );
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('도움이 돼요를 눌렀습니다!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 1),
-            ),
-          );
+          setState(() {
+            _hasUserHelpful = true; // 추천 상태 업데이트
+          });
+          SnackBarUtils.showSuccess(context, '추천했어요');
+        } else {
+          // 중복 클릭 시
+          SnackBarUtils.showWarning(context, result['message'] ?? '이미 추천 하신 리뷰 입니다.');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('처리 중 오류가 발생했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarUtils.showError(context, '처리 중 오류가 발생했습니다.');
       }
     } finally {
       if (mounted) {

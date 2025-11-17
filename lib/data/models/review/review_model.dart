@@ -2,6 +2,7 @@
 class ReviewModel {
   final int? isId;
   final String itId;
+  final String? itName; // 제품명
   final String mbId;
   final String? isName;
   final DateTime? isTime;
@@ -20,6 +21,7 @@ class ReviewModel {
   // 추천 여부
   final String isRecommend; // 'y' or 'n'
   final int? isGood; // 도움이 돼요 카운트
+  final int? czDownload; // 도움쿠폰 다운로드 카운트
   
   // 리뷰 내용
   final String? isPositiveReviewText; // 좋았던 점
@@ -50,6 +52,7 @@ class ReviewModel {
   ReviewModel({
     this.isId,
     required this.itId,
+    this.itName,
     required this.mbId,
     this.isName,
     this.isTime,
@@ -62,6 +65,7 @@ class ReviewModel {
     required this.isRvkind,
     required this.isRecommend,
     this.isGood,
+    this.czDownload,
     this.isPositiveReviewText,
     this.isNegativeReviewText,
     this.isMoreReviewText,
@@ -84,6 +88,7 @@ class ReviewModel {
     return ReviewModel(
       isId: json['isId'],
       itId: json['itId'] ?? '',
+      itName: json['itName'],
       mbId: json['mbId'] ?? '',
       isName: json['isName'],
       isTime: json['isTime'] != null ? DateTime.parse(json['isTime']) : null,
@@ -96,6 +101,7 @@ class ReviewModel {
       isRvkind: json['isRvkind'] ?? 'general',
       isRecommend: json['isRecommend'] ?? 'y',
       isGood: json['isGood'] ?? 0,
+      czDownload: json['czDownload'] ?? 0,
       isPositiveReviewText: json['isPositiveReviewText'],
       isNegativeReviewText: json['isNegativeReviewText'],
       isMoreReviewText: json['isMoreReviewText'],
@@ -114,6 +120,7 @@ class ReviewModel {
     return {
       if (isId != null) 'isId': isId,
       'itId': itId,
+      if (itName != null) 'itName': itName,
       'mbId': mbId,
       if (isName != null) 'isName': isName,
       if (isTime != null) 'isTime': isTime!.toIso8601String(),
@@ -126,6 +133,7 @@ class ReviewModel {
       'isRvkind': isRvkind,
       'isRecommend': isRecommend,
       if (isGood != null) 'isGood': isGood,
+      if (czDownload != null) 'czDownload': czDownload,
       if (isPositiveReviewText != null) 'isPositiveReviewText': isPositiveReviewText,
       if (isNegativeReviewText != null) 'isNegativeReviewText': isNegativeReviewText,
       if (isMoreReviewText != null) 'isMoreReviewText': isMoreReviewText,

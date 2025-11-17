@@ -430,14 +430,16 @@ class ReviewService {
   /// 리뷰 도움됨 증가
   /// 
   /// [isId] 리뷰 ID
-  static Future<Map<String, dynamic>> incrementReviewHelpful(int isId) async {
+  /// [mbId] 회원 ID
+  static Future<Map<String, dynamic>> incrementReviewHelpful(int isId, String mbId) async {
     try {
       print('👍 [리뷰 도움됨 증가] 요청');
       print('  - isId: $isId');
+      print('  - mbId: $mbId');
       
       final response = await ApiClient.post(
         '/api/user/reviews/$isId/helpful',
-        {},
+        {'mbId': mbId},
       );
 
       print('📡 [리뷰 도움됨 증가] 응답 상태: ${response.statusCode}');
