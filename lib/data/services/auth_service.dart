@@ -1,6 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/user/user_model.dart';
+import '../../core/network/api_client.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -87,5 +89,67 @@ class AuthService {
   static Future<void> updateToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+  }
+
+  /// 프로필 수정
+  static Future<Map<String, dynamic>> updateProfile({
+    required String mbId,
+    String? name,
+    String? nickname,
+    String? phone,
+  }) async {
+    try {
+      print('✏️ [프로필 수정] 요청 - mbId: $mbId');
+      
+      final requestData = {
+        'mbId': mbId,
+        if (name != null) 'name': name,
+        if (nickname != null) 'nickname': nickname,
+        if (phone != null) 'phone': phone,
+      };
+      
+      final response = await http.put(
+        Uri.parse('${ApiClient.baseUrl}/api/user/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(requestData),
+      );
+      
+      print('📡 [프로필 수정] 응답 상태: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['success'] == true) {
+          print('✅ [프로필 수정] 성공');
+          
+          // 수정된 사용자 정보 저장
+          if (data['user'] != null) {
+            final updatedUser = UserModel.fromJson(data['user']);
+            await updateUser(updatedUser);
+          }
+          
+          return {
+            'success': true,
+            'message': data['message'] ?? '프로필이 수정되었습니다.',
+          };
+        }
+      }
+      
+      print('❌ [프로필 수정] 실패');
+      final errorData = json.decode(response.body);
+      return {
+        'success': false,
+        'message': errorData['message'] ?? '프로필 수정에 실패했습니다.',
+      };
+    } catch (e) {
+      print('❌ [프로필 수정] 에러: $e');
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
   }
 }
