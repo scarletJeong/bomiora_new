@@ -18,6 +18,7 @@ class AuthService {
     print('   - User ID: ${user.id}');
     print('   - User Email: ${user.email}');
     print('   - User Name: ${user.name}');
+    print('   - User Nickname: ${user.nickname}');
     print('   - User Phone: ${user.phone}');
     print('   - Token: ${token != null ? "있음" : "없음"}');
     
