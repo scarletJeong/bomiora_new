@@ -82,14 +82,10 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
               return GestureDetector(
                 onTap: () {
                   if (banner.productId != null) {
-                    // 상품 상세 페이지로 이동
-                    Navigator.push(
+                    // 상품 상세 페이지로 이동 (URL 업데이트)
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => ProductDetailScreen(
-                          productId: banner.productId!,
-                        ),
-                      ),
+                      '/product/${banner.productId}',
                     );
                   }
                 },

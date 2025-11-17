@@ -229,11 +229,9 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   Widget _buildProductCard(Product product, Color backgroundColor) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
+        Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(productId: product.id),
-          ),
+          '/product/${product.id}',
         );
       },
       child: Container(

@@ -274,11 +274,9 @@ class _WishListScreenState extends State<WishListScreen> {
         children: [
           InkWell(
             onTap: () {
-              Navigator.push(
+              Navigator.pushNamed(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => ProductDetailScreen(productId: productId),
-                ),
+                '/product/$productId',
               );
             },
             borderRadius: BorderRadius.circular(8),

@@ -212,14 +212,10 @@ class _ReviewSectionState extends State<ReviewSection> {
   Widget _buildReviewCard(ReviewModel review) {
     return GestureDetector(
       onTap: () {
-        // 상품 상세 페이지로 이동
-        Navigator.push(
+        // 상품 상세 페이지로 이동 (URL 업데이트)
+        Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(
-              productId: review.itId,
-            ),
-          ),
+          '/product/${review.itId}',
         );
       },
       child: Container(
