@@ -13,10 +13,12 @@ import '../../shopping/screens/product_detail_screen.dart';
 /// 리뷰 상세보기 화면
 class ReviewDetailScreen extends StatefulWidget {
   final ReviewModel review;
+  final bool fromProductDetail; // 제품 상세페이지에서 왔는지 여부
   
   const ReviewDetailScreen({
     super.key,
     required this.review,
+    this.fromProductDetail = false, // 기본값: false (배너에서 온 경우)
   });
 
   @override
@@ -701,8 +703,10 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
     );
   }
 
-  /// 하단 바 (제품 보러가기로 변경)
+  /// 하단 바 (상황에 따라 다르게 표시)
   Widget _buildProductBottomBar() {
+    final isFromProductDetail = widget.fromProductDetail;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -718,15 +722,31 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
       ),
       child: ElevatedButton.icon(
         onPressed: () {
-          Navigator.pushNamed(
-            context,
-            '/product/${_review.itId}',
-          );
+          if (isFromProductDetail) {
+            // 제품 상세페이지에서 왔으면 처방 예약 페이지로
+            Navigator.pushNamed(
+              context,
+              '/product/${_review.itId}',
+            );
+          } else {
+            // 배너에서 왔으면 제품 상세페이지로
+            Navigator.pushNamed(
+              context,
+              '/product/${_review.itId}',
+            );
+          }
         },
-        icon: const Icon(Icons.shopping_bag_outlined, size: 20),
-        label: const Text(
-          '이 제품 보러가기',
-          style: TextStyle(
+        icon: Icon(
+          isFromProductDetail 
+              ? Icons.calendar_today_outlined 
+              : Icons.shopping_bag_outlined,
+          size: 20,
+        ),
+        label: Text(
+          isFromProductDetail 
+              ? '처방 예약하러가기'
+              : '이 제품 보러가기',
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),

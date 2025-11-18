@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_html/flutter_html.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
@@ -19,6 +20,8 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../../user/healthprofile/screens/health_profile_form_screen.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
+import 'product_reviews_screen.dart';
+import '../../review/screens/review_detail_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -41,7 +44,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   bool _isFavorite = false;
   int _currentImageIndex = 0;
   late TabController _tabController;
-  String _selectedReviewType = 'supporter'; // 'supporter' or 'all'
   PageController? _pageController;
   
   // 리뷰 관련 상태
@@ -61,6 +63,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      // 탭 변경 시 UI 업데이트
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
     _loadProductDetail().then((_) {
       // 제품 정보 로드 후 리뷰 로드 (it_org_id 확인을 위해)
       _loadReviews();
@@ -168,22 +176,71 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         final supporter = allReviews.where((r) => r.isSupporterReview).toList();
         final general = allReviews.where((r) => r.isGeneralReview).toList();
         
-        // 리뷰 통계 가져오기
-        final statsResult = await ReviewService.getProductReviewStats(
-          itId: reviewProductId,
-        );
+        // 리뷰 통계 직접 계산
+        double totalAverage = 0.0;
+        double supporterAverage = 0.0;
+        int totalSatisfied = 0;
+        int supporterSatisfied = 0;
+        double score1Avg = 0.0; // 서포터 리뷰 카테고리별 평균
+        double score2Avg = 0.0;
+        double score3Avg = 0.0;
+        double score4Avg = 0.0;
+        double totalScore1Avg = 0.0; // 전체 리뷰 카테고리별 평균
+        double totalScore2Avg = 0.0;
+        double totalScore3Avg = 0.0;
+        double totalScore4Avg = 0.0;
+        
+        final reviewsWithScore = allReviews.where((r) => r.averageScore != null).toList();
+        if (reviewsWithScore.isNotEmpty) {
+          totalAverage = reviewsWithScore
+              .map((r) => r.averageScore!)
+              .reduce((a, b) => a + b) / reviewsWithScore.length;
+          totalSatisfied = allReviews.where((r) => r.isSatisfied).length;
+          
+          // 전체 리뷰 카테고리별 평균 점수
+          if (allReviews.isNotEmpty) {
+            totalScore1Avg = allReviews.map((r) => r.score1.toDouble()).reduce((a, b) => a + b) / allReviews.length;
+            totalScore2Avg = allReviews.map((r) => r.score2.toDouble()).reduce((a, b) => a + b) / allReviews.length;
+            totalScore3Avg = allReviews.map((r) => r.score3.toDouble()).reduce((a, b) => a + b) / allReviews.length;
+            totalScore4Avg = allReviews.map((r) => r.score4.toDouble()).reduce((a, b) => a + b) / allReviews.length;
+          }
+        }
+        
+        final supporterWithScore = supporter.where((r) => r.averageScore != null).toList();
+        if (supporterWithScore.isNotEmpty) {
+          supporterAverage = supporterWithScore
+              .map((r) => r.averageScore!)
+              .reduce((a, b) => a + b) / supporterWithScore.length;
+          supporterSatisfied = supporter.where((r) => r.isSatisfied).length;
+          
+          // 카테고리별 평균 점수 (서포터 리뷰만)
+          if (supporter.isNotEmpty) {
+            score1Avg = supporter.map((r) => r.score1.toDouble()).reduce((a, b) => a + b) / supporter.length;
+            score2Avg = supporter.map((r) => r.score2.toDouble()).reduce((a, b) => a + b) / supporter.length;
+            score3Avg = supporter.map((r) => r.score3.toDouble()).reduce((a, b) => a + b) / supporter.length;
+            score4Avg = supporter.map((r) => r.score4.toDouble()).reduce((a, b) => a + b) / supporter.length;
+          }
+        }
         
         setState(() {
           _reviews = allReviews;
           _supporterReviews = supporter;
           _generalReviews = general;
-          if (statsResult['success'] == true && statsResult['stats'] != null) {
-            final stats = statsResult['stats'] as ReviewStatsModel;
-            _reviewStats = {
-              'totalCount': stats.totalCount,
-              'totalAverage': stats.averageScore,
-            };
-          }
+          _reviewStats = {
+            'totalCount': allReviews.length,
+            'totalAverage': totalAverage,
+            'supporterAverage': supporterAverage,
+            'totalSatisfied': totalSatisfied,
+            'supporterSatisfied': supporterSatisfied,
+            'score1Avg': score1Avg, // 서포터 리뷰 카테고리별 평균
+            'score2Avg': score2Avg,
+            'score3Avg': score3Avg,
+            'score4Avg': score4Avg,
+            'totalScore1Avg': totalScore1Avg, // 전체 리뷰 카테고리별 평균
+            'totalScore2Avg': totalScore2Avg,
+            'totalScore3Avg': totalScore3Avg,
+            'totalScore4Avg': totalScore4Avg,
+          };
           _isLoadingReviews = false;
         });
       } else {
@@ -528,10 +585,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildImageCarousel(List<String> images) {
+
+    // 화면 크기에 따라 동적으로 조절
+    final screenWidth = MediaQuery.of(context).size.width;
+    // 높이: 화면 너비에 비례 (최소 200px, 최대 550px)
+    final imageHeight = (screenWidth * 1.0).clamp(200.0, 600.0);
+    // 너비: 화면 너비에서 패딩을 뺀 값 (최대 600px)
+    final maxWidth = (screenWidth).clamp(200.0, 600.0);
+
+
     if (images.isEmpty) {
-      return Container(
-        height: 300,
-        width: double.infinity,
+      final emptyContainer = Container(
+        height: imageHeight,
+        margin: kIsWeb ? const EdgeInsets.symmetric(horizontal: 16) : null,
         color: Colors.grey[200],
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -552,6 +618,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           ],
         ),
       );
+      // 웹에서는 Center로 감싸고 width 제한, 앱에서는 원래 구조 유지
+      if (kIsWeb) {
+        return Center(
+          child: SizedBox(
+            width: maxWidth,
+            child: emptyContainer,
+          ),
+        );
+      } else {
+        return emptyContainer;
+      }
     }
 
     // PageController 초기화 (이미지가 2개 이상일 때만)
@@ -559,10 +636,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _pageController = PageController();
     }
 
-    return SizedBox(
-      height: 300,
-      child: Stack(
-        children: [
+    // 웹에서는 Center로 감싸고, 앱에서는 원래 구조 유지
+    final stackWidget = Stack(
+      children: [
           PageView.builder(
             controller: _pageController,
             itemCount: images.length,
@@ -709,8 +785,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             ),
           ],
         ],
-      ),
     );
+
+    // 웹에서는 Center로 감싸고, 앱에서는 원래 구조 유지
+    if (kIsWeb) {
+      return Center(
+        child: SizedBox(
+          width: maxWidth,
+          height: imageHeight,
+          child: stackWidget,
+        ),
+      );
+    } else {
+      // 앱: 원래 구조 (width 없이 height만)
+      return SizedBox(
+        height: imageHeight,
+        child: stackWidget,
+      );
+    }
   }
 
   /// 간단 설명 (it_basic) 표시
@@ -1119,9 +1211,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     // 실제 리뷰 데이터 사용
     final supporterReviewCount = _supporterReviews.length;
     final allReviewCount = _reviews.length;
-    final currentReviews = _selectedReviewType == 'supporter' 
-        ? _supporterReviews 
-        : _generalReviews;
+    
+    // 서포터 리뷰: 포토가 있는 것 먼저 정렬
+    final sortedSupporterReviews = List<ReviewModel>.from(_supporterReviews)
+      ..sort((a, b) {
+        final aHasPhoto = a.images.isNotEmpty;
+        final bHasPhoto = b.images.isNotEmpty;
+        if (aHasPhoto && !bHasPhoto) return -1;
+        if (!aHasPhoto && bHasPhoto) return 1;
+        return 0;
+      });
     
     return Container(
       margin: const EdgeInsets.only(top: 24),
@@ -1143,11 +1242,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               indicatorWeight: 3,
               labelColor: const Color(0xFFFF4081),
               unselectedLabelColor: Colors.grey[600],
-              onTap: (index) {
-                setState(() {
-                  _selectedReviewType = index == 0 ? 'supporter' : 'all';
-                });
-              },
               tabs: [
                 Tab(
                   child: Text(
@@ -1165,128 +1259,524 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             ),
           ),
           
-          // 리뷰 평가 요약
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // 리뷰 평가 요약 (탭에 따라 표시)
+          _tabController.index == 0
+              ? _buildReviewStats(
+                  title: '서포터 리뷰 평가',
+                  average: _reviewStats != null 
+                      ? (_reviewStats!['supporterAverage'] ?? 0.0) as double
+                      : 0.0,
+                  satisfied: _reviewStats != null 
+                      ? (_reviewStats!['supporterSatisfied'] ?? 0) as int
+                      : 0,
+                  totalCount: supporterReviewCount,
+                  score1Avg: _reviewStats != null 
+                      ? (_reviewStats!['score1Avg'] ?? 0.0) as double
+                      : 0.0,
+                  score2Avg: _reviewStats != null 
+                      ? (_reviewStats!['score2Avg'] ?? 0.0) as double
+                      : 0.0,
+                  score3Avg: _reviewStats != null 
+                      ? (_reviewStats!['score3Avg'] ?? 0.0) as double
+                      : 0.0,
+                  score4Avg: _reviewStats != null 
+                      ? (_reviewStats!['score4Avg'] ?? 0.0) as double
+                      : 0.0,
+                )
+              : _buildReviewStats(
+                  title: '전체 리뷰 평가',
+                  average: _reviewStats != null 
+                      ? (_reviewStats!['totalAverage'] ?? 0.0) as double
+                      : 0.0,
+                  satisfied: _reviewStats != null 
+                      ? (_reviewStats!['totalSatisfied'] ?? 0) as int
+                      : 0,
+                  totalCount: allReviewCount,
+                  score1Avg: _reviewStats != null 
+                      ? (_reviewStats!['totalScore1Avg'] ?? 0.0) as double
+                      : 0.0,
+                  score2Avg: _reviewStats != null 
+                      ? (_reviewStats!['totalScore2Avg'] ?? 0.0) as double
+                      : 0.0,
+                  score3Avg: _reviewStats != null 
+                      ? (_reviewStats!['totalScore3Avg'] ?? 0.0) as double
+                      : 0.0,
+                  score4Avg: _reviewStats != null 
+                      ? (_reviewStats!['totalScore4Avg'] ?? 0.0) as double
+                      : 0.0,
+                ),
+          
+          // 탭별 리뷰 목록
+          SizedBox(
+            height: 600, // 고정 높이
+            child: TabBarView(
+              controller: _tabController,
               children: [
-                Text(
-                  '서포터 리뷰 평가',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                // 서포터 리뷰 탭
+                _buildSupporterReviewTab(sortedSupporterReviews),
+                // 전체 리뷰 탭
+                _buildAllReviewTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 서포터 리뷰 탭
+  Widget _buildSupporterReviewTab(List<ReviewModel> sortedReviews) {
+    if (_isLoadingReviews) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (sortedReviews.isEmpty) {
+      return Center(
+        child: Text(
+          '리뷰가 없습니다',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // 리뷰 목록 (스크롤 가능)
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                // 포토형 카드로 표시 (최대 2개)
+                ...sortedReviews.take(2).map((review) => _buildPhotoReviewCard(review)),
+                const SizedBox(height: 16), // 더보기 버튼과의 간격
+              ],
+            ),
+          ),
+        ),
+        
+        // 더보기 버튼 (하단 고정, 2개 초과일 때만 표시)
+        if (sortedReviews.length > 2)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProductReviewsScreen(
+                        productId: widget.productId,
+                        productName: _product?.name ?? '',
+                      ),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFFFF4081)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.star,
-                      color: Colors.amber,
-                      size: 32,
+                    const Text(
+                      '리뷰 더보기',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF4081),
+                      ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     Text(
-                      _reviewStats != null 
-                          ? _reviewStats!['supporterAverage']?.toStringAsFixed(1) ?? '0'
-                          : '0',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                      '(${sortedReviews.length}개)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                RichText(
-                  text: TextSpan(
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[700],
-                    ),
-                    children: [
-                      const TextSpan(text: '만족 '),
-                      TextSpan(
-                        text: '${_reviewStats != null ? _reviewStats!['supporterSatisfied'] ?? 0 : 0}건',
-                        style: TextStyle(
-                          color: const Color(0xFFFF4081),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(text: ' / $supporterReviewCount'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildReviewRatingBar(
-                  '효과', 
-                  _reviewStats != null 
-                      ? ((_reviewStats!['score1Avg'] ?? 0.0) * 20).round()
-                      : 0,
-                ),
-                const SizedBox(height: 8),
-                _buildReviewRatingBar(
-                  '가성비', 
-                  _reviewStats != null 
-                      ? ((_reviewStats!['score2Avg'] ?? 0.0) * 20).round()
-                      : 0,
-                ),
-                const SizedBox(height: 8),
-                _buildReviewRatingBar(
-                  '맛/향', 
-                  _reviewStats != null 
-                      ? ((_reviewStats!['score3Avg'] ?? 0.0) * 20).round()
-                      : 0,
-                ),
-                const SizedBox(height: 8),
-                _buildReviewRatingBar(
-                  '편리함', 
-                  _reviewStats != null 
-                      ? ((_reviewStats!['score4Avg'] ?? 0.0) * 20).round()
-                      : 0,
-                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// 전체 리뷰 탭
+  Widget _buildAllReviewTab() {
+    if (_isLoadingReviews) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (_generalReviews.isEmpty && _supporterReviews.isEmpty) {
+      return Center(
+        child: Text(
+          '리뷰가 없습니다',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // 리뷰 목록 (스크롤 가능)
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                // 일반 리뷰 3개만 표시 (현재 형태)
+                if (_generalReviews.isNotEmpty) ...[
+                  ...(_generalReviews.take(3).map((review) => _buildReviewItem(review))),
+                ],
+                const SizedBox(height: 16), // 더보기 버튼과의 간격
               ],
             ),
           ),
-          
-          // 리뷰 목록
-          _isLoadingReviews
-              ? Container(
-                  padding: const EdgeInsets.all(32),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
+        ),
+        
+        // 더보기 버튼 (하단 고정, 3개 초과일 때만 표시)
+        if (_reviews.length > 3)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProductReviewsScreen(
+                        productId: widget.productId,
+                        productName: _product?.name ?? '',
+                      ),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFFFF4081)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                )
-              : currentReviews.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          '리뷰가 없습니다',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      '리뷰 더보기',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF4081),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '(${_reviews.length}개)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// 포토형 리뷰 카드
+  Widget _buildPhotoReviewCard(ReviewModel review) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReviewDetailScreen(review: review),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 이미지
+            Container(
+              width: double.infinity,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(10),
+                ),
+              ),
+              child: review.images.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(10),
+                      ),
+                      child: Image.network(
+                        ImageUrlHelper.getReviewImageUrl(review.images.first),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Icon(
+                              Icons.rate_review,
+                              size: 32,
+                              color: Colors.grey[400],
+                            ),
+                          );
+                        },
                       ),
                     )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: currentReviews.length,
-                      itemBuilder: (context, index) {
-                        final review = currentReviews[index];
-                        return _buildReviewItem(review);
-                      },
+                  : Center(
+                      child: Icon(
+                        Icons.rate_review,
+                        size: 32,
+                        color: Colors.grey[400],
+                      ),
                     ),
+            ),
+            
+            // 내용
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 작성자 및 별점
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          review.isName ?? '익명',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Row(
+                        children: List.generate(5, (index) {
+                          final rating = review.averageScore ?? 0;
+                          return Icon(
+                            index < rating.round()
+                                ? Icons.star
+                                : Icons.star_border,
+                            size: 12,
+                            color: Colors.amber,
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  // 리뷰 내용
+                  if (review.isPositiveReviewText != null && review.isPositiveReviewText!.isNotEmpty)
+                    Text(
+                      review.isPositiveReviewText!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  const SizedBox(height: 6),
+                  // 날짜 및 도움수
+                  Row(
+                    children: [
+                      if (review.isTime != null)
+                        Text(
+                          '${review.isTime!.year}.${review.isTime!.month.toString().padLeft(2, '0')}.${review.isTime!.day.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      const SizedBox(width: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.thumb_up,
+                            size: 11,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${review.isGood ?? 0}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 리뷰 평가 통계 (공통 메서드)
+  Widget _buildReviewStats({
+    required String title,
+    required double average,
+    required int satisfied,
+    required int totalCount,
+    required double score1Avg,
+    required double score2Avg,
+    required double score3Avg,
+    required double score4Avg,
+  }) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 별점 아이콘 (1개만)
+              Builder(
+                builder: (context) {
+                  final filledStars = average.floor();
+                  final hasHalfStar = average - filledStars >= 0.5;
+                  if (filledStars > 0) {
+                    return const Icon(
+                      Icons.star,
+                      color: Colors.amber,
+                      size: 28,
+                    );
+                  } else if (hasHalfStar) {
+                    return const Icon(
+                      Icons.star_half,
+                      color: Colors.amber,
+                      size: 28,
+                    );
+                  } else {
+                    return const Icon(
+                      Icons.star_border,
+                      color: Colors.amber,
+                      size: 28,
+                    );
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+              Text(
+                average.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // 만족 건 (가운데 정렬)
+          Center(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[700],
+                ),
+                children: [
+                  const TextSpan(text: '만족 '),
+                  TextSpan(
+                    text: '${satisfied}건',
+                    style: TextStyle(
+                      color: const Color(0xFFFF4081),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextSpan(text: ' / $totalCount'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildReviewRatingBar('효과', (score1Avg * 20).round()),
+          const SizedBox(height: 8),
+          _buildReviewRatingBar('가성비', (score2Avg * 20).round()),
+          const SizedBox(height: 8),
+          _buildReviewRatingBar('맛/향', (score3Avg * 20).round()),
+          const SizedBox(height: 8),
+          _buildReviewRatingBar('편리함', (score4Avg * 20).round()),
         ],
       ),
     );
@@ -1472,6 +1962,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       );
     }
     
+    // 이미지 너비 설정 (화면 너비에 맞춰 동적으로 조절)
+    final screenWidth = MediaQuery.of(context).size.width;
+    // 패딩(좌우 16px씩 = 32px)을 빼고, 최대값 제한
+    final imageWidth = (screenWidth - 32).clamp(200.0, 600.0);
+    print('🖼️ [이미지 크기] screenWidth: $screenWidth, imageWidth: $imageWidth, kIsWeb: $kIsWeb');
+    
     return Container(
       margin: const EdgeInsets.only(top: 24, bottom: 24),
       padding: const EdgeInsets.all(16),
@@ -1489,7 +1985,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 padding: HtmlPaddings.zero,
               ),
               'img': Style(
-                width: Width(MediaQuery.of(context).size.width - 32),
+                width: Width(imageWidth),
                 display: Display.block,
                 margin: Margins.symmetric(vertical: 8),
               ),
