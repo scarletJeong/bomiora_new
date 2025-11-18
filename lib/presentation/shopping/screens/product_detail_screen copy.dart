@@ -17,7 +17,6 @@ import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_footer.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../../user/healthprofile/screens/health_profile_form_screen.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
@@ -433,22 +432,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(40), // AppBar 높이 축소
-        child: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-      ),
+    return MobileLayoutWrapper(
       child: Scaffold(
         backgroundColor: Colors.white,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(40), // AppBar 높이 축소
+          child: AppBar(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _hasError
@@ -581,9 +579,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           
           // 하단 여백 (하단 액션 바 공간)
           const SizedBox(height: 100),
-          
-          // Footer
-          const AppFooter(),
         ],
       ),
     );
@@ -1217,13 +1212,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final supporterReviewCount = _supporterReviews.length;
     final allReviewCount = _reviews.length;
     
-    // 서포터 리뷰: 포토가 있는 것 먼저 정렬
+    // 서포터 리뷰: 포토가 있는 것 먼저 정렬 (사진 개수도 고려)
     final sortedSupporterReviews = List<ReviewModel>.from(_supporterReviews)
       ..sort((a, b) {
         final aHasPhoto = a.images.isNotEmpty;
         final bHasPhoto = b.images.isNotEmpty;
+        final aPhotoCount = a.images.length;
+        final bPhotoCount = b.images.length;
+        
+        // 1순위: 사진이 있는 것 우선
         if (aHasPhoto && !bHasPhoto) return -1;
         if (!aHasPhoto && bHasPhoto) return 1;
+        
+        // 2순위: 사진이 둘 다 있으면 사진 개수가 많은 것 우선
+        if (aHasPhoto && bHasPhoto) {
+          return bPhotoCount.compareTo(aPhotoCount);
+        }
+        
         return 0;
       });
     

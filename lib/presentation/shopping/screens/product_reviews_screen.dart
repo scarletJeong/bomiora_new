@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../review/screens/review_detail_screen.dart';
@@ -108,20 +109,37 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
   Widget _buildReviewList(List<ReviewModel> reviews) {
     if (reviews.isEmpty) {
       return Center(
-        child: Text(
-          '리뷰가 없습니다',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 14,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '리뷰가 없습니다',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 300),
+            const AppFooter(),
+          ],
         ),
       );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: reviews.length,
+      itemCount: reviews.length + 1, // footer 추가
       itemBuilder: (context, index) {
+        // 마지막 아이템은 Footer
+        if (index == reviews.length) {
+          return const Column(
+            children: [
+              SizedBox(height: 300),
+              AppFooter(),
+            ],
+          );
+        }
+        
         final review = reviews[index];
         return GestureDetector(
           onTap: () {

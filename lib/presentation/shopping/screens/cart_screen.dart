@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -441,45 +442,59 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                         Expanded(
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                // 상품 목록
-                                ...cartItems.map((item) => _buildCartItemCard(item)),
-                                
-                                const SizedBox(height: 16),
-                                
-                                // 안내 문구
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                // 컨텐츠에 padding 적용
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      const Text(
-                                        '*진료예약자와 시간을 다시 한번 확인해주세요.',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.black87,
+                                      // 상품 목록
+                                      ...cartItems.map((item) => _buildCartItemCard(item)),
+                                      
+                                      const SizedBox(height: 16),
+                                      
+                                      // 안내 문구
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            const Text(
+                                              '*진료예약자와 시간을 다시 한번 확인해주세요.',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.black87,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            const Text(
+                                              '결제가 완료되셔야 예약이 확정됩니다.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFFFF3787),
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        '결제가 완료되셔야 예약이 확정됩니다.',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFFFF3787),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
                                 ),
+                                
+                                const SizedBox(height: 300),
+                                
+                                // Footer  
+                                const AppFooter(),
                               ],
                             ),
                           ),
