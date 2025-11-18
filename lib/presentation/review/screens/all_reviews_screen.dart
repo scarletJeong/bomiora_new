@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -247,10 +248,9 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -277,6 +277,8 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
             ],
           ),
         ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
         body: TabBarView(
           controller: _tabController,
           children: [
@@ -345,6 +347,16 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
             ),
           ),
         ),
+        
+        // Footer
+        const SliverToBoxAdapter(
+          child: Column(
+            children: [
+              SizedBox(height: 300),
+              AppFooter(),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -354,7 +366,7 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.zero,
-      itemCount: reviews.length + 1 + (_isLoading ? 1 : 0),
+      itemCount: reviews.length + 1 + (_isLoading ? 1 : 0) + 1, // footer 추가
       itemBuilder: (context, index) {
         // 첫 번째 아이템은 평균 평점 섹션
         if (index == 0) {
@@ -362,6 +374,16 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
         }
         
         final reviewIndex = index - 1;
+        
+        // 마지막 아이템은 Footer
+        if (reviewIndex >= reviews.length && !_isLoading) {
+          return const Column(
+            children: [
+              SizedBox(height: 300),
+              AppFooter(),
+            ],
+          );
+        }
         
         if (reviewIndex >= reviews.length) {
           return const Center(

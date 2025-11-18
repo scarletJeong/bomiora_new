@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_footer.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -24,10 +25,16 @@ class PrivacyPolicyScreen extends StatelessWidget {
         centerTitle: true,
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // 컨텐츠에 padding 적용
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             const Text(
               '개인정보취급방침',
               style: TextStyle(
@@ -94,8 +101,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
               '14세 미만 아동의 가입제한',
               '회사는 법적대리인의 동의가 필요한 만14세 미만 아동의 회원가입은 받고 있지 않습니다.',
             ),
+                ],
+              ),
+            ),
             
-            const SizedBox(height: 40),
+            const SizedBox(height: 300),
+            
+            // Footer  
+            const AppFooter(),
           ],
         ),
       ),

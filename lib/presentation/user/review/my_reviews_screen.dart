@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -88,10 +89,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -108,6 +108,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
         body: _buildBody(),
       ),
     );
@@ -129,27 +131,45 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     return RefreshIndicator(
       onRefresh: () => _loadReviews(refresh: true),
       color: const Color(0xFFFF4081),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _reviews.length + (_hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _reviews.length) {
-            // 로딩 인디케이터
-            if (!_isLoading) {
-              _loadReviews();
-            }
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(
-                  color: Color(0xFFFF4081),
-                ),
+      child: CustomScrollView(
+        slivers: [
+          // 리뷰 리스트 (padding 적용)
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == _reviews.length) {
+                    // 로딩 인디케이터
+                    if (!_isLoading) {
+                      _loadReviews();
+                    }
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF4081),
+                        ),
+                      ),
+                    );
+                  }
+                  return _buildReviewCard(_reviews[index]);
+                },
+                childCount: _reviews.length + (_hasMore ? 1 : 0),
               ),
-            );
-          }
-
-          return _buildReviewCard(_reviews[index]);
-        },
+            ),
+          ),
+          
+          // Footer
+          const SliverToBoxAdapter(
+            child: Column(
+              children: [
+                SizedBox(height: 300),
+                AppFooter(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

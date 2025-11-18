@@ -4,6 +4,7 @@ import '../../../../data/services/coupon_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/coupon/coupon_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_footer.dart';
 
 class CouponScreen extends StatefulWidget {
   const CouponScreen({super.key});
@@ -371,32 +372,66 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
 
   Widget _buildCouponList(List<Coupon> coupons, String emptyMessage) {
     if (coupons.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Center(
-          child: Text(
-            emptyMessage,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 빈 상태 메시지 (padding 적용)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Center(
+                  child: Text(
+                    emptyMessage,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
+            
+            const SizedBox(height: 300),
+            
+            // Footer  
+            const AppFooter(),
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: coupons.length,
-      itemBuilder: (context, index) {
-        return _buildCouponCard(coupons[index]);
-      },
+    return CustomScrollView(
+      slivers: [
+        // 쿠폰 리스트 (padding 적용)
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return _buildCouponCard(coupons[index]);
+              },
+              childCount: coupons.length,
+            ),
+          ),
+        ),
+        
+        // Footer  
+        const SliverToBoxAdapter(
+          child: Column(
+            children: [
+              SizedBox(height: 300),
+              AppFooter(),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

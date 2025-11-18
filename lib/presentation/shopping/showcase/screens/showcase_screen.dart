@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/models/product/product_model.dart';
 import '../../../../data/repositories/product/product_repository.dart';
 import '../../screens/product_detail_screen.dart';
+import '../../../common/widgets/app_footer.dart';
 
 class ShowcaseScreen extends StatefulWidget {
   const ShowcaseScreen({super.key});
@@ -152,7 +153,10 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
               color: const Color(0xFFFFF3E0),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 300),
+            
+            // Footer
+            const AppFooter(),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_footer.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/services/coupon_service.dart';
@@ -181,10 +182,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
         centerTitle: true,
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // 컨텐츠에 padding 적용
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
             // 회원 정보 섹션 (클릭 가능)
             GestureDetector(
               onTap: () {
@@ -462,6 +468,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
               ),
             ],
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 300),
+            
+            // Footer  
+            const AppFooter(),
           ],
         ),
       ),

@@ -42,10 +42,9 @@ class _OrderListScreenState extends State<OrderListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -62,6 +61,8 @@ class _OrderListScreenState extends State<OrderListScreen>
             onPressed: () => Navigator.pop(context),
           ),
         ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
         body: Column(
           children: [
             // 기간 필터
@@ -104,6 +105,7 @@ class _OrderListScreenState extends State<OrderListScreen>
           ],
         ),
       ),
+    ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
@@ -85,10 +86,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -105,6 +105,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _orderDetail == null
@@ -148,6 +150,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // 주문 상태
           _buildOrderStatus(),
@@ -175,6 +178,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           // 주문자 정보
           _buildOrdererInfo(),
           const SizedBox(height: 80), // 하단 버튼 공간
+          
+          const SizedBox(height: 300),
+          
+          // Footer  
+          const AppFooter(),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_footer.dart';
 import '../../screens/product_detail_screen.dart';
 
 class WishListScreen extends StatefulWidget {
@@ -118,7 +119,9 @@ class _WishListScreenState extends State<WishListScreen> {
       child: Column(
         children: [
           _buildCategoryFilter(),
-          Expanded(child: _buildBody()),
+          Expanded(
+            child: _buildBodyWithFooter(),
+          ),
         ],
       ),
     );
@@ -255,6 +258,53 @@ class _WishListScreenState extends State<WishListScreen> {
         final item = _filteredWishList[index];
         return _buildWishItem(item);
       },
+    );
+  }
+
+  Widget _buildBodyWithFooter() {
+    final body = _buildBody();
+    
+    // body가 GridView인 경우 shrinkWrap으로 변경하고 footer 추가
+    if (body is GridView) {
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.7,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: _filteredWishList.length,
+              itemBuilder: (context, index) {
+                final item = _filteredWishList[index];
+                return _buildWishItem(item);
+              },
+            ),
+
+            const SizedBox(height: 300),
+            
+            // Footer
+            const AppFooter(),
+          ],
+        ),
+      );
+    }
+    
+    // 그 외의 경우 (Center, Column 등) footer 추가
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          body,
+          const AppFooter(),
+        ],
+      ),
     );
   }
 

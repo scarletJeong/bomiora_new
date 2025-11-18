@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/services/contact_service.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 
 class ContactFormScreen extends StatefulWidget {
   final VoidCallback? onSuccess; // 등록/수정 성공 시 호출할 콜백
@@ -159,10 +160,15 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 컨텐츠에 padding 적용
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // 제목 입력
               Text(
                 '제목',
@@ -263,9 +269,17 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                         ),
                 ),
               ),
-            ],
-          ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 300),
+            
+            // Footer  
+            const AppFooter(),
+          ],
         ),
+      ),
     );
   }
 }

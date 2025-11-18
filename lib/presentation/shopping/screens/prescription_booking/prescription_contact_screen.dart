@@ -61,7 +61,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
     
     try {
       print('========================================');
-      print('📝 [문진표 수정] 전송할 데이터 확인');
+      print('📝 [건강프로필 수정] 전송할 데이터 확인');
       print('========================================');
       print('기본 정보:');
       print('  - 생년월일: ${widget.formData['birthDate']}');

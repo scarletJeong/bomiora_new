@@ -25,7 +25,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   late final PageController _pageController;
   
   UserModel? _currentUser;
-  HealthProfileModel? _existingProfile; // 기존 문진표 정보 저장
+  HealthProfileModel? _existingProfile; // 기존 건강프로필 정보 저장
   int _currentPage = 0;
   bool _isLoading = false;
   
@@ -56,23 +56,23 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       _currentUser = user;
     });
     
-    // 전달받은 기존 문진표가 있으면 우선 사용
+    // 전달받은 기존 건강프로필가 있으면 우선 사용
     if (widget.existingProfile != null) {
-      print('=== 전달받은 기존 문진표 사용 ===');
-      print('문진표 번호: ${widget.existingProfile!.pfNo}');
+      print('=== 전달받은 기존 건강프로필 사용 ===');
+      print('건강프로필 번호: ${widget.existingProfile!.pfNo}');
       setState(() {
         _existingProfile = widget.existingProfile;
       });
       _loadExistingData(widget.existingProfile!);
     } else if (user != null) {
-      // 전달받은 문진표가 없으면 API에서 확인
+      // 전달받은 건강프로필가 없으면 API에서 확인
       _checkExistingProfile();
     }
   }
 
   void _checkExistingProfile() async {
     try {
-      print('=== 문진표 확인 시작 ===');
+      print('=== 건강프로필 확인 시작 ===');
       print('사용자 ID (mb_id): ${_currentUser!.id}');
       
       final existingProfile = await HealthProfileService.getHealthProfile(_currentUser!.id);
@@ -80,22 +80,22 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       print('API 응답 결과: $existingProfile');
       
       if (existingProfile != null) {
-        print('기존 문진표 발견!');
-        print('문진표 번호: ${existingProfile.pfNo}');
+        print('기존 건강프로필 발견!');
+        print('건강프로필 번호: ${existingProfile.pfNo}');
         print('생년월일: ${existingProfile.answer1}');
         print('성별: ${existingProfile.answer2}');
         
-        // 기존 문진표 정보 저장
+        // 기존 건강프로필 정보 저장
         setState(() {
           _existingProfile = existingProfile;
         });
         
         _loadExistingData(existingProfile);
       } else {
-        print('기존 문진표 없음 - 새로 작성');
+        print('기존 건강프로필 없음 - 새로 작성');
       }
     } catch (e) {
-      print('기존 문진표 확인 중 오류: $e');
+      print('기존 건강프로필 확인 중 오류: $e');
     }
   }
 
@@ -395,7 +395,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         title: Text(
           isSingleSectionMode 
               ? '${_sections.isNotEmpty && _currentPage < _sections.length ? _sections[_currentPage].title : ''} 수정'
-              : (_existingProfile != null ? '문진표 수정' : '문진표 작성')
+              : (_existingProfile != null ? '건강프로필 수정' : '건강프로필 작성')
         ),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -910,8 +910,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_existingProfile != null 
-                  ? '문진표가 수정되었습니다' 
-                  : '문진표가 저장되었습니다'),
+                  ? '건강프로필가 수정되었습니다' 
+                  : '건강프로필가 저장되었습니다'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
               width: 568, // 600px - 32px (양쪽 16px 여백)
@@ -942,7 +942,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Future<void> _saveHealthProfile() async {
     print('========================================');
-    print('📝 [문진표 ${_existingProfile != null ? '수정' : '생성'}] 전송할 데이터 확인');
+    print('📝 [건강프로필 ${_existingProfile != null ? '수정' : '생성'}] 전송할 데이터 확인');
     print('========================================');
     print('기본 정보:');
     print('  - 생년월일: ${_formData['birth_year']}-${_formData['birth_month']}-${_formData['birth_day']}');
@@ -972,7 +972,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     print('  - 부작용: ${_formData['answer_13_sideeffect']}');
     print('');
     if (_existingProfile != null) {
-      print('수정 대상 문진표 번호: ${_existingProfile!.pfNo}');
+      print('수정 대상 건강프로필 번호: ${_existingProfile!.pfNo}');
     }
     print('========================================');
     
@@ -1020,11 +1020,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     
     if (_existingProfile != null && _existingProfile!.pfNo != null) {
       // 수정
-      print('기존 문진표 수정: pfNo=${_existingProfile!.pfNo}');
+      print('기존 건강프로필 수정: pfNo=${_existingProfile!.pfNo}');
       await HealthProfileService.updateHealthProfile(profile);
     } else {
       // 새로 생성
-      print('새 문진표 생성');
+      print('새 건강프로필 생성');
       await HealthProfileService.saveHealthProfile(profile);
     }
   }

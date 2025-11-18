@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -75,10 +76,9 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -95,6 +95,8 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
         body: Form(
           key: _formKey,
           child: ListView(
@@ -119,6 +121,11 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
               // 수정 완료 버튼
               _buildSubmitButton(),
               const SizedBox(height: 32),
+              
+              const SizedBox(height: 300),
+              
+              // Footer
+              const AppFooter(),
             ],
           ),
         ),

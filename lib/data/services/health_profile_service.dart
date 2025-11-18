@@ -6,7 +6,7 @@ import '../../presentation/user/healthprofile/models/health_profile_model.dart';
 class HealthProfileService {
   // ApiClient의 동적 baseUrl 사용 (로컬: localhost:9000, 서버: bomiora.net:9000)
   
-  // 문진표 조회
+  // 건강프로필 조회
   static Future<HealthProfileModel?> getHealthProfile(String userId) async {
     try {
       final response = await ApiClient.get('/api/healthprofile/$userId');
@@ -20,15 +20,15 @@ class HealthProfileService {
         }
         return null;
       } else {
-        throw Exception('문진표 조회 실패: ${response.statusCode}');
+        throw Exception('건강프로필 조회 실패: ${response.statusCode}');
       }
     } catch (e) {
-      print('문진표 조회 중 오류 발생: $e');
-      throw Exception('문진표 조회 중 오류 발생: $e');
+      print('건강프로필 조회 중 오류 발생: $e');
+      throw Exception('건강프로필 조회 중 오류 발생: $e');
     }
   }
   
-  // 문진표 저장
+  // 건강프로필 저장
   static Future<bool> saveHealthProfile(HealthProfileModel profile) async {
     try {
       final response = await ApiClient.post('/api/healthprofile', profile.toJson());
@@ -37,14 +37,14 @@ class HealthProfileService {
         final data = json.decode(response.body);
         return data['success'] == true;
       } else {
-        throw Exception('문진표 저장 실패: ${response.statusCode}');
+        throw Exception('건강프로필 저장 실패: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('문진표 저장 중 오류 발생: $e');
+      throw Exception('건강프로필 저장 중 오류 발생: $e');
     }
   }
   
-  // 문진표 수정
+  // 건강프로필 수정
   static Future<bool> updateHealthProfile(HealthProfileModel profile) async {
     try {
       print('=== HealthProfileService.updateHealthProfile 호출 ===');
@@ -62,15 +62,15 @@ class HealthProfileService {
         final data = json.decode(response.body);
         return data['success'] == true;
       } else {
-        throw Exception('문진표 수정 실패: ${response.statusCode}');
+        throw Exception('건강프로필 수정 실패: ${response.statusCode}');
       }
     } catch (e) {
-      print('문진표 수정 중 오류 발생: $e');
-      throw Exception('문진표 수정 중 오류 발생: $e');
+      print('건강프로필 수정 중 오류 발생: $e');
+      throw Exception('건강프로필 수정 중 오류 발생: $e');
     }
   }
   
-  // 문진표 삭제
+  // 건강프로필 삭제
   static Future<bool> deleteHealthProfile(int profileId) async {
     try {
       final response = await ApiClient.delete('/api/healthprofile/$profileId');
@@ -79,14 +79,14 @@ class HealthProfileService {
         final data = json.decode(response.body);
         return data['success'] == true;
       } else {
-        throw Exception('문진표 삭제 실패: ${response.statusCode}');
+        throw Exception('건강프로필 삭제 실패: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('문진표 삭제 중 오류 발생: $e');
+      throw Exception('건강프로필 삭제 중 오류 발생: $e');
     }
   }
   
-  // 문진표 존재 여부 확인
+  // 건강프로필 존재 여부 확인
   static Future<bool> hasHealthProfile(String userId) async {
     try {
       final profile = await getHealthProfile(userId);
@@ -96,7 +96,7 @@ class HealthProfileService {
     }
   }
   
-  // 문진표 검증
+  // 건강프로필 검증
   static Map<String, String> validateHealthProfile(HealthProfileModel profile) {
     final errors = <String, String>{};
     

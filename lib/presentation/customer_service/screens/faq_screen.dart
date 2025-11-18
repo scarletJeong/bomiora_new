@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../common/widgets/app_footer.dart';
 
 class FaqScreen extends StatelessWidget {
   const FaqScreen({super.key});
@@ -6,15 +7,19 @@ class FaqScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
       children: [
+        // FAQ 리스트 (padding 적용)
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
         _buildFaqItem(
           question: '비대면 진료는 어떻게 진행되나요?',
           answer: '''
 비대면 진료는 다음과 같이 진행됩니다:
 
-1. 문진표 작성: 건강 상태와 증상을 입력합니다.
-2. 의사 상담: 전문의가 문진표를 검토하고 진료합니다.
+1. 건강프로필 작성: 건강 상태와 증상을 입력합니다.
+2. 의사 상담: 전문의가 건강프로필를 검토하고 진료합니다.
 3. 처방전 발급: 필요한 경우 처방전이 발급됩니다.
 4. 약 배송: 처방약이 집으로 배송됩니다.
 
@@ -90,6 +95,14 @@ class FaqScreen extends StatelessWidget {
 최소 사용 금액은 5,000P부터입니다.
           ''',
         ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 300),
+        
+        // Footer  
+        const AppFooter(),
       ],
     );
   }

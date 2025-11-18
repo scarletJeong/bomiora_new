@@ -79,8 +79,8 @@ class ProductTailInfoSection extends StatelessWidget {
             children: [
               _buildProcessStep(
                 '01',
-                '문진표 작성',
-                '원하는 제품을 선택하고 "처방 예약하기" 버튼을 클릭하여 문진표를 작성하세요.\n문진표 정보는 담당 의사에게만 제공되며, 개인정보 노출 위험은 없습니다.',
+                '건강프로필 작성',
+                '원하는 제품을 선택하고 "처방 예약하기" 버튼을 클릭하여 건강프로필를 작성하세요.\n건강프로필 정보는 담당 의사에게만 제공되며, 개인정보 노출 위험은 없습니다.',
               ),
               const SizedBox(height: 16),
               _buildProcessStep(

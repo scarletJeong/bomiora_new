@@ -4,6 +4,7 @@ import '../../../../data/services/point_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/point/point_history_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_footer.dart';
 
 class MileageScreen extends StatefulWidget {
   const MileageScreen({super.key});
@@ -138,6 +139,11 @@ class _MileageScreenState extends State<MileageScreen> {
           
           // 포인트 내역
           _buildHistorySection(),
+          
+          const SizedBox(height: 300),
+          
+          // Footer
+          const AppFooter(),
         ],
       ),
     );

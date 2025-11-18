@@ -21,6 +21,8 @@ import '../../user/myPage/screens/my_page_screen.dart';
 import '../../event/screens/event_list_screen.dart';
 import '../../user/delivery/delivery_list_screen.dart';
 import '../../review/screens/all_reviews_screen.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -93,7 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // 3 메뉴판
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return MobileAppLayoutWrapper(
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -179,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _buildMenuGridItem(
                     icon: Icons.assignment,
-                    label: '문진표',
+                    label: '건강프로필',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -445,6 +448,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -487,6 +491,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 
                 // 하단 배너
                 const BottomBanner(),
+                
+
+                const SizedBox(height: 300),
+                // Footer
+                const AppFooter(),
               ],
             ),
           );

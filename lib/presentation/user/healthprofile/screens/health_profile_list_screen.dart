@@ -5,6 +5,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_footer.dart';
 
 class HealthProfileListScreen extends StatefulWidget {
   const HealthProfileListScreen({super.key});
@@ -61,7 +62,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     try {
       _healthProfile = await HealthProfileService.getHealthProfile(_currentUser!.id);
     } catch (e) {
-      // 문진표가 없거나 오류가 발생한 경우
+      // 건강프로필가 없거나 오류가 발생한 경우
       _healthProfile = null;
     }
   }
@@ -70,7 +71,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
-        title: const Text('문진표'),
+        title: const Text('건강프로필'),
         elevation: 0,
         scrolledUnderElevation: 0, // 스크롤 시 AppBar 색상 변경 방지
         surfaceTintColor: Colors.transparent, // Material 3의 tint 효과 제거
@@ -110,7 +111,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '문진표를 작성하려면 로그인해주세요',
+            '건강프로필를 작성하려면 로그인해주세요',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[500],
@@ -145,10 +146,12 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          const SizedBox(height: 100),
           Icon(
             Icons.assignment_outlined,
             size: 80,
@@ -156,7 +159,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            '문진표가 없습니다',
+            '건강프로필가 없습니다',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -165,7 +168,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '다이어트 상담을 위해\n문진표를 작성해주세요',
+            '다이어트 상담을 위해\n건강프로필를 작성해주세요',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -176,7 +179,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           ElevatedButton.icon(
             onPressed: _navigateToForm,
             icon: const Icon(Icons.add),
-            label: const Text('문진표 작성하기'),
+            label: const Text('건강프로필 작성하기'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -186,6 +189,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 300),
+          const AppFooter(),
         ],
       ),
     );
@@ -195,10 +200,16 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     final profile = _healthProfile!;
     
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // 컨텐츠에 padding 적용
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           // 기본 정보 카드
           _buildInfoCard(
             title: '기본 정보',
@@ -279,7 +290,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           
           // 작성/수정 정보
           _buildInfoCard(
-            title: '문진표 정보',
+            title: '건강프로필 정보',
             icon: Icons.info,
             children: [
               _buildInfoRow('작성일', _formatDate(profile.pfWdatetime)),
@@ -295,7 +306,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             child: ElevatedButton.icon(
               onPressed: _navigateToEditForm,
               icon: const Icon(Icons.edit),
-              label: const Text('문진표 수정하기'),
+              label: const Text('건강프로필 수정하기'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF3787),
                 foregroundColor: Colors.white,
@@ -303,6 +314,14 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               ),
             ),
           ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 100),
+          
+          // Footer  
+          const AppFooter(),
         ],
       ),
     );
@@ -315,7 +334,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     int? sectionIndex, // 섹션 인덱스 (null이면 수정 불가능한 카드)
   }) {
     return Card(
-      color: const Color(0xFFFFF5F5), // 연한 핑크색 배경 문진표 카드 색상
+      color: const Color(0xFFFFF5F5), // 연한 핑크색 배경 건강프로필 카드 색상
       elevation: 2,
       surfaceTintColor: Colors.transparent, // Material 3의 tint 효과 제거
       shape: RoundedRectangleBorder(

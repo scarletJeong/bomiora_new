@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import 'delivery_detail_screen.dart';
 import '../review/review_write_screen.dart';
 import '../../../data/services/delivery_service.dart';
@@ -171,10 +172,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -191,6 +191,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
             onPressed: () => Navigator.pop(context),
           ),
         ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
         body: Column(
           children: [
             // 기간 필터
@@ -318,13 +320,32 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
     return RefreshIndicator(
       onRefresh: _loadOrders,
       color: const Color(0xFFFF4081),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: filteredOrders.length,
-        itemBuilder: (context, index) {
-          final order = filteredOrders[index];
-          return _buildOrderCard(order);
-        },
+      child: CustomScrollView(
+        slivers: [
+          // 주문 리스트 (padding 적용)
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final order = filteredOrders[index];
+                  return _buildOrderCard(order);
+                },
+                childCount: filteredOrders.length,
+              ),
+            ),
+          ),
+          
+          // Footer  
+          const SliverToBoxAdapter(
+            child: Column(
+              children: [
+                SizedBox(height: 300),
+                AppFooter(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -546,10 +567,11 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
 
   /// 빈 상태 위젯
   Widget _buildEmptyState(String status) {
-    return Center(
+    return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const SizedBox(height: 100),
           Icon(
             Icons.inbox_outlined,
             size: 64,
@@ -563,6 +585,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
               color: Colors.grey[600],
             ),
           ),
+          const SizedBox(height: 300),
+          const AppFooter(),
         ],
       ),
     );

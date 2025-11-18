@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_footer.dart';
 import '../../../common/widgets/date_top_widget.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -184,10 +185,16 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             ),
           )
         : SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // 컨텐츠에 padding 적용
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             // 1. 사용자 프로필 섹션
             _buildProfileSection(),
             const SizedBox(height: 20),
@@ -202,6 +209,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             
             // 4. 건강 지표 섹션
             _buildHealthMetricsSection(),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 300),
+            
+            // Footer  
+            const AppFooter(),
           ],
         ),
       ),

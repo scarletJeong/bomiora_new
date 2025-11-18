@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
+import '../../common/widgets/app_footer.dart';
 import 'contact_detail_screen.dart';
 
 class ContactListScreen extends StatefulWidget {
@@ -72,10 +73,11 @@ class ContactListScreenState extends State<ContactListScreen> {
     }
 
     if (_contacts.isEmpty) {
-      return Center(
+      return SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 100),
             Icon(
               Icons.inbox_outlined,
               size: 64,
@@ -89,18 +91,39 @@ class ContactListScreenState extends State<ContactListScreen> {
                 color: Colors.grey[600],
               ),
             ),
+            const SizedBox(height: 300),
+            const AppFooter(),
           ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _contacts.length,
-      itemBuilder: (context, index) {
-        final contact = _contacts[index];
-        return _buildContactItem(context, contact);
-      },
+    return CustomScrollView(
+      slivers: [
+        // 문의 리스트 (padding 적용)
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final contact = _contacts[index];
+                return _buildContactItem(context, contact);
+              },
+              childCount: _contacts.length,
+            ),
+          ),
+        ),
+        
+        // Footer 
+        const SliverToBoxAdapter(
+          child: Column(
+            children: [
+              SizedBox(height: 300),
+              AppFooter(),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
