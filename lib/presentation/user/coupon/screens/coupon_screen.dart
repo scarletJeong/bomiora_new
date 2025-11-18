@@ -211,7 +211,7 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
   }
 
   Widget _buildCouponSummary() {
-    final totalCoupons = _allCoupons.length;
+    final totalCoupons = _availableCoupons.length; // 사용 가능한 쿠폰만 카운트
     
     return Container(
       margin: const EdgeInsets.all(16),

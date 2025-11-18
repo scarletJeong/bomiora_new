@@ -64,35 +64,42 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          title: const Text(
-            '리뷰 상세',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          '리뷰 상세',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
         body: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // 작성자 정보
               _buildAuthorInfo(),
 
               // 평점
               _buildRatingSection(),
+
+              // 이미지 (별점 아래)
+              if (_review.images.isNotEmpty) _buildImageSection(),
               
               // 리뷰 내용
               _buildReviewContent(),
@@ -110,9 +117,6 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                       )
                     : _buildHelpCouponBanner(),
               ),
-              
-              // 이미지
-              if (_review.images.isNotEmpty) _buildImageSection(),
               
               // 사용자 정보
               if (_review.isWeight != null || _review.isHeight != null)
@@ -249,7 +253,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       color: Colors.white,
       child: Column(
         children: [
@@ -261,30 +265,30 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                 final rating = _review.averageScore ?? 0;
                 return Icon(
                   index < rating.round() ? Icons.star : Icons.star_border,
-                  size: 32,
+                  size: 24,
                   color: const Color(0xFFFF4081),
                 );
               }),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             '${_review.averageScore?.toStringAsFixed(1) ?? '0.0'}',
             style: const TextStyle(
-              fontSize: 32,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Color(0xFFFF4081),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           
           // 세부 평점
           _buildDetailRating('효과', _review.isScore1),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildDetailRating('가성비', _review.isScore2),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildDetailRating('맛/향', _review.isScore3),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildDetailRating('편리함', _review.isScore4),
         ],
       ),
@@ -295,11 +299,11 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
     return Row(
       children: [
         SizedBox(
-          width: 60,
+          width: 50,
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               color: Colors.black87,
             ),
           ),
@@ -309,7 +313,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             children: List.generate(5, (index) {
               return Icon(
                 index < score ? Icons.star : Icons.star_border,
-                size: 20,
+                size: 16,
                 color: const Color(0xFFFF4081),
               );
             }),
@@ -318,7 +322,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
         Text(
           '$score.0',
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
           ),
@@ -358,6 +362,11 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
               ),
             ),
             const SizedBox(height: 24),
+            const Divider(
+              color: Colors.grey,
+              thickness: 0.5,
+            ),
+            const SizedBox(height: 24),
           ],
 
           // 아쉬운 점
@@ -379,6 +388,11 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                 color: Colors.grey[700],
                 height: 1.6,
               ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(
+              color: Colors.grey,
+              thickness: 0.5,
             ),
             const SizedBox(height: 24),
           ],
@@ -442,9 +456,9 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
             itemCount: _review.images.length,
             itemBuilder: (context, index) {
