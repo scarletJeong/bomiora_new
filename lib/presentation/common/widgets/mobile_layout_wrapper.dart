@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'app_footer.dart';
 
 /// 모바일 앱처럼 600px 고정 너비로 감싸는 공통 위젯
 class MobileLayoutWrapper extends StatelessWidget {
@@ -45,7 +44,6 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final bool showShadow;
   final Color? backgroundColor;
-  final bool showFooter; // Footer 표시 여부
 
   const MobileAppLayoutWrapper({
     super.key,
@@ -53,7 +51,6 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     this.appBar,
     this.showShadow = true,
     this.backgroundColor,
-    this.showFooter = true, // 기본값: true (모든 페이지에 Footer 표시)
   });
 
   @override
@@ -112,14 +109,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
           child: Scaffold(
             backgroundColor: backgroundColor ?? Colors.white, // 기본값: 하얀색
             appBar: wrappedAppBar ?? appBar,
-            body: showFooter
-                ? Column(
-                    children: [
-                      Expanded(child: child),
-                      const AppFooter(),
-                    ],
-                  )
-                : child,
+            body: child,
           ),
         ),
       ),
