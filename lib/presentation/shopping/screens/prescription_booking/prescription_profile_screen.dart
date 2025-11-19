@@ -11,7 +11,7 @@ import 'prescription_time_screen.dart';
 class PrescriptionProfileScreen extends StatefulWidget {
   final String productId;
   final String productName;
-  final Map<String, dynamic>? selectedOptions;
+  final dynamic selectedOptions; // List<Map<String, dynamic>> 또는 Map<String, dynamic>? (하위 호환성)
   
   const PrescriptionProfileScreen({
     super.key,

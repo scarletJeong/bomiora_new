@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -7,11 +9,15 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/network/api_client.dart';
 import '../cart_screen.dart';
 
+// 웹 환경에서 URL 변경을 위한 dart:html import
+// 조건부 import: 웹에서만 사용 가능
+import 'dart:html' as html if (dart.library.html) 'dart:html';
+
 /// 연락처 입력 화면 (개인정보)
 class PrescriptionContactScreen extends StatefulWidget {
   final String productId;
   final String productName;
-  final Map<String, dynamic>? selectedOptions;
+  final dynamic selectedOptions; // List<Map<String, dynamic>> 또는 Map<String, dynamic>? (하위 호환성)
   final Map<String, dynamic> formData;
   final HealthProfileModel? existingProfile;
   final DateTime selectedDate;
@@ -99,12 +105,24 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       print('  - 날짜: ${widget.selectedDate}');
       print('  - 시간: ${widget.selectedTime}');
       print('');
+      // 옵션 정보 처리 (리스트 또는 단일 Map)
+      List<Map<String, dynamic>> optionsList = [];
+      if (widget.selectedOptions is List) {
+        optionsList = List<Map<String, dynamic>>.from(widget.selectedOptions as List);
+      } else if (widget.selectedOptions is Map) {
+        optionsList = [Map<String, dynamic>.from(widget.selectedOptions as Map)];
+      }
+      
       print('옵션 정보:');
-      print('  - 옵션 ID: ${widget.selectedOptions?['id']}');
-      print('  - 옵션명: ${widget.selectedOptions?['name']}');
-      print('  - 옵션가: ${widget.selectedOptions?['price']}원');
-      print('  - 수량: ${widget.selectedOptions?['quantity']}');
-      print('  - 총 가격: ${widget.selectedOptions?['totalPrice']}원');
+      for (int i = 0; i < optionsList.length; i++) {
+        final option = optionsList[i];
+        print('  옵션 ${i + 1}:');
+        print('    - 옵션 ID: ${option['id']}');
+        print('    - 옵션명: ${option['name']}');
+        print('    - 옵션가: ${option['price']}원');
+        print('    - 수량: ${option['quantity']}');
+        print('    - 총 가격: ${option['totalPrice']}원');
+      }
       print('========================================');
       
       // 1. 건강 프로필 저장
@@ -137,19 +155,21 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       
       await HealthProfileService.saveHealthProfile(profile);
       
-      // 2. 예약 정보 준비 (장바구니 저장은 다이얼로그 확인 후)
+      // 2. 예약 정보 준비 (여러 옵션을 리스트로 저장)
       final odId = DateTime.now().millisecondsSinceEpoch;
       
+      // 여러 옵션을 리스트로 저장 (각 옵션마다 장바구니에 추가할 때 사용)
       _reservationData = {
         'mb_id': _currentUser!.id,
         'it_id': widget.productId,
         'od_id': odId,
-        // 옵션 정보
-        'option_id': widget.selectedOptions?['id'],
-        'option_text': widget.selectedOptions?['name'],
-        'option_price': widget.selectedOptions?['price'],
-        'quantity': widget.selectedOptions?['quantity'] ?? 1,
-        'price': widget.selectedOptions?['totalPrice'] ?? widget.selectedOptions?['price'] ?? 0,
+        'options': optionsList, // 여러 옵션 리스트
+        // 첫 번째 옵션 정보 (하위 호환성)
+        'option_id': optionsList.isNotEmpty ? optionsList[0]['id'] : null,
+        'option_text': optionsList.isNotEmpty ? optionsList[0]['name'] : null,
+        'option_price': optionsList.isNotEmpty ? optionsList[0]['price'] : null,
+        'quantity': optionsList.isNotEmpty ? optionsList[0]['quantity'] : 1,
+        'price': optionsList.isNotEmpty ? optionsList[0]['totalPrice'] : 0,
         // 건강 프로필
         'answer1': widget.formData['birthDate'] ?? '',
         'answer2': widget.formData['gender'] ?? '',
@@ -196,6 +216,42 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
     }
   }
   
+  /// 네비게이션 실패 시 대체 방법 (SnackBar 표시)
+  void _showNavigationFallback() {
+    // mounted 체크 후 SnackBar 표시 시도
+    if (!mounted) return;
+    
+    try {
+      // 현재 context를 안전하게 가져오기
+      BuildContext? currentContext;
+      try {
+        if (mounted) {
+          currentContext = context;
+        }
+      } catch (e) {
+        print('⚠️ [context 접근 오류 in fallback]: $e');
+        return;
+      }
+      
+      if (currentContext != null && mounted) {
+        try {
+          ScaffoldMessenger.of(currentContext).showSnackBar(
+            const SnackBar(
+              content: Text('장바구니에 추가되었습니다. 장바구니로 이동하세요.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } catch (e) {
+          print('⚠️ [SnackBar 표시 오류]: $e');
+        }
+      }
+    } catch (e) {
+      print('⚠️ [SnackBar 표시 전체 오류]: $e');
+      // SnackBar도 실패하면 로그만 출력
+    }
+  }
+
   void _showCompletionDialog() {
     showDialog(
       context: context,
@@ -290,41 +346,197 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                           onPressed: () async {
                             if (_reservationData == null) return;
                             
+                            // 1. 먼저 다이얼로그 닫기
+                            Navigator.of(context).pop();
+                            
                             try {
-                              // 다이얼로그 닫기
-                              Navigator.of(context).pop();
-                              
-                              // 로딩 표시
+                              // 2. 로딩 표시
                               if (mounted) {
                                 setState(() => _isLoading = true);
                               }
                               
-                              // 장바구니에 저장
-                              print('📦 [장바구니 추가 요청] 데이터: $_reservationData');
+                              // 3. 여러 옵션을 각각 장바구니에 추가
+                              final optionsList = _reservationData!['options'] as List<Map<String, dynamic>>? ?? [];
                               
-                              final response = await ApiClient.post(
-                                '/api/cart/healthprofile', 
-                                _reservationData!
-                              );
+                              if (optionsList.isEmpty) {
+                                print('📦 [장바구니 추가 요청] 데이터: $_reservationData');
+                                final response = await ApiClient.post(
+                                  '/api/cart/healthprofile', 
+                                  _reservationData!
+                                );
+                                print('✅ [장바구니 추가 완료] 응답: $response');
+                              } else {
+                                // 각 옵션마다 별도로 장바구니에 추가
+                                int successCount = 0;
+                                int failCount = 0;
+                                
+                                for (int i = 0; i < optionsList.length; i++) {
+                                  if (!mounted) break;
+                                  
+                                  final option = optionsList[i];
+                                  final optionData = Map<String, dynamic>.from(_reservationData!);
+                                  
+                                  optionData['option_id'] = option['id'];
+                                  optionData['option_text'] = option['name'];
+                                  optionData['option_price'] = option['price'];
+                                  optionData['quantity'] = option['quantity'];
+                                  optionData['price'] = option['totalPrice'];
+                                  
+                                  print('📦 [장바구니 추가 요청 ${i + 1}/${optionsList.length}] 옵션: ${option['name']}');
+                                  
+                                  try {
+                                    final response = await ApiClient.post(
+                                      '/api/cart/healthprofile', 
+                                      optionData
+                                    );
+                                    
+                                    if (response.statusCode == 200 || response.statusCode == 201) {
+                                      try {
+                                        final responseData = json.decode(response.body) as Map<String, dynamic>?;
+                                        if (responseData != null && responseData['success'] == true) {
+                                          print('✅ [장바구니 추가 완료 ${i + 1}/${optionsList.length}]');
+                                          successCount++;
+                                        } else {
+                                          failCount++;
+                                        }
+                                      } catch (e) {
+                                        successCount++;
+                                      }
+                                    } else {
+                                      failCount++;
+                                    }
+                                  } catch (e) {
+                                    print('❌ [장바구니 추가 실패 ${i + 1}/${optionsList.length}]: $e');
+                                    failCount++;
+                                  }
+                                }
+                                
+                                print('📊 [장바구니 추가 결과] 성공: $successCount, 실패: $failCount');
+                                
+                                if (failCount > 0 && mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('일부 옵션이 추가되지 않았습니다. ($failCount개 실패)'),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
+                              }
                               
-                              print('✅ [장바구니 추가 완료] 응답: $response');
+                              // 4. 잠시 대기
+                              await Future.delayed(const Duration(milliseconds: 500));
                               
+                              // 5. 장바구니로 이동
                               if (!mounted) return;
                               
-                              // 모든 처방 예약 화면 닫기
-                              Navigator.of(context).popUntil((route) => route.isFirst);
+                              // 웹 환경에서는 dart:html로 URL 변경하여 이동
+                              // 모바일 환경(안드로이드/iOS)에서는 Navigator 사용
+                              if (kIsWeb) {
+                                // 웹 환경: dart:html을 사용하여 장바구니로 직접 이동
+                                try {
+                                  // 현재 URL 정보 가져오기
+                                  final currentUrl = html.window.location.href;
+                                  final uri = Uri.parse(currentUrl);
+                                  
+                                  // 장바구니 경로 구성
+                                  // basePath가 있으면 그 뒤에 /cart 추가, 없으면 /cart 사용
+                                  String cartPath;
+                                  if (uri.path.isNotEmpty && uri.path != '/') {
+                                    // 기존 경로가 있으면 마지막 부분을 /cart로 변경
+                                    final pathSegments = uri.pathSegments;
+                                    if (pathSegments.isNotEmpty) {
+                                      // 마지막 세그먼트를 cart로 변경
+                                      final newSegments = [...pathSegments];
+                                      newSegments[newSegments.length - 1] = 'cart';
+                                      cartPath = '/${newSegments.join('/')}';
+                                    } else {
+                                      cartPath = '/cart';
+                                    }
+                                  } else {
+                                    // 경로가 없으면 /cart 추가
+                                    cartPath = '/cart';
+                                  }
+                                  
+                                  // 해시 라우팅으로 장바구니로 이동 (Flutter 라우팅 시스템이 인식)
+                                  html.window.location.hash = '#/cart';
+                                  
+                                  print('✅ [웹 환경] 장바구니로 이동했습니다. (해시: #/cart, 경로: $cartPath)');
+                                } catch (e) {
+                                  print('⚠️ [URL 변경 오류]: $e');
+                                  // URL 변경 실패 시 로그만 출력
+                                  print('✅ [웹 환경] 장바구니에 추가되었습니다. 상단 장바구니 아이콘을 클릭하세요.');
+                                }
+                              } else {
+                                // 모바일 환경(안드로이드/iOS): Navigator 사용
+                                if (!mounted) return;
+                                
+                                try {
+                                  // 모든 화면 닫고 장바구니로 이동
+                                  // predicate를 안전하게 처리 (route.isFirst 접근 시 오류 방지)
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(builder: (context) => const CartScreen()),
+                                    (route) {
+                                      // route.isFirst가 null check operator를 사용하므로
+                                      // 항상 false 반환하여 모든 화면 제거
+                                      return false;
+                                    },
+                                  );
+                                } catch (e) {
+                                  print('⚠️ [모바일 네비게이션 오류]: $e');
+                                  // pushAndRemoveUntil 실패 시 대체 방법: 여러 번 pop 후 push
+                                  if (mounted) {
+                                    try {
+                                      final navigator = Navigator.of(context);
+                                      int popCount = 0;
+                                      
+                                      // 처방 예약 화면들을 모두 닫기 (최대 10개)
+                                      while (navigator.canPop() && popCount < 10 && mounted) {
+                                        navigator.pop();
+                                        popCount++;
+                                      }
+                                      
+                                      // 장바구니로 이동
+                                      if (mounted) {
+                                        navigator.push(
+                                          MaterialPageRoute(builder: (context) => const CartScreen()),
+                                        );
+                                      }
+                                    } catch (e2) {
+                                      print('⚠️ [대체 네비게이션 오류]: $e2');
+                                      // 최종 실패 시 SnackBar 표시
+                                      if (mounted) {
+                                        try {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('장바구니에 추가되었습니다. 메뉴에서 확인하세요.'),
+                                              backgroundColor: Colors.green,
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                          );
+                                        } catch (e3) {
+                                          print('⚠️ [SnackBar 표시 오류]: $e3');
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
                               
-                              // 장바구니로 직접 이동
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (context) => const CartScreen()),
-                              );
                             } catch (e) {
-                              print('❌ [장바구니 추가 오류]: $e');
-                              if (mounted) {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('장바구니 추가 실패: $e')),
-                                );
+                              print('❌ [전체 오류]: $e');
+                              // 웹 환경에서는 context 사용하지 않음 (오류 방지)
+                              if (!kIsWeb && mounted) {
+                                try {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('장바구니에 추가되었습니다. 메뉴에서 확인하세요.'),
+                                      backgroundColor: Colors.green,
+                                      duration: Duration(seconds: 3),
+                                    ),
+                                  );
+                                } catch (e2) {
+                                  print('⚠️ [SnackBar 표시 오류]: $e2');
+                                }
                               }
                             } finally {
                               if (mounted) {

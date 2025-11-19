@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_footer.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -51,8 +50,18 @@ class _CartScreenState extends State<CartScreen> {
       if (!mounted) return;
       
       if (result['success'] == true) {
-        final items = (result['data'] as List)
-            .map((item) => CartItem.fromJson(item))
+        // null 체크 추가 (웹 환경 대응)
+        final data = result['data'];
+        final items = (data is List ? data : [])
+            .map((item) {
+              try {
+                return CartItem.fromJson(item as Map<String, dynamic>);
+              } catch (e) {
+                print('⚠️ [장바구니 아이템 파싱 오류]: $e');
+                return null;
+              }
+            })
+            .whereType<CartItem>() // null 제거
             .toList();
         setState(() {
           cartItems = items;
@@ -490,11 +499,6 @@ class _CartScreenState extends State<CartScreen> {
                                     ],
                                   ),
                                 ),
-                                
-                                const SizedBox(height: 300),
-                                
-                                // Footer  
-                                const AppFooter(),
                               ],
                             ),
                           ),
@@ -518,7 +522,7 @@ class _CartScreenState extends State<CartScreen> {
                               const SizedBox(height: 8),
                               _buildSummaryRow('배송비', _formatPrice(selectedShippingCost), isTotal: false),
                               const Divider(height: 24),
-                              _buildSummaryRow('결제금액', _formatPrice(finalPrice), isTotal: true),
+                              _buildSummaryRow('총 결제금액', _formatPrice(finalPrice), isTotal: true),
                               const SizedBox(height: 16),
                               SizedBox(
                                 width: double.infinity,

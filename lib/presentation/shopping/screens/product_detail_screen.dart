@@ -2031,7 +2031,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     // 패딩(좌우 16px씩 = 32px)을 빼고, 최대값 제한
     final imageWidth = (screenWidth - 32).clamp(200.0, 600.0);
-    print('🖼️ [이미지 크기] screenWidth: $screenWidth, imageWidth: $imageWidth, kIsWeb: $kIsWeb');
     
     return Container(
       margin: const EdgeInsets.only(top: 24, bottom: 24),
@@ -2202,14 +2201,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void _navigateToQuestionnaire() async {
     if (_product == null) return;
     
-    // 선택된 옵션 정보를 Map으로 변환
-    final selectedOptionsData = _selectedOptions.map((option, quantity) => MapEntry(
-      option.displayText,
-      {
-        'quantity': quantity,
+    // 선택된 옵션 정보를 리스트로 변환 (여러 옵션 지원)
+    if (_selectedOptions.isEmpty) {
+      // 옵션이 없으면 빈 리스트 반환
+      final selectedOptionsData = <Map<String, dynamic>>[];
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrescriptionProfileScreen(
+            productId: _product!.id,
+            productName: _product!.name,
+            selectedOptions: selectedOptionsData,
+          ),
+        ),
+      );
+      if (result == true) {
+        // 예약 완료 후 처리 (필요시)
+      }
+      return;
+    }
+    
+    // 모든 옵션을 리스트로 변환
+    final selectedOptionsData = _selectedOptions.entries.map((entry) {
+      final option = entry.key;
+      final quantity = entry.value;
+      return {
+        'id': option.id,
+        'name': option.displayText,
         'price': option.price,
-      },
-    ));
+        'quantity': quantity,
+        'totalPrice': (_product!.price + option.price) * quantity,
+      };
+    }).toList();
     
     final result = await Navigator.push(
       context,
@@ -2370,10 +2393,21 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
         print('  - 새 옵션 추가, 수량: 1');
       }
       
-      // 선택 초기화
-      _selectedStep = null;
-      _selectedMonths = null;
-      _expandedSubject = null;
+      // 옵션 선택 후 처리
+      _selectedMonths = null; // 개월수만 초기화
+      
+      if (_stepGroups.length > 1) {
+        // 단계가 여러 개인 경우: 단계 선택 초기화 (다른 단계 선택 가능)
+        _selectedStep = null;
+        _expandedSubject = null;
+        print('  - 단계가 여러 개이므로 단계 선택 초기화');
+      } else {
+        // 단계가 1개만 있는 경우: 단계 선택은 유지하되 확장 닫기
+        // _selectedStep은 유지 (자동 선택된 상태 유지)
+        _expandedSubject = null; // 확장 닫기
+        print('  - 단계가 1개뿐이므로 단계 선택 유지, 확장 닫기: $_selectedStep');
+      }
+      
       _updateMonthsGroups();
       
       print('  - 바텀시트 내부 상태 업데이트 완료, 총 옵션 개수: ${_selectedOptions.length}');
