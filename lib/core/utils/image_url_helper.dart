@@ -178,16 +178,10 @@ class ImageUrlHelper {
       if (kIsWeb) {
         final currentHost = Uri.base.host;
         
-        print('🔄 [이미지 URL 변환]');
-        print('  원본 URL: $url');
-        print('  현재 호스트: $currentHost');
-        print('  경로: $path');
-        
         // 로컬 개발 환경 - 로컬 경로 사용
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
           // 모든 경로를 직접 로컬 경로로 변환 (프록시 사용 안 함)
           final result = '$imageBaseUrl$path';
-          print('  변환 결과 (로컬 직접): $result');
           return result;
         }
         
@@ -195,14 +189,12 @@ class ImageUrlHelper {
         if (currentHost.contains('mycafe24.com')) {
           // bomiora.kr -> bomiora0.mycafe24.com 으로 변경
           final result = 'https://$currentHost$path';
-          print('  변환 결과 (Cafe24 같은 도메인): $result');
           return result;
         }
         
         // 기타 프로덕션 (bomiora.kr 등) - 프록시 사용
         if (path.contains('/data/editor/') || path.contains('/data/itemuse/')) {
           final result = 'https://bomiora.net:9000/api/proxy/image?url=${Uri.encodeComponent(url)}';
-          print('  변환 결과 (프로덕션 프록시): $result');
           return result;
         }
       }
@@ -210,12 +202,9 @@ class ImageUrlHelper {
       // 기본: 현재 환경에 맞는 base URL 사용
       String baseUrl = imageBaseUrl;
       final result = path.startsWith('/') ? '$baseUrl$path' : '$baseUrl/$path';
-      print('  변환 결과 (기본): $result');
       return result;
     }
     
-    // localhost URL은 그대로 유지
-    print('🔄 [이미지 URL 변환] localhost URL 유지: $url');
     return url;
   }
 

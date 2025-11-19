@@ -12,14 +12,11 @@ class ProductRepository {
     int page = 1,
     int pageSize = 20,
   }) async {
-    try {
-      print('🔍 상품 목록 조회 시작 - categoryId: $categoryId, productKind: $productKind');
-      
+    try {      
       // 먼저 Spring Boot API를 시도
       String endpoint = ApiEndpoints.productListByCategory(categoryId, productKind: productKind);
       endpoint += '&page=$page&pageSize=$pageSize';
       
-      print('🌐 Spring Boot API 시도: ${ApiClient.baseUrl}$endpoint');
       
       // 인증 토큰이 있으면 헤더에 추가
       final token = await AuthService.getToken();
@@ -43,14 +40,11 @@ class ProductRepository {
           // 응답 구조에 따라 처리
           if (data['success'] == true && data['data'] != null) {
             final List<dynamic> products = data['data'];
-            print('✅ Spring Boot API에서 상품 ${products.length}개 로드 완료');
             return products.map((json) => Product.fromJson(json)).toList();
           } else if (data is List) {
-            print('✅ Spring Boot API에서 상품 ${data.length}개 로드 완료');
             return data.map((json) => Product.fromJson(json)).toList();
           } else if (data['products'] != null) {
             final List<dynamic> products = data['products'];
-            print('✅ Spring Boot API에서 상품 ${products.length}개 로드 완료');
             return products.map((json) => Product.fromJson(json)).toList();
           }
         } catch (e) {
@@ -58,8 +52,6 @@ class ProductRepository {
         }
       }
       
-      // Spring Boot API가 실패하면 bomiora.kr PHP 서버로 직접 요청 시도
-      print('⚠️ Spring Boot API 실패 또는 응답 없음. PHP 서버로 폴백 시도...');
       return await _getProductsFromPhpServer(
         categoryId: categoryId,
         productKind: productKind,

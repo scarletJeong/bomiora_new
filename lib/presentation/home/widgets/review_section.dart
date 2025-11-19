@@ -254,9 +254,6 @@ class _ReviewSectionState extends State<ReviewSection> {
                           builder: (context) {
                             final originalUrl = review.images.first;
                             final convertedUrl = ImageUrlHelper.getReviewImageUrl(originalUrl);
-                            print('🏠 [홈 리뷰 이미지]');
-                            print('  원본: $originalUrl');
-                            print('  변환: $convertedUrl');
                             return Image.network(
                               convertedUrl,
                               fit: BoxFit.cover,
