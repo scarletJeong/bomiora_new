@@ -17,11 +17,13 @@ import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../../user/healthprofile/screens/health_profile_form_screen.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import 'product_reviews_screen.dart';
 import '../../review/screens/review_detail_screen.dart';
+import '../../customer_service/screens/contact_form_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -62,7 +64,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this); // 상품정보, 리뷰, 문의
     _tabController.addListener(() {
       // 탭 변경 시 UI 업데이트
       if (!_tabController.indexIsChanging) {
@@ -432,21 +434,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(40), // AppBar 높이 축소
-          child: AppBar(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(40), // AppBar 높이 축소
+        child: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, size: 20),
+            onPressed: () => Navigator.pop(context),
           ),
         ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _hasError
@@ -492,94 +495,412 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   Widget _buildProductDetail() {
     final images = _getProductImages();
+    final allReviewCount = _reviews.length;
     
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // 콘텐츠 길이에 맞게 조정
-        children: [
-          // 이미지 캐러셀
-          _buildImageCarousel(images),
-          
-          // 제품 정보 섹션
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 제품 태그
-                if (_product!.categoryName != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _product!.categoryName!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                
-                // 제품명
-                Text(
-                  _product!.name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                
-                // 간단 설명 (it_basic)
-                _buildBasicDescription(),
-                const SizedBox(height: 16),
-                
-                // 가격 정보 (간단 설명 아래)
-                _buildPriceSection(),
-                
-                // 가격 아래 구분선
-                const Divider(
-                  height: 32,
-                  thickness: 1,
-                  color: Colors.grey,
-                ),
-                
-                // 제품 스펙 (처방단위, 복용방법, 패키지구성, 적립포인트, 배송비결제)
-                _buildProductSpecs(),
-                const SizedBox(height: 16),
-                
-                // 현재 나의 보유포인트 (별도 섹션)
-                _buildUserPointSection(),
-                
-                // 선택된 옵션 표시 (옵션이 선택되었을 때만)
-                if (_selectedOptions.isNotEmpty)
-                  _buildSelectedOptionSection(),
-              ],
-            ),
+    return NestedScrollView(
+      headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+        return [
+          // 썸네일 (이미지 캐러셀)
+          SliverToBoxAdapter(
+            child: _buildImageCarousel(images),
           ),
           
-          // 리뷰 탭
-          _buildReviewSection(),
+          // 제품 정보 섹션
+          SliverToBoxAdapter(
+            child: _buildProductInfoSection(),
+          ),
           
-          // 상세페이지 HTML 콘텐츠 (리뷰 아래)
+          // 탭바
+          SliverPersistentHeader(
+            pinned: false,
+            delegate: _SliverTabBarDelegate(
+              TabBar(
+                controller: _tabController,
+                indicatorColor: const Color(0xFFFF4081),
+                indicatorWeight: 3,
+                labelColor: const Color(0xFFFF4081),
+                unselectedLabelColor: Colors.grey[600],
+                tabs: [
+                  const Tab(
+                    child: Text(
+                      '상품정보',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                  Tab(
+                    child: Text(
+                      '리뷰 $allReviewCount',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                  const Tab(
+                    child: Text(
+                      '문의',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ];
+      },
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // 상품정보 탭
+          _buildProductInfoTab(),
+          // 리뷰 탭
+          _buildReviewTab(),
+          // 문의 탭
+          _buildInquiryTab(),
+        ],
+      ),
+    );
+  }
+
+  /// 상품정보 탭
+  Widget _buildProductInfoTab() {
+    return SingleChildScrollView(
+      key: const PageStorageKey<String>('product_info_tab'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 상세페이지 HTML 콘텐츠
           _buildDetailContent(),
           
           // 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
           const ProductTailInfoSection(),
           
-          // 하단 여백 (하단 액션 바 공간)
+          // 하단 여백
           const SizedBox(height: 100),
+          
+          // Footer
+          const AppFooter(),
         ],
+      ),
+    );
+  }
+
+  /// 리뷰 탭
+  Widget _buildReviewTab() {
+    // 서포터 리뷰: 포토가 있는 것 먼저 정렬
+    final sortedSupporterReviews = List<ReviewModel>.from(_supporterReviews)
+      ..sort((a, b) {
+        final aHasPhoto = a.images.isNotEmpty;
+        final bHasPhoto = b.images.isNotEmpty;
+        if (aHasPhoto && !bHasPhoto) return -1;
+        if (!aHasPhoto && bHasPhoto) return 1;
+        return 0;
+      });
+    
+    return SingleChildScrollView(
+      key: const PageStorageKey<String>('review_tab'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 탭바와 리뷰 사이 간격
+          const SizedBox(height: 16),
+          
+          // 리뷰 목록
+          if (_isLoadingReviews)
+            const Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (sortedSupporterReviews.isEmpty && _generalReviews.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Center(
+                child: Text(
+                  '리뷰가 없습니다',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            // 서포터 리뷰 목록 (최대 5개)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  ...sortedSupporterReviews.take(5).map((review) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildPhotoReviewCard(review),
+                  )),
+                ],
+              ),
+            ),
+            
+            // 더보기 버튼
+            if (sortedSupporterReviews.length > 5 || _reviews.length > 5)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProductReviewsScreen(
+                            productId: widget.productId,
+                            productName: _product?.name ?? '',
+                          ),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: Color(0xFFFF4081)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          '리뷰 더보기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFF4081),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '(${_reviews.length}개)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+          
+          const SizedBox(height: 100),
+          const AppFooter(),
+        ],
+      ),
+    );
+  }
+
+  /// 문의 탭
+  Widget _buildInquiryTab() {
+    return SingleChildScrollView(
+      key: const PageStorageKey<String>('inquiry_tab'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 배송/결제/교환/반품 안내 링크
+          InkWell(
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => DraggableScrollableSheet(
+                  initialChildSize: 0.9,
+                  minChildSize: 0.5,
+                  maxChildSize: 0.95,
+                  builder: (context, scrollController) => Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 12),
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            controller: scrollController,
+                            child: const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: ProductTailInfoSection(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[200]!),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '배송 / 결제 / 교환 / 반품 안내',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Colors.grey[400],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // 문의 안내 섹션
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '지금 보고 있는 상품이 궁금하신가요?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // 예시 질문
+                _buildExampleQuestion(
+                  '상품 재입고 언제되는지 궁금해요',
+                ),
+                const SizedBox(height: 32),
+                
+                // 상품 문의하기 버튼
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ContactFormScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      '상품 문의하기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 100),
+          const AppFooter(),
+        ],
+      ),
+    );
+  }
+
+  /// 제품 정보 섹션 (탭 위에 고정)
+  Widget _buildProductInfoSection() {
+    return Container(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 제품 태그
+            if (_product!.categoryName != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _product!.categoryName!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            if (_product!.categoryName != null) const SizedBox(height: 12),
+            
+            // 제품명
+            Text(
+              _product!.name,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            
+            // 간단 설명 (it_basic)
+            _buildBasicDescription(),
+            const SizedBox(height: 16),
+            
+            // 가격 정보
+            _buildPriceSection(),
+            
+            // 가격 아래 구분선
+            const Divider(
+              height: 32,
+              thickness: 1,
+              color: Colors.grey,
+            ),
+            
+            // 제품 스펙
+            _buildProductSpecs(),
+            const SizedBox(height: 16),
+            
+            // 현재 나의 보유포인트
+            _buildUserPointSection(),
+            
+            // 선택된 옵션 표시
+            if (_selectedOptions.isNotEmpty)
+              _buildSelectedOptionSection(),
+          ],
+        ),
       ),
     );
   }
@@ -1207,28 +1528,59 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
+  /// 예시 질문 위젯
+  Widget _buildExampleQuestion(String question) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              '예시',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              question,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildReviewSection() {
     // 실제 리뷰 데이터 사용
     final supporterReviewCount = _supporterReviews.length;
     final allReviewCount = _reviews.length;
     
-    // 서포터 리뷰: 포토가 있는 것 먼저 정렬 (사진 개수도 고려)
+    // 서포터 리뷰: 포토가 있는 것 먼저 정렬
     final sortedSupporterReviews = List<ReviewModel>.from(_supporterReviews)
       ..sort((a, b) {
         final aHasPhoto = a.images.isNotEmpty;
         final bHasPhoto = b.images.isNotEmpty;
-        final aPhotoCount = a.images.length;
-        final bPhotoCount = b.images.length;
-        
-        // 1순위: 사진이 있는 것 우선
         if (aHasPhoto && !bHasPhoto) return -1;
         if (!aHasPhoto && bHasPhoto) return 1;
-        
-        // 2순위: 사진이 둘 다 있으면 사진 개수가 많은 것 우선
-        if (aHasPhoto && bHasPhoto) {
-          return bPhotoCount.compareTo(aPhotoCount);
-        }
-        
         return 0;
       });
     
@@ -3201,5 +3553,40 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
     }
     
     return const SizedBox.shrink();
+  }
+}
+
+/// SliverPersistentHeaderDelegate for TabBar
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+
+  _SliverTabBarDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+      ),
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar;
   }
 }

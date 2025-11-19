@@ -132,13 +132,16 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 수정 모드일 때는 독립적인 화면으로 표시 (AppBar 포함)
-    if (_isEditMode) {
+    // 수정 모드이거나 onSuccess가 null이면 독립적인 화면으로 표시 (AppBar 포함)
+    // onSuccess가 있으면 TabBarView 안에서 사용되는 것으로 간주
+    final isStandalone = _isEditMode || widget.onSuccess == null;
+    
+    if (isStandalone) {
       return MobileAppLayoutWrapper(
         appBar: AppBar(
-          title: const Text(
-            '문의 수정',
-            style: TextStyle(
+          title: Text(
+            _isEditMode ? '문의 수정' : '상품 문의하기',
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black,
@@ -148,12 +151,18 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           foregroundColor: Colors.black,
           elevation: 0,
         ),
-        child: _buildForm(),
+        child: Material(
+          color: Colors.transparent,
+          child: _buildForm(),
+        ),
       );
     }
     
-    // 작성 모드일 때는 기존대로 (TabBarView 안에서 사용)
-    return _buildForm();
+    // TabBarView 안에서 사용될 때는 Material만 감싸기
+    return Material(
+      color: Colors.transparent,
+      child: _buildForm(),
+    );
   }
 
   Widget _buildForm() {

@@ -642,8 +642,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           // 상세페이지 HTML 콘텐츠
           _buildDetailContent(),
           
+          const Divider(height: 1, thickness: 1),
+          
           // 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
-          // const ProductTailInfoSection(), //  임시 제거 - 디버깅용
+          const ProductTailInfoSection(),
           
           // 하단 여백
           const SizedBox(height: 100),
@@ -676,6 +678,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           // 탭바와 리뷰 사이 간격
           const SizedBox(height: 16),
           
+          // 전체 리뷰 통계 (서포터/일반 구분 없이 전체 합산)
+          if (_reviewStats != null && _reviews.isNotEmpty)
+            _buildReviewStats(
+              title: '리뷰 평가',
+              average: _reviewStats!['totalAverage'] as double,
+              satisfied: _reviewStats!['totalSatisfied'] as int,
+              totalCount: _reviewStats!['totalCount'] as int,
+              score1Avg: _reviewStats!['totalScore1Avg'] as double,
+              score2Avg: _reviewStats!['totalScore2Avg'] as double,
+              score3Avg: _reviewStats!['totalScore3Avg'] as double,
+              score4Avg: _reviewStats!['totalScore4Avg'] as double,
+            ),
+          
+          // 탭바와 리뷰 사이 간격
+          const SizedBox(height: 30),
+
           // 리뷰 목록
           if (_isLoadingReviews)
             const Padding(
@@ -807,7 +825,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             controller: scrollController,
                             child: const Padding(
                               padding: EdgeInsets.all(16),
-                              // child: ProductTailInfoSection(), // 임시 제거 - 디버깅용
+                              child: ProductTailInfoSection(initialExpanded: true),
                             ),
                           ),
                         ),
@@ -1600,7 +1618,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             // 이미지
             Container(
               width: double.infinity,
-              height: 140,
+              height: 250,
               decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: const BorderRadius.vertical(
