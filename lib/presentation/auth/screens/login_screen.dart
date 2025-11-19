@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileLayoutWrapper(
+    return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(32.0),
