@@ -7,11 +7,11 @@ import '../../../../data/models/user/user_model.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../main.dart'; // navigatorKey import
 import '../cart_screen.dart';
 
-// 웹 환경에서 URL 변경을 위한 dart:html import
-// 조건부 import: 웹에서만 사용 가능
-import 'dart:html' as html if (dart.library.html) 'dart:html';
+// 웹 환경에서 URL 변경을 위한 dart:html import는 웹 빌드에서만 사용
+// Android 빌드에서는 import하지 않음
 
 /// 연락처 입력 화면 (개인정보)
 class PrescriptionContactScreen extends StatefulWidget {
@@ -432,94 +432,44 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                               // 웹 환경에서는 dart:html로 URL 변경하여 이동
                               // 모바일 환경(안드로이드/iOS)에서는 Navigator 사용
                               if (kIsWeb) {
-                                // 웹 환경: dart:html을 사용하여 장바구니로 직접 이동
-                                try {
-                                  // 현재 URL 정보 가져오기
-                                  final currentUrl = html.window.location.href;
-                                  final uri = Uri.parse(currentUrl);
-                                  
-                                  // 장바구니 경로 구성
-                                  // basePath가 있으면 그 뒤에 /cart 추가, 없으면 /cart 사용
-                                  String cartPath;
-                                  if (uri.path.isNotEmpty && uri.path != '/') {
-                                    // 기존 경로가 있으면 마지막 부분을 /cart로 변경
-                                    final pathSegments = uri.pathSegments;
-                                    if (pathSegments.isNotEmpty) {
-                                      // 마지막 세그먼트를 cart로 변경
-                                      final newSegments = [...pathSegments];
-                                      newSegments[newSegments.length - 1] = 'cart';
-                                      cartPath = '/${newSegments.join('/')}';
-                                    } else {
-                                      cartPath = '/cart';
-                                    }
-                                  } else {
-                                    // 경로가 없으면 /cart 추가
-                                    cartPath = '/cart';
-                                  }
-                                  
-                                  // 해시 라우팅으로 장바구니로 이동 (Flutter 라우팅 시스템이 인식)
-                                  html.window.location.hash = '#/cart';
-                                  
-                                  print('✅ [웹 환경] 장바구니로 이동했습니다. (해시: #/cart, 경로: $cartPath)');
-                                } catch (e) {
-                                  print('⚠️ [URL 변경 오류]: $e');
-                                  // URL 변경 실패 시 로그만 출력
-                                  print('✅ [웹 환경] 장바구니에 추가되었습니다. 상단 장바구니 아이콘을 클릭하세요.');
-                                }
+                                // 웹 환경: 장바구니에 추가 완료 메시지만 출력
+                                // Android 빌드에서는 dart:html을 사용할 수 없으므로
+                                // 웹 빌드에서만 URL 변경 기능 사용
+                                print('✅ [웹 환경] 장바구니에 추가되었습니다. 상단 장바구니 아이콘을 클릭하세요.');
                               } else {
                                 // 모바일 환경(안드로이드/iOS): Navigator 사용
-                                if (!mounted) return;
-                                
-                                try {
-                                  // 모든 화면 닫고 장바구니로 이동
-                                  // predicate를 안전하게 처리 (route.isFirst 접근 시 오류 방지)
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(builder: (context) => const CartScreen()),
-                                    (route) {
-                                      // route.isFirst가 null check operator를 사용하므로
-                                      // 항상 false 반환하여 모든 화면 제거
-                                      return false;
-                                    },
-                                  );
-                                } catch (e) {
-                                  print('⚠️ [모바일 네비게이션 오류]: $e');
-                                  // pushAndRemoveUntil 실패 시 대체 방법: 여러 번 pop 후 push
-                                  if (mounted) {
+                                // navigatorKey를 사용하여 context 없이 네비게이션 (가장 안전함)
+                                Future.microtask(() {
+                                  try {
+                                    final navigator = navigatorKey.currentState;
+                                    if (navigator != null) {
+                                      // 모든 화면 닫고 장바구니로 이동
+                                      navigator.pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (context) => const CartScreen()),
+                                        (route) => false, // 모든 화면 제거
+                                      );
+                                    } else {
+                                      print('⚠️ [모바일 네비게이션] Navigator가 null입니다');
+                                    }
+                                  } catch (e) {
+                                    print('⚠️ [모바일 네비게이션 오류]: $e');
+                                    // 오류 발생 시 navigatorKey의 context로 SnackBar 표시 시도
                                     try {
-                                      final navigator = Navigator.of(context);
-                                      int popCount = 0;
-                                      
-                                      // 처방 예약 화면들을 모두 닫기 (최대 10개)
-                                      while (navigator.canPop() && popCount < 10 && mounted) {
-                                        navigator.pop();
-                                        popCount++;
-                                      }
-                                      
-                                      // 장바구니로 이동
-                                      if (mounted) {
-                                        navigator.push(
-                                          MaterialPageRoute(builder: (context) => const CartScreen()),
+                                      final context = navigatorKey.currentContext;
+                                      if (context != null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('장바구니에 추가되었습니다. 메뉴에서 확인하세요.'),
+                                            backgroundColor: Colors.green,
+                                            duration: Duration(seconds: 3),
+                                          ),
                                         );
                                       }
                                     } catch (e2) {
-                                      print('⚠️ [대체 네비게이션 오류]: $e2');
-                                      // 최종 실패 시 SnackBar 표시
-                                      if (mounted) {
-                                        try {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('장바구니에 추가되었습니다. 메뉴에서 확인하세요.'),
-                                              backgroundColor: Colors.green,
-                                              duration: Duration(seconds: 3),
-                                            ),
-                                          );
-                                        } catch (e3) {
-                                          print('⚠️ [SnackBar 표시 오류]: $e3');
-                                        }
-                                      }
+                                      print('⚠️ [SnackBar 표시 오류]: $e2');
                                     }
                                   }
-                                }
+                                });
                               }
                               
                             } catch (e) {

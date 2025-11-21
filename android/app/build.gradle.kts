@@ -3,6 +3,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // id("com.google.gms.google-services")  // Firebase 사용하지 않으므로 주석 처리
 }
 
 android {
@@ -11,12 +12,12 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -24,20 +25,20 @@ android {
         applicationId = "com.bomiora.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21  // FoodLens SDK 요구사항
+        minSdk = flutter.minSdkVersion  // FoodLens SDK 요구사항
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
     
-    // foodLens 폴더의 소스 경로 추가
-    sourceSets {
-        getByName("main") {
-            java {
-                srcDirs("../../foodLens/android/kotlin")
-            }
-        }
-    }
+    // foodLens 폴더의 소스 경로 추가 (일시적으로 주석 처리 - jcenter 종료로 인한 의존성 문제)
+    // sourceSets {
+    //     getByName("main") {
+    //         java {
+    //             srcDirs("../../foodLens/android/kotlin")
+    //         }
+    //     }
+    // }
 
     buildTypes {
         release {
@@ -58,6 +59,6 @@ flutter {
 }
 
 dependencies {
-    // FoodLens SDK 의존성 추가
-    implementation("com.doinglab.foodlens:FoodLens:2.6.4")
+    // FoodLens SDK 의존성 추가 (일시적으로 주석 처리 - jcenter 종료로 인한 의존성 문제)
+    // implementation("com.doinglab.foodlens:FoodLens:2.6.4")
 }
