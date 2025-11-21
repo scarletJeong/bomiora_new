@@ -20,33 +20,71 @@ class AuthRepository {
       // 평문 비밀번호를 전송 (Spring Boot에서 PBKDF2로 검증)
       print('🔐 [LOGIN] 이메일: $email');
       print('🔐 [LOGIN] 비밀번호: [보호됨]');
+      print('🌐 [LOGIN] API URL: ${ApiClient.baseUrl}${ApiEndpoints.login}');
       
       final response = await ApiClient.post(ApiEndpoints.login, {
         'email': email,
         'password': password, // 평문 비밀번호 전송 (HTTPS로 보호)
       });
 
+      print('📡 [LOGIN] 응답 상태 코드: ${response.statusCode}');
+      print('📄 [LOGIN] 응답 헤더: ${response.headers}');
+      print('📄 [LOGIN] 응답 본문: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('로그인 응답 데이터: $data'); // 디버깅용 로그
+        print('✅ [LOGIN] 로그인 응답 데이터: $data');
+        
+        // success 필드가 없으면 기본값으로 true 설정
+        final success = data['success'] ?? true;
+        
         return {
-          'success': data['success'],
+          'success': success,
           'data': data,
-          'error': data['message'],
+          'error': data['message'] ?? (success ? null : '로그인에 실패했습니다'),
         };
-      } else {
+      } else if (response.statusCode == 405) {
+        // Method Not Allowed - 서버가 POST를 허용하지 않음
+        print('❌ [LOGIN] 405 Method Not Allowed - 서버가 POST 메서드를 허용하지 않습니다');
+        print('❌ [LOGIN] 응답 본문: ${response.body}');
+        
         return {
           'success': false,
-          'error': '서버 오류: ${response.statusCode}',
+          'error': '서버 설정 오류: POST 메서드가 허용되지 않습니다. 서버 관리자에게 문의하세요.',
+        };
+      } else {
+        print('❌ [LOGIN] 서버 오류: ${response.statusCode}');
+        print('❌ [LOGIN] 응답 본문: ${response.body}');
+        
+        String errorMessage = '서버 오류: ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          errorMessage = errorData['message'] ?? errorData['error'] ?? errorMessage;
+        } catch (e) {
+          // JSON 파싱 실패 시 기본 메시지 사용
+        }
+        
+        return {
+          'success': false,
+          'error': errorMessage,
         };
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // API 서버 연결 실패 시 에러 반환
-      print('❌ API 서버 연결 실패: $e');
+      print('❌ [LOGIN] API 서버 연결 실패: $e');
+      print('❌ [LOGIN] 스택 트레이스: $stackTrace');
+      
+      String errorMessage = 'API 서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
+      
+      if (e.toString().contains('Connection refused')) {
+        errorMessage = '서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
+      } else if (e.toString().contains('Failed host lookup')) {
+        errorMessage = '서버 주소를 찾을 수 없습니다. IP 주소를 확인해주세요.';
+      }
       
       return {
         'success': false,
-        'error': 'API 서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.',
+        'error': errorMessage,
       };
     }
   }
