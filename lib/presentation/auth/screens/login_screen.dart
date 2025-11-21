@@ -272,23 +272,59 @@ class _LoginScreenState extends State<LoginScreen> {
 
         await AuthService.saveLoginData(user: user, token: token); // token을 String?으로 전달
 
-        if (mounted) {
+        if (!mounted) return;
+        
+        // SnackBar 표시
+        try {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('${user.name}님, 환영합니다!')),
           );
-          Navigator.pushReplacementNamed(context, '/home');
+        } catch (e) {
+          print('⚠️ [LOGIN] SnackBar 표시 오류: $e');
         }
+        
+        // 다음 마이크로태스크에서 네비게이션 실행 (더 안전함)
+        Future.microtask(() {
+          if (!mounted) return;
+          try {
+            // context를 다시 가져와서 사용
+            final navigator = Navigator.of(context);
+            navigator.pushReplacementNamed('/cart');
+          } catch (e) {
+            print('❌ [LOGIN] 네비게이션 오류: $e');
+            // 실패 시 홈으로 이동 시도
+            if (mounted) {
+              try {
+                Navigator.of(context).pushReplacementNamed('/home');
+              } catch (e2) {
+                print('❌ [LOGIN] 홈 네비게이션도 실패: $e2');
+              }
+            }
+          }
+        });
       } else {
         if (mounted) {
+          final errorMessage = result['error'] ?? '로그인에 실패했습니다';
+          print('❌ [LOGIN SCREEN] 로그인 실패: $errorMessage');
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['error'])),
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
           );
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [LOGIN SCREEN] 예외 발생: $e');
+      print('❌ [LOGIN SCREEN] 스택 트레이스: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('로그인 중 오류가 발생했습니다: $e')),
+          SnackBar(
+            content: Text('로그인 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
         );
       }
     } finally {
