@@ -80,14 +80,14 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
             itemBuilder: (context, index) {
               final banner = banners[index];
               return GestureDetector(
-                onTap: () {
-                  if (banner.productId != null) {
+                onTap: () {   
+                    if (banner.productId != null) {
                     // 상품 상세 페이지로 이동 (URL 업데이트)
                     Navigator.pushNamed(
                       context,
                       '/product/${banner.productId}',
                     );
-                  }
+                  } 
                 },
                 child: Container(
                   width: MediaQuery.of(context).size.width,

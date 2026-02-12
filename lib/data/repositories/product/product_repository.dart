@@ -38,14 +38,23 @@ class ProductRepository {
           final data = json.decode(response.body);
           
           // 응답 구조에 따라 처리
-          if (data['success'] == true && data['data'] != null) {
+          if (data is Map && data['success'] == true && data['data'] != null) {
             final List<dynamic> products = data['data'];
-            return products.map((json) => Product.fromJson(json)).toList();
+            return products
+                .whereType<Map>()
+                .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+                .toList();
           } else if (data is List) {
-            return data.map((json) => Product.fromJson(json)).toList();
-          } else if (data['products'] != null) {
+            return data
+                .whereType<Map>()
+                .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+                .toList();
+          } else if (data is Map && data['products'] != null) {
             final List<dynamic> products = data['products'];
-            return products.map((json) => Product.fromJson(json)).toList();
+            return products
+                .whereType<Map>()
+                .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+                .toList();
           }
         } catch (e) {
           print('⚠️ Spring Boot API 응답 파싱 실패: $e');
@@ -104,10 +113,16 @@ class ProductRepository {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        if (data['success'] == true && data['data'] != null) {
-          return Product.fromJson(data['data']);
-        } else if (data['product'] != null) {
-          return Product.fromJson(data['product']);
+        if (data is Map && data['success'] == true && data['data'] != null) {
+          final product = data['data'];
+          if (product is Map) {
+            return Product.fromJson(Map<String, dynamic>.from(product));
+          }
+        } else if (data is Map && data['product'] != null) {
+          final product = data['product'];
+          if (product is Map) {
+            return Product.fromJson(Map<String, dynamic>.from(product));
+          }
         }
       }
       
@@ -126,11 +141,17 @@ class ProductRepository {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        if (data['success'] == true && data['data'] != null) {
+        if (data is Map && data['success'] == true && data['data'] != null) {
           final List<dynamic> products = data['data'];
-          return products.map((json) => Product.fromJson(json)).toList();
+          return products
+              .whereType<Map>()
+              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
         } else if (data is List) {
-          return data.map((json) => Product.fromJson(json)).toList();
+          return data
+              .whereType<Map>()
+              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
         }
       }
       
@@ -149,11 +170,17 @@ class ProductRepository {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        if (data['success'] == true && data['data'] != null) {
+        if (data is Map && data['success'] == true && data['data'] != null) {
           final List<dynamic> products = data['data'];
-          return products.map((json) => Product.fromJson(json)).toList();
+          return products
+              .whereType<Map>()
+              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
         } else if (data is List) {
-          return data.map((json) => Product.fromJson(json)).toList();
+          return data
+              .whereType<Map>()
+              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
         }
       }
       

@@ -4,6 +4,12 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 
 class AuthRepository {
+  static String _asErrorMessage(dynamic value, {String fallback = '요청 처리 중 오류가 발생했습니다'}) {
+    if (value == null) return fallback;
+    if (value is String && value.isNotEmpty) return value;
+    return value.toString();
+  }
+
   /// 비밀번호를 SHA1로 해시 처리 (PHP 서버와 호환)
   static String hashPassword(String password) {
     final bytes = utf8.encode(password);
@@ -32,7 +38,10 @@ class AuthRepository {
       print('📄 [LOGIN] 응답 본문: ${response.body}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
         print('✅ [LOGIN] 로그인 응답 데이터: $data');
         
         // success 필드가 없으면 기본값으로 true 설정
@@ -41,7 +50,7 @@ class AuthRepository {
         return {
           'success': success,
           'data': data,
-          'error': data['message'] ?? (success ? null : '로그인에 실패했습니다'),
+          'error': success ? null : _asErrorMessage(data['message'], fallback: '로그인에 실패했습니다'),
         };
       } else if (response.statusCode == 405) {
         // Method Not Allowed - 서버가 POST를 허용하지 않음
@@ -59,7 +68,12 @@ class AuthRepository {
         String errorMessage = '서버 오류: ${response.statusCode}';
         try {
           final errorData = json.decode(response.body);
-          errorMessage = errorData['message'] ?? errorData['error'] ?? errorMessage;
+          if (errorData is Map<String, dynamic>) {
+            errorMessage = _asErrorMessage(
+              errorData['message'] ?? errorData['error'],
+              fallback: errorMessage,
+            );
+          }
         } catch (e) {
           // JSON 파싱 실패 시 기본 메시지 사용
         }
@@ -89,6 +103,51 @@ class AuthRepository {
     }
   }
 
+  // 카카오 로그인/회원가입 API 호출
+  static Future<Map<String, dynamic>> loginWithKakao({
+    required String kakaoId,
+    required String? email,
+    required String? nickname,
+    String? profileImageUrl,
+    String? accessToken,
+  }) async {
+    try {
+      print('🔐 [KAKAO LOGIN] 카카오 ID: $kakaoId');
+      print('🔐 [KAKAO LOGIN] 이메일: $email');
+      print('🔐 [KAKAO LOGIN] 닉네임: $nickname');
+      
+      final response = await ApiClient.post('/api/auth/kakao/login', {
+        'kakaoId': kakaoId,
+        'email': email,
+        'nickname': nickname,
+        'profileImageUrl': profileImageUrl,
+        'accessToken': accessToken,
+      });
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
+        return {
+          'success': data['success'] ?? true,
+          'data': data,
+          'error': _asErrorMessage(data['message']),
+        };
+      } else {
+        return {
+          'success': false,
+          'error': '서버 오류: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '카카오 로그인 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
   // 회원가입 API 호출 (Spring Boot 서버)
   static Future<Map<String, dynamic>> register({
     required String email,
@@ -109,11 +168,14 @@ class AuthRepository {
       });
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
         return {
           'success': data['success'],
           'data': data,
-          'error': data['message'],
+          'error': _asErrorMessage(data['message']),
         };
       } else {
         return {
