@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
 import '../../presentation/user/healthprofile/models/health_profile_model.dart';
 
@@ -15,8 +14,11 @@ class HealthProfileService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        if (data['success'] == true && data['data'] != null) {
-          return HealthProfileModel.fromJson(data['data']);
+        if (data is Map && data['success'] == true && data['data'] != null) {
+          final payload = data['data'];
+          if (payload is Map) {
+            return HealthProfileModel.fromJson(Map<String, dynamic>.from(payload));
+          }
         }
         return null;
       } else {
@@ -35,7 +37,7 @@ class HealthProfileService {
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        return data['success'] == true;
+        return data is Map && data['success'] == true;
       } else {
         throw Exception('건강프로필 저장 실패: ${response.statusCode}');
       }
@@ -60,7 +62,7 @@ class HealthProfileService {
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        return data['success'] == true;
+        return data is Map && data['success'] == true;
       } else {
         throw Exception('건강프로필 수정 실패: ${response.statusCode}');
       }
@@ -77,7 +79,7 @@ class HealthProfileService {
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['success'] == true;
+        return data is Map && data['success'] == true;
       } else {
         throw Exception('건강프로필 삭제 실패: ${response.statusCode}');
       }

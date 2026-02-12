@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../models/contact/contact_model.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/utils/node_value_parser.dart';
 import '../services/auth_service.dart';
 
 class ContactService {
@@ -21,7 +22,10 @@ class ContactService {
       
       if (responseData['success'] == true && responseData['data'] != null) {
         final List<dynamic> dataList = responseData['data'];
-        return dataList.map((json) => Contact.fromJson(json)).toList();
+        return dataList
+            .whereType<Map>()
+            .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
+            .toList();
       }
 
       return [];
@@ -40,7 +44,10 @@ class ContactService {
       final responseData = json.decode(response.body);
 
       if (responseData['success'] == true && responseData['data'] != null) {
-        return Contact.fromJson(responseData['data']);
+        final data = responseData['data'];
+        if (data is Map) {
+          return Contact.fromJson(Map<String, dynamic>.from(data));
+        }
       }
 
       return null;
@@ -60,7 +67,10 @@ class ContactService {
 
       if (responseData['success'] == true && responseData['data'] != null) {
         final List<dynamic> dataList = responseData['data'];
-        return dataList.map((json) => Contact.fromJson(json)).toList();
+        return dataList
+            .whereType<Map>()
+            .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
+            .toList();
       }
 
       return [];
@@ -94,17 +104,29 @@ class ContactService {
         ApiEndpoints.createContact,
         {
           'mb_id': user.id,
-          'wr_name': user.name ?? user.id,
-          'wr_email': user.email ?? '',
+          'wr_name': user.name.isNotEmpty ? user.name : user.id,
+          'wr_email': user.email.isNotEmpty ? user.email : '',
           'wr_subject': subject,
           'wr_content': content,
-          'wr_password': user.password, // 사용자 비밀번호 사용, 없으면 ID 사용
+          'wr_password': (user.password != null && user.password!.isNotEmpty)
+              ? user.password
+              : user.id, // 사용자 비밀번호 없으면 ID 사용
           'wr_5': phoneNumber, // 휴대폰 번호 (숫자만)
           'wr_option': 'secret', // 비밀글로 설정 (웹에서 비밀글 아이콘 표시)
         },
       );
 
-      return json.decode(response.body);
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return NodeValueParser.normalizeMap(decoded);
+      }
+      if (decoded is Map) {
+        return NodeValueParser.normalizeMap(Map<String, dynamic>.from(decoded));
+      }
+      return {
+        'success': false,
+        'message': '응답 형식이 올바르지 않습니다.',
+      };
     } catch (e) {
       throw Exception('문의 작성 실패: $e');
     }
@@ -131,7 +153,17 @@ class ContactService {
         },
       );
 
-      return json.decode(response.body);
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return NodeValueParser.normalizeMap(decoded);
+      }
+      if (decoded is Map) {
+        return NodeValueParser.normalizeMap(Map<String, dynamic>.from(decoded));
+      }
+      return {
+        'success': false,
+        'message': '응답 형식이 올바르지 않습니다.',
+      };
     } catch (e) {
       throw Exception('문의 수정 실패: $e');
     }

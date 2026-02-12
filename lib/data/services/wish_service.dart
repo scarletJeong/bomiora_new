@@ -1,9 +1,36 @@
 import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/utils/node_value_parser.dart';
 import '../services/auth_service.dart';
 
 class WishService {
+  static const Map<String, String> _noCacheHeaders = {
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+  };
+
+  static String _withNoCacheParam(String endpoint) {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return endpoint.contains('?') ? '$endpoint&_ts=$ts' : '$endpoint?_ts=$ts';
+  }
+
+  static Map<String, dynamic>? _normalizeWishItem(dynamic raw) {
+    if (raw is! Map) return null;
+    final item = NodeValueParser.normalizeMap(Map<String, dynamic>.from(raw));
+    return {
+      ...item,
+      'it_id':
+          NodeValueParser.asString(item['it_id']) ??
+          NodeValueParser.asString(item['itId']) ??
+          '',
+      'mb_id':
+          NodeValueParser.asString(item['mb_id']) ??
+          NodeValueParser.asString(item['mbId']) ??
+          '',
+    };
+  }
+
   /// 찜 목록 조회
   static Future<List<dynamic>> getWishList() async {
     try {
@@ -12,17 +39,24 @@ class WishService {
         throw Exception('로그인이 필요합니다.');
       }
 
-      final url = '${ApiEndpoints.getWishList}?mb_id=${user.id}';
-      final response = await ApiClient.get(url);
+      final url = _withNoCacheParam('${ApiEndpoints.getWishList}?mb_id=${user.id}');
+      final response = await ApiClient.get(url, additionalHeaders: _noCacheHeaders);
 
       if (response.statusCode == 404) {
         throw Exception('API 엔드포인트를 찾을 수 없습니다: $url');
       }
 
+      if (response.statusCode == 304 || response.body.trim().isEmpty) {
+        return [];
+      }
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['data'] != null) {
-          return data['data'] as List<dynamic>;
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return (data['data'] as List)
+              .map(_normalizeWishItem)
+              .whereType<Map<String, dynamic>>()
+              .toList();
         }
       }
 

@@ -1,8 +1,21 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
 
 /// 주문/배송 서비스
 class OrderService {
+  static dynamic _decodeBody(http.Response response) {
+    return json.decode(response.body);
+  }
+
+  static Future<http.Response> _getOrderListResponse(String queryString) async {
+    var response = await ApiClient.get('/api/orders?$queryString');
+    if (response.statusCode == 404) {
+      response = await ApiClient.get('/api/user/orders?$queryString');
+    }
+    return response;
+  }
+
   /// 주문 목록 조회
   /// 
   /// [mbId] 회원 ID
@@ -20,11 +33,12 @@ class OrderService {
     try {
 
       // URL에 쿼리 파라미터 직접 포함
-      final queryString = 'mbId=$mbId&period=$period&status=$status&page=$page&size=$size';
-      final response = await ApiClient.get('/api/orders?$queryString');
+      final queryString =
+          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size';
+      final response = await _getOrderListResponse(queryString);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = _decodeBody(response);
         
         // 주문 목록 파싱
         final orders = data['orders'] ?? [];
@@ -40,7 +54,7 @@ class OrderService {
         };
       } else {
         print('❌ [주문 목록 조회] 실패: ${response.statusCode}');
-        final errorData = json.decode(response.body);
+        final errorData = _decodeBody(response);
         return {
           'success': false,
           'message': errorData['error'] ?? '주문 목록을 불러올 수 없습니다.',
@@ -68,12 +82,15 @@ class OrderService {
       print('  - odId: $odId');
       print('  - mbId: $mbId');
 
-      final response = await ApiClient.get('/api/orders/$odId?mbId=$mbId');
+      var response = await ApiClient.get('/api/orders/$odId?mbId=$mbId&mb_id=$mbId');
+      if (response.statusCode == 404) {
+        response = await ApiClient.get('/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId');
+      }
 
       print('📡 [주문 상세 조회] 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = _decodeBody(response);
         
         print('✅ [주문 상세 조회] 성공');
         
@@ -83,7 +100,7 @@ class OrderService {
         };
       } else {
         print('❌ [주문 상세 조회] 실패: ${response.statusCode}');
-        final errorData = json.decode(response.body);
+        final errorData = _decodeBody(response);
         return {
           'success': false,
           'message': errorData['error'] ?? '주문 정보를 불러올 수 없습니다.',

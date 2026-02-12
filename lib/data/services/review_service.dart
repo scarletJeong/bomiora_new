@@ -475,10 +475,10 @@ class ReviewService {
   /// 주문에 대한 리뷰 작성 여부 확인
   /// 
   /// [mbId] 회원 ID
-  /// [odId] 주문 ID
+  /// [odId] 주문 ID (String - 큰 숫자 정밀도 손실 방지)
   static Future<Map<String, dynamic>> checkReviewExists({
     required String mbId,
-    required int odId,
+    required String odId,
   }) async {
     try {
       print('🔍 [리뷰 존재 확인] 요청');

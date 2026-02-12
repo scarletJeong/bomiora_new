@@ -1,9 +1,22 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../models/delivery/delivery_model.dart';
 import '../../core/network/api_client.dart';
 
 /// 주문/배송 서비스
 class OrderService {
+  static dynamic _decodeBody(http.Response response) {
+    return json.decode(response.body);
+  }
+
+  static Future<http.Response> _getOrderListResponse(String queryString) async {
+    var response = await ApiClient.get('/api/orders?$queryString');
+    if (response.statusCode == 404) {
+      response = await ApiClient.get('/api/user/orders?$queryString');
+    }
+    return response;
+  }
+
   /// 주문 목록 조회
   /// 
   /// [mbId] 회원 ID
@@ -21,34 +34,34 @@ class OrderService {
     try {
 
       // 쿼리 파라미터를 URL에 직접 추가
-      final queryString = 'mbId=$mbId&period=$period&status=$status&page=$page&size=$size';
+      final queryString =
+          'mbId=$mbId&mb_id=$mbId&period=$period&status=$status&page=$page&size=$size';
       
-      final response = await ApiClient.get(
-        '/api/orders?$queryString',
-      );
+      final response = await _getOrderListResponse(queryString);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = _decodeBody(response);
         
         // 주문 목록 파싱
         List<OrderListModel> orders = [];
-        if (data['orders'] != null) {
+        if (data is Map && data['orders'] != null) {
           orders = (data['orders'] as List)
-              .map((order) => OrderListModel.fromJson(order))
+              .whereType<Map>()
+              .map((order) => OrderListModel.fromJson(Map<String, dynamic>.from(order)))
               .toList();
         }
       
         return {
           'success': true,
           'orders': orders,
-          'currentPage': data['currentPage'] ?? 0,
-          'totalPages': data['totalPages'] ?? 0,
-          'totalItems': data['totalItems'] ?? 0,
-          'hasNext': data['hasNext'] ?? false,
+          'currentPage': data is Map ? (data['currentPage'] ?? 0) : 0,
+          'totalPages': data is Map ? (data['totalPages'] ?? 0) : 0,
+          'totalItems': data is Map ? (data['totalItems'] ?? 0) : 0,
+          'hasNext': data is Map ? (data['hasNext'] ?? false) : false,
         };
       } else {
         print('❌ [주문 목록 조회] 실패: ${response.statusCode}');
-        final errorData = json.decode(response.body);
+        final errorData = _decodeBody(response);
         return {
           'success': false,
           'message': errorData['error'] ?? '주문 목록을 불러올 수 없습니다.',
@@ -68,7 +81,7 @@ class OrderService {
   /// [odId] 주문 ID
   /// [mbId] 회원 ID
   static Future<Map<String, dynamic>> getOrderDetail({
-    required int odId,
+    required String odId,
     required String mbId,
   }) async {
     try {
@@ -76,15 +89,22 @@ class OrderService {
       print('  - odId: $odId');
       print('  - mbId: $mbId');
 
-      final response = await ApiClient.get(
-        '/api/orders/$odId?mbId=$mbId',
-      );
+      var response = await ApiClient.get('/api/orders/$odId?mbId=$mbId&mb_id=$mbId');
+      if (response.statusCode == 404) {
+        response = await ApiClient.get('/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId');
+      }
 
       print('📡 [주문 상세 조회] 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final order = OrderDetailModel.fromJson(data);
+        final data = _decodeBody(response);
+        if (data is! Map) {
+          return {
+            'success': false,
+            'message': '주문 상세 응답 형식이 올바르지 않습니다.',
+          };
+        }
+        final order = OrderDetailModel.fromJson(Map<String, dynamic>.from(data));
         
         print('✅ [주문 상세 조회] 성공');
         
@@ -94,7 +114,7 @@ class OrderService {
         };
       } else {
         print('❌ [주문 상세 조회] 실패: ${response.statusCode}');
-        final errorData = json.decode(response.body);
+        final errorData = _decodeBody(response);
         return {
           'success': false,
           'message': errorData['error'] ?? '주문 정보를 불러올 수 없습니다.',
@@ -111,10 +131,10 @@ class OrderService {
 
   /// 주문 취소
   /// 
-  /// [odId] 주문 ID
+  /// [odId] 주문 ID (String - 큰 숫자 정밀도 손실 방지)
   /// [mbId] 회원 ID
   static Future<Map<String, dynamic>> cancelOrder({
-    required int odId,
+    required String odId,
     required String mbId,
   }) async {
     try {
@@ -130,7 +150,7 @@ class OrderService {
       print('📡 [주문 취소] 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = _decodeBody(response);
         print('✅ [주문 취소] 성공');
         
         return {
@@ -139,7 +159,7 @@ class OrderService {
         };
       } else {
         print('❌ [주문 취소] 실패: ${response.statusCode}');
-        final errorData = json.decode(response.body);
+        final errorData = _decodeBody(response);
         return {
           'success': false,
           'message': errorData['error'] ?? '주문 취소에 실패했습니다.',
@@ -156,10 +176,10 @@ class OrderService {
 
   /// 구매 확정
   /// 
-  /// [odId] 주문 ID
+  /// [odId] 주문 ID (String - 큰 숫자 정밀도 손실 방지)
   /// [mbId] 회원 ID
   static Future<Map<String, dynamic>> confirmPurchase({
-    required int odId,
+    required String odId,
     required String mbId,
   }) async {
     try {
@@ -175,7 +195,7 @@ class OrderService {
       print('📡 [구매 확정] 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = _decodeBody(response);
         print('✅ [구매 확정] 성공');
         
         return {
@@ -184,7 +204,7 @@ class OrderService {
         };
       } else {
         print('❌ [구매 확정] 실패: ${response.statusCode}');
-        final errorData = json.decode(response.body);
+        final errorData = _decodeBody(response);
         return {
           'success': false,
           'message': errorData['error'] ?? '구매 확정에 실패했습니다.',
@@ -192,6 +212,61 @@ class OrderService {
       }
     } catch (e) {
       print('❌ [구매 확정] 에러: $e');
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
+  }
+
+  /// 예약 시간 변경
+  /// 
+  /// [odId] 주문 ID (String - 큰 숫자 정밀도 손실 방지)
+  /// [mbId] 회원 ID
+  /// [reservationDate] 예약 날짜 (yyyy-MM-dd 형식)
+  /// [reservationTime] 예약 시간 (HH:mm 형식)
+  static Future<Map<String, dynamic>> changeReservationTime({
+    required String odId,
+    required String mbId,
+    required String reservationDate,
+    required String reservationTime,
+  }) async {
+    try {
+      print('📦 [예약 시간 변경] 요청');
+      print('  - odId: $odId');
+      print('  - mbId: $mbId');
+      print('  - reservationDate: $reservationDate');
+      print('  - reservationTime: $reservationTime');
+
+      final response = await ApiClient.put(
+        '/api/orders/$odId/reservation',
+        {
+          'mbId': mbId,
+          'reservationDate': reservationDate,
+          'reservationTime': reservationTime,
+        },
+      );
+
+      print('📡 [예약 시간 변경] 응답 상태: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = _decodeBody(response);
+        print('✅ [예약 시간 변경] 성공');
+        
+        return {
+          'success': true,
+          'message': data['message'] ?? '예약 시간이 변경되었습니다.',
+        };
+      } else {
+        print('❌ [예약 시간 변경] 실패: ${response.statusCode}');
+        final errorData = _decodeBody(response);
+        return {
+          'success': false,
+          'message': errorData['error'] ?? errorData['message'] ?? '예약 시간 변경에 실패했습니다.',
+        };
+      }
+    } catch (e) {
+      print('❌ [예약 시간 변경] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
