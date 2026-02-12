@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
 import 'delivery_detail_screen.dart';
+import 'reservation_time_change_screen.dart';
 import '../review/review_write_screen.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -9,7 +10,7 @@ import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/utils/image_url_helper.dart';
 
-/// 주문/배송 조회 화면
+/// 주문내역 화면
 class DeliveryListScreen extends StatefulWidget {
   const DeliveryListScreen({super.key});
 
@@ -17,54 +18,38 @@ class DeliveryListScreen extends StatefulWidget {
   State<DeliveryListScreen> createState() => _DeliveryListScreenState();
 }
 
-class _DeliveryListScreenState extends State<DeliveryListScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String _selectedPeriod = '1개월'; // 선택된 기간
-  
+class _DeliveryListScreenState extends State<DeliveryListScreen> {
   // 주문 데이터
-  List<OrderListModel> _orders = [];
+  List<OrderListModel> _allOrders = []; // 전체 주문 데이터
+  List<OrderListModel> _displayedOrders = []; // 화면에 표시할 주문 데이터
   bool _isLoading = false;
-  int _currentPage = 0;
-  int _totalPages = 0;
-  bool _hasNext = false;
-
-  // 주문 상태 탭
-  final List<String> _orderStatusTabs = [
-    '전체',
-    '결제완료',
-    '배송준비중',
-    '배송중',
-    '배송완료',
-    '취소/반품',
-  ];
-
-  // 기간 필터
-  final List<String> _periodFilters = ['1개월', '3개월', '6개월', '전체'];
+  String? _selectedStatus; // 선택된 상태 필터 (null이면 전체)
+  
+  // 상태별 개수
+  int _orderCount = 0;      // 주문 (전체)
+  int _paymentCount = 0;    // 입금 (결제완료)
+  int _deliveryCount = 0;   // 배송 (배송중)
+  int _completeCount = 0;   // 완료 (배송완료)
+  
+  // 취소/반품/교환 개수
+  int _cancelCount = 0;
+  int _returnCount = 0;
+  int _exchangeCount = 0;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _orderStatusTabs.length, vsync: this);
-    _tabController.addListener(_onTabChanged);
     _loadOrders();
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
   
-  /// 탭 변경 이벤트
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) {
-      _loadOrders();
-    }
-  }
-  
-  /// 주문 목록 로드
+  /// 주문 목록 로드 (전체 데이터)
   Future<void> _loadOrders() async {
     if (_isLoading) return;
     
@@ -85,67 +70,34 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
       }
       final userId = user.id;
       
-      // 기간 계산
-      int period = 0;
-      switch (_selectedPeriod) {
-        case '1개월':
-          period = 1;
-          break;
-        case '3개월':
-          period = 3;
-          break;
-        case '6개월':
-          period = 6;
-          break;
-        case '전체':
-          period = 0;
-          break;
-      }
-      
-      // 상태 매핑
-      String status = 'all';
-      final currentTab = _orderStatusTabs[_tabController.index];
-      switch (currentTab) {
-        case '전체':
-          status = 'all';
-          break;
-        case '결제완료':
-          status = 'payment';
-          break;
-        case '배송준비중':
-          status = 'preparing';
-          break;
-        case '배송중':
-          status = 'delivering';
-          break;
-        case '배송완료':
-          status = 'finish';
-          break;
-        case '취소/반품':
-          status = 'cancel';
-          break;
-      }
-      
-      // API 호출
+      // 전체 주문 데이터 조회 (기간: 전체, 상태: 전체)
       final result = await OrderService.getOrderList(
         mbId: userId,
-        period: period,
-        status: status,
+        period: 0, // 전체 기간
+        status: 'all', // 전체 상태
         page: 0,
-        size: 50,
+        size: 1000, // 충분히 큰 값으로 전체 데이터 가져오기
       );
       
       if (result['success'] == true) {
+        final ordersList = result['orders'] ?? [];
+        List<OrderListModel> allOrders = [];
+        if (ordersList is List<OrderListModel>) {
+          allOrders = ordersList;
+        } else if (ordersList is List) {
+          allOrders = ordersList
+              .whereType<Map>()
+              .map((item) => OrderListModel.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+        }
+        
+        // 날짜순 내림차순 정렬 (최신순)
+        allOrders.sort((a, b) => b.orderDateTime.compareTo(a.orderDateTime));
+        
         setState(() {
-          final ordersList = result['orders'] ?? [];
-          if (ordersList is List<OrderListModel>) {
-            _orders = ordersList;
-          } else {
-            _orders = [];
-          }
-          _currentPage = result['currentPage'] ?? 0;
-          _totalPages = result['totalPages'] ?? 0;
-          _hasNext = result['hasNext'] ?? false;
+          _allOrders = allOrders;
+          _calculateStatusCounts();
+          _applyFilter();
         });
       } else {
         if (mounted) {
@@ -169,6 +121,71 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
       }
     }
   }
+  
+  /// 상태별 개수 계산
+  void _calculateStatusCounts() {
+    // 주문: odStatus == '주문'
+    _orderCount = _allOrders.where((o) => o.odStatus == '주문').length;
+    // 입금: odStatus == '입금'
+    _paymentCount = _allOrders.where((o) => o.odStatus == '입금').length;
+    // 배송: odStatus == '배송' || odStatus == '준비'
+    _deliveryCount = _allOrders.where((o) => o.odStatus == '배송' || o.odStatus == '준비').length;
+    // 완료: odStatus == '완료'
+    _completeCount = _allOrders.where((o) => o.odStatus == '완료').length;
+    
+    // 취소/반품/교환 개수 (odStatus 기반으로 판단)
+    _cancelCount = _allOrders.where((o) => o.odStatus.contains('cancel') || o.odStatus.contains('취소')).length;
+    _returnCount = _allOrders.where((o) => o.odStatus.contains('return') || o.odStatus.contains('반품')).length;
+    _exchangeCount = _allOrders.where((o) => o.odStatus.contains('exchange') || o.odStatus.contains('교환')).length;
+  }
+  
+  /// 필터 적용
+  void _applyFilter() {
+    if (_selectedStatus == null) {
+      // 전체 표시 (내림차순)
+      _displayedOrders = List.from(_allOrders);
+    } else {
+      // 선택된 상태만 필터링 (odStatus 기반)
+      _displayedOrders = _allOrders.where((order) {
+        switch (_selectedStatus) {
+          case 'order':
+            return order.odStatus == '주문';
+          case 'payment':
+            return order.odStatus == '입금';
+          case 'delivering':
+            return order.odStatus == '배송' || order.odStatus == '준비';
+          case 'finish':
+            return order.odStatus == '완료';
+          case 'cancel':
+            return order.odStatus.contains('cancel') || order.odStatus.contains('취소');
+          case 'return':
+            return order.odStatus.contains('return') || order.odStatus.contains('반품');
+          case 'exchange':
+            return order.odStatus.contains('exchange') || order.odStatus.contains('교환');
+          default:
+            return true;
+        }
+      }).toList();
+    }
+  }
+  
+  /// 상태 필터 선택
+  void _selectStatus(String? status) {
+    setState(() {
+      _selectedStatus = status;
+      _applyFilter();
+    });
+    _scrollToTop();
+  }
+
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -178,11 +195,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
-          title: const Text(
-            '주문/배송 조회',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          title: GestureDetector(
+            onTap: () => _selectStatus(null),
+            child: const Text(
+              '주문내역',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           centerTitle: true,
@@ -195,44 +215,12 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
         backgroundColor: Colors.grey[50],
         body: Column(
           children: [
-            // 기간 필터
-            _buildPeriodFilter(),
-            const SizedBox(height: 8),
-
-            // 주문 상태 탭
-            Container(
-              color: Colors.white,
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start, // 탭을 왼쪽 정렬
-                padding: const EdgeInsets.symmetric(horizontal: 8), // 좌우 패딩 최소화
-                indicatorColor: const Color(0xFFFF4081),
-                indicatorWeight: 3,
-                labelColor: const Color(0xFFFF4081),
-                unselectedLabelColor: Colors.grey[600],
-                labelStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
-                ),
-                tabs: _orderStatusTabs
-                    .map((status) => Tab(text: status))
-                    .toList(),
-              ),
-            ),
-
+            // 상태 카드
+            _buildStatusCard(),
+            
             // 주문 목록
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: _orderStatusTabs
-                    .map((status) => _buildOrderList(status))
-                    .toList(),
-              ),
+              child: _buildOrderList(),
             ),
           ],
         ),
@@ -240,87 +228,126 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
     );
   }
 
-  /// 기간 필터 위젯
-  Widget _buildPeriodFilter() {
+  /// 상태 카드 위젯
+  Widget _buildStatusCard() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: _periodFilters.map((period) {
-          final isSelected = _selectedPeriod == period;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedPeriod = period;
-                });
-                _loadOrders(); // API 다시 호출
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFF4081) : Colors.white,
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFFFF4081)
-                        : Colors.grey[300]!,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  period,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? Colors.white : Colors.grey[700],
-                  ),
-                ),
-              ),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // 주문 상태 흐름
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatusItem('주문', _orderCount, 'order'),
+              const Text('>', style: TextStyle(color: Colors.grey)),
+              _buildStatusItem('입금', _paymentCount, 'payment'),
+              const Text('>', style: TextStyle(color: Colors.grey)),
+              _buildStatusItem('배송', _deliveryCount, 'delivering'),
+              const Text('>', style: TextStyle(color: Colors.grey)),
+              _buildStatusItem('완료', _completeCount, 'finish'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // 취소/반품/교환 버튼
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildActionButton('취소', _cancelCount, 'cancel'),
+              _buildActionButton('반품', _returnCount, 'return'),
+              _buildActionButton('교환', _exchangeCount, 'exchange'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 상태 항목 위젯
+  Widget _buildStatusItem(String label, int count, String? status) {
+    final isSelected = _selectedStatus == status;
+    return GestureDetector(
+      onTap: () => _selectStatus(status),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: isSelected ? const Color(0xFFFF4081) : Colors.grey[700],
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
-          );
-        }).toList(),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? const Color(0xFFFF4081) : Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// 액션 버튼 위젯 (취소/반품/교환)
+  Widget _buildActionButton(String label, int count, String status) {
+    final isSelected = _selectedStatus == status;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _selectStatus(status),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFFF4081) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '$label ($count)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isSelected ? Colors.white : Colors.grey[700],
+            ),
+          ),
+        ),
       ),
     );
   }
 
   /// 주문 목록 위젯
-  Widget _buildOrderList(String status) {
+  Widget _buildOrderList() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(
         color: Color(0xFFFF4081),
       ));
     }
 
-    // 현재 탭에 맞는 주문만 필터링
-    List<OrderListModel> filteredOrders = _orders.where((order) {
-      switch (status) {
-        case '전체':
-          return true;
-        case '결제완료':
-          return order.displayStatus == '결제완료';
-        case '배송준비중':
-          return order.displayStatus == '배송준비중';
-        case '배송중':
-          return order.displayStatus == '배송중';
-        case '배송완료':
-          return order.displayStatus == '배송완료';
-        case '취소/반품':
-          return order.displayStatus == '취소/반품';
-        default:
-          return true;
-      }
-    }).toList();
-
-    if (filteredOrders.isEmpty) {
-      return _buildEmptyState(status);
+    if (_displayedOrders.isEmpty) {
+      return _buildEmptyState();
     }
 
     return RefreshIndicator(
       onRefresh: _loadOrders,
       color: const Color(0xFFFF4081),
       child: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           // 주문 리스트 (padding 적용)
           SliverPadding(
@@ -328,10 +355,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  final order = filteredOrders[index];
+                  final order = _displayedOrders[index];
                   return _buildOrderCard(order);
                 },
-                childCount: filteredOrders.length,
+                childCount: _displayedOrders.length,
               ),
             ),
           ),
@@ -403,7 +430,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
 
           // 상품 정보
           InkWell(
-            onTap: () => _navigateToOrderDetail(order.odId.toString()),
+            onTap: () => _navigateToOrderDetail(order.odId),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -499,30 +526,46 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
                 // 액션 버튼 (상태별로 다르게 표시)
                 Row(
                   children: [
-                    // 결제완료, 배송준비중: 취소하기만
-                    if (order.displayStatus == '결제완료' ||
-                        order.displayStatus == '배송준비중')
-                      _buildActionButton(
+                    // 결제완료: 예약 시간 변경 버튼 + 취소하기
+                    if (order.displayStatus == '결제완료') ...[
+                      // 모든 결제완료 주문에 시간 변경 버튼 표시
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _buildOrderActionButton(
+                          '시간 변경',
+                          color: Colors.blue,
+                          onPressed: () => _changeReservationTimeFromList(order.odId),
+                        ),
+                      ),
+                      _buildOrderActionButton(
+                        '취소하기',
+                        color: Colors.red,
+                        onPressed: () => _cancelOrder(order.odId),
+                      ),
+                    ],
+                    // 배송준비중: 취소하기만
+                    if (order.displayStatus == '배송준비중')
+                      _buildOrderActionButton(
                         '취소하기',
                         color: Colors.red,
                         onPressed: () => _cancelOrder(order.odId),
                       ),
                     // 배송중: 배송조회만
                     if (order.displayStatus == '배송중')
-                      _buildActionButton(
+                      _buildOrderActionButton(
                         '배송조회',
                         onPressed: () =>
                             _trackDelivery(order.odId),
                       ),
                     // 배송완료: 배송확정 + 리뷰쓰기
                     if (order.displayStatus == '배송완료') ...[
-                      _buildActionButton(
+                      _buildOrderActionButton(
                         '배송확정',
                         color: const Color(0xFFFF4081),
                         onPressed: () => _confirmPurchase(order.odId),
                       ),
                       const SizedBox(width: 8),
-                      _buildActionButton(
+                      _buildOrderActionButton(
                         '리뷰쓰기',
                         color: const Color(0xFFFF4081),
                         onPressed: () => _writeReview(order.odId),
@@ -538,8 +581,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
     );
   }
 
-  /// 액션 버튼 위젯
-  Widget _buildActionButton(
+  /// 주문 카드 액션 버튼 위젯
+  Widget _buildOrderActionButton(
     String text, {
     Color? color,
     VoidCallback? onPressed,
@@ -566,7 +609,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
   }
 
   /// 빈 상태 위젯
-  Widget _buildEmptyState(String status) {
+  Widget _buildEmptyState() {
+    final statusText = _selectedStatus == null 
+        ? '주문' 
+        : _getStatusText(_selectedStatus!);
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -579,7 +625,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            '$status 주문이 없습니다',
+            '$statusText 내역이 없습니다',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey[600],
@@ -590,6 +636,26 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
         ],
       ),
     );
+  }
+  
+  /// 상태 텍스트 가져오기
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'payment':
+        return '입금';
+      case 'delivering':
+        return '배송';
+      case 'finish':
+        return '완료';
+      case 'cancel':
+        return '취소';
+      case 'return':
+        return '반품';
+      case 'exchange':
+        return '교환';
+      default:
+        return '주문';
+    }
   }
 
   /// 주문 상세 화면으로 이동
@@ -603,7 +669,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
   }
 
   /// 주문 취소
-  Future<void> _cancelOrder(int odId) async {
+  Future<void> _cancelOrder(String odId) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -657,7 +723,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
   }
 
   /// 배송 조회
-  Future<void> _trackDelivery(int odId) async {
+  Future<void> _trackDelivery(String odId) async {
     try {
       // 로그인 확인
       final user = await AuthService.getUser();
@@ -737,7 +803,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
   }
 
   /// 배송확정 (구매 확정)
-  Future<void> _confirmPurchase(int odId) async {
+  Future<void> _confirmPurchase(String odId) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -794,7 +860,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
   }
 
   /// 리뷰 쓰기
-  Future<void> _writeReview(int odId) async {
+  Future<void> _writeReview(String odId) async {
     try {
       // 로그인 확인
       final user = await AuthService.getUser();
@@ -930,6 +996,142 @@ class _DeliveryListScreenState extends State<DeliveryListScreen>
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]},',
         );
+  }
+
+  /// 예약 정보 확인 (주문 상세 조회)
+  Future<Map<String, dynamic>> _checkReservationInfo(String odId) async {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) {
+        return {'hasReservation': false};
+      }
+
+      final result = await OrderService.getOrderDetail(
+        odId: odId,
+        mbId: user.id,
+      );
+
+      // 404 에러나 실패한 경우 조용히 false 반환 (에러 로그는 서비스에서 처리)
+      if (result['success'] != true) {
+        return {'hasReservation': false};
+      }
+
+      final orderDetail = result['order'] as OrderDetailModel;
+      final hasReservation = orderDetail.reservationDate != null && 
+                            orderDetail.reservationTime != null;
+      
+      return {
+        'hasReservation': hasReservation,
+        'reservationDate': orderDetail.reservationDate,
+        'reservationTime': orderDetail.reservationTime,
+      };
+    } catch (e) {
+      // 에러 발생 시 조용히 false 반환 (콘솔 에러는 이미 출력됨)
+      return {'hasReservation': false};
+    }
+  }
+
+  /// 예약 시간 변경 (주문 목록에서 호출 - 예약 정보 확인 후 화면 이동)
+  Future<void> _changeReservationTimeFromList(String odId) async {
+    try {
+      // 로그인 확인
+      final user = await AuthService.getUser();
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('로그인이 필요합니다.')),
+          );
+        }
+        return;
+      }
+
+      // 주문 상세 조회하여 예약 정보 확인
+      final result = await OrderService.getOrderDetail(
+        odId: odId,
+        mbId: user.id,
+      );
+
+      if (result['success'] != true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? '주문 정보를 불러올 수 없습니다.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final orderDetail = result['order'] as OrderDetailModel;
+
+      // 예약 정보 확인
+      if (orderDetail.reservationDate == null || orderDetail.reservationTime == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('예약 정보가 없는 주문입니다.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 예약 시간 변경 화면으로 이동
+      final changeResult = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReservationTimeChangeScreen(
+            orderId: odId,
+            currentDate: orderDetail.reservationDate!,
+            currentTime: orderDetail.reservationTime!,
+          ),
+        ),
+      );
+
+      // 예약 시간이 변경되었으면 해당 주문 상세 페이지로 이동
+      if (changeResult == true && mounted) {
+        // 주문 목록 새로고침
+        _loadOrders();
+        
+        // 주문 상세 페이지로 이동 (새로고침된 데이터로)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DeliveryDetailScreen(orderNumber: odId),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('예약 시간 변경 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 예약 시간 변경 (예약 정보를 이미 알고 있는 경우)
+  Future<void> _changeReservationTime(String odId, String currentDate, String currentTime) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReservationTimeChangeScreen(
+          orderId: odId,
+          currentDate: currentDate,
+          currentTime: currentTime,
+        ),
+      ),
+    );
+
+    // 예약 시간이 변경되었으면 주문 목록 새로고침
+    if (result == true && mounted) {
+      _loadOrders();
+    }
   }
 }
 

@@ -7,6 +7,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/utils/image_url_helper.dart';
+import 'reservation_time_change_screen.dart';
 
 /// 주문 상세 화면
 class DeliveryDetailScreen extends StatefulWidget {
@@ -50,9 +51,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         return;
       }
 
-      // API 호출
+      // API 호출 (orderNumber는 이미 String이므로 그대로 사용)
       final result = await OrderService.getOrderDetail(
-        odId: int.parse(widget.orderNumber),
+        odId: widget.orderNumber,
         mbId: user.id,
       );
 
@@ -167,7 +168,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           _buildDeliveryInfo(),
           const SizedBox(height: 8),
 
-          // 주문 상품 정보
+          // 주문 상품 정보 (예약 정보 포함)
           _buildProductInfo(),
           const SizedBox(height: 8),
 
@@ -451,6 +452,174 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     }
   }
 
+  /// 예약 정보 섹션 (주문 상품 섹션 내부용)
+  Widget _buildReservationInfoInProductSection() {
+    final isPaymentCompleted = _orderDetail!.displayStatus == '결제완료';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  size: 18,
+                  color: Colors.blue[700],
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  '예약 정보',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildInfoRow(
+          '예약 날짜',
+          _formatReservationDate(_orderDetail!.reservationDate!),
+        ),
+        const SizedBox(height: 8),
+        // 예약 시간 행 (텍스트 아래 버튼 가운데 정렬)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 100,
+              child: Text(
+                '예약 시간',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 예약 시간 텍스트
+                  Text(
+                    _orderDetail!.reservationTime!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  // 결제 완료 상태에서만 예약 시간 변경 버튼 표시 (가운데 정렬)
+                  if (isPaymentCompleted) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: _buildReservationTimeChangeButton(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// 예약 시간 변경 버튼 (목록과 동일한 스타일)
+  Widget _buildReservationTimeChangeButton() {
+    return OutlinedButton(
+      onPressed: _showReservationTimeChangeDialog,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        side: const BorderSide(color: Colors.blue),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
+        minimumSize: Size.zero,
+      ),
+      child: const Text(
+        '시간 변경',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Colors.blue,
+        ),
+      ),
+    );
+  }
+
+  /// 예약 날짜 포맷팅
+  String _formatReservationDate(String dateStr) {
+    try {
+      // ISO 8601 형식 또는 다른 형식 파싱
+      DateTime date;
+      if (dateStr.contains('T')) {
+        date = DateTime.parse(dateStr);
+      } else if (dateStr.contains('-')) {
+        date = DateTime.parse(dateStr);
+      } else {
+        // 다른 형식 처리
+        return dateStr;
+      }
+      
+      return '${date.year}년 ${date.month}월 ${date.day}일';
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  /// 예약 시간 변경 다이얼로그 표시
+  Future<void> _showReservationTimeChangeDialog() async {
+    if (_orderDetail == null) {
+      print('❌ [예약 시간 변경] 주문 상세 정보가 없습니다.');
+      return;
+    }
+    
+    if (_orderDetail!.reservationDate == null || _orderDetail!.reservationTime == null) {
+      print('❌ [예약 시간 변경] 예약 정보가 없습니다.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('예약 정보가 없습니다.')),
+      );
+      return;
+    }
+    
+    print('📅 [예약 시간 변경] 시작');
+    print('  - orderId (from _orderDetail): ${_orderDetail!.odId}');
+    print('  - orderNumber (from widget): ${widget.orderNumber}');
+    print('  - currentDate: ${_orderDetail!.reservationDate}');
+    print('  - currentTime: ${_orderDetail!.reservationTime}');
+    
+    // odId가 손상되었을 수 있으므로 widget.orderNumber를 우선 사용
+    final orderIdToUse = widget.orderNumber.isNotEmpty ? widget.orderNumber : _orderDetail!.odId;
+    print('  - orderId (최종 사용): $orderIdToUse');
+    
+    // 예약 시간 변경 화면으로 이동
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReservationTimeChangeScreen(
+          orderId: orderIdToUse,
+          currentDate: _orderDetail!.reservationDate!,
+          currentTime: _orderDetail!.reservationTime!,
+        ),
+      ),
+    );
+
+    print('📅 [예약 시간 변경] 결과: $result');
+
+    // 예약 시간이 변경되었으면 주문 상세 다시 로드
+    if (result == true && mounted) {
+      print('📅 [예약 시간 변경] 주문 상세 새로고침');
+      _loadOrderDetail();
+    }
+  }
+
   /// 배송 정보 섹션
   Widget _buildDeliveryInfo() {
     return Container(
@@ -529,6 +698,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   /// 주문 상품 정보 섹션
   Widget _buildProductInfo() {
     final products = _orderDetail!.products;
+    final hasReservation = _orderDetail!.reservationDate != null && 
+                          _orderDetail!.reservationTime != null;
 
     return Container(
       color: Colors.white,
@@ -546,6 +717,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           ),
           const SizedBox(height: 16),
           ...products.map((product) => _buildProductCard(product)),
+          
+          // 예약 정보 (예약이 있는 경우만)
+          if (hasReservation) ...[
+            const Divider(height: 32),
+            _buildReservationInfoInProductSection(),
+          ],
         ],
       ),
     );
