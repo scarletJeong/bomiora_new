@@ -1,3 +1,5 @@
+import '../../../../core/utils/node_value_parser.dart';
+
 class HealthProfileModel {
   final int? pfNo;
   final String mbId;
@@ -51,59 +53,116 @@ class HealthProfileModel {
     required this.pfMemo,
   });
 
-  factory HealthProfileModel.fromJson(Map<String, dynamic> json) {
+  factory HealthProfileModel.fromJson(Map<dynamic, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     // camelCase와 snake_case 모두 지원
     print('=== HealthProfileModel.fromJson 파싱 시작 ===');
-    print('입력 JSON: $json');
+    print('입력 JSON: $normalized');
     
     // pfNo 파싱 (camelCase 또는 snake_case)
-    final pfNo = json['pfNo'] ?? json['pf_no'];
+    final pfNo = normalized['pfNo'] ?? normalized['pf_no'];
     print('pfNo: $pfNo');
     
     // DateTime 파싱 헬퍼 함수
     DateTime? parseDateTime(dynamic value) {
-      if (value == null) return null;
-      try {
-        if (value is String) {
-          // ISO 8601 형식 또는 일반 날짜 형식 처리
-          if (value.contains('T')) {
-            return DateTime.parse(value);
-          } else {
-            return DateTime.parse(value.replaceAll(' ', 'T'));
-          }
-        }
-        return null;
-      } catch (e) {
-        print('날짜 파싱 오류: $value, 오류: $e');
-        return null;
-      }
+      final stringValue = NodeValueParser.asString(value);
+      if (stringValue == null || stringValue.isEmpty) return null;
+      final direct = DateTime.tryParse(stringValue);
+      if (direct != null) return direct;
+      final withT = DateTime.tryParse(stringValue.replaceAll(' ', 'T'));
+      if (withT != null) return withT;
+      print('날짜 파싱 오류: $value');
+      return null;
     }
     
     final result = HealthProfileModel(
-      pfNo: pfNo is int ? pfNo : (pfNo != null ? int.tryParse(pfNo.toString()) : null),
-      mbId: json['mbId'] ?? json['mb_id'] ?? '',
-      answer1: json['answer1'] ?? json['answer_1'] ?? '',
-      answer2: json['answer2'] ?? json['answer_2'] ?? '',
-      answer3: json['answer3'] ?? json['answer_3'] ?? '',
-      answer4: json['answer4'] ?? json['answer_4'] ?? '',
-      answer5: json['answer5'] ?? json['answer_5'] ?? '',
-      answer6: json['answer6'] ?? json['answer_6'] ?? '',
-      answer7: json['answer7'] ?? json['answer_7'] ?? '',
-      answer8: json['answer8'] ?? json['answer_8'] ?? '',
-      answer9: json['answer9'] ?? json['answer_9'] ?? '',
-      answer10: json['answer10'] ?? json['answer_10'] ?? '',
-      answer11: json['answer11'] ?? json['answer_11'] ?? '',
-      answer12: json['answer12'] ?? json['answer_12'] ?? '',
-      answer13: json['answer13'] ?? json['answer_13'] ?? '',
-      answer13Period: json['answer13Period'] ?? json['answer_13_period'] ?? '',
-      answer13Dosage: json['answer13Dosage'] ?? json['answer_13_dosage'] ?? '',
-      answer13Medicine: json['answer13Medicine'] ?? json['answer_13_medicine'] ?? '',
-      answer71: json['answer71'] ?? json['answer_7_1'] ?? '',
-      answer13Sideeffect: json['answer13Sideeffect'] ?? json['answer_13_sideeffect'] ?? '',
-      pfWdatetime: parseDateTime(json['pfWdatetime'] ?? json['pf_wdatetime']) ?? DateTime.now(),
-      pfMdatetime: parseDateTime(json['pfMdatetime'] ?? json['pf_mdatetime']) ?? DateTime.now(),
-      pfIp: json['pfIp'] ?? json['pf_ip'] ?? '',
-      pfMemo: json['pfMemo'] ?? json['pf_memo'] ?? '',
+      pfNo: NodeValueParser.asInt(pfNo),
+      mbId:
+          NodeValueParser.asString(normalized['mbId']) ??
+          NodeValueParser.asString(normalized['mb_id']) ??
+          '',
+      answer1:
+          NodeValueParser.asString(normalized['answer1']) ??
+          NodeValueParser.asString(normalized['answer_1']) ??
+          '',
+      answer2:
+          NodeValueParser.asString(normalized['answer2']) ??
+          NodeValueParser.asString(normalized['answer_2']) ??
+          '',
+      answer3:
+          NodeValueParser.asString(normalized['answer3']) ??
+          NodeValueParser.asString(normalized['answer_3']) ??
+          '',
+      answer4:
+          NodeValueParser.asString(normalized['answer4']) ??
+          NodeValueParser.asString(normalized['answer_4']) ??
+          '',
+      answer5:
+          NodeValueParser.asString(normalized['answer5']) ??
+          NodeValueParser.asString(normalized['answer_5']) ??
+          '',
+      answer6:
+          NodeValueParser.asString(normalized['answer6']) ??
+          NodeValueParser.asString(normalized['answer_6']) ??
+          '',
+      answer7:
+          NodeValueParser.asString(normalized['answer7']) ??
+          NodeValueParser.asString(normalized['answer_7']) ??
+          '',
+      answer8:
+          NodeValueParser.asString(normalized['answer8']) ??
+          NodeValueParser.asString(normalized['answer_8']) ??
+          '',
+      answer9:
+          NodeValueParser.asString(normalized['answer9']) ??
+          NodeValueParser.asString(normalized['answer_9']) ??
+          '',
+      answer10:
+          NodeValueParser.asString(normalized['answer10']) ??
+          NodeValueParser.asString(normalized['answer_10']) ??
+          '',
+      answer11:
+          NodeValueParser.asString(normalized['answer11']) ??
+          NodeValueParser.asString(normalized['answer_11']) ??
+          '',
+      answer12:
+          NodeValueParser.asString(normalized['answer12']) ??
+          NodeValueParser.asString(normalized['answer_12']) ??
+          '',
+      answer13:
+          NodeValueParser.asString(normalized['answer13']) ??
+          NodeValueParser.asString(normalized['answer_13']) ??
+          '',
+      answer13Period:
+          NodeValueParser.asString(normalized['answer13Period']) ??
+          NodeValueParser.asString(normalized['answer_13_period']) ??
+          '',
+      answer13Dosage:
+          NodeValueParser.asString(normalized['answer13Dosage']) ??
+          NodeValueParser.asString(normalized['answer_13_dosage']) ??
+          '',
+      answer13Medicine:
+          NodeValueParser.asString(normalized['answer13Medicine']) ??
+          NodeValueParser.asString(normalized['answer_13_medicine']) ??
+          '',
+      answer71:
+          NodeValueParser.asString(normalized['answer71']) ??
+          NodeValueParser.asString(normalized['answer_7_1']) ??
+          '',
+      answer13Sideeffect:
+          NodeValueParser.asString(normalized['answer13Sideeffect']) ??
+          NodeValueParser.asString(normalized['answer_13_sideeffect']) ??
+          '',
+      pfWdatetime: parseDateTime(normalized['pfWdatetime'] ?? normalized['pf_wdatetime']) ?? DateTime.now(),
+      pfMdatetime: parseDateTime(normalized['pfMdatetime'] ?? normalized['pf_mdatetime']) ?? DateTime.now(),
+      pfIp:
+          NodeValueParser.asString(normalized['pfIp']) ??
+          NodeValueParser.asString(normalized['pf_ip']) ??
+          '',
+      pfMemo:
+          NodeValueParser.asString(normalized['pfMemo']) ??
+          NodeValueParser.asString(normalized['pf_memo']) ??
+          '',
     );
     
     print('=== 파싱 완료 ===');
