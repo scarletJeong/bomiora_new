@@ -8,15 +8,11 @@ import '../../../../data/services/point_service.dart';
 import '../../../../data/services/review_service.dart';
 import '../../../../data/services/contact_service.dart';
 import '../../../../data/services/order_service.dart';
-import '../../healthprofile/screens/health_profile_list_screen.dart';
 import '../../../health/dashboard/screens/health_dashboard_screen.dart';
 import '../../../settings/settings_screen.dart';
 import 'profile_settings_screen.dart';
 import '../../../customer_service/screens/customer_service_screen.dart';
-import '../../review/my_reviews_screen.dart';
-import '../../coupon/screens/coupon_screen.dart';
-import '../../mileage/screens/mileage_screen.dart';
-import '../../delivery/delivery_list_screen.dart';
+import 'address_management_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -168,6 +164,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text(
           '마이페이지',
           style: TextStyle(
@@ -313,12 +310,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '주문·배송',
                       value: '$_orderCount',
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DeliveryListScreen(),
-                          ),
-                        ).then((value) {
+                        Navigator.pushNamed(context, '/order').then((value) {
                           // 주문 화면에서 돌아왔을 때 통계 새로고침
                           if (_currentUser != null) {
                             _loadMyPageStats(_currentUser!.id);
@@ -332,12 +324,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '리뷰',
                       value: '$_reviewCount',
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MyReviewsScreen(),
-                          ),
-                        ).then((value) {
+                        Navigator.pushNamed(context, '/my_reviews').then((value) {
                           // 리뷰 화면에서 돌아왔을 때 통계 새로고침
                           if (_currentUser != null) {
                             _loadMyPageStats(_currentUser!.id);
@@ -351,13 +338,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '문의',
                       value: '$_contactCount',
                       onTap: () {
-                        // 마이페이지에서 문의 아이콘 클릭 시 내 문의내역 탭으로 이동
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CustomerServiceScreen(initialTabIndex: 1),
-                          ),
-                        );
+                        Navigator.pushNamed(context, '/qna');
                       },
                     ),
                     _buildStatCard(
@@ -366,12 +347,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '쿠폰',
                       value: '$_couponCount장',
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CouponScreen(),
-                          ),
-                        ).then((value) {
+                        Navigator.pushNamed(context, '/coupon').then((value) {
                           // 쿠폰 화면에서 돌아왔을 때 통계 새로고침
                           if (_currentUser != null) {
                             _loadMyPageStats(_currentUser!.id);
@@ -385,12 +361,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '포인트',
                       value: _userPoint != null ? '${_formatPoint(_userPoint!)}원' : '0원',
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MileageScreen(),
-                          ),
-                        ).then((value) {
+                        Navigator.pushNamed(context, '/point').then((value) {
                           // 포인트 화면에서 돌아왔을 때 통계 새로고침
                           if (_currentUser != null) {
                             _loadMyPageStats(_currentUser!.id);
@@ -408,12 +379,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 icon: Icons.assignment,
                 title: '건강프로필',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HealthProfileListScreen(),
-                    ),
-                  );
+                  Navigator.pushNamed(context, '/profile');
                 },
               ),
               const SizedBox(height: 8),
@@ -425,6 +391,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const HealthDashboardScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
+                icon: Icons.location_on,
+                title: '배송지 관리',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddressManagementScreen(),
                     ),
                   );
                 },
