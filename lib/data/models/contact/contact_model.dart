@@ -1,3 +1,5 @@
+import '../../../core/utils/node_value_parser.dart';
+
 class Contact {
   final int wrId;
   final String wrSubject;
@@ -39,23 +41,25 @@ class Contact {
     this.wrIsComment,
   });
 
-  factory Contact.fromJson(Map<String, dynamic> json) {
+  factory Contact.fromJson(Map<dynamic, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
+
     return Contact(
-      wrId: json['wr_id'] ?? 0,
-      wrSubject: json['wr_subject'] ?? '',
-      wrContent: json['wr_content'] ?? '',
-      mbId: json['mb_id'] ?? '',
-      wrName: json['wr_name'] ?? '',
-      wrEmail: json['wr_email'] ?? '',
-      wrDatetime: json['wr_datetime'] ?? '',
-      wrLast: json['wr_last'] ?? '',
-      wrComment: json['wr_comment'] ?? 0,
-      wrReply: json['wr_reply'] ?? '',
-      wrParent: json['wr_parent'] ?? 0,
-      caName: json['ca_name'],
-      wrHit: json['wr_hit'] ?? 0,
-      wrOption: json['wr_option'],
-      wrIsComment: json['wr_is_comment'],
+      wrId: NodeValueParser.asInt(normalized['wr_id']) ?? 0,
+      wrSubject: NodeValueParser.asString(normalized['wr_subject']) ?? '',
+      wrContent: NodeValueParser.asString(normalized['wr_content']) ?? '',
+      mbId: NodeValueParser.asString(normalized['mb_id']) ?? '',
+      wrName: NodeValueParser.asString(normalized['wr_name']) ?? '',
+      wrEmail: NodeValueParser.asString(normalized['wr_email']) ?? '',
+      wrDatetime: NodeValueParser.asString(normalized['wr_datetime']) ?? '',
+      wrLast: NodeValueParser.asString(normalized['wr_last']) ?? '',
+      wrComment: NodeValueParser.asInt(normalized['wr_comment']) ?? 0,
+      wrReply: NodeValueParser.asString(normalized['wr_reply']) ?? '',
+      wrParent: NodeValueParser.asInt(normalized['wr_parent']) ?? 0,
+      caName: NodeValueParser.asString(normalized['ca_name']),
+      wrHit: NodeValueParser.asInt(normalized['wr_hit']) ?? 0,
+      wrOption: NodeValueParser.asString(normalized['wr_option']),
+      wrIsComment: NodeValueParser.asInt(normalized['wr_is_comment']),
     );
   }
 

@@ -1,3 +1,5 @@
+import '../../../core/utils/node_value_parser.dart';
+
 class ProductOption {
   final String id; // io_id
   final String productId; // it_id
@@ -24,7 +26,12 @@ class ProductOption {
   });
   
   factory ProductOption.fromJson(Map<String, dynamic> json) {
-    final ioId = json['id']?.toString() ?? '';
+    final normalized = NodeValueParser.normalizeMap(json);
+    final rawIoId =
+        NodeValueParser.asString(normalized['id']) ??
+        NodeValueParser.asString(normalized['io_id']) ??
+        '';
+    final ioId = _sanitizeText(rawIoId);
     
     // io_id에서 상위 옵션, 하위 옵션, 개월수 추출 (항상 직접 파싱)
     final step = _extractStep(ioId);
@@ -33,13 +40,16 @@ class ProductOption {
     
     return ProductOption(
       id: ioId,
-      productId: json['productId']?.toString() ?? json['it_id']?.toString() ?? '',
+      productId:
+          NodeValueParser.asString(normalized['productId']) ??
+          NodeValueParser.asString(normalized['it_id']) ??
+          '',
       step: step, // 상위 옵션
       months: months, // 숫자만
       subOption: subOption, // 하위 옵션 전체 텍스트
-      price: _parseInt(json['price'] ?? 0),
-      stock: _parseInt(json['stock'] ?? 0),
-      type: json['type']?.toString(),
+      price: _parseInt(normalized['price'] ?? 0),
+      stock: _parseInt(normalized['stock'] ?? 0),
+      type: NodeValueParser.asString(normalized['type']),
     );
   }
   
@@ -61,11 +71,13 @@ class ProductOption {
     final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(afterBracket);
     if (lastNumberMatch != null) {
       // ']'까지 + 마지막 숫자 앞까지
-      return ioId.substring(0, closeBracketIndex + 1) + 
-             afterBracket.substring(0, lastNumberMatch.start);
+      return _sanitizeText(
+        ioId.substring(0, closeBracketIndex + 1) +
+            afterBracket.substring(0, lastNumberMatch.start),
+      );
     }
     
-    return ioId;
+    return _sanitizeText(ioId);
   }
   
   /// io_id에서 하위 옵션 전체 텍스트 추출 (마지막 숫자부터 끝까지)
@@ -79,7 +91,7 @@ class ProductOption {
       // ']'가 없으면 마지막 숫자부터 끝까지
       final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
       if (lastNumberMatch != null) {
-        return ioId.substring(lastNumberMatch.start);
+        return _sanitizeText(ioId.substring(lastNumberMatch.start));
       }
       return '';
     }
@@ -89,10 +101,10 @@ class ProductOption {
     // 마지막 숫자 시작 위치 찾기
     final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(afterBracket);
     if (lastNumberMatch != null) {
-      return afterBracket.substring(lastNumberMatch.start);
+      return _sanitizeText(afterBracket.substring(lastNumberMatch.start));
     }
     
-    return afterBracket;
+    return _sanitizeText(afterBracket);
   }
   
   /// io_id에서 하위 옵션(개월수 포함) 추출
@@ -115,6 +127,10 @@ class ProductOption {
       return int.tryParse(value.replaceAll(',', '')) ?? 0;
     }
     return 0;
+  }
+
+  static String _sanitizeText(String value) {
+    return value.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
   }
   
   /// 표시용 옵션 텍스트 생성 (상위옵션 / 하위옵션)

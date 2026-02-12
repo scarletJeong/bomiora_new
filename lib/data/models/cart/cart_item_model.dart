@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../core/utils/node_value_parser.dart';
 
 class CartItem {
   final int ctId; // 장바구니 ID
@@ -50,14 +51,16 @@ class CartItem {
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
     // ct_option에서 예약 정보 파싱 (예: JSON 문자열 또는 특정 형식)
     String? doctorName;
     DateTime? reservationDate;
     String? reservationTime;
     
-    if (json['ct_option'] != null && json['ct_option'].toString().isNotEmpty) {
+    if (normalized['ct_option'] != null &&
+        NodeValueParser.asString(normalized['ct_option'])!.isNotEmpty) {
       try {
-        final ctOptionStr = json['ct_option'].toString();
+        final ctOptionStr = NodeValueParser.asString(normalized['ct_option'])!;
         
         // JSON 문자열인지 확인 (시작이 '{' 또는 '['로 시작하는 경우만 JSON으로 처리)
         if (ctOptionStr.trim().startsWith('{') || ctOptionStr.trim().startsWith('[')) {
@@ -88,42 +91,73 @@ class CartItem {
 
     // ct_time 파싱
     DateTime? ctTime;
-    if (json['ct_time'] != null) {
-      final timeStr = json['ct_time'].toString();
+    if (normalized['ct_time'] != null) {
+      final timeStr = NodeValueParser.asString(normalized['ct_time']) ?? '';
       if (timeStr.isNotEmpty && timeStr != '0000-00-00 00:00:00') {
         ctTime = DateTime.tryParse(timeStr);
       }
     }
 
     return CartItem(
-      ctId: _parseInt(json['ct_id'] ?? json['ctId']),
-      odId: json['od_id']?.toString() ?? json['odId']?.toString() ?? '',
-      mbId: json['mb_id']?.toString() ?? json['mbId']?.toString() ?? '',
-      itId: json['it_id']?.toString() ?? json['itId']?.toString() ?? '',
-      itName: json['it_name']?.toString() ?? json['itName']?.toString() ?? '',
-      itSubject: json['it_subject']?.toString() ?? json['itSubject']?.toString(),
-      ctStatus: json['ct_status']?.toString() ?? json['ctStatus']?.toString() ?? '',
-      ctPrice: _parseInt(json['ct_price'] ?? json['ctPrice'] ?? 0),
-      ctOption: json['ct_option']?.toString() ?? json['ctOption']?.toString() ?? '',
-      ctQty: _parseInt(json['ct_qty'] ?? json['ctQty'] ?? 1),
-      ioId: json['io_id']?.toString() ?? json['ioId']?.toString(),
-      ioPrice: json['io_price'] != null ? _parseInt(json['io_price'] ?? json['ioPrice']) : null,
-      ctKind: json['ct_kind']?.toString() ?? json['ctKind']?.toString() ?? 'general',
+      ctId: _parseInt(normalized['ct_id'] ?? normalized['ctId']),
+      odId:
+          NodeValueParser.asString(normalized['od_id']) ??
+          NodeValueParser.asString(normalized['odId']) ??
+          '',
+      mbId:
+          NodeValueParser.asString(normalized['mb_id']) ??
+          NodeValueParser.asString(normalized['mbId']) ??
+          '',
+      itId:
+          NodeValueParser.asString(normalized['it_id']) ??
+          NodeValueParser.asString(normalized['itId']) ??
+          '',
+      itName:
+          NodeValueParser.asString(normalized['it_name']) ??
+          NodeValueParser.asString(normalized['itName']) ??
+          '',
+      itSubject:
+          NodeValueParser.asString(normalized['it_subject']) ??
+          NodeValueParser.asString(normalized['itSubject']),
+      ctStatus:
+          NodeValueParser.asString(normalized['ct_status']) ??
+          NodeValueParser.asString(normalized['ctStatus']) ??
+          '',
+      ctPrice: _parseInt(normalized['ct_price'] ?? normalized['ctPrice'] ?? 0),
+      ctOption:
+          NodeValueParser.asString(normalized['ct_option']) ??
+          NodeValueParser.asString(normalized['ctOption']) ??
+          '',
+      ctQty: _parseInt(normalized['ct_qty'] ?? normalized['ctQty'] ?? 1),
+      ioId:
+          NodeValueParser.asString(normalized['io_id']) ??
+          NodeValueParser.asString(normalized['ioId']),
+      ioPrice:
+          normalized['io_price'] != null
+              ? _parseInt(normalized['io_price'] ?? normalized['ioPrice'])
+              : null,
+      ctKind:
+          NodeValueParser.asString(normalized['ct_kind']) ??
+          NodeValueParser.asString(normalized['ctKind']) ??
+          'general',
       ctTime: ctTime,
-      doctorName: doctorName ?? json['doctor_name']?.toString() ?? json['doctorName']?.toString(),
+      doctorName:
+          doctorName ??
+          NodeValueParser.asString(normalized['doctor_name']) ??
+          NodeValueParser.asString(normalized['doctorName']),
       reservationDate: reservationDate ?? 
-                      (json['reservation_date'] != null 
-                          ? DateTime.tryParse(json['reservation_date'].toString()) 
+                      (normalized['reservation_date'] != null 
+                          ? DateTime.tryParse(NodeValueParser.asString(normalized['reservation_date']) ?? '') 
                           : null),
       reservationTime: reservationTime ?? 
-                       json['reservation_time']?.toString() ?? 
-                       json['reservationTime']?.toString(),
-      imageUrl: json['image_url']?.toString() ?? 
-                json['imageUrl']?.toString() ?? 
-                json['it_img']?.toString() ?? 
-                json['it_img1']?.toString(),
-      productType: json['product_type']?.toString() ?? 
-                   json['productType']?.toString() ?? 
+                       NodeValueParser.asString(normalized['reservation_time']) ?? 
+                       NodeValueParser.asString(normalized['reservationTime']),
+      imageUrl: NodeValueParser.asString(normalized['image_url']) ?? 
+                NodeValueParser.asString(normalized['imageUrl']) ?? 
+                NodeValueParser.asString(normalized['it_img']) ?? 
+                NodeValueParser.asString(normalized['it_img1']),
+      productType: NodeValueParser.asString(normalized['product_type']) ?? 
+                   NodeValueParser.asString(normalized['productType']) ?? 
                    '한의약품',
     );
   }

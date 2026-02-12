@@ -1,4 +1,5 @@
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/node_value_parser.dart';
 
 class Product {
   final String id;
@@ -36,28 +37,48 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
+
+    final id =
+        NodeValueParser.asString(normalized['id']) ??
+        NodeValueParser.asString(normalized['it_id']) ??
+        '';
+
     return Product(
-      id: json['id']?.toString() ?? json['it_id']?.toString() ?? '',
-      name: json['name']?.toString() ?? json['it_name']?.toString() ?? '',
-      description: json['description']?.toString() ?? json['it_explan']?.toString(),
-      price: _parsePrice(json['price'] ?? json['it_price'] ?? 0),
-      originalPrice: _parsePrice(json['originalPrice'] ?? json['it_cust_price']),
+      id: id,
+      name:
+          NodeValueParser.asString(normalized['name']) ??
+          NodeValueParser.asString(normalized['it_name']) ??
+          '',
+      description:
+          NodeValueParser.asString(normalized['description']) ??
+          NodeValueParser.asString(normalized['it_explan']),
+      price: _parsePrice(normalized['price'] ?? normalized['it_price'] ?? 0),
+      originalPrice: _parsePrice(normalized['originalPrice'] ?? normalized['it_cust_price']),
       imageUrl: ImageUrlHelper.normalizeThumbnailUrl(
-        json['imageUrl']?.toString() ?? 
-        json['it_img']?.toString() ?? 
-        json['it_img1']?.toString(),
-        json['id']?.toString() ?? json['it_id']?.toString(),
+        NodeValueParser.asString(normalized['imageUrl']) ??
+            NodeValueParser.asString(normalized['it_img']) ??
+            NodeValueParser.asString(normalized['it_img1']),
+        id,
       ),
-      categoryId: json['categoryId']?.toString() ?? json['ca_id']?.toString() ?? '',
-      categoryName: json['categoryName']?.toString() ?? json['ca_name']?.toString(),
-      productKind: json['productKind']?.toString() ?? json['it_kind']?.toString(),
-      isNew: json['isNew'] ?? json['it_new'] ?? false,
-      isBest: json['isBest'] ?? json['it_best'] ?? false,
-      stock: json['stock'] ?? json['it_stock_qty'],
-      rating: json['rating']?.toDouble() ?? 
-              (json['it_rating'] != null ? double.tryParse(json['it_rating'].toString()) : null),
-      reviewCount: json['reviewCount'] ?? json['it_review_cnt'],
-      additionalInfo: json['additionalInfo'] ?? json,
+      categoryId:
+          NodeValueParser.asString(normalized['categoryId']) ??
+          NodeValueParser.asString(normalized['ca_id']) ??
+          '',
+      categoryName:
+          NodeValueParser.asString(normalized['categoryName']) ??
+          NodeValueParser.asString(normalized['ca_name']),
+      productKind:
+          NodeValueParser.asString(normalized['productKind']) ??
+          NodeValueParser.asString(normalized['it_kind']),
+      isNew: _parseBool(normalized['isNew'] ?? normalized['it_new']),
+      isBest: _parseBool(normalized['isBest'] ?? normalized['it_best']),
+      stock: NodeValueParser.asInt(normalized['stock'] ?? normalized['it_stock_qty']),
+      rating:
+          NodeValueParser.asDouble(normalized['rating']) ??
+          NodeValueParser.asDouble(normalized['it_rating']),
+      reviewCount: NodeValueParser.asInt(normalized['reviewCount'] ?? normalized['it_review_cnt']),
+      additionalInfo: normalized,
     );
   }
 
@@ -88,6 +109,13 @@ class Product {
       return int.tryParse(value.replaceAll(',', '')) ?? 0;
     }
     return 0;
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().toLowerCase();
+    return text == 'true' || text == 'y' || text == '1';
   }
 
   String get formattedPrice {

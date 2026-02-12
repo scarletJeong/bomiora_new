@@ -1,3 +1,5 @@
+import '../../../core/utils/node_value_parser.dart';
+
 class PointHistory {
   final int id; // po_id
   final String userId; // mb_id
@@ -30,22 +32,39 @@ class PointHistory {
   });
 
   factory PointHistory.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
     return PointHistory(
-      id: json['po_id'] ?? json['id'] ?? 0,
-      userId: json['mb_id']?.toString() ?? json['userId']?.toString() ?? '',
-      dateTime: _parseDateTime(json['po_datetime'] ?? json['dateTime']),
-      content: json['po_content']?.toString() ?? json['content']?.toString() ?? '',
-      point: json['po_point'] ?? json['point'] ?? 0,
-      usePoint: json['po_use_point'] ?? json['usePoint'] ?? 0,
-      expired: json['po_expired'] ?? json['expired'] ?? 0,
-      expireDate: _parseDateTime(json['po_expire_date'] ?? json['expireDate']),
-      useDate: json['po_use_date'] != null || json['useDate'] != null
-          ? _parseDateTime(json['po_use_date'] ?? json['useDate'])
+      id: NodeValueParser.asInt(normalized['po_id'] ?? normalized['id']) ?? 0,
+      userId:
+          NodeValueParser.asString(normalized['mb_id']) ??
+          NodeValueParser.asString(normalized['userId']) ??
+          '',
+      dateTime: _parseDateTime(normalized['po_datetime'] ?? normalized['dateTime']),
+      content:
+          NodeValueParser.asString(normalized['po_content']) ??
+          NodeValueParser.asString(normalized['content']) ??
+          '',
+      point: NodeValueParser.asInt(normalized['po_point'] ?? normalized['point']) ?? 0,
+      usePoint:
+          NodeValueParser.asInt(normalized['po_use_point'] ?? normalized['usePoint']) ??
+          0,
+      expired: NodeValueParser.asInt(normalized['po_expired'] ?? normalized['expired']) ?? 0,
+      expireDate: _parseDateTime(normalized['po_expire_date'] ?? normalized['expireDate']),
+      useDate: normalized['po_use_date'] != null || normalized['useDate'] != null
+          ? _parseDateTime(normalized['po_use_date'] ?? normalized['useDate'])
           : null,
-      finalPoint: json['po_mb_point'] ?? json['finalPoint'] ?? 0,
-      relTable: json['po_rel_table']?.toString() ?? json['relTable']?.toString(),
-      relId: json['po_rel_id']?.toString() ?? json['relId']?.toString(),
-      relAction: json['po_rel_action']?.toString() ?? json['relAction']?.toString(),
+      finalPoint:
+          NodeValueParser.asInt(normalized['po_mb_point'] ?? normalized['finalPoint']) ??
+          0,
+      relTable:
+          NodeValueParser.asString(normalized['po_rel_table']) ??
+          NodeValueParser.asString(normalized['relTable']),
+      relId:
+          NodeValueParser.asString(normalized['po_rel_id']) ??
+          NodeValueParser.asString(normalized['relId']),
+      relAction:
+          NodeValueParser.asString(normalized['po_rel_action']) ??
+          NodeValueParser.asString(normalized['relAction']),
     );
   }
 

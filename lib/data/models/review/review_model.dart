@@ -1,3 +1,5 @@
+import '../../../core/utils/node_value_parser.dart';
+
 /// 리뷰 모델
 class ReviewModel {
   final int? isId;
@@ -38,7 +40,7 @@ class ReviewModel {
   final String? isPayMthod; // 'solo': 내돈내산
   final int? isOutageNum; // 감량 kg
   
-  final int? odId; // 주문 ID
+  final String? odId; // 주문 ID (String으로 변경 - 큰 숫자 정밀도 손실 방지)
   
   // 편의 getter들
   bool get isSupporterReview => isRvkind == 'supporter';
@@ -80,38 +82,42 @@ class ReviewModel {
   
   /// JSON에서 모델로 변환
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
     List<String> imageList = [];
-    if (json['images'] != null) {
-      imageList = List<String>.from(json['images']);
+    if (normalized['images'] != null && normalized['images'] is List) {
+      imageList = (normalized['images'] as List)
+          .map((e) => NodeValueParser.asString(e) ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
     
     return ReviewModel(
-      isId: json['isId'],
-      itId: json['itId'] ?? '',
-      itName: json['itName'],
-      mbId: json['mbId'] ?? '',
-      isName: json['isName'],
-      isTime: json['isTime'] != null ? DateTime.parse(json['isTime']) : null,
-      isConfirm: json['isConfirm'],
-      isScore1: json['isScore1'] ?? 0,
-      isScore2: json['isScore2'] ?? 0,
-      isScore3: json['isScore3'] ?? 0,
-      isScore4: json['isScore4'] ?? 0,
-      averageScore: json['averageScore']?.toDouble(),
-      isRvkind: json['isRvkind'] ?? 'general',
-      isRecommend: json['isRecommend'] ?? 'y',
-      isGood: json['isGood'] ?? 0,
-      czDownload: json['czDownload'] ?? 0,
-      isPositiveReviewText: json['isPositiveReviewText'],
-      isNegativeReviewText: json['isNegativeReviewText'],
-      isMoreReviewText: json['isMoreReviewText'],
+      isId: NodeValueParser.asInt(normalized['isId']),
+      itId: NodeValueParser.asString(normalized['itId']) ?? '',
+      itName: NodeValueParser.asString(normalized['itName']),
+      mbId: NodeValueParser.asString(normalized['mbId']) ?? '',
+      isName: NodeValueParser.asString(normalized['isName']),
+      isTime: NodeValueParser.asDateTime(normalized['isTime']),
+      isConfirm: NodeValueParser.asInt(normalized['isConfirm']),
+      isScore1: NodeValueParser.asInt(normalized['isScore1']) ?? 0,
+      isScore2: NodeValueParser.asInt(normalized['isScore2']) ?? 0,
+      isScore3: NodeValueParser.asInt(normalized['isScore3']) ?? 0,
+      isScore4: NodeValueParser.asInt(normalized['isScore4']) ?? 0,
+      averageScore: NodeValueParser.asDouble(normalized['averageScore']),
+      isRvkind: NodeValueParser.asString(normalized['isRvkind']) ?? 'general',
+      isRecommend: NodeValueParser.asString(normalized['isRecommend']) ?? 'y',
+      isGood: NodeValueParser.asInt(normalized['isGood']) ?? 0,
+      czDownload: NodeValueParser.asInt(normalized['czDownload']) ?? 0,
+      isPositiveReviewText: NodeValueParser.asString(normalized['isPositiveReviewText']),
+      isNegativeReviewText: NodeValueParser.asString(normalized['isNegativeReviewText']),
+      isMoreReviewText: NodeValueParser.asString(normalized['isMoreReviewText']),
       images: imageList,
-      isBirthday: json['isBirthday'] != null ? DateTime.parse(json['isBirthday']) : null,
-      isWeight: json['isWeight'],
-      isHeight: json['isHeight'],
-      isPayMthod: json['isPayMthod'],
-      isOutageNum: json['isOutageNum'],
-      odId: json['odId'],
+      isBirthday: NodeValueParser.asDateTime(normalized['isBirthday']),
+      isWeight: NodeValueParser.asInt(normalized['isWeight']),
+      isHeight: NodeValueParser.asInt(normalized['isHeight']),
+      isPayMthod: NodeValueParser.asString(normalized['isPayMthod']),
+      isOutageNum: NodeValueParser.asInt(normalized['isOutageNum']),
+      odId: NodeValueParser.asString(normalized['odId']), // String으로 변환 (int도 처리)
     );
   }
   
@@ -163,11 +169,12 @@ class ReviewStatsModel {
   });
   
   factory ReviewStatsModel.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
     return ReviewStatsModel(
-      totalCount: json['totalCount'] ?? 0,
-      averageScore: (json['averageScore'] ?? 0.0).toDouble(),
-      generalCount: json['generalCount'],
-      supporterCount: json['supporterCount'],
+      totalCount: NodeValueParser.asInt(normalized['totalCount']) ?? 0,
+      averageScore: NodeValueParser.asDouble(normalized['averageScore']) ?? 0.0,
+      generalCount: NodeValueParser.asInt(normalized['generalCount']),
+      supporterCount: NodeValueParser.asInt(normalized['supporterCount']),
     );
   }
 }

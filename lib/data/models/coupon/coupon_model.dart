@@ -1,3 +1,5 @@
+import '../../../core/utils/node_value_parser.dart';
+
 class Coupon {
   final int no; // cp_no
   final String id; // cp_id
@@ -36,24 +38,37 @@ class Coupon {
   });
 
   factory Coupon.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
     return Coupon(
-      no: json['cp_no'] ?? json['no'] ?? 0,
-      id: json['cp_id']?.toString() ?? json['id']?.toString() ?? '',
-      subject: json['cp_subject']?.toString() ?? json['subject']?.toString() ?? '',
-      method: json['cp_method'] ?? json['method'] ?? 0,
-      target: json['cp_target']?.toString() ?? json['target']?.toString() ?? '',
-      userId: json['mb_id']?.toString() ?? json['userId']?.toString() ?? '',
-      zoneId: json['cz_id'] ?? json['zoneId'] ?? 0,
-      startDate: _parseDate(json['cp_start'] ?? json['startDate']),
-      endDate: _parseDate(json['cp_end'] ?? json['endDate']),
-      price: json['cp_price'] ?? json['price'] ?? 0,
-      type: json['cp_type'] ?? json['type'] ?? 0,
-      trunc: json['cp_trunc'] ?? json['trunc'] ?? 0,
-      minimum: json['cp_minimum'] ?? json['minimum'] ?? 0,
-      maximum: json['cp_maximum'] ?? json['maximum'] ?? 0,
-      orderId: json['od_id'] ?? json['orderId'],
-      datetime: json['cp_datetime'] != null || json['datetime'] != null
-          ? _parseDateTime(json['cp_datetime'] ?? json['datetime'])
+      no: NodeValueParser.asInt(normalized['cp_no'] ?? normalized['no']) ?? 0,
+      id:
+          NodeValueParser.asString(normalized['cp_id']) ??
+          NodeValueParser.asString(normalized['id']) ??
+          '',
+      subject:
+          NodeValueParser.asString(normalized['cp_subject']) ??
+          NodeValueParser.asString(normalized['subject']) ??
+          '',
+      method: NodeValueParser.asInt(normalized['cp_method'] ?? normalized['method']) ?? 0,
+      target:
+          NodeValueParser.asString(normalized['cp_target']) ??
+          NodeValueParser.asString(normalized['target']) ??
+          '',
+      userId:
+          NodeValueParser.asString(normalized['mb_id']) ??
+          NodeValueParser.asString(normalized['userId']) ??
+          '',
+      zoneId: NodeValueParser.asInt(normalized['cz_id'] ?? normalized['zoneId']) ?? 0,
+      startDate: _parseDate(normalized['cp_start'] ?? normalized['startDate']),
+      endDate: _parseDate(normalized['cp_end'] ?? normalized['endDate']),
+      price: NodeValueParser.asInt(normalized['cp_price'] ?? normalized['price']) ?? 0,
+      type: NodeValueParser.asInt(normalized['cp_type'] ?? normalized['type']) ?? 0,
+      trunc: NodeValueParser.asInt(normalized['cp_trunc'] ?? normalized['trunc']) ?? 0,
+      minimum: NodeValueParser.asInt(normalized['cp_minimum'] ?? normalized['minimum']) ?? 0,
+      maximum: NodeValueParser.asInt(normalized['cp_maximum'] ?? normalized['maximum']) ?? 0,
+      orderId: NodeValueParser.asInt(normalized['od_id'] ?? normalized['orderId']),
+      datetime: normalized['cp_datetime'] != null || normalized['datetime'] != null
+          ? _parseDateTime(normalized['cp_datetime'] ?? normalized['datetime'])
           : null,
     );
   }

@@ -1,3 +1,5 @@
+import '../../../core/utils/node_value_parser.dart';
+
 class UserModel {
   final String id;
   final String email;
@@ -16,16 +18,31 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    
-    final id = json['id']?.toString() ?? json['mb_id']?.toString() ?? '';
-    final email = json['email'] ?? json['mb_email'] ?? '';
-    final name = json['name'] ?? json['mb_name'] ?? '';
-    final nickname = json['nickname']?.toString() ?? json['mb_nick']?.toString();
+    final normalized = NodeValueParser.normalizeMap(json);
+
+    final id =
+        NodeValueParser.asString(normalized['id']) ??
+        NodeValueParser.asString(normalized['mb_id']) ??
+        NodeValueParser.asString(normalized['mbId']) ??
+        NodeValueParser.asString(normalized['mb_no']) ??
+        '';
+    final email =
+        NodeValueParser.asString(normalized['email']) ??
+        NodeValueParser.asString(normalized['mb_email']) ??
+        '';
+    final name =
+        NodeValueParser.asString(normalized['name']) ??
+        NodeValueParser.asString(normalized['mb_name']) ??
+        '';
+    final nickname =
+        NodeValueParser.asString(normalized['nickname']) ??
+        NodeValueParser.asString(normalized['mb_nick']);
     //  mb_hp 필드 추가 (API에서 mb_hp로 응답함)
-    final phone = json['phone']?.toString() ?? 
-                  json['mb_phone']?.toString() ?? 
-                  json['mb_hp']?.toString();
-    final password = json['password']?.toString();
+    final phone =
+        NodeValueParser.asString(normalized['phone']) ??
+        NodeValueParser.asString(normalized['mb_phone']) ??
+        NodeValueParser.asString(normalized['mb_hp']);
+    final password = NodeValueParser.asString(normalized['password']);
     
     return UserModel(
       id: id,

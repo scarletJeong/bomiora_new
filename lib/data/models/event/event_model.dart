@@ -1,4 +1,5 @@
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/node_value_parser.dart';
 
 class EventModel {
   final int wrId;
@@ -29,21 +30,29 @@ class EventModel {
     required this.isActive,
   });
 
-  factory EventModel.fromJson(Map<String, dynamic> json) {
+  factory EventModel.fromJson(Map<dynamic, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     return EventModel(
-      wrId: json['wr_id'] ?? 0,
-      wrNum: json['wr_num'] ?? 0,
-      caName: json['ca_name'],
-      wrSubject: json['wr_subject'] ?? '',
-      wrContent: json['wr_content'] ?? '',
-      wrLink1: json['wr_link1'],
-      wrDatetime: json['wr_datetime'] ?? '',
-      wrLast: json['wr_last'],
-      wrHit: json['wr_hit'] ?? 0,
-      wr1: json['wr_1'],
-      wr2: json['wr_2'],
-      isActive: json['is_active'] ?? false,
+      wrId: NodeValueParser.asInt(normalized['wr_id']) ?? 0,
+      wrNum: NodeValueParser.asInt(normalized['wr_num']) ?? 0,
+      caName: NodeValueParser.asString(normalized['ca_name']),
+      wrSubject: NodeValueParser.asString(normalized['wr_subject']) ?? '',
+      wrContent: NodeValueParser.asString(normalized['wr_content']) ?? '',
+      wrLink1: NodeValueParser.asString(normalized['wr_link1']),
+      wrDatetime: NodeValueParser.asString(normalized['wr_datetime']) ?? '',
+      wrLast: NodeValueParser.asString(normalized['wr_last']),
+      wrHit: NodeValueParser.asInt(normalized['wr_hit']) ?? 0,
+      wr1: NodeValueParser.asString(normalized['wr_1']),
+      wr2: NodeValueParser.asString(normalized['wr_2']),
+      isActive: _parseBool(normalized['is_active']),
     );
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().toLowerCase();
+    return text == 'true' || text == 'y' || text == '1';
   }
 
   Map<String, dynamic> toJson() {
