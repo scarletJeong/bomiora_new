@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/auth_service.dart';
-import '../../../../data/services/address_service.dart';
 import '../../../../data/models/user/user_model.dart';
-import 'address_form_screen.dart';
 
-/// 프로필 설정 화면 (개인정보 수정, 비밀번호 변경, 배송지 관리)
+/// 프로필 설정 화면 (개인정보 수정, 비밀번호 변경)
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
 
@@ -13,39 +11,22 @@ class ProfileSettingsScreen extends StatefulWidget {
   State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
 }
 
-class _ProfileSettingsScreenState extends State<ProfileSettingsScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   UserModel? _currentUser;
   
   // 회원정보 입력 컨트롤러
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  
-  // 배송지 목록
-  List<Map<String, dynamic>> _addresses = [];
-  bool _isLoadingAddresses = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
     _loadCurrentUser();
-  }
-  
-  void _onTabChanged() {
-    // 배송지 탭으로 전환할 때 배송지 목록 로드
-    if (_tabController.index == 1 && !_isLoadingAddresses) {
-      _loadAddresses();
-    }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
     _nameController.dispose();
     _nicknameController.dispose();
     _phoneController.dispose();
@@ -71,32 +52,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen>
       _nicknameController.text = user?.nickname ?? '';
       _phoneController.text = user?.phone ?? '';
     });
-  }
-  
-  Future<void> _loadAddresses() async {
-    if (_currentUser == null || _isLoadingAddresses) return;
-    
-    setState(() {
-      _isLoadingAddresses = true;
-    });
-    
-    try {
-      final addresses = await AddressService.getAddressList(_currentUser!.id);
-      
-      if (!mounted) return;
-      
-      setState(() {
-        _addresses = addresses;
-        _isLoadingAddresses = false;
-      });
-    } catch (e) {
-      print('❌ 배송지 목록 로드 에러: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingAddresses = false;
-        });
-      }
-    }
   }
   
   Future<void> _saveProfile() async {
@@ -159,33 +114,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen>
         foregroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFFFF4081),
-          indicatorWeight: 3,
-          labelColor: const Color(0xFFFF4081),
-          unselectedLabelColor: Colors.grey[600],
-          labelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.normal,
-          ),
-          tabs: const [
-            Tab(text: '회원정보'),
-            Tab(text: '배송지 관리'),
-          ],
-        ),
       ),
-      child: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildPersonalInfoTab(),
-          _buildAddressTab(),
-        ],
-      ),
+      child: _buildPersonalInfoTab(),
     );
   }
 
@@ -360,92 +290,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen>
     );
   }
 
-  /// 배송지 관리 탭
-  Widget _buildAddressTab() {
-    if (_isLoadingAddresses) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFFFF3787),
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SizedBox(), // 왼쪽 공간 확보용
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () async {
-                  // 배송지 추가 화면으로 이동
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddressFormScreen(),
-                    ),
-                  );
-                  
-                  // 배송지가 추가되면 목록 새로고침
-                  if (result == true) {
-                    _loadAddresses();
-                  }
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('추가'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFFF4081),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // 배송지 목록 (실제 데이터)
-          if (_addresses.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 60),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.location_off_outlined,
-                      size: 64,
-                      color: Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '등록된 배송지가 없습니다',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ...(_addresses.map((address) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildAddressCard(
-                id: address['adId'],
-                name: address['adSubject'] ?? '',
-                recipient: address['adName'] ?? '',
-                phone: address['adHp'] ?? '',
-                address: address['adAddr1'] ?? '',
-                addressDetail: '${address['adAddr2'] ?? ''} ${address['adAddr3'] ?? ''}'.trim(),
-                isDefault: address['adDefault'] == 1,
-              ),
-            ))),
-        ],
-      ),
-    );
-  }
 
   /// 텍스트 필드 위젯
   Widget _buildTextField({
@@ -552,189 +396,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen>
     );
   }
 
-  /// 배송지 삭제
-  Future<void> _deleteAddress(int id) async {
-    if (_currentUser == null) return;
-    
-    // 확인 다이얼로그
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('배송지 삭제'),
-        content: const Text('이 배송지를 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirmed != true) return;
-    
-    try {
-      final result = await AddressService.deleteAddress(id, _currentUser!.id);
-      
-      if (!mounted) return;
-      
-      if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '배송지가 삭제되었습니다.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        // 배송지 목록 새로고침
-        await _loadAddresses();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '배송지 삭제에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      print('❌ 배송지 삭제 에러: $e');
-    }
-  }
-
-  /// 배송지 카드 위젯
-  Widget _buildAddressCard({
-    int? id,
-    required String name,
-    required String recipient,
-    required String phone,
-    required String address,
-    required String addressDetail,
-    bool isDefault = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDefault ? const Color(0xFFFF4081) : Colors.grey[300]!,
-          width: isDefault ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (isDefault) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF4081),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '기본',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    onPressed: id != null
-                        ? () async {
-                            // 배송지 수정 화면으로 이동
-                            final addressData = _addresses.firstWhere(
-                              (addr) => addr['adId'] == id,
-                              orElse: () => {},
-                            );
-                            
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AddressFormScreen(address: addressData),
-                              ),
-                            );
-                            
-                            // 배송지가 수정되면 목록 새로고침
-                            if (result == true) {
-                              _loadAddresses();
-                            }
-                          }
-                        : null,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    onPressed: id != null ? () => _deleteAddress(id) : null,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            recipient,
-            style: const TextStyle(fontSize: 14),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            phone,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '$address\n$addressDetail',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// 비밀번호 변경 화면
