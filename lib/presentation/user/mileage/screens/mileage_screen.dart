@@ -17,6 +17,8 @@ class _MileageScreenState extends State<MileageScreen> {
   UserModel? _currentUser;
   int? _currentPoint;
   List<PointHistory> _pointHistory = [];
+  List<PointHistory> _displayedHistory = [];
+  int _displayCount = 10; // 처음에 보여줄 개수
   bool _isLoading = true;
 
   @override
@@ -79,10 +81,25 @@ class _MileageScreenState extends State<MileageScreen> {
       final history = await PointService.getPointHistory(_currentUser!.id);
       setState(() {
         _pointHistory = history;
+        _displayCount = 10; // 새로 로드할 때 초기화
+        _updateDisplayedHistory();
       });
     } catch (e) {
       print('포인트 내역 조회 오류: $e');
     }
+  }
+
+  void _updateDisplayedHistory() {
+    setState(() {
+      _displayedHistory = _pointHistory.take(_displayCount).toList();
+    });
+  }
+
+  void _loadMore() {
+    setState(() {
+      _displayCount += 10;
+      _updateDisplayedHistory();
+    });
   }
 
   @override
@@ -316,6 +333,8 @@ class _MileageScreenState extends State<MileageScreen> {
       );
     }
 
+    final hasMore = _displayedHistory.length < _pointHistory.length;
+
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -340,7 +359,29 @@ class _MileageScreenState extends State<MileageScreen> {
             ),
           ),
           const Divider(height: 1),
-          ..._pointHistory.map((history) => _buildHistoryItem(history)),
+          ..._displayedHistory.map((history) => _buildHistoryItem(history)),
+          // 더보기 버튼
+          if (hasMore)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _loadMore,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  child: const Text(
+                    '더보기',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
