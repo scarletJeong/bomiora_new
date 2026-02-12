@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/network/api_client.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -21,6 +23,22 @@ class _CartScreenState extends State<CartScreen> {
   int totalPrice = 0; // 총구매금액
   Set<int> selectedItems = {}; // 선택된 아이템의 ctId 집합
   bool selectAll = true; // 전체 선택 상태 (기본값: true)
+  int _selectedTabIndex = 0; // 0: 전체, 1: 일반, 2: 처방
+
+  List<CartItem> get _displayedCartItems {
+    switch (_selectedTabIndex) {
+      case 1:
+        return cartItems.where((item) => !item.isPrescription).toList();
+      case 2:
+        return cartItems.where((item) => item.isPrescription).toList();
+      default:
+        return cartItems;
+    }
+  }
+
+  Set<int> get _displayedItemIds {
+    return _displayedCartItems.map((item) => item.ctId).toSet();
+  }
 
   @override
   void initState() {
@@ -72,6 +90,8 @@ class _CartScreenState extends State<CartScreen> {
           if (selectAll) {
             selectedItems = items.map((item) => item.ctId).toSet();
           }
+          selectAll = _displayedCartItems.isNotEmpty &&
+              _displayedItemIds.difference(selectedItems).isEmpty;
           
           isLoading = false;
           isRefreshing = false;
@@ -107,12 +127,24 @@ class _CartScreenState extends State<CartScreen> {
       // normalizeThumbnailUrl을 사용하여 data/item/ 경로 포함 및 https:// 처리
       final normalized = ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId);
       if (normalized != null && normalized.isNotEmpty) {
+        // 웹 로컬 개발 환경에서는 XAMPP 정적 파일 CORS 문제가 있어 API 프록시 경유
+        if (kIsWeb &&
+            (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
+            normalized.startsWith('http')) {
+          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(normalized)}';
+        }
         return normalized;
       }
     }
     // 기본 이미지 반환
     final defaultImage = ImageUrlHelper.normalizeThumbnailUrl('no_img.png', item.itId);
-    return defaultImage ?? '${ImageUrlHelper.imageBaseUrl}/data/item/${item.itId}/no_img.png';
+    final fallback = defaultImage ?? '${ImageUrlHelper.imageBaseUrl}/data/item/${item.itId}/no_img.png';
+    if (kIsWeb &&
+        (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
+        fallback.startsWith('http')) {
+      return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
+    }
+    return fallback;
   }
 
   Future<void> _updateQuantity(int ctId, int newQuantity) async {
@@ -361,6 +393,20 @@ class _CartScreenState extends State<CartScreen> {
                     )
                   : Column(
                       children: [
+                        // 상단 상품 탭 (전체 / 일반 / 처방)
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          color: Colors.white,
+                          child: Row(
+                            children: [
+                              _buildCartTab('전체', 0),
+                              const SizedBox(width: 8),
+                              _buildCartTab('일반상품', 1),
+                              const SizedBox(width: 8),
+                              _buildCartTab('처방상품', 2),
+                            ],
+                          ),
+                        ),
                         // 전체 선택 및 삭제 버튼 영역
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -380,15 +426,18 @@ class _CartScreenState extends State<CartScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Checkbox(
-                                    value: selectAll && selectedItems.length == cartItems.length,
+                                    value: _displayedCartItems.isNotEmpty &&
+                                        _displayedItemIds.difference(selectedItems).isEmpty,
                                     onChanged: (bool? value) {
                                       setState(() {
-                                        selectAll = value ?? false;
-                                        if (selectAll) {
-                                          selectedItems = cartItems.map((item) => item.ctId).toSet();
+                                        final shouldSelect = value ?? false;
+                                        if (shouldSelect) {
+                                          selectedItems.addAll(_displayedItemIds);
                                         } else {
-                                          selectedItems.clear();
+                                          selectedItems.removeAll(_displayedItemIds);
                                         }
+                                        selectAll = _displayedCartItems.isNotEmpty &&
+                                            _displayedItemIds.difference(selectedItems).isEmpty;
                                       });
                                     },
                                   ),
@@ -462,7 +511,18 @@ class _CartScreenState extends State<CartScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       // 상품 목록
-                                      ...cartItems.map((item) => _buildCartItemCard(item)),
+                                      ..._displayedCartItems.map((item) => _buildCartItemCard(item)),
+                                      if (_displayedCartItems.isEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 40),
+                                          child: Text(
+                                            '선택한 탭에 상품이 없습니다.',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
                                       
                                       const SizedBox(height: 16),
                                       
@@ -571,72 +631,75 @@ class _CartScreenState extends State<CartScreen> {
       ),
       child: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 0, top: 16, right: 16, bottom: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 선택 체크박스
-                Checkbox(
-                  value: isSelected,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      if (value ?? false) {
-                        selectedItems.add(item.ctId);
-                      } else {
-                        selectedItems.remove(item.ctId);
-                      }
-                      // 전체 선택 상태 업데이트
-                      selectAll = selectedItems.length == cartItems.length;
-                    });
-                  },
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 8),
-                // 상품 이미지 (data/item/{it_id}/...jpg 형식)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    _getImageUrl(item),
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                    cacheWidth: 100, // 메모�?최적??
-                    cacheHeight: 100,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        width: 100,
-                        height: 100,
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      );
+          InkWell(
+            onTap: () {
+              Navigator.pushNamed(context, '/product/${item.itId}');
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(left: 0, top: 16, right: 16, bottom: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 선택 체크박스
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value ?? false) {
+                          selectedItems.add(item.ctId);
+                        } else {
+                          selectedItems.remove(item.ctId);
+                        }
+                        // 현재 탭 기준 전체 선택 상태 업데이트
+                        selectAll = _displayedCartItems.isNotEmpty &&
+                            _displayedItemIds.difference(selectedItems).isEmpty;
+                      });
                     },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 100,
-                        height: 100,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image_not_supported, color: Colors.grey),
-                      );
-                    },
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
                   ),
-                ),
-                
-                const SizedBox(width: 16),
-                
-                // 상품 정보
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                  const SizedBox(width: 8),
+                  // 상품 이미지 (data/item/{it_id}/...jpg 형식)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      _getImageUrl(item),
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      cacheWidth: 100,
+                      cacheHeight: 100,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 100,
+                          height: 100,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 100,
+                          height: 100,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // 상품 정보
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                       // 상품 타입 태그
                       if (item.productType != null)
                         Container(
@@ -782,10 +845,11 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                         ],
                       ],
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           
@@ -796,7 +860,7 @@ class _CartScreenState extends State<CartScreen> {
             child: ElevatedButton(
               onPressed: () => _deleteCartItem(item.ctId),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF3787),
+                backgroundColor: Colors.grey[500],
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 minimumSize: Size.zero,
@@ -815,6 +879,38 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCartTab(String label, int index) {
+    final isSelected = _selectedTabIndex == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedTabIndex = index;
+            selectAll = _displayedCartItems.isNotEmpty &&
+                _displayedItemIds.difference(selectedItems).isEmpty;
+          });
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFFF3787) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : Colors.black87,
+            ),
+          ),
+        ),
       ),
     );
   }
