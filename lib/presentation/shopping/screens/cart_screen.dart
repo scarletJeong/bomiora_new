@@ -8,7 +8,9 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../core/network/api_client.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  final String? backToProductId;
+
+  const CartScreen({super.key, this.backToProductId});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -22,22 +24,34 @@ class _CartScreenState extends State<CartScreen> {
   int shippingCost = 0; // 배송비
   int totalPrice = 0; // 총구매금액
   Set<int> selectedItems = {}; // 선택된 아이템의 ctId 집합
-  bool selectAll = true; // 전체 선택 상태 (기본값: true)
-  int _selectedTabIndex = 0; // 0: 전체, 1: 일반, 2: 처방
+  bool selectAll = false; // 현재 탭의 전체 선택 상태
+  int _selectedTabIndex = 0; // 0: 처방, 1: 일반
 
   List<CartItem> get _displayedCartItems {
     switch (_selectedTabIndex) {
+      case 0:
+        return cartItems.where((item) => item.isPrescription).toList();
       case 1:
         return cartItems.where((item) => !item.isPrescription).toList();
-      case 2:
-        return cartItems.where((item) => item.isPrescription).toList();
       default:
-        return cartItems;
+        return cartItems.where((item) => item.isPrescription).toList();
     }
   }
 
   Set<int> get _displayedItemIds {
     return _displayedCartItems.map((item) => item.ctId).toSet();
+  }
+
+  Set<int> get _selectedDisplayedItemIds {
+    return selectedItems.intersection(_displayedItemIds);
+  }
+
+  String _normalizeProxyTarget(String url) {
+    // 로컬 XAMPP 경로(localhost/bomiora/www)는 프록시에서 403 차단될 수 있어
+    // 허용되는 bomiora.kr 경로로 치환한다.
+    return url
+        .replaceAll('https://localhost/bomiora/www', 'https://bomiora.kr')
+        .replaceAll('http://localhost/bomiora/www', 'https://bomiora.kr');
   }
 
   @override
@@ -85,10 +99,12 @@ class _CartScreenState extends State<CartScreen> {
           cartItems = items;
           shippingCost = (result['shipping_cost'] as int?) ?? 0;
           totalPrice = (result['total_price'] as int?) ?? 0;
-          
-          // 기본값으로 전체 선택
+
+          // 사라진 아이템의 선택 상태는 제거하고, 현재 탭 전체선택 상태면 현재 탭 아이템만 재선택
+          final existingIds = items.map((item) => item.ctId).toSet();
+          selectedItems = selectedItems.where(existingIds.contains).toSet();
           if (selectAll) {
-            selectedItems = items.map((item) => item.ctId).toSet();
+            selectedItems.addAll(_displayedItemIds);
           }
           selectAll = _displayedCartItems.isNotEmpty &&
               _displayedItemIds.difference(selectedItems).isEmpty;
@@ -131,7 +147,9 @@ class _CartScreenState extends State<CartScreen> {
         if (kIsWeb &&
             (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
             normalized.startsWith('http')) {
-          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(normalized)}';
+          // return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(normalized)}';
+          final target = _normalizeProxyTarget(normalized);
+          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(target)}';
         }
         return normalized;
       }
@@ -142,7 +160,9 @@ class _CartScreenState extends State<CartScreen> {
     if (kIsWeb &&
         (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
         fallback.startsWith('http')) {
-      return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
+      // return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
+      final target = _normalizeProxyTarget(fallback);
+      return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(target)}';
     }
     return fallback;
   }
@@ -217,13 +237,14 @@ class _CartScreenState extends State<CartScreen> {
 
   // 선택된 아이템들 삭제
   Future<void> _deleteSelectedItems() async {
-    if (selectedItems.isEmpty) return;
+    final selectedDisplayedItems = _selectedDisplayedItemIds;
+    if (selectedDisplayedItems.isEmpty) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('삭제 확인'),
-        content: Text('선택한 ${selectedItems.length}개 상품을 장바구니에서 삭제하시겠습니까?'),
+        content: Text('선택한 ${selectedDisplayedItems.length}개 상품을 장바구니에서 삭제하시겠습니까?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -239,7 +260,7 @@ class _CartScreenState extends State<CartScreen> {
 
     if (confirmed == true) {
       // 선택된 아이템들을 순차적으로 삭제
-      final itemsToDelete = List<int>.from(selectedItems);
+      final itemsToDelete = List<int>.from(selectedDisplayedItems);
       int successCount = 0;
       int failCount = 0;
 
@@ -254,7 +275,7 @@ class _CartScreenState extends State<CartScreen> {
 
       // 선택 상태 초기화
       setState(() {
-        selectedItems.clear();
+        selectedItems.removeAll(itemsToDelete);
         selectAll = false;
       });
 
@@ -285,7 +306,7 @@ class _CartScreenState extends State<CartScreen> {
   // 선택된 아이템들의 총구매금액 계산
   int get selectedTotalPrice {
     int sum = 0;
-    for (var item in cartItems) {
+    for (var item in _displayedCartItems) {
       if (selectedItems.contains(item.ctId)) {
         sum += item.ctPrice;
       }
@@ -296,10 +317,13 @@ class _CartScreenState extends State<CartScreen> {
   // 선택된 아이템의 배송비 계산 (현재는 간단히 전체 배송비를 사용)
   // TODO: 선택된 아이템만으로 배송비를 계산하도록 백엔드 API 수정 필요
   int get selectedShippingCost {
-    // 선택된 아이템이 없으면 배송비 0
-    if (selectedItems.isEmpty) return 0;
-    // 선택된 아이템이 전체와 같으면 전체 배송비 사용
-    if (selectedItems.length == cartItems.length) {
+    // 현재 탭에서 선택된 아이템이 없으면 배송비 0
+    if (_selectedDisplayedItemIds.isEmpty) return 0;
+    // 처방/일반이 혼합된 장바구니에서는 탭별 배송비를 백엔드가 내려주지 않으므로
+    // 다른 탭 금액이 섞여 보이지 않게 0으로 처리한다.
+    if (_displayedCartItems.length != cartItems.length) return 0;
+    // 선택된 아이템이 현재 탭 전체와 같으면 전체 배송비 사용
+    if (_selectedDisplayedItemIds.length == _displayedCartItems.length) {
       return shippingCost;
     }
     // 일부만 선택한 경우도 전체 배송비를 사용 (추후 백엔드에서 재계산 필요)
@@ -315,10 +339,28 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  void _handleBackNavigation() {
+    final backToProductId = widget.backToProductId;
+    if (backToProductId != null && backToProductId.isNotEmpty) {
+      Navigator.of(context).pushReplacementNamed('/product/$backToProductId');
+      return;
+    }
+
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: _handleBackNavigation,
+        ),
         title: const Text(
           '장바구니',
           style: TextStyle(
@@ -399,11 +441,9 @@ class _CartScreenState extends State<CartScreen> {
                           color: Colors.white,
                           child: Row(
                             children: [
-                              _buildCartTab('전체', 0),
-                              const SizedBox(width: 8),
+                              _buildCartTab('처방상품', 0),
+                              const SizedBox(width: 10),
                               _buildCartTab('일반상품', 1),
-                              const SizedBox(width: 8),
-                              _buildCartTab('처방상품', 2),
                             ],
                           ),
                         ),
@@ -477,7 +517,7 @@ class _CartScreenState extends State<CartScreen> {
                                   ),
                                   const SizedBox(width: 4),
                                   TextButton(
-                                    onPressed: selectedItems.isEmpty
+                                    onPressed: _selectedDisplayedItemIds.isEmpty
                                         ? null
                                         : () => _deleteSelectedItems(),
                                     style: TextButton.styleFrom(
@@ -489,7 +529,7 @@ class _CartScreenState extends State<CartScreen> {
                                       '선택삭제',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: selectedItems.isEmpty ? Colors.grey : Colors.red,
+                                        color: _selectedDisplayedItemIds.isEmpty ? Colors.grey : Colors.red,
                                       ),
                                     ),
                                   ),

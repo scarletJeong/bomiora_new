@@ -13,6 +13,7 @@ import '../../../core/utils/node_value_parser.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/wish_service.dart';
+import '../../../data/services/cart_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/product/product_option_model.dart';
@@ -23,6 +24,7 @@ import '../widgets/product_tail_info_section.dart';
 import '../../user/healthprofile/screens/health_profile_form_screen.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import 'product_reviews_screen.dart';
+import 'webview_screen.dart';
 import '../../review/screens/review_detail_screen.dart';
 import '../../customer_service/screens/contact_form_screen.dart';
 
@@ -110,6 +112,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             _pageController?.dispose();
             _pageController = PageController();
           }
+          
+          // 상품 종류 로그 출력
+          print('✅ [상품 상세 로드 완료]');
+          print('  - productId: ${product.id}');
+          print('  - productKind: ${product.productKind}');
+          print('  - ctKind (getter): ${product.ctKind}');
         }
       });
       
@@ -171,9 +179,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         }
       }
       
-      // 전체 리뷰 가져오기
+      // 전체 리뷰 가져오기 (rvkind만 사용, ct_kind는 사용하지 않음)
       final result = await ReviewService.getProductReviews(
         itId: reviewProductId,
+        rvkind: null, // 전체 리뷰
         page: 0,
         size: 50,
       );
@@ -451,7 +460,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, size: 20),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                Navigator.of(context).pushReplacementNamed('/home');
+              }
+            },
           ),
         ),
       ),
@@ -2076,7 +2091,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+
   Widget _buildBottomActionBar() {
+    final isGeneralProduct = _product?.ctKind == 'general';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -2112,7 +2135,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               ),
             ),
             const SizedBox(width: 12),
-            // 처방 예약하기 버튼
+            // 상품 종류에 따른 메인 액션 버튼
             Expanded(
               child: ElevatedButton(
                 onPressed: _showOptionSelectionDialog,
@@ -2124,9 +2147,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  '처방 예약하기',
-                  style: TextStyle(
+                child: Text(
+                  isGeneralProduct ? '구매하기' : '처방 예약하기',
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2143,9 +2166,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Future<void> _showOptionSelectionDialog() async {
     if (_product == null) return;
     
-    // 옵션이 없으면 직접 예약 진행
+    // 옵션이 없는 상품 처리
     if (_productOptions.isEmpty) {
-      _proceedWithReservation();
+      if (_product!.ctKind == 'general') {
+        _showGeneralQuantityBottomSheet();
+      } else {
+        _proceedWithReservation();
+      }
       return;
     }
     
@@ -2184,23 +2211,247 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             print('📝 [부모] 상태 업데이트 완료 - _selectedOptions 개수: ${_selectedOptions.length}');
           });
         },
-        onAddToCart: () {
+        onAddToCart: () async {
+          if (_product == null || _selectedOptions.isEmpty) return;
+          
           Navigator.of(context).pop();
+          
+          // 로딩 표시
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('장바구니에 추가되었습니다.'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              width: 568, // 600px - 32px (양쪽 16px 여백)
-              duration: Duration(seconds: 2),
+              content: Text('장바구니에 추가 중...'),
+              duration: Duration(seconds: 1),
             ),
           );
+          
+          // 실제 장바구니 추가
+          final result = await CartService.addOptionsToCart(
+            product: _product!,
+            selectedOptions: _selectedOptions,
+          );
+          
+          if (!mounted) return;
+          
+          if (result['success'] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('장바구니에 추가되었습니다.'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                width: 568,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            // 옵션 초기화
+            setState(() {
+              _selectedOptions.clear();
+            });
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? '장바구니 추가에 실패했습니다.'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                width: 568,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
         },
         onReserve: () {
           Navigator.of(context).pop();
           _navigateToQuestionnaire();
         },
+        onBuyNow: () async {
+          if (_product == null || _selectedOptions.isEmpty) return;
+
+          Navigator.of(context).pop();
+
+          final result = await CartService.addOptionsToCart(
+            product: _product!,
+            selectedOptions: _selectedOptions,
+          );
+
+          if (!mounted) return;
+          if (result['success'] == true) {
+            setState(() {
+              _selectedOptions.clear();
+            });
+            _navigateToCheckoutPage();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? '구매 처리에 실패했습니다.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
       ),
+    );
+  }
+
+  Future<bool> _addGeneralProductToCart({required int quantity}) async {
+    if (_product == null) return false;
+    final result = await CartService.addToCart(
+      productId: _product!.id,
+      quantity: quantity,
+      price: _product!.price * quantity,
+      ctKind: _product!.ctKind,
+    );
+
+    if (!mounted) return false;
+
+    final success = result['success'] == true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? '장바구니에 추가되었습니다.'
+              : (result['message'] ?? '장바구니 추가에 실패했습니다.'),
+        ),
+        backgroundColor: success ? Colors.green : Colors.red,
+      ),
+    );
+    return success;
+  }
+
+  void _navigateToCheckoutPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const WebViewScreen(
+          url: 'https://bomiora.kr/shop/orderform.php?mobile_app=1&hide_header=1&hide_footer=1',
+          title: '결제 페이지',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showGeneralQuantityBottomSheet() async {
+    if (_product == null) return;
+
+    int quantity = 1;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final totalPrice = _product!.price * quantity;
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _product!.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '수량',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: quantity > 1
+                                  ? () => setModalState(() => quantity--)
+                                  : null,
+                              icon: const Icon(Icons.remove_circle_outline),
+                            ),
+                            Text(
+                              '$quantity',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                            IconButton(
+                              onPressed: () => setModalState(() => quantity++),
+                              icon: const Icon(Icons.add_circle_outline),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '총 ${_formatPrice(totalPrice)}원',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFFF4081),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              Navigator.of(context).pop();
+                              final success = await _addGeneralProductToCart(
+                                quantity: quantity,
+                              );
+                              if (!mounted || !success) return;
+                              Navigator.pushNamed(this.context, '/cart');
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.black87,
+                              side: BorderSide(color: Colors.grey[400]!),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text(
+                              '장바구니',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              Navigator.of(context).pop();
+                              final success = await _addGeneralProductToCart(
+                                quantity: quantity,
+                              );
+                              if (!mounted || !success) return;
+                              _navigateToCheckoutPage();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF4081),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text(
+                              '구매하기',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -2318,6 +2569,7 @@ class _OptionSelectionBottomSheet extends StatefulWidget {
   final Function(Map<ProductOption, int>) onOptionsChanged; // 옵션 변경 콜백
   final VoidCallback onAddToCart; // 장바구니 추가 콜백
   final VoidCallback onReserve; // 처방예약하기 콜백
+  final VoidCallback onBuyNow; // 일반상품 바로구매 콜백
   
   const _OptionSelectionBottomSheet({
     required this.title,
@@ -2329,6 +2581,7 @@ class _OptionSelectionBottomSheet extends StatefulWidget {
     required this.onOptionsChanged,
     required this.onAddToCart,
     required this.onReserve,
+    required this.onBuyNow,
   });
   
   @override
@@ -2781,28 +3034,56 @@ class _OptionSelectionBottomSheetState extends State<_OptionSelectionBottomSheet
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: widget.productKind == 'general'
-                            ? OutlinedButton(
-                                onPressed: _selectedOptions.isEmpty
-                                    ? null
-                                    : widget.onAddToCart,
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  side: BorderSide(color: Colors.grey[300]!),
-                                ),
-                                child: const SizedBox(
-                                  width: double.infinity,
-                                  child: Text(
-                                    '장바구니',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
+                            ? Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: _selectedOptions.isEmpty
+                                          ? null
+                                          : widget.onAddToCart,
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        side: BorderSide(color: Colors.grey[300]!),
+                                      ),
+                                      child: const Text(
+                                        '장바구니',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: _selectedOptions.isEmpty
+                                          ? null
+                                          : widget.onBuyNow,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFFFF4081),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        disabledBackgroundColor: Colors.grey[300],
+                                      ),
+                                      child: const Text(
+                                        '구매하기',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               )
                             : ElevatedButton(
                                 onPressed: _selectedOptions.isEmpty

@@ -433,7 +433,13 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                                 try {
                                   final navigator = navigatorKey.currentState;
                                   if (navigator != null) {
-                                    navigator.pushNamedAndRemoveUntil('/cart', (route) => false);
+                                    navigator.pushNamedAndRemoveUntil(
+                                      '/cart',
+                                      (route) => false,
+                                      arguments: {
+                                        'backToProductId': widget.productId,
+                                      },
+                                    );
                                   } else {
                                     print('⚠️ [네비게이션] Navigator가 null입니다');
                                   }

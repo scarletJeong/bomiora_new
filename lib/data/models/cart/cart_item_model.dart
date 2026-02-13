@@ -98,6 +98,12 @@ class CartItem {
       }
     }
 
+    final rawCtKind =
+        NodeValueParser.asString(normalized['ct_kind']) ??
+        NodeValueParser.asString(normalized['ctKind']) ??
+        'general';
+    final normalizedCtKind = _normalizeKind(rawCtKind);
+
     return CartItem(
       ctId: _parseInt(normalized['ct_id'] ?? normalized['ctId']),
       odId:
@@ -136,10 +142,7 @@ class CartItem {
           normalized['io_price'] != null
               ? _parseInt(normalized['io_price'] ?? normalized['ioPrice'])
               : null,
-      ctKind:
-          NodeValueParser.asString(normalized['ct_kind']) ??
-          NodeValueParser.asString(normalized['ctKind']) ??
-          'general',
+      ctKind: normalizedCtKind,
       ctTime: ctTime,
       doctorName:
           doctorName ??
@@ -194,6 +197,15 @@ class CartItem {
     return 0;
   }
 
+  static String _normalizeKind(String kind) {
+    final cleaned = kind
+        .replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '')
+        .trim()
+        .toLowerCase();
+    if (cleaned.isEmpty) return 'general';
+    return cleaned;
+  }
+
   String get formattedPrice {
     return '${ctPrice.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -201,5 +213,14 @@ class CartItem {
     )}원';
   }
 
-  bool get isPrescription => ctKind == 'prescription';
+  bool get isPrescription {
+    final kind = _normalizeKind(ctKind);
+    if (kind == 'prescription') {
+      return true;
+    }
+    if (doctorName != null && doctorName!.trim().isNotEmpty) return true;
+    if (reservationDate != null) return true;
+    if (reservationTime != null && reservationTime!.trim().isNotEmpty) return true;
+    return false;
+  }
 }

@@ -113,17 +113,83 @@ class ProductRepository {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
+        Product? productObj;
         if (data is Map && data['success'] == true && data['data'] != null) {
           final product = data['data'];
           if (product is Map) {
-            return Product.fromJson(Map<String, dynamic>.from(product));
+            // bomiora_shop_item_new 테이블에서 가져온 원본 데이터 로그 출력
+            final itId = product['it_id'] ?? product['id'];
+            final itKind = product['it_kind'];
+            final ctKind = product['ct_kind'];
+            final productKind = product['productKind'];
+            
+            // Buffer 객체 처리
+            String? itIdStr;
+            String? itKindStr;
+            if (itId is Map && itId['type'] == 'Buffer' && itId['data'] != null) {
+              itIdStr = String.fromCharCodes((itId['data'] as List).map((e) => e as int));
+            } else {
+              itIdStr = itId?.toString();
+            }
+            if (itKind is Map && itKind['type'] == 'Buffer' && itKind['data'] != null) {
+              itKindStr = String.fromCharCodes((itKind['data'] as List).map((e) => e as int));
+            } else {
+              itKindStr = itKind?.toString();
+            }
+            
+            print('📦 [상품 상세 조회] 원본 데이터 (bomiora_shop_item_new):');
+            print('  - it_id (원본): $itId');
+            print('  - it_id (문자열): $itIdStr');
+            print('  - it_kind (원본): $itKind');
+            print('  - it_kind (문자열): $itKindStr');
+            print('  - ct_kind: $ctKind');
+            print('  - productKind: $productKind');
+            
+            productObj = Product.fromJson(Map<String, dynamic>.from(product));
+            if (productObj != null) {
+              print('  - 파싱된 productKind: ${productObj.productKind}');
+              print('  - 파싱된 ctKind (getter): ${productObj.ctKind}');
+            }
           }
         } else if (data is Map && data['product'] != null) {
           final product = data['product'];
           if (product is Map) {
-            return Product.fromJson(Map<String, dynamic>.from(product));
+            // bomiora_shop_item_new 테이블에서 가져온 원본 데이터 로그 출력
+            final itId = product['it_id'] ?? product['id'];
+            final itKind = product['it_kind'];
+            final ctKind = product['ct_kind'];
+            final productKind = product['productKind'];
+            
+            // Buffer 객체 처리
+            String? itIdStr;
+            String? itKindStr;
+            if (itId is Map && itId['type'] == 'Buffer' && itId['data'] != null) {
+              itIdStr = String.fromCharCodes((itId['data'] as List).map((e) => e as int));
+            } else {
+              itIdStr = itId?.toString();
+            }
+            if (itKind is Map && itKind['type'] == 'Buffer' && itKind['data'] != null) {
+              itKindStr = String.fromCharCodes((itKind['data'] as List).map((e) => e as int));
+            } else {
+              itKindStr = itKind?.toString();
+            }
+            
+            print('📦 [상품 상세 조회] 원본 데이터 (bomiora_shop_item_new):');
+            print('  - it_id (원본): $itId');
+            print('  - it_id (문자열): $itIdStr');
+            print('  - it_kind (원본): $itKind');
+            print('  - it_kind (문자열): $itKindStr');
+            print('  - ct_kind: $ctKind');
+            print('  - productKind: $productKind');
+            
+            productObj = Product.fromJson(Map<String, dynamic>.from(product));
+            if (productObj != null) {
+              print('  - 파싱된 productKind: ${productObj.productKind}');
+              print('  - 파싱된 ctKind (getter): ${productObj.ctKind}');
+            }
           }
         }
+        return productObj;
       }
       
       return null;

@@ -10,7 +10,7 @@ class Product {
   final String? imageUrl;
   final String categoryId;
   final String? categoryName;
-  final String? productKind; // prescription, general 등
+  final String? productKind; // prescription, general 등 (it_kind 필드)
   final bool isNew;
   final bool isBest;
   final int? stock;
@@ -70,7 +70,8 @@ class Product {
           NodeValueParser.asString(normalized['ca_name']),
       productKind:
           NodeValueParser.asString(normalized['productKind']) ??
-          NodeValueParser.asString(normalized['it_kind']),
+          NodeValueParser.asString(normalized['it_kind']) ??
+          NodeValueParser.asString(normalized['ct_kind']),
       isNew: _parseBool(normalized['isNew'] ?? normalized['it_new']),
       isBest: _parseBool(normalized['isBest'] ?? normalized['it_best']),
       stock: NodeValueParser.asInt(normalized['stock'] ?? normalized['it_stock_qty']),
@@ -136,5 +137,19 @@ class Product {
   double? get discountRate {
     if (originalPrice == null || originalPrice! <= 0) return null;
     return ((originalPrice! - price) / originalPrice!) * 100;
+  }
+
+  /// 장바구니에 추가할 때 사용할 ct_kind 값 반환
+  /// productKind (it_kind)를 기반으로 판단, 없으면 'general'
+  String get ctKind {
+    if (productKind != null && productKind!.trim().isNotEmpty) {
+      final normalized = productKind!.trim().toLowerCase();
+      // prescription 관련 값이면 'prescription' 반환
+      if (normalized == 'prescription'  ) {
+        return 'prescription';
+      }
+      return normalized;
+    }
+    return 'general';
   }
 }

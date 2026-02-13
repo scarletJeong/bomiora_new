@@ -135,7 +135,7 @@ class ReviewService {
       print('  - rvkind: $rvkind');
       print('  - page: $page, size: $size');
 
-      // 쿼리 파라미터 구성
+      // 쿼리 파라미터 구성 (rvkind만 사용)
       String queryString = 'page=$page&size=$size';
       if (rvkind != null && rvkind.isNotEmpty) {
         queryString += '&rvkind=$rvkind';
