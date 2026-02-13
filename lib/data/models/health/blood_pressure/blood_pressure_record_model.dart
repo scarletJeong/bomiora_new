@@ -1,3 +1,5 @@
+import '../../../../core/utils/node_value_parser.dart';
+
 class BloodPressureRecord {
   final int? id;
   final String mbId;
@@ -82,14 +84,27 @@ class BloodPressureRecord {
   }
 
   factory BloodPressureRecord.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
+    final measuredAtValue =
+        NodeValueParser.asString(normalized['measured_at']) ??
+        NodeValueParser.asString(normalized['measuredAt']);
+
     return BloodPressureRecord(
-      id: json['id'] as int?,
-      mbId: json['mb_id'] as String,
-      measuredAt: DateTime.parse(json['measured_at'] as String),
-      systolic: json['systolic'] as int,
-      diastolic: json['diastolic'] as int,
-      pulse: json['pulse'] as int,
-      status: json['status'] as String?,
+      id: NodeValueParser.asInt(normalized['id']),
+      mbId:
+          NodeValueParser.asString(normalized['mb_id']) ??
+          NodeValueParser.asString(normalized['mbId']) ??
+          '',
+      measuredAt: measuredAtValue != null
+          ? (() {
+              final dt = DateTime.tryParse(measuredAtValue) ?? DateTime.now();
+              return dt.isUtc ? dt.toLocal() : dt;
+            })()
+          : DateTime.now(),
+      systolic: NodeValueParser.asInt(normalized['systolic']) ?? 0,
+      diastolic: NodeValueParser.asInt(normalized['diastolic']) ?? 0,
+      pulse: NodeValueParser.asInt(normalized['pulse']) ?? 0,
+      status: NodeValueParser.asString(normalized['status']),
     );
   }
 

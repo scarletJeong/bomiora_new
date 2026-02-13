@@ -1,3 +1,5 @@
+import '../../../../core/utils/node_value_parser.dart';
+
 class MenstrualCycleRecord {
   final int? id;
   final String mbId;
@@ -96,18 +98,36 @@ class MenstrualCycleRecord {
   }
 
   factory MenstrualCycleRecord.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
+    final periodStartValue =
+        NodeValueParser.asString(normalized['last_period_start']) ??
+        NodeValueParser.asString(normalized['lastPeriodStart']);
+    final createdAtValue = NodeValueParser.asString(normalized['created_at']);
+    final updatedAtValue = NodeValueParser.asString(normalized['updated_at']);
+
     return MenstrualCycleRecord(
-      id: json['id'] as int?,
-      mbId: json['mb_id'] as String,
-      lastPeriodStart: DateTime.parse(json['last_period_start'] as String),
-      cycleLength: json['cycle_length'] as int,
-      periodLength: json['period_length'] as int,
-      notes: json['notes'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String) 
+      id: NodeValueParser.asInt(normalized['id']),
+      mbId:
+          NodeValueParser.asString(normalized['mb_id']) ??
+          NodeValueParser.asString(normalized['mbId']) ??
+          '',
+      lastPeriodStart: periodStartValue != null
+          ? DateTime.tryParse(periodStartValue) ?? DateTime.now()
+          : DateTime.now(),
+      cycleLength:
+          NodeValueParser.asInt(normalized['cycle_length']) ??
+          NodeValueParser.asInt(normalized['cycleLength']) ??
+          28,
+      periodLength:
+          NodeValueParser.asInt(normalized['period_length']) ??
+          NodeValueParser.asInt(normalized['periodLength']) ??
+          5,
+      notes: NodeValueParser.asString(normalized['notes']),
+      createdAt: createdAtValue != null
+          ? DateTime.tryParse(createdAtValue)
           : null,
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at'] as String) 
+      updatedAt: updatedAtValue != null
+          ? DateTime.tryParse(updatedAtValue)
           : null,
     );
   }

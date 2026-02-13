@@ -1,3 +1,5 @@
+import '../../../../core/utils/node_value_parser.dart';
+
 class BloodSugarRecord {
   final int? id;
   final String mbId;
@@ -130,13 +132,32 @@ class BloodSugarRecord {
   }
 
   factory BloodSugarRecord.fromJson(Map<String, dynamic> json) {
+    final normalized = NodeValueParser.normalizeMap(json);
+    final measuredAtValue =
+        NodeValueParser.asString(normalized['measured_at']) ??
+        NodeValueParser.asString(normalized['measuredAt']);
+
     return BloodSugarRecord(
-      id: json['id'] as int?,
-      mbId: json['mb_id'] as String,
-      measuredAt: DateTime.parse(json['measured_at'] as String),
-      bloodSugar: json['blood_sugar'] as int,
-      measurementType: json['measurement_type'] as String,
-      status: json['status'] as String?,
+      id: NodeValueParser.asInt(normalized['id']),
+      mbId:
+          NodeValueParser.asString(normalized['mb_id']) ??
+          NodeValueParser.asString(normalized['mbId']) ??
+          '',
+      measuredAt: measuredAtValue != null
+          ? (() {
+              final dt = DateTime.tryParse(measuredAtValue) ?? DateTime.now();
+              return dt.isUtc ? dt.toLocal() : dt;
+            })()
+          : DateTime.now(),
+      bloodSugar:
+          NodeValueParser.asInt(normalized['blood_sugar']) ??
+          NodeValueParser.asInt(normalized['bloodSugar']) ??
+          0,
+      measurementType:
+          NodeValueParser.asString(normalized['measurement_type']) ??
+          NodeValueParser.asString(normalized['measurementType']) ??
+          '평상시',
+      status: NodeValueParser.asString(normalized['status']),
     );
   }
 

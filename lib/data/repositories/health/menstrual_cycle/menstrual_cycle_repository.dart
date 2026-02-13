@@ -66,7 +66,10 @@ class MenstrualCycleRepository {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final List<dynamic> records = data['data'];
-          return records.map((json) => MenstrualCycleRecord.fromJson(json)).toList();
+          return records
+              .whereType<Map>()
+              .map((json) => MenstrualCycleRecord.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
         }
       }
       
@@ -104,7 +107,7 @@ class MenstrualCycleRepository {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          return MenstrualCycleRecord.fromJson(data['data']);
+          return MenstrualCycleRecord.fromJson(Map<String, dynamic>.from(data['data']));
         }
       }
       
