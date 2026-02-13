@@ -4,6 +4,7 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_footer.dart';
 import '../../../common/widgets/date_top_widget.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
@@ -148,6 +149,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     }
   }
 
+  String? _resolveProfileImageUrl(String? path) {
+    if (path == null || path.trim().isEmpty) return null;
+    final trimmed = path.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('/')) return '${ApiClient.baseUrl}$trimmed';
+    return '${ApiClient.baseUrl}/$trimmed';
+  }
+
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
@@ -255,15 +264,38 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: Text(
-                      currentUser?.name.isNotEmpty == true 
-                          ? currentUser!.name[0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    child: ClipOval(
+                      child: _resolveProfileImageUrl(currentUser?.profileImage) != null
+                          ? Image.network(
+                              _resolveProfileImageUrl(currentUser?.profileImage)!,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Text(
+                                  currentUser?.name.isNotEmpty == true
+                                      ? currentUser!.name[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Text(
+                                currentUser?.name.isNotEmpty == true
+                                    ? currentUser!.name[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                   Positioned(
@@ -291,13 +323,33 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      currentUser?.name ?? '사용자',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            currentUser?.name ?? '사용자',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _showHealthConnectDialog,
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFFFF3787),
+                            side: const BorderSide(color: Color(0xFFFF3787)),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            '연동하기',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -660,33 +712,39 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   // 건강 지표 카드
-  Widget _buildHealthMetricCard(String title, String mainValue, String subValue, IconData icon, Color color) {
+  Widget _buildHealthMetricCard(
+    String title,
+    String mainValue,
+    String subValue,
+    IconData icon,
+    Color color,
+  ) {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         // 해당 지표 입력 페이지로 이동
         if (title == '혈압') {
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => BloodPressureListScreen(initialDate: selectedDate),
             ),
           );
         } else if (title == '혈당') {
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => BloodSugarListScreen(initialDate: selectedDate),
             ),
           );
         } else if (title == '생리주기') {
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => MenstrualCycleInfoScreen(),
             ),
           );
         } else if (title == '걸음수') {
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => StepsTodayScreen(initialDate: selectedDate),
@@ -694,6 +752,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           );
         } else {
           print('Navigate to $title input page');
+        }
+        if (mounted) {
+          _loadData();
         }
       },
       child: Container(
@@ -757,5 +818,24 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       ),
     );
   }
-  
+
+  void _showHealthConnectDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('헬스 연동 안내'),
+        content: const Text(
+          'iPhone은 Apple Health, 갤럭시는 Samsung Health와 연동할 수 있습니다.\n\n'
+          '현재 앱에서는 연동 기능이 준비 중이며, SDK 연동 완료 후 자동 수집을 지원할 예정입니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

@@ -119,8 +119,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     // 캐시에서 데이터 가져오기 (없으면 빈 배열)
     final dayRecords = dailyRecordsCache[selectedDateStr] ?? [];
     
-    // 시간 내림차순 정렬 (최신 시간이 먼저)
-    dayRecords.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+    // 시간 오름차순 정렬 (차트 라인 연결 안정화)
+    dayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
     
     final timeRange = _calculateTimeRange();
     final minHourDiff = timeRange['min']!;
@@ -143,8 +143,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
   // 차트 포인트 생성 (통합)
   Map<String, dynamic> _createChartPoint(BloodPressureRecord record, int recordHour, int recordMinute, double minHourDiff, double maxHourDiff) {
-    final normalizedMinute = (recordMinute / 5).floor() * 5;
-    final minuteRatio = normalizedMinute / 60.0;
+    final secondRatio = record.measuredAt.second / 3600.0;
+    final minuteRatio = (recordMinute / 60.0) + secondRatio;
     final range = maxHourDiff - minHourDiff;
     
     // 통합 로직: 시작 시간 기준으로 X축 위치 계산
@@ -159,7 +159,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       'systolic': record.systolic,
       'diastolic': record.diastolic,
       'record': record,
-      'normalizedMinute': normalizedMinute,
       'xPosition': xPosition,
     };
   }

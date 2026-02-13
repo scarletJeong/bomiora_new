@@ -150,8 +150,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
 
   // 차트 포인트 생성 (통합)
   Map<String, dynamic> _createChartPoint(BloodSugarRecord record, int recordHour, int recordMinute, double minHourDiff, double maxHourDiff) {
-    final normalizedMinute = (recordMinute / 5).floor() * 5;
-    final minuteRatio = normalizedMinute / 60.0;
+    final secondRatio = record.measuredAt.second / 3600.0;
+    final minuteRatio = (recordMinute / 60.0) + secondRatio;
     final range = maxHourDiff - minHourDiff;
     
     // 통합 로직: 시작 시간 기준으로 X축 위치 계산
@@ -166,7 +166,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       'bloodSugar': record.bloodSugar,
       'measurementType': record.measurementType,
       'record': record,
-      'normalizedMinute': normalizedMinute,
       'xPosition': xPosition,
     };
   }
@@ -379,6 +378,11 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       if (currentUser != null) {
         // 전체 혈당 기록 한 번만 로드
         allRecords = await BloodSugarRepository.getBloodSugarRecords(currentUser!.id);
+        print('📊 [혈당 리스트 로드] 총 ${allRecords.length}건');
+        for (final r in allRecords) {
+          print(
+              '  - id=${r.id}, sugar=${r.bloodSugar}, type=${r.measurementType}, status=${r.status}, at=${DateFormat('yyyy-MM-dd HH:mm:ss').format(r.measuredAt)}');
+        }
         
         // 메모리에서 날짜별로 캐싱 (API 호출 없이 필터링)
         _cacheRecordsFromMemory();
