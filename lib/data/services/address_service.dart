@@ -39,11 +39,11 @@ class AddressService {
   /// 배송지 목록 조회
   static Future<List<Map<String, dynamic>>> getAddressList(String mbId) async {
     try {
-      print('📦 [배송지 목록 조회] 요청 - mbId: $mbId');
+      print('[배송지 목록 조회] 요청 - mbId: $mbId');
       
       final response = await ApiClient.get('/api/user/address?mbId=$mbId');
       
-      print('📡 [배송지 목록 조회] 응답 상태: ${response.statusCode}');
+      print('[배송지 목록 조회] 응답 상태: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -54,7 +54,7 @@ class AddressService {
               .map(_normalizeAddressItem)
               .whereType<Map<String, dynamic>>()
               .toList();
-          print('✅ [배송지 목록 조회] 성공: ${addressList.length}개');
+          print(' [배송지 목록 조회] 성공: ${addressList.length}개');
           return normalized;
         }
       }
@@ -70,15 +70,15 @@ class AddressService {
   /// 배송지 추가
   static Future<Map<String, dynamic>> addAddress(Map<String, dynamic> addressData) async {
     try {
-      print('📦 [배송지 추가] 요청');
+      print('[배송지 추가] 요청');
       
       final response = await ApiClient.post('/api/user/address', addressData);
       
-      print('📡 [배송지 추가] 응답 상태: ${response.statusCode}');
+      print('[배송지 추가] 응답 상태: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ [배송지 추가] 성공');
+        print(' [배송지 추가] 성공');
         
         return {
           'success': true,
@@ -104,15 +104,15 @@ class AddressService {
   /// 배송지 수정
   static Future<Map<String, dynamic>> updateAddress(int id, Map<String, dynamic> addressData) async {
     try {
-      print('📦 [배송지 수정] 요청 - id: $id');
+      print('[배송지 수정] 요청 - id: $id');
       
       final response = await ApiClient.put('/api/user/address/$id', addressData);
       
-      print('📡 [배송지 수정] 응답 상태: ${response.statusCode}');
+      print('[배송지 수정] 응답 상태: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ [배송지 수정] 성공');
+        print('[배송지 수정] 성공');
         
         return {
           'success': true,
@@ -138,15 +138,15 @@ class AddressService {
   /// 배송지 삭제
   static Future<Map<String, dynamic>> deleteAddress(int id, String mbId) async {
     try {
-      print('📦 [배송지 삭제] 요청 - id: $id');
+      print(' [배송지 삭제] 요청 - id: $id');
       
       final response = await ApiClient.delete('/api/user/address/$id?mbId=$mbId');
       
-      print('📡 [배송지 삭제] 응답 상태: ${response.statusCode}');
+      print(' [배송지 삭제] 응답 상태: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ [배송지 삭제] 성공');
+        print(' [배송지 삭제] 성공');
         
         return {
           'success': true,
@@ -161,6 +161,41 @@ class AddressService {
       }
     } catch (e) {
       print('❌ [배송지 삭제] 에러: $e');
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
+  }
+
+  /// 기본 배송지 설정
+  static Future<Map<String, dynamic>> setDefaultAddress(int id, String mbId) async {
+    try {
+      print('[기본 배송지 설정] 요청 - id: $id, mbId: $mbId');
+
+      final response = await ApiClient.put(
+        '/api/user/address/$id/default?mbId=$mbId',
+        {'mb_id': mbId},
+      );
+
+      print(' [기본 배송지 설정] 응답 상태: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'] ?? '기본 배송지로 설정되었습니다.',
+        };
+      }
+
+      final errorData = json.decode(response.body);
+      return {
+        'success': false,
+        'message': errorData['error'] ?? '기본 배송지 설정에 실패했습니다.',
+      };
+    } catch (e) {
+      print('❌ [기본 배송지 설정] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
