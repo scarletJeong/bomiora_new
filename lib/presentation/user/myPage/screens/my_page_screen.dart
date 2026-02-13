@@ -8,6 +8,7 @@ import '../../../../data/services/point_service.dart';
 import '../../../../data/services/review_service.dart';
 import '../../../../data/services/contact_service.dart';
 import '../../../../data/services/order_service.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../health/dashboard/screens/health_dashboard_screen.dart';
 import '../../../settings/settings_screen.dart';
 import 'profile_settings_screen.dart';
@@ -160,6 +161,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
+  String? _resolveProfileImageUrl(String? path) {
+    if (path == null || path.trim().isEmpty) return null;
+    final trimmed = path.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('/')) return '${ApiClient.baseUrl}$trimmed';
+    return '${ApiClient.baseUrl}/$trimmed';
+  }
+
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
@@ -225,11 +234,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         CircleAvatar(
                           radius: 40,
                           backgroundColor: const Color(0xFFFF3787).withOpacity(0.1),
-                          child: const Icon(
-                            Icons.person,
-                            size: 40,
-                            color: Color(0xFFFF3787),
-                          ),
+                          backgroundImage: _resolveProfileImageUrl(_currentUser?.profileImage) != null
+                              ? NetworkImage(_resolveProfileImageUrl(_currentUser?.profileImage)!)
+                              : null,
+                          child: _resolveProfileImageUrl(_currentUser?.profileImage) == null
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: Color(0xFFFF3787),
+                                )
+                              : null,
                         ),
                         if (_currentUser != null)
                           Positioned(

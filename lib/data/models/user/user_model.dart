@@ -7,6 +7,7 @@ class UserModel {
   final String? nickname; // 닉네임 추가
   final String? phone;
   final String? password; // 비밀번호 저장
+  final String? profileImage; // 프로필 이미지 경로/URL
 
   UserModel({
     required this.id,
@@ -15,6 +16,7 @@ class UserModel {
     this.nickname,
     this.phone,
     this.password,
+    this.profileImage,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,9 @@ class UserModel {
         NodeValueParser.asString(normalized['mb_phone']) ??
         NodeValueParser.asString(normalized['mb_hp']);
     final password = NodeValueParser.asString(normalized['password']);
+    final profileImage =
+        NodeValueParser.asString(normalized['profileImage']) ??
+        NodeValueParser.asString(normalized['profile_img']);
     
     return UserModel(
       id: id,
@@ -51,6 +56,7 @@ class UserModel {
       nickname: nickname,
       phone: phone,
       password: password,
+      profileImage: profileImage,
     );
   }
 
@@ -62,6 +68,7 @@ class UserModel {
       if (nickname != null) 'nickname': nickname,
       'phone': phone,
       if (password != null) 'password': password,
+      if (profileImage != null) 'profileImage': profileImage,
     };
   }
 
@@ -72,6 +79,7 @@ class UserModel {
     String? nickname,
     String? phone,
     String? password,
+    String? profileImage,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -80,6 +88,7 @@ class UserModel {
       nickname: nickname ?? this.nickname,
       phone: phone ?? this.phone,
       password: password ?? this.password,
+      profileImage: profileImage ?? this.profileImage,
     );
   }
 }

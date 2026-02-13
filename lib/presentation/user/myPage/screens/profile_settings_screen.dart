@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/image_picker_utils.dart';
 
 /// 프로필 설정 화면 (개인정보 수정, 비밀번호 변경)
 class ProfileSettingsScreen extends StatefulWidget {
@@ -13,6 +18,7 @@ class ProfileSettingsScreen extends StatefulWidget {
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   UserModel? _currentUser;
+  XFile? _selectedProfileImage;
   
   // 회원정보 입력 컨트롤러
   final TextEditingController _nameController = TextEditingController();
@@ -98,6 +104,51 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
+  String? _resolveProfileImageUrl(String? path) {
+    if (path == null || path.trim().isEmpty) return null;
+    final trimmed = path.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:')) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('/')) return '${ApiClient.baseUrl}$trimmed';
+    return '${ApiClient.baseUrl}/$trimmed';
+  }
+
+  Future<void> _pickAndUploadProfileImage() async {
+    if (_currentUser == null) return;
+
+    await ImagePickerUtils.showImageSourceDialog(context, (picked) async {
+      if (picked == null) return;
+      if (!mounted) return;
+      setState(() {
+        _selectedProfileImage = picked;
+      });
+
+      final result = await AuthService.uploadProfileImage(
+        mbId: _currentUser!.id,
+        imageFile: picked,
+      );
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? '프로필 이미지가 변경되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _loadCurrentUser();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? '프로필 이미지 변경에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
@@ -144,11 +195,21 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: const Color(0xFFFF3787).withOpacity(0.1),
-                  child: const Icon(
-                    Icons.person,
-                    size: 50,
-                    color: Color(0xFFFF3787),
-                  ),
+                  backgroundImage: _selectedProfileImage != null
+                      ? (kIsWeb
+                          ? NetworkImage(_selectedProfileImage!.path)
+                          : FileImage(File(_selectedProfileImage!.path)) as ImageProvider)
+                      : (_resolveProfileImageUrl(_currentUser?.profileImage) != null
+                          ? NetworkImage(_resolveProfileImageUrl(_currentUser?.profileImage)!)
+                          : null),
+                  child: (_selectedProfileImage == null &&
+                          _resolveProfileImageUrl(_currentUser?.profileImage) == null)
+                      ? const Icon(
+                          Icons.person,
+                          size: 50,
+                          color: Color(0xFFFF3787),
+                        )
+                      : null,
                 ),
                 Positioned(
                   right: 0,
@@ -174,10 +235,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           Center(
             child: TextButton(
               onPressed: () {
-                // TODO: 프로필 사진 변경 기능 구현
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('프로필 사진 변경 기능은 추후 구현 예정입니다')),
-                );
+                _pickAndUploadProfileImage();
               },
               child: const Text('프로필 사진 변경'),
             ),

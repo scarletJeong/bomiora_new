@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import '../models/user/user_model.dart';
 import '../../core/network/api_client.dart';
@@ -146,6 +147,45 @@ class AuthService {
       };
     } catch (e) {
       print('❌ [프로필 수정] 에러: $e');
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
+  }
+
+  /// 프로필 이미지 업로드
+  static Future<Map<String, dynamic>> uploadProfileImage({
+    required String mbId,
+    required XFile imageFile,
+  }) async {
+    try {
+      final response = await ApiClient.uploadFile(
+        '/api/user/profile/image?mbId=$mbId',
+        imageFile,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          if (data['user'] != null) {
+            final updatedUser = UserModel.fromJson(data['user']);
+            await updateUser(updatedUser);
+          }
+          return {
+            'success': true,
+            'message': data['message'] ?? '프로필 이미지가 업로드되었습니다.',
+          };
+        }
+      }
+
+      final errorData = json.decode(response.body);
+      return {
+        'success': false,
+        'message': errorData['message'] ?? '프로필 이미지 업로드에 실패했습니다.',
+      };
+    } catch (e) {
+      print('❌ [프로필 이미지 업로드] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
