@@ -22,7 +22,6 @@ class ImageUrlHelper {
         
         // localhost인 경우 로컬 웹 서버 사용 (XAMPP)
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-          // 로컬 개발 환경에서는 HTTP 사용 (SSL 인증서 문제 방지)
           return 'https://localhost/bomiora/www';
         } 
         // Cafe24 개발 서버 환경 - 같은 도메인 사용 (CORS 해결)
@@ -48,8 +47,6 @@ class ImageUrlHelper {
     if (imageUrl == null || imageUrl.isEmpty) {
       return '';
     }
-    
-    print('📸 [normalizeImageUrl] 입력: $imageUrl');
     
     // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
@@ -77,20 +74,17 @@ class ImageUrlHelper {
       // Cafe24 환경
       if (currentHost.contains('mycafe24.com')) {
         final result = 'https://$currentHost$normalizedPath';
-        print('  📍 Cafe24 같은 도메인: $result');
         return result;
       }
       
       // 로컬 환경
       if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
         final result = '$imageBaseUrl$normalizedPath';
-        print('  📍 로컬: $result');
         return result;
       }
     }
     
     final result = '${imageBaseUrl}$normalizedPath';
-    print('  📍 기본: $result');
     return result;
   }
 
@@ -104,7 +98,8 @@ class ImageUrlHelper {
     
     // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return convertToLocalUrl(imagePath);
+      final converted = convertToLocalUrl(imagePath);
+      return converted;
     }
     
     // 이미 data/item/이 포함된 경우 정규화만 수행
@@ -113,7 +108,8 @@ class ImageUrlHelper {
       if (!path.startsWith('/')) {
         path = '/$path';
       }
-      return '${imageBaseUrl}$path';
+      final fullUrl = '${imageBaseUrl}$path';
+      return fullUrl;
     }
     
     // 상대 경로 처리
@@ -164,7 +160,8 @@ class ImageUrlHelper {
       path = '/$path';
     }
     
-    return '${imageBaseUrl}$path';
+    final result = '${imageBaseUrl}$path';
+    return result;
   }
 
   /// 프로덕션 URL을 현재 환경에 맞는 URL로 변환
@@ -180,6 +177,10 @@ class ImageUrlHelper {
         
         // 로컬 개발 환경 - 로컬 경로 사용
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
+          // 상세/리뷰 이미지는 CORS 이슈가 잦아 프록시로 우회
+          if (path.contains('/data/editor/') || path.contains('/data/itemuse/')) {
+            return 'https://bomiora.net:9000/api/proxy/image?url=${Uri.encodeComponent(url)}';
+          }
           // 모든 경로를 직접 로컬 경로로 변환 (프록시 사용 안 함)
           final result = '$imageBaseUrl$path';
           return result;

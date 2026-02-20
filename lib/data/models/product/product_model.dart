@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
 
@@ -38,6 +40,11 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
+    final rawFields = _extractRawFields(normalized);
+    final mergedAdditionalInfo = <String, dynamic>{
+      ...rawFields,
+      ...normalized,
+    };
 
     final id =
         NodeValueParser.asString(normalized['id']) ??
@@ -52,15 +59,20 @@ class Product {
           '',
       description:
           NodeValueParser.asString(normalized['description']) ??
-          NodeValueParser.asString(normalized['it_explan']),
+          NodeValueParser.asString(rawFields['it_explain']) ??
+          NodeValueParser.asString(normalized['it_explain']),
       price: _parsePrice(normalized['price'] ?? normalized['it_price'] ?? 0),
       originalPrice: _parsePrice(normalized['originalPrice'] ?? normalized['it_cust_price']),
-      imageUrl: ImageUrlHelper.normalizeThumbnailUrl(
-        NodeValueParser.asString(normalized['imageUrl']) ??
-            NodeValueParser.asString(normalized['it_img']) ??
-            NodeValueParser.asString(normalized['it_img1']),
-        id,
-      ),
+      imageUrl: () {
+        // 대표 썸네일은 it_img1~it_img9 중 실제 값이 있는 첫 슬롯을 선택
+        final selectedValue = _pickFirstThumbnailValue(rawFields) ??
+            _pickFirstThumbnailValue(normalized);
+
+        return ImageUrlHelper.normalizeThumbnailUrl(
+          selectedValue,
+          id,
+        );
+      }(),
       categoryId:
           NodeValueParser.asString(normalized['categoryId']) ??
           NodeValueParser.asString(normalized['ca_id']) ??
@@ -79,7 +91,7 @@ class Product {
           NodeValueParser.asDouble(normalized['rating']) ??
           NodeValueParser.asDouble(normalized['it_rating']),
       reviewCount: NodeValueParser.asInt(normalized['reviewCount'] ?? normalized['it_review_cnt']),
-      additionalInfo: normalized,
+      additionalInfo: mergedAdditionalInfo,
     );
   }
 
@@ -117,6 +129,86 @@ class Product {
     if (value is num) return value != 0;
     final text = value?.toString().toLowerCase();
     return text == 'true' || text == 'y' || text == '1';
+  }
+
+  static String? _pickImageValue(Map<String, dynamic> normalized, int index) {
+    final candidates = <String>[
+      'it_img$index',
+      'itImg$index',
+      'itIMG$index',
+      'IT_IMG$index',
+    ];
+
+    for (final key in candidates) {
+      final raw = NodeValueParser.asString(normalized[key]);
+      if (raw != null) {
+        final trimmed = raw.trim();
+        if (trimmed.isNotEmpty && trimmed.toLowerCase() != 'null') {
+          return trimmed;
+        }
+      }
+    }
+
+    final normalizedTarget = 'itimg$index';
+    for (final entry in normalized.entries) {
+      final key = entry.key.toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+      if (key == normalizedTarget) {
+        final raw = NodeValueParser.asString(entry.value);
+        if (raw != null) {
+          final trimmed = raw.trim();
+          if (trimmed.isNotEmpty && trimmed.toLowerCase() != 'null') {
+            return trimmed;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  static String? _pickFirstThumbnailValue(Map<String, dynamic> source) {
+    for (int i = 1; i <= 9; i++) {
+      final value = _pickImageValue(source, i);
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  static Map<String, dynamic> _extractRawFields(Map<String, dynamic> normalized) {
+    final raw = <String, dynamic>{};
+    final additionalInfo = normalized['additionalInfo'];
+
+    if (additionalInfo is Map) {
+      raw.addAll(NodeValueParser.normalizeMap(Map<String, dynamic>.from(additionalInfo)));
+    } else if (additionalInfo is String && additionalInfo.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(additionalInfo);
+        if (decoded is Map) {
+          raw.addAll(NodeValueParser.normalizeMap(Map<String, dynamic>.from(decoded)));
+        }
+      } catch (_) {
+        // additionalInfo가 문자열이지만 JSON이 아닌 경우 무시
+      }
+    }
+
+    // additionalInfo 안에 한 번 더 additionalInfo가 중첩된 형태를 지원
+    final nested = raw['additionalInfo'];
+    if (nested is Map) {
+      raw.addAll(NodeValueParser.normalizeMap(Map<String, dynamic>.from(nested)));
+    } else if (nested is String && nested.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(nested);
+        if (decoded is Map) {
+          raw.addAll(NodeValueParser.normalizeMap(Map<String, dynamic>.from(decoded)));
+        }
+      } catch (_) {
+        // nested additionalInfo가 JSON이 아닌 경우 무시
+      }
+    }
+
+    return raw;
   }
 
   String get formattedPrice {

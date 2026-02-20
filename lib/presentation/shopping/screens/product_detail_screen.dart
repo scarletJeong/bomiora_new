@@ -403,44 +403,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       images.add(_product!.imageUrl!);
     }
     
-    // 2. additionalInfo에서 추가 이미지 가져오기
+    // 2. additionalInfo에서 썸네일 이미지(it_img1~it_img9)만 가져오기
+    //    - 썸네일은 /data/item/ 경로만 허용
+    //    - /data/editor/ (상세 본문 이미지)는 여기서 제외
     if (_product!.additionalInfo != null) {
-      final itImg2 = _product!.additionalInfo!['it_img2']?.toString();
-      final itImg3 = _product!.additionalInfo!['it_img3']?.toString();
-      if (itImg2 != null && itImg2.isNotEmpty) {
-        final normalized = ImageUrlHelper.normalizeThumbnailUrl(itImg2, _product!.id);
-        if (normalized != null) images.add(normalized);
-      }
-      if (itImg3 != null && itImg3.isNotEmpty) {
-        final normalized = ImageUrlHelper.normalizeThumbnailUrl(itImg3, _product!.id);
-        if (normalized != null) images.add(normalized);
-      }
-      
-      // 3. HTML 콘텐츠(it_explain)에서 이미지 추출
-      final itExplain = _product!.additionalInfo!['it_explan']?.toString() ?? 
-                        _product!.description;
-      if (itExplain != null && itExplain.isNotEmpty) {
-        final htmlImages = custom_html_parser.HtmlParser.extractImageUrls(itExplain);
-        for (final imgUrl in htmlImages) {
-          // URL 정규화 (상대 경로인 경우 처리)
-          String normalizedUrl = imgUrl;
-          // 전체 URL이 아닌 경우 정규화
-          if (!imgUrl.startsWith('http://') && !imgUrl.startsWith('https://')) {
-            // 상대 경로인 경우
-            normalizedUrl = ImageUrlHelper.normalizeThumbnailUrl(imgUrl, _product!.id) ?? imgUrl;
-          } else {
-            // 전체 URL인 경우
-            // 1. bomiora.kr 도메인을 로컬 환경에 맞게 변경
-            if (imgUrl.contains('bomiora.kr')) {
-              // 로컬 개발 환경인 경우 localhost로 변경
-              normalizedUrl = ImageUrlHelper.convertToLocalUrl(imgUrl);
-            }
-          }
-          
-          // 중복 제거
-          if (!images.contains(normalizedUrl)) {
-            images.add(normalizedUrl);
-          }
+      for (int i = 1; i <= 9; i++) {
+        final raw = _product!.additionalInfo!['it_img$i']?.toString();
+        if (raw == null || raw.isEmpty) continue;
+        final normalized = ImageUrlHelper.normalizeThumbnailUrl(raw, _product!.id);
+        if (normalized != null &&
+            normalized.contains('/data/item/') &&
+            !images.contains(normalized)) {
+          images.add(normalized);
         }
       }
     }
@@ -2023,31 +1997,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   Widget _buildDetailContent() {
     if (_product == null) return const SizedBox.shrink();
     
-    // it_explan에서 HTML 콘텐츠 가져오기
-    final itExplain = _product!.additionalInfo?['it_explan']?.toString() ?? 
+    // it_explain에서 HTML 콘텐츠 가져오기
+    final itExplain = _product!.additionalInfo?['it_explain']?.toString() ?? 
                       _product!.description;
     if (itExplain == null || itExplain.isEmpty) {
       return const SizedBox.shrink();
     }
     
-    // HTML에서 bomiora.kr URL을 localhost로 변환
+    // HTML 이미지 URL을 현재 실행 환경에 맞게 변환
     String processedHtml = itExplain;
-    if (processedHtml.contains('bomiora.kr')) {
-      final urlPattern = RegExp(r'''https?://bomiora\.kr([^"']+)''', caseSensitive: false);
-      processedHtml = processedHtml.replaceAllMapped(
-        urlPattern,
-        (match) {
-          final path = match.group(1) ?? '';
-          // imageBaseUrl 사용하여 변환
-          final baseUrl = ImageUrlHelper.imageBaseUrl;
-          String localBase = baseUrl;
-          if (localBase.startsWith('http://localhost')) {
-            localBase = localBase.replaceFirst('http://', 'https://');
-          }
-          return '$localBase$path';
-        },
-      );
-    }
+    final srcPattern = RegExp(r'''src\s*=\s*(['"])(https?://[^'"]+)\1''', caseSensitive: false);
+    processedHtml = processedHtml.replaceAllMapped(srcPattern, (match) {
+      final quote = match.group(1) ?? '"';
+      final originalUrl = match.group(2) ?? '';
+      final convertedUrl = ImageUrlHelper.convertToLocalUrl(originalUrl);
+      return 'src=$quote$convertedUrl$quote';
+    });
     
     // 이미지 너비 설정 (화면 너비에 맞춰 동적으로 조절)
     final screenWidth = MediaQuery.of(context).size.width;
@@ -2408,7 +2373,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                 quantity: quantity,
                               );
                               if (!mounted || !success) return;
-                              Navigator.pushNamed(this.context, '/cart');
+                              Navigator.pushNamed(
+                                this.context,
+                                '/cart',
+                                arguments: const {'initialTabIndex': 1},
+                              );
                             },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.black87,

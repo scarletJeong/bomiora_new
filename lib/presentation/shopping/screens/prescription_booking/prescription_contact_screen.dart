@@ -438,6 +438,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                                       (route) => false,
                                       arguments: {
                                         'backToProductId': widget.productId,
+                                        'initialTabIndex': 0,
                                       },
                                     );
                                   } else {
