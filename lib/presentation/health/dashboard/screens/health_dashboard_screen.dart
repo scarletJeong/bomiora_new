@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_footer.dart';
-import '../../../common/widgets/date_top_widget.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -234,17 +233,34 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
   // 사용자 프로필 섹션
   Widget _buildProfileSection() {
+    final userName = (currentUser?.name.trim().isNotEmpty ?? false)
+        ? currentUser!.name.trim()
+        : '고객님';
+    final currentDisplayWeight = currentWeight > 0 ? currentWeight : 91.0;
+    final remainingWeight = (currentDisplayWeight - targetWeight).clamp(0.0, 100.0);
+    const planDays = 100;
+    final elapsedDays = (remainingWeight * 3).clamp(0.0, planDays.toDouble()).toInt();
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFF5A5BE), Color(0xFFF2B7CA)],
+        ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+          bottomLeft: Radius.elliptical(240, 44),
+          bottomRight: Radius.elliptical(240, 44),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: const Color(0xFFFF4B93).withOpacity(0.15),
             spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -252,141 +268,245 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 프로필 사진
-              Stack(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: ClipOval(
-                      child: _resolveProfileImageUrl(currentUser?.profileImage) != null
-                          ? Image.network(
-                              _resolveProfileImageUrl(currentUser?.profileImage)!,
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
-                                child: Text(
-                                  currentUser?.name.isNotEmpty == true
-                                      ? currentUser!.name[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Center(
-                              child: Text(
-                                currentUser?.name.isNotEmpty == true
-                                    ? currentUser!.name[0].toUpperCase()
-                                    : 'U',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF3787),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        size: 12,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // 사용자 정보
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            currentUser?.name ?? '사용자',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
                         ),
-                        TextButton(
-                          onPressed: _showHealthConnectDialog,
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFFFF3787),
-                            side: const BorderSide(color: Color(0xFFFF3787)),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        children: [
+                          const TextSpan(text: '안녕하세요 '),
+                          TextSpan(
+                            text: '$userName!',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          child: const Text(
-                            '연동하기',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '목표 체중 : ${targetWeight.toInt()}kg',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black,
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 14),
+                    const Text(
+                      '오늘의',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                      ),
+                    ),
                     Text(
-                      '감량 몸무게: -${(currentWeight - targetWeight).toInt()}kg',
+                      '목표',
                       style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.red,
+                        color: Colors.white,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '목표설정 >',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
+              Column(
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white70, width: 2),
+                        ),
+                        child: ClipOval(
+                          child: _resolveProfileImageUrl(currentUser?.profileImage) != null
+                              ? Image.network(
+                                  _resolveProfileImageUrl(currentUser?.profileImage)!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 34,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 34,
+                                ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF4B93),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: _showHealthConnectDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF4B93),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '연동하기',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-            // 날짜 네비게이션
-            DateTopWidget(
-              selectedDate: selectedDate,
-              onDateChanged: (newDate) {
-                setState(() {
-                  selectedDate = newDate;
-                });
-              },
-              primaryColor: Colors.black,
-              secondaryColor: Colors.grey[400],
-            ),
+          const SizedBox(height: 12),
+          _buildGoalProgress(
+            leftLabel: '${currentDisplayWeight.toInt()}kg',
+            rightLabel: '${targetWeight.toInt()}kg',
+            markerLabel: '-${remainingWeight.toInt()}kg',
+            progress: ((currentDisplayWeight - targetWeight) / currentDisplayWeight)
+                .clamp(0.0, 1.0),
+          ),
+          const SizedBox(height: 8),
+          _buildGoalProgress(
+            leftLabel: '${elapsedDays}일',
+            rightLabel: '${planDays}일',
+            markerLabel: '',
+            progress: (elapsedDays / planDays).clamp(0.0, 1.0),
+          ),
+          const SizedBox(height: 10),
+          _buildDateChips(),
         ],
       ),
+    );
+  }
+
+  Widget _buildGoalProgress({
+    required String leftLabel,
+    required String rightLabel,
+    required String markerLabel,
+    required double progress,
+  }) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Text(
+              leftLabel,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+            const Spacer(),
+            if (markerLabel.isNotEmpty)
+              Text(
+                markerLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            const Spacer(),
+            Text(
+              rightLabel,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            minHeight: 6,
+            value: progress,
+            backgroundColor: Colors.white.withOpacity(0.5),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF4B93)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateChips() {
+    final start = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final dates = List.generate(7, (index) => start.add(Duration(days: index)));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: dates.map((date) {
+        final isSelected = date.year == selectedDate.year &&
+            date.month == selectedDate.month &&
+            date.day == selectedDate.day;
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedDate = date;
+            });
+          },
+          child: Container(
+            width: 34,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFFFF4B93) : Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('E', 'ko').format(date),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
