@@ -18,27 +18,29 @@ class ImageUrlHelper {
       // 웹 환경: 현재 origin 사용 (Uri.base 사용)
       try {
         final currentHost = Uri.base.host;
-        final currentPort = Uri.base.port;
         
         // localhost인 경우 로컬 웹 서버 사용 (XAMPP)
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
           return 'https://localhost/bomiora/www';
-        } 
+        }
         // Cafe24 개발 서버 환경 - 같은 도메인 사용 (CORS 해결)
         else if (currentHost.contains('mycafe24.com')) {
           return 'https://$currentHost';
-        } 
+        }
         else {
-          // 프로덕션: 실제 도메인
-          return 'https://bomiora.kr';
+          // 프로덕션: 실제 도메인 - TODO: 프로덕션 도메인 설정
+          // return 'https://bomiora.kr';
+          return 'https://bomiora0.mycafe24.com';
         }
       } catch (e) {
-        // 오류 시 프로덕션 URL 반환
-        return 'https://bomiora.kr';
+        // 오류 시 프로덕션 URL 반환 - TODO: 프로덕션 도메인 설정
+        // return 'https://bomiora.kr';
+        return 'https://bomiora0.mycafe24.com';
       }
     } else {
-      // 모바일/데스크톱: 프로덕션 URL 사용
-      return 'https://bomiora.kr';
+      // 모바일/데스크톱: 프로덕션 URL 사용 - TODO: 프로덕션 도메인 설정
+      // return 'https://bomiora.kr';
+      return 'https://bomiora0.mycafe24.com';
     }
   }
   
@@ -85,7 +87,7 @@ class ImageUrlHelper {
     }
     
     final result = '${imageBaseUrl}$normalizedPath';
-    return result;
+    return convertToLocalUrl(result);
   }
 
   /// 썸네일 이미지 경로 정규화 (data/item/ 경로 포함)
@@ -109,7 +111,7 @@ class ImageUrlHelper {
         path = '/$path';
       }
       final fullUrl = '${imageBaseUrl}$path';
-      return fullUrl;
+      return convertToLocalUrl(fullUrl);
     }
     
     // 상대 경로 처리
@@ -161,7 +163,7 @@ class ImageUrlHelper {
     }
     
     final result = '${imageBaseUrl}$path';
-    return result;
+    return convertToLocalUrl(result);
   }
 
   /// 프로덕션 URL을 현재 환경에 맞는 URL로 변환
@@ -171,6 +173,9 @@ class ImageUrlHelper {
     if (url.contains('bomiora.kr') || url.contains('www.bomiora.kr') || url.contains('bomiora0.mycafe24.com')) {
       Uri uri = Uri.parse(url);
       String path = uri.path;
+      // TODO: 운영 전환 시 canonicalUpstreamHost를 bomiora.kr로 변경
+      const canonicalUpstreamHost = 'https://bomiora0.mycafe24.com';
+      final canonicalUpstreamUrl = '$canonicalUpstreamHost$path';
       
       if (kIsWeb) {
         final currentHost = Uri.base.host;
@@ -179,7 +184,7 @@ class ImageUrlHelper {
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
           // 상세/리뷰 이미지는 CORS 이슈가 잦아 프록시로 우회
           if (path.contains('/data/editor/') || path.contains('/data/itemuse/')) {
-            return 'https://bomiora.net:9000/api/proxy/image?url=${Uri.encodeComponent(url)}';
+            return 'https://bomiora.net/api/proxy/image?url=${Uri.encodeComponent(url)}';
           }
           // 모든 경로를 직접 로컬 경로로 변환 (프록시 사용 안 함)
           final result = '$imageBaseUrl$path';
@@ -188,16 +193,15 @@ class ImageUrlHelper {
         
         // Cafe24 프로덕션 환경 - 같은 도메인 사용 (CORS 해결!)
         if (currentHost.contains('mycafe24.com')) {
-          // bomiora.kr -> bomiora0.mycafe24.com 으로 변경
-          final result = 'https://$currentHost$path';
+          // TODO: 운영 전환 시 이 반환값도 bomiora.kr 기준으로 변경
+          final result = canonicalUpstreamUrl;
           return result;
         }
         
-        // 기타 프로덕션 (bomiora.kr 등) - 프록시 사용
-        if (path.contains('/data/editor/') || path.contains('/data/itemuse/')) {
-          final result = 'https://bomiora.net:9000/api/proxy/image?url=${Uri.encodeComponent(url)}';
-          return result;
-        }
+        // bomiora.net 웹에서는 항상 mycafe24 원본으로 프록시 우회
+        // TODO: 운영 전환 시 proxy 대상 URL을 bomiora.kr로 변경
+        final result = 'https://bomiora.net/api/proxy/image?url=${Uri.encodeComponent(canonicalUpstreamUrl)}';
+        return result;
       }
       
       // 기본: 현재 환경에 맞는 base URL 사용
@@ -213,7 +217,7 @@ class ImageUrlHelper {
   /// 이미 전체 URL이면 그대로 반환, 아니면 normalizeImageUrl 사용
   static String getImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
-      return '${imageBaseUrl}/data/item/no_img.png';
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
     }
     
     // localhost URL 수정 (잘못된 형태)
@@ -237,7 +241,7 @@ class ImageUrlHelper {
   /// 예: 1686290723/IMG_6466.jpeg -> /data/itemuse/1686290723/IMG_6466.jpeg
   static String getReviewImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
-      return '${imageBaseUrl}/data/item/no_img.png';
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
     }
     
     // 이미 전체 URL인 경우
@@ -274,7 +278,7 @@ class ImageUrlHelper {
         path = path.substring(1);
       }
       final fullUrl = 'https://bomiora.kr/data/itemuse/$path';
-      return 'https://bomiora.net:9000/api/proxy/image?url=${Uri.encodeComponent(fullUrl)}';
+      return 'https://bomiora.net/api/proxy/image?url=${Uri.encodeComponent(fullUrl)}';
     }
     
     // 모바일 앱 - bomiora.kr 경로 사용
