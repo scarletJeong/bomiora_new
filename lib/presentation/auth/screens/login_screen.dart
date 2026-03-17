@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/kakao_auth_service.dart';
 import '../../../data/models/user/user_model.dart';
+import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -169,48 +171,68 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               
-              // 회원가입 링크
+              // 구분선
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      '또는',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                ],
+              ),
+              const SizedBox(height: 24),
+              
+              // 카카오 로그인 버튼
+              _buildKakaoLoginButton(),
+              const SizedBox(height: 24),
+              
+              // 아이디/비밀번호 찾기 | 회원가입 링크
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('아이디/비밀번호 찾기 기능은 준비 중입니다')),
+                      );
+                    },
+                    child: const Text(
+                      '아이디/비밀번호 찾기',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                   const Text(
-                    '계정이 없으신가요? ',
-                    style: TextStyle(color: Colors.grey),
+                    '  |  ',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
                   ),
                   TextButton(
                     onPressed: () {
-                      // 회원가입 페이지로 이동
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('회원가입 기능은 준비 중입니다')),
-                      );
+                      Navigator.pushNamed(context, '/kcp-cert');
                     },
                     child: const Text(
                       '회원가입',
                       style: TextStyle(
                         color: Colors.blue,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 비밀번호 찾기 링크
-              TextButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('비밀번호 찾기 기능은 준비 중입니다')),
-                  );
-                },
-                child: const Text(
-                  '비밀번호를 잊으셨나요?',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
-                ),
               ),
             ],
           ),
@@ -236,12 +258,23 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (result['success']) {
-        final userData = result['data'];
+        final resultData = result['data'];
+        if (resultData is! Map) {
+          throw const FormatException('로그인 응답 형식이 올바르지 않습니다.');
+        }
+        final userData = NodeValueParser.normalizeMap(
+          Map<String, dynamic>.from(resultData as Map),
+        );
         
         print('🔍 [LOGIN DEBUG] 전체 응답 데이터: $userData');
         
         // mb_id를 id로 매핑
-        final userJson = userData['user'];
+        final userRaw = userData['user'];
+        final userJson = NodeValueParser.normalizeMap(
+          userRaw is Map
+              ? Map<String, dynamic>.from(userRaw)
+              : Map<String, dynamic>.from(userData),
+        );
         
         print('👤 [LOGIN DEBUG] 원본 user 데이터: $userJson');
         print('📋 [LOGIN DEBUG] id (mb_no): ${userJson['id']}');
@@ -251,9 +284,10 @@ class _LoginScreenState extends State<LoginScreen> {
         print('📋 [LOGIN DEBUG] email: ${userJson['email']}');
         print('📋 [LOGIN DEBUG] name: ${userJson['name']}');
         
-        // 무조건 mb_id 값만 사용
-        final userId = userJson['mb_id']?.toString() ?? '';
-        
+        final userId =
+            NodeValueParser.asString(userJson['mb_id']) ??
+            NodeValueParser.asString(userJson['id']) ??
+            '';
         userJson['id'] = userId;
         // 비밀번호 저장
         userJson['password'] = _passwordController.text;
@@ -268,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
         print('   - name: ${user.name}');
         print('   - phone: ${user.phone}');
         
-        final token = userData['token']; // token이 없으면 null이 됨
+        final token = NodeValueParser.asString(userData['token']); // token이 없으면 null이 됨
 
         await AuthService.saveLoginData(user: user, token: token); // token을 String?으로 전달
 
@@ -289,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
           try {
             // context를 다시 가져와서 사용
             final navigator = Navigator.of(context);
-            navigator.pushReplacementNamed('/cart');
+            navigator.pushReplacementNamed('/home');
           } catch (e) {
             print('❌ [LOGIN] 네비게이션 오류: $e');
             // 실패 시 홈으로 이동 시도
@@ -304,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       } else {
         if (mounted) {
-          final errorMessage = result['error'] ?? '로그인에 실패했습니다';
+          final errorMessage = result['error']?.toString() ?? '로그인에 실패했습니다';
           print('❌ [LOGIN SCREEN] 로그인 실패: $errorMessage');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -327,6 +361,212 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // 카카오 로그인 버튼
+  Widget _buildKakaoLoginButton() {
+    return OutlinedButton(
+      onPressed: _isLoading ? null : _handleKakaoLogin,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        side: BorderSide(color: Colors.grey[300]!),
+        backgroundColor: Colors.white,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 카카오 로그인 이미지가 있으면 사용, 없으면 아이콘 사용
+          _buildKakaoIcon(),
+          const SizedBox(width: 12),
+          const Text(
+            '카카오로 시작하기',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 카카오 아이콘 (이미지가 있으면 이미지, 없으면 기본 아이콘)
+  Widget _buildKakaoIcon() {
+    // 실제 에셋 경로: assets/img/kakao_login_on.png
+    try {
+      return Image.asset(
+        'assets/img/kakao_login_on.png',
+        width: 24,
+        height: 24,
+        errorBuilder: (context, error, stackTrace) {
+          // 이미지가 없으면 기본 아이콘 사용
+          return Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEE500), // 카카오 노란색
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Icon(
+              Icons.chat_bubble_outline,
+              size: 16,
+              color: Colors.black87,
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      // 이미지 로드 실패 시 기본 아이콘
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEE500), // 카카오 노란색
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Icon(
+          Icons.chat_bubble_outline,
+          size: 16,
+          color: Colors.black87,
+        ),
+      );
+    }
+  }
+
+  // 카카오 로그인 처리
+  Future<void> _handleKakaoLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 카카오 로그인
+      final kakaoResult = await KakaoAuthService.login();
+
+      if (!kakaoResult['success']) {
+        if (!mounted) return;
+        
+        // 웹 환경에서 서버 인증이 필요한 경우
+        if (kakaoResult['needsServerAuth'] == true) {
+          // 서버 API를 통해 카카오 로그인 처리
+          // 서버에서 카카오 OAuth를 처리하도록 요청
+          // 여기서는 직접 서버 API를 호출하는 방식으로 처리
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('웹 환경에서는 서버를 통해 카카오 로그인을 처리합니다. 서버 API를 구현해주세요.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 5),
+            ),
+          );
+          return;
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(kakaoResult['error'] ?? '카카오 로그인에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final kakaoData = kakaoResult['data'];
+      final kakaoId = kakaoData['kakaoId']?.toString() ?? '';
+      final email = kakaoData['email']?.toString();
+      final nickname = kakaoData['nickname']?.toString();
+
+      if (kakaoId.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('카카오 로그인 정보를 가져올 수 없습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // 서버에 카카오 로그인 요청
+      final result = await AuthRepository.loginWithKakao(
+        kakaoId: kakaoId,
+        email: email,
+        nickname: nickname,
+        profileImageUrl: kakaoData['profileImageUrl']?.toString(),
+        accessToken: kakaoData['accessToken']?.toString(),
+      );
+
+      if (result['success']) {
+        final resultData = result['data'];
+        if (resultData is! Map) {
+          throw const FormatException('카카오 로그인 응답 형식이 올바르지 않습니다.');
+        }
+        final userData = NodeValueParser.normalizeMap(
+          Map<String, dynamic>.from(resultData as Map),
+        );
+        final userRaw = userData['user'];
+        final userJson = NodeValueParser.normalizeMap(
+          userRaw is Map
+              ? Map<String, dynamic>.from(userRaw)
+              : Map<String, dynamic>.from(userData),
+        );
+        
+        // mb_id를 id로 매핑
+        final userId =
+            NodeValueParser.asString(userJson['mb_id']) ??
+            NodeValueParser.asString(userJson['id']) ??
+            '';
+        userJson['id'] = userId;
+
+        final user = UserModel.fromJson(userJson);
+        final token = NodeValueParser.asString(userData['token']);
+
+        await AuthService.saveLoginData(user: user, token: token);
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${user.name}님, 환영합니다!')),
+        );
+
+        Future.microtask(() {
+          if (!mounted) return;
+          try {
+            Navigator.of(context).pushReplacementNamed('/home');
+          } catch (e) {
+            print('❌ [KAKAO LOGIN] 네비게이션 오류: $e');
+          }
+        });
+      } else {
+        if (!mounted) return;
+        final errorMessage = result['error']?.toString() ?? '카카오 로그인에 실패했습니다';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      print('❌ [KAKAO LOGIN] 예외 발생: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('카카오 로그인 중 오류가 발생했습니다: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {

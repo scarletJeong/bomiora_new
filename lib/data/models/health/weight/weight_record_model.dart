@@ -55,19 +55,24 @@ class WeightRecord {
   factory WeightRecord.fromJson(Map<String, dynamic> json) {
     return WeightRecord(
       id: json['recordId'] ?? json['record_id'] ?? json['id'],
-      mbId: (json['mbId'] ?? json['mb_id'] ?? '').toString(),
+      mbId: _parseString(json['mbId'] ?? json['mb_id']) ?? '',
       measuredAt: _parseDateTime(json['measuredAt'] ?? json['measured_at']),
       weight: (json['weight'] as num).toDouble(),
-      height: json['height'] != null ? (json['height'] as num).toDouble() : null,
+      height:
+          json['height'] != null ? (json['height'] as num).toDouble() : null,
       bmi: json['bmi'] != null ? (json['bmi'] as num).toDouble() : null,
-      notes: json['notes']?.toString(),
-      frontImagePath: json['frontImagePath'] ?? json['front_image_path']?.toString(),
-      sideImagePath: json['sideImagePath'] ?? json['side_image_path']?.toString(),
-      createdAt: (json['createdAt'] ?? json['created_at']) != null 
-          ? _parseDateTime(json['createdAt'] ?? json['created_at']) 
+      notes: _parseString(json['notes']),
+      frontImagePath: _parseString(
+        json['frontImagePath'] ?? json['front_image_path'],
+      ),
+      sideImagePath: _parseString(
+        json['sideImagePath'] ?? json['side_image_path'],
+      ),
+      createdAt: (json['createdAt'] ?? json['created_at']) != null
+          ? _parseDateTime(json['createdAt'] ?? json['created_at'])
           : null,
-      updatedAt: (json['updatedAt'] ?? json['updated_at']) != null 
-          ? _parseDateTime(json['updatedAt'] ?? json['updated_at']) 
+      updatedAt: (json['updatedAt'] ?? json['updated_at']) != null
+          ? _parseDateTime(json['updatedAt'] ?? json['updated_at'])
           : null,
     );
   }
@@ -78,35 +83,63 @@ class WeightRecord {
       if (dateValue == null) {
         return DateTime.now(); // null이면 현재 시간 반환
       }
-      
+
       String dateStr = dateValue.toString();
-      
+
       // 잘못된 날짜 형식 체크
-      if (dateStr.contains('0000-00-00') || 
+      if (dateStr.contains('0000-00-00') ||
           dateStr.contains('1900-01-01') ||
           dateStr.isEmpty) {
         print('⚠️ 잘못된 날짜 형식 감지: $dateStr, 현재 시간으로 대체');
         return DateTime.now();
       }
-      
-      return DateTime.parse(dateStr);
+
+      final parsed = DateTime.parse(dateStr);
+      // 서버가 UTC(Z)로 내려주면 로컬 시간(KST)으로 변환해서 화면 표시 일관성 유지
+      return parsed.isUtc ? parsed.toLocal() : parsed;
     } catch (e) {
       print('❌ 날짜 파싱 오류: $dateValue, 현재 시간으로 대체');
       return DateTime.now();
     }
   }
 
+  // String 필드에 객체가 내려와도 안전하게 파싱
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+
+    if (value is Map) {
+      // Node Buffer(JSON): {"type":"Buffer","data":[116,101,115,116]} -> "test"
+      if (value['type'] == 'Buffer' && value['data'] is List) {
+        final codes = (value['data'] as List)
+            .whereType<num>()
+            .map((e) => e.toInt())
+            .toList();
+        return String.fromCharCodes(codes);
+      }
+
+      final dynamic nested =
+          value['url'] ?? value['path'] ?? value['value'] ?? value['src'];
+      if (nested is String) return nested;
+      return nested?.toString();
+    }
+
+    return value.toString();
+  }
+
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'record_id': id,
       'mb_id': mbId,
-      'measured_at': measuredAt.toIso8601String(),
+      'measured_at': measuredAt.toUtc().toIso8601String(),
       'weight': weight,
       if (height != null) 'height': height,
       if (bmi != null) 'bmi': bmi,
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
-      if (frontImagePath != null && frontImagePath!.isNotEmpty) 'front_image_path': frontImagePath,
-      if (sideImagePath != null && sideImagePath!.isNotEmpty) 'side_image_path': sideImagePath,
+      if (frontImagePath != null && frontImagePath!.isNotEmpty)
+        'front_image_path': frontImagePath,
+      if (sideImagePath != null && sideImagePath!.isNotEmpty)
+        'side_image_path': sideImagePath,
     };
   }
 
@@ -138,4 +171,3 @@ class WeightRecord {
     );
   }
 }
-

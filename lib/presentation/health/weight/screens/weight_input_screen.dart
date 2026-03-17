@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/widgets/health_delete_popup.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
@@ -29,7 +30,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   DateTime _selectedDateTime = DateTime.now();
   double? _calculatedBMI;
   bool _isSaving = false;
-  
+
   // 이미지 관련
   String? _frontImagePath;
   String? _sideImagePath;
@@ -37,7 +38,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     if (widget.record != null) {
       // 수정 모드
       _weightController.text = widget.record!.weight.toString();
@@ -50,7 +51,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     } else {
       // 새 기록 모드: 최신 기록에서 키 가져오기
       _loadLatestHeight();
-      
+
       // 초기 이미지 설정
       if (widget.initialImages != null) {
         _frontImagePath = widget.initialImages!['front'];
@@ -69,8 +70,9 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       final user = await AuthService.getUser();
       if (user == null) return;
 
-      final latestRecord = await WeightRepository.getLatestWeightRecord(user.id);
-      
+      final latestRecord =
+          await WeightRepository.getLatestWeightRecord(user.id);
+
       if (latestRecord != null && latestRecord.height != null) {
         setState(() {
           _heightController.text = latestRecord.height!.toStringAsFixed(0);
@@ -133,8 +135,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       }
 
       final weight = double.parse(_weightController.text);
-      final height = _heightController.text.isNotEmpty 
-          ? double.parse(_heightController.text) 
+      final height = _heightController.text.isNotEmpty
+          ? double.parse(_heightController.text)
           : null;
       final bmi = WeightRecord.calculateBMI(weight, height);
 
@@ -166,7 +168,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
+              content:
+                  Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
               backgroundColor: Colors.green,
             ),
           );
@@ -193,29 +196,19 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     }
   }
 
-  // 삭제 확인 다이얼로그
-  void _showDeleteConfirmDialog() {
-    showDialog(
+  // 삭제 확인 팝업 (공통 위젯)
+  Future<void> _showDeleteConfirmDialog() async {
+    final shouldDelete = await showHealthDeletePopup(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('체중 기록 삭제'),
-        content: const Text('이 체중 기록을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // 다이얼로그 닫기
-              _deleteRecord(); // 삭제 실행
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+      title: '체중 기록 삭제',
+      message: '이 체중 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
+      cancelText: '취소',
+      deleteText: '삭제',
     );
+
+    if (shouldDelete == true) {
+      _deleteRecord();
+    }
   }
 
   // 체중 기록 삭제
@@ -225,7 +218,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final success = await WeightRepository.deleteWeightRecord(widget.record!.id!);
+      final success =
+          await WeightRepository.deleteWeightRecord(widget.record!.id!);
 
       if (mounted) {
         if (success) {
@@ -270,22 +264,22 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: AppBar(
-        title: Text(widget.record == null ? '체중 기록하기' : '체중 수정하기'),
+        leading: IconButton(
+          icon: const Icon(Icons.chevron_left),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.record == null ? '체중 기록하기' : '체중 수정하기',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        actions: widget.record != null
-            ? [
-                // 수정 모드일 때만 삭제 버튼 표시
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: _showDeleteConfirmDialog,
-                  tooltip: '삭제',
-                ),
-              ]
-            : null,
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(25),
@@ -308,19 +302,9 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
               // 눈바디 이미지
               _buildBodyImagesSection(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // 저장 버튼
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _save,
-                  child: _isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('저장', style: TextStyle(fontSize: 18)),
-                ),
-              ),
+              _buildActionButtons(),
             ],
           ),
         ),
@@ -329,49 +313,108 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   }
 
   Widget _buildDateTimeCard() {
-    final dateFormat = DateFormat('yyyy년 M월 d일 (E) HH:mm', 'ko');
+    final dateStr = DateFormat('yyyy.MM.dd').format(_selectedDateTime);
+    final timeStr = DateFormat('HH:mm').format(_selectedDateTime);
 
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.calendar_today),
-        title: const Text('측정 일시'),
-        subtitle: Text(dateFormat.format(_selectedDateTime)),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: _selectDateTime,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionLabel('측정일시'),
+        const SizedBox(height: 10),
+        InkWell(
+          onTap: _selectDateTime,
+          borderRadius: BorderRadius.circular(7),
+          child: Container(
+            width: double.infinity,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(
+                          width: 1,
+                          color: Color(0x7FD2D2D2),
+                        ),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          dateStr,
+                          style: const TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 16,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(
+                          width: 1,
+                          color: Color(0x7FD2D2D2),
+                        ),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          timeStr,
+                          style: const TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 16,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
-
-
 
   Widget _buildHeightInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text(
-              '키 (cm)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
+        _buildSectionLabel('키'),
+        const SizedBox(height: 10),
+        _buildNumberInput(
           controller: _heightController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-          ],
-          decoration: InputDecoration(
-            hintText: '예: 170',
-            suffixText: 'cm',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            prefixIcon: const Icon(Icons.height),
-          ),
+          hintText: '예: 170',
+          suffixText: 'cm',
+          inputHeight: 30,
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               final height = double.tryParse(value);
@@ -390,25 +433,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '체중 (kg)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
+        _buildSectionLabel('체중'),
+        const SizedBox(height: 10),
+        _buildNumberInput(
           controller: _weightController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-          ],
-          decoration: InputDecoration(
-            hintText: '예: 65.5',
-            suffixText: 'kg',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            prefixIcon: const Icon(Icons.monitor_weight),
-          ),
+          hintText: '예: 65.5',
+          suffixText: 'kg',
+          inputHeight: 30,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return '체중을 입력해주세요';
@@ -429,11 +460,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '눈바디 이미지',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
+        _buildSectionLabel('눈바디'),
+        const SizedBox(height: 10),
         Row(
           children: [
             // 정면 이미지
@@ -459,10 +487,185 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     );
   }
 
+  Widget _buildSectionLabel(String title, [IconData? icon]) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (icon != null) ...[
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: Icon(
+                icon,
+                size: 16,
+                color: const Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF1A1A1A),
+              fontSize: 16,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNumberInput({
+    required TextEditingController controller,
+    required String hintText,
+    required String? Function(String?) validator,
+    String? suffixText,
+    double inputHeight = 40,
+  }) {
+    final verticalPadding = ((inputHeight - 20) / 2).clamp(8.0, 28.0);
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+      ],
+      validator: validator,
+      textAlignVertical: const TextAlignVertical(y: 0.45),
+      style: const TextStyle(
+        color: Color(0xFF1A1A1A),
+        fontSize: 18,
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w300,
+      ),
+      decoration: InputDecoration(
+        constraints: BoxConstraints(minHeight: inputHeight),
+        hintText: hintText,
+        hintStyle: const TextStyle(
+          color: Color(0xFF1A1A1A),
+          fontSize: 16,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
+        suffixText: suffixText,
+        suffixStyle: const TextStyle(
+          color: Color(0xFF7C7C7C),
+          fontSize: 14,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w400,
+        ),
+        isDense: false,
+        contentPadding: EdgeInsets.only(
+          left: 10,
+          right: 10,
+          top: verticalPadding,
+          bottom: verticalPadding,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: const BorderSide(width: 1, color: Color(0xFFFF8DA1)),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: const BorderSide(width: 1, color: Color(0xFFFF8DA1)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 44,
+            child: OutlinedButton(
+              onPressed: (widget.record != null && !_isSaving)
+                  ? _showDeleteConfirmDialog
+                  : null,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(width: 0.5, color: Color(0xFF898383)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                '삭제',
+                style: TextStyle(
+                  color: Color(0xFF898383),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: SizedBox(
+            height: 44,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5A8D),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      widget.record == null ? '등록' : '수정',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // 이미지 컨테이너 위젯
-  Widget _buildImageContainer(String label, String? imagePath, VoidCallback onTap) {
-    final hasImage = imagePath != null && imagePath.isNotEmpty && ImagePickerUtils.isImageFileExists(imagePath);
-    
+  Widget _buildImageContainer(
+      String label, String? imagePath, VoidCallback onTap) {
+    final hasImage = imagePath != null &&
+        imagePath.isNotEmpty &&
+        ImagePickerUtils.isImageFileExists(imagePath);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -481,7 +684,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   // 이미지 표시
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: kIsWeb 
+                    child: kIsWeb
                         ? Image.network(
                             imagePath,
                             width: double.infinity,
@@ -554,10 +757,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   // 이미지 선택
   Future<void> _selectImage(String type) async {
     try {
-      await ImagePickerUtils.showImageSourceDialog(context, (XFile? image) async {
+      await ImagePickerUtils.showImageSourceDialog(context,
+          (XFile? image) async {
         if (image != null) {
           String? imagePath;
-          
+
           if (kIsWeb) {
             // 웹에서는 XFile을 직접 전달
             try {
@@ -572,7 +776,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             final File imageFile = File(image.path);
             imagePath = await WeightRepository.uploadImage(imageFile);
           }
-          
+
           if (imagePath != null) {
             // 기존 이미지가 있으면 삭제
             if (type == 'front' && _frontImagePath != null) {
@@ -580,7 +784,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             } else if (type == 'side' && _sideImagePath != null) {
               await ImagePickerUtils.deleteImageFile(_sideImagePath);
             }
-            
+
             setState(() {
               if (type == 'front') {
                 _frontImagePath = imagePath;
@@ -625,11 +829,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           ],
         ),
       );
-      
+
       if (confirmed == true) {
         // 파일 시스템에서 이미지 삭제
         await ImagePickerUtils.deleteImageFile(imagePath);
-        
+
         setState(() {
           if (imagePath == _frontImagePath) {
             _frontImagePath = null;
@@ -637,7 +841,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             _sideImagePath = null;
           }
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('이미지가 삭제되었습니다'),
@@ -664,4 +868,3 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return Colors.red;
   }
 }
-

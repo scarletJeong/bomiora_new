@@ -17,28 +17,12 @@ class BloodSugarRepository {
         // 응답 구조에 따라 처리
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          final parsed = records
-              .whereType<Map>()
-              .map((json) => BloodSugarRecord.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
-          for (final record in parsed) {
-            print(
-                '🩸 [혈당 기록] id=${record.id}, mbId=${record.mbId}, sugar=${record.bloodSugar}, type=${record.measurementType}, status=${record.status}, measuredAt=${record.measuredAt.toIso8601String()}');
-          }
           print('✅ 혈당 기록 ${records.length}개 로드 완료');
-          return parsed;
+          return records.map((json) => BloodSugarRecord.fromJson(json)).toList();
         } else if (data is List) {
           // 배열로 직접 반환되는 경우
-          final parsed = data
-              .whereType<Map>()
-              .map((json) => BloodSugarRecord.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
-          for (final record in parsed) {
-            print(
-                '🩸 [혈당 기록] id=${record.id}, mbId=${record.mbId}, sugar=${record.bloodSugar}, type=${record.measurementType}, status=${record.status}, measuredAt=${record.measuredAt.toIso8601String()}');
-          }
           print('✅ 혈당 기록 ${data.length}개 로드 완료');
-          return parsed;
+          return data.map((json) => BloodSugarRecord.fromJson(json)).toList();
         }
       }
       
@@ -64,19 +48,11 @@ class BloodSugarRepository {
         print('✅ [DEBUG] 파싱된 데이터: $data');
         
         if (data['success'] == true && data['data'] != null) {
-          final latest = BloodSugarRecord.fromJson(Map<String, dynamic>.from(data['data']));
-          print(
-              '🩸 [최신 혈당] id=${latest.id}, sugar=${latest.bloodSugar}, type=${latest.measurementType}, measuredAt=${latest.measuredAt.toIso8601String()}');
-          return latest;
+          return BloodSugarRecord.fromJson(data['data']);
         }
       }
-
-      // latest API 응답이 비정상이면 전체 기록에서 최신 1건으로 폴백
-      final all = await getBloodSugarRecords(userId);
-      if (all.isEmpty) return null;
-      all.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-      print('🩸 [최신 혈당 폴백 사용] count=${all.length}');
-      return all.first;
+      
+      return null;
     } catch (e) {
       print('최신 혈당 기록 가져오기 오류: $e');
       return null;
@@ -170,10 +146,7 @@ class BloodSugarRepository {
         
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          return records
-              .whereType<Map>()
-              .map((json) => BloodSugarRecord.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+          return records.map((json) => BloodSugarRecord.fromJson(json)).toList();
         }
       }
       

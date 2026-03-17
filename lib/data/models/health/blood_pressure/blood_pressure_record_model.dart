@@ -1,5 +1,3 @@
-import '../../../../core/utils/node_value_parser.dart';
-
 class BloodPressureRecord {
   final int? id;
   final String mbId;
@@ -34,7 +32,8 @@ class BloodPressureRecord {
       return '2기 고혈압';
     }
     // 1기 고혈압: 수축기 130-139 OR 이완기 80-89
-    else if ((systolic >= 130 && systolic < 140) || (diastolic >= 80 && diastolic < 90)) {
+    else if ((systolic >= 130 && systolic < 140) ||
+        (diastolic >= 80 && diastolic < 90)) {
       return '1기 고혈압';
     }
     // 고혈압 전단계: 수축기 120-129 AND 이완기 < 80
@@ -44,8 +43,7 @@ class BloodPressureRecord {
     // 정상: 수축기 < 120 AND 이완기 < 80
     else if (systolic < 120 && diastolic < 80) {
       return '정상';
-    }
-    else {
+    } else {
       return '정상';
     }
   }
@@ -75,7 +73,8 @@ class BloodPressureRecord {
     return {
       if (id != null) 'id': id,
       'mb_id': mbId,
-      'measured_at': measuredAt.toIso8601String(),
+      // Always send UTC with timezone suffix (Z) to avoid server/client ambiguity.
+      'measured_at': measuredAt.toUtc().toIso8601String(),
       'systolic': systolic,
       'diastolic': diastolic,
       'pulse': pulse,
@@ -84,28 +83,48 @@ class BloodPressureRecord {
   }
 
   factory BloodPressureRecord.fromJson(Map<String, dynamic> json) {
-    final normalized = NodeValueParser.normalizeMap(json);
-    final measuredAtValue =
-        NodeValueParser.asString(normalized['measured_at']) ??
-        NodeValueParser.asString(normalized['measuredAt']);
-
     return BloodPressureRecord(
-      id: NodeValueParser.asInt(normalized['id']),
-      mbId:
-          NodeValueParser.asString(normalized['mb_id']) ??
-          NodeValueParser.asString(normalized['mbId']) ??
-          '',
-      measuredAt: measuredAtValue != null
-          ? (() {
-              final dt = DateTime.tryParse(measuredAtValue) ?? DateTime.now();
-              return dt.isUtc ? dt.toLocal() : dt;
-            })()
-          : DateTime.now(),
-      systolic: NodeValueParser.asInt(normalized['systolic']) ?? 0,
-      diastolic: NodeValueParser.asInt(normalized['diastolic']) ?? 0,
-      pulse: NodeValueParser.asInt(normalized['pulse']) ?? 0,
-      status: NodeValueParser.asString(normalized['status']),
+      id: _parseInt(json['id']),
+      mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
+      measuredAt: _parseDateTime(json['measured_at']),
+      systolic: _parseInt(json['systolic']) ?? 0,
+      diastolic: _parseInt(json['diastolic']) ?? 0,
+      pulse: _parseInt(json['pulse']) ?? 0,
+      status: _parseString(json['status']),
     );
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    final parsed = DateTime.parse(value.toString());
+    // API가 UTC(Z)로 내려주면 로컬 시간대로 변환해
+    // 입력/DB 표시와 그래프 시간이 동일하게 보이도록 맞춘다.
+    return parsed.isUtc ? parsed.toLocal() : parsed;
+  }
+
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is Map) {
+      if (value['type'] == 'Buffer' && value['data'] is List) {
+        final codes = (value['data'] as List)
+            .whereType<num>()
+            .map((e) => e.toInt())
+            .toList();
+        return String.fromCharCodes(codes);
+      }
+      final nested = value['value'] ?? value['text'] ?? value['name'];
+      if (nested is String) return nested;
+      return nested?.toString();
+    }
+    return value.toString();
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   // 복사 메서드
@@ -129,4 +148,3 @@ class BloodPressureRecord {
     );
   }
 }
-

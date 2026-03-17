@@ -1,5 +1,3 @@
-import '../../../../core/utils/node_value_parser.dart';
-
 class MenstrualCycleRecord {
   final int? id;
   final String mbId;
@@ -98,38 +96,70 @@ class MenstrualCycleRecord {
   }
 
   factory MenstrualCycleRecord.fromJson(Map<String, dynamic> json) {
-    final normalized = NodeValueParser.normalizeMap(json);
-    final periodStartValue =
-        NodeValueParser.asString(normalized['last_period_start']) ??
-        NodeValueParser.asString(normalized['lastPeriodStart']);
-    final createdAtValue = NodeValueParser.asString(normalized['created_at']);
-    final updatedAtValue = NodeValueParser.asString(normalized['updated_at']);
-
     return MenstrualCycleRecord(
-      id: NodeValueParser.asInt(normalized['id']),
-      mbId:
-          NodeValueParser.asString(normalized['mb_id']) ??
-          NodeValueParser.asString(normalized['mbId']) ??
-          '',
-      lastPeriodStart: periodStartValue != null
-          ? DateTime.tryParse(periodStartValue) ?? DateTime.now()
-          : DateTime.now(),
-      cycleLength:
-          NodeValueParser.asInt(normalized['cycle_length']) ??
-          NodeValueParser.asInt(normalized['cycleLength']) ??
-          28,
+      id: _parseInt(json['id']),
+      mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
+      lastPeriodStart:
+          _parseDateTime(json['last_period_start'] ?? json['lastPeriodStart']),
+      cycleLength: _parseInt(json['cycle_length'] ?? json['cycleLength']) ?? 28,
       periodLength:
-          NodeValueParser.asInt(normalized['period_length']) ??
-          NodeValueParser.asInt(normalized['periodLength']) ??
-          5,
-      notes: NodeValueParser.asString(normalized['notes']),
-      createdAt: createdAtValue != null
-          ? DateTime.tryParse(createdAtValue)
+          _parseInt(json['period_length'] ?? json['periodLength']) ?? 5,
+      notes: _parseString(json['notes']),
+      createdAt: json['created_at'] != null 
+          ? _parseDateTime(json['created_at']) 
           : null,
-      updatedAt: updatedAtValue != null
-          ? DateTime.tryParse(updatedAtValue)
+      updatedAt: json['updated_at'] != null 
+          ? _parseDateTime(json['updated_at']) 
           : null,
     );
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    final parsed = DateTime.parse(value.toString());
+    if (parsed.isUtc) {
+      return DateTime(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+        parsed.microsecond,
+      );
+    }
+    return parsed;
+  }
+
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+
+    if (value is Map) {
+      if (value['type'] == 'Buffer' && value['data'] is List) {
+        final codes = (value['data'] as List)
+            .whereType<num>()
+            .map((e) => e.toInt())
+            .toList();
+        return String.fromCharCodes(codes);
+      }
+
+      final dynamic nested = value['value'] ??
+          value['text'] ??
+          value['name'];
+      if (nested is String) return nested;
+      return nested?.toString();
+    }
+
+    return value.toString();
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   // 복사 메서드

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../health_common/widgets/health_delete_popup.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/services/auth_service.dart';
@@ -29,7 +30,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     if (widget.record != null) {
       // 수정 모드
       _bloodSugarController.text = widget.record!.bloodSugar.toString();
@@ -47,7 +48,8 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
 
     if (bloodSugar != null) {
       setState(() {
-        _calculatedStatus = BloodSugarRecord.calculateStatus(bloodSugar, _selectedMeasurementType);
+        _calculatedStatus = BloodSugarRecord.calculateStatus(
+            bloodSugar, _selectedMeasurementType);
       });
     } else {
       setState(() {
@@ -56,7 +58,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
     }
   }
 
-  Future<void> _selectDateTime() async {
+  Future<void> _selectDate() async {
     final date = await showDatePicker(
       context: context,
       initialDate: _selectedDateTime,
@@ -66,22 +68,34 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
     );
 
     if (date != null) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
-      );
+      setState(() {
+        _selectedDateTime = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          _selectedDateTime.hour,
+          _selectedDateTime.minute,
+        );
+      });
+    }
+  }
 
-      if (time != null) {
-        setState(() {
-          _selectedDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
-          );
-        });
-      }
+  Future<void> _selectTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
+    );
+
+    if (time != null) {
+      setState(() {
+        _selectedDateTime = DateTime(
+          _selectedDateTime.year,
+          _selectedDateTime.month,
+          _selectedDateTime.day,
+          time.hour,
+          time.minute,
+        );
+      });
     }
   }
 
@@ -123,7 +137,8 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
+              content:
+                  Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
               backgroundColor: Colors.green,
             ),
           );
@@ -151,28 +166,18 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   }
 
   // 삭제 확인 다이얼로그
-  void _showDeleteConfirmDialog() {
-    showDialog(
+  Future<void> _showDeleteConfirmDialog() async {
+    final shouldDelete = await showHealthDeletePopup(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('혈당 기록 삭제'),
-        content: const Text('이 혈당 기록을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // 다이얼로그 닫기
-              _deleteRecord(); // 삭제 실행
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+      title: '혈당 기록 삭제',
+      message: '이 혈당 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
+      cancelText: '취소',
+      deleteText: '삭제',
     );
+
+    if (shouldDelete == true) {
+      _deleteRecord();
+    }
   }
 
   // 혈당 기록 삭제
@@ -182,7 +187,8 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final success = await BloodSugarRepository.deleteBloodSugarRecord(widget.record!.id!);
+      final success =
+          await BloodSugarRepository.deleteBloodSugarRecord(widget.record!.id!);
 
       if (mounted) {
         if (success) {
@@ -223,62 +229,44 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: Text(widget.record == null ? '혈당 기록하기' : '혈당 수정하기'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: widget.record != null
-            ? [
-                // 수정 모드일 때만 삭제 버튼 표시
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: _showDeleteConfirmDialog,
-                  tooltip: '삭제',
-                ),
-              ]
-            : null,
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(25),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 측정 일시
-              _buildDateTimeCard(),
-              const SizedBox(height: 16),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
 
-              // 측정 유형 선택
-              _buildMeasurementTypeCard(),
-              const SizedBox(height: 16),
-
-              // 혈당 수치 입력
-              _buildBloodSugarInput(),
-              const SizedBox(height: 16),
-
-              // 혈당 상태 표시
-              if (_calculatedStatus != null)
-                _buildStatusCard(),
-              
-              const SizedBox(height: 24),
-
-              // 저장 버튼
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _save,
-                  child: _isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('저장', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-            ],
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(widget.record == null ? '혈당 기록하기' : '혈당 수정하기'),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDateTimeCard(),
+                const SizedBox(height: 20),
+                _buildMeasurementTypeCard(),
+                const SizedBox(height: 20),
+                _buildBloodSugarInput(),
+                const SizedBox(height: 24),
+                _buildActionButtons(),
+              ],
+            ),
           ),
         ),
       ),
@@ -286,82 +274,105 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   }
 
   Widget _buildDateTimeCard() {
-    final dateFormat = DateFormat('yyyy년 M월 d일 (E) HH:mm', 'ko');
+    final dateText = DateFormat('yyyy.MM.dd').format(_selectedDateTime);
+    final timeText = DateFormat('HH:mm').format(_selectedDateTime);
 
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.calendar_today),
-        title: const Text('측정 일시'),
-        subtitle: Text(dateFormat.format(_selectedDateTime)),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: _selectDateTime,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '측정 일시',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildDateTimeBox(text: dateText, onTap: _selectDate),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildDateTimeBox(text: timeText, onTap: _selectTime),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateTimeBox({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(7),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: ShapeDecoration(
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+            borderRadius: BorderRadius.circular(7),
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF1A1A1A),
+              fontSize: 16,
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildMeasurementTypeCard() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '측정 유형',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
-                  children: _measurementTypes.map((type) {
-                    final isSelected = _selectedMeasurementType == type;
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedMeasurementType = type;
-                          });
-                          _updateStatus(); // 상태 재계산
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.orange : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected ? Colors.orange : Colors.grey[300]!,
-                              width: 2,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                BloodSugarRecord.getMeasurementTypeIcon(type),
-                                style: const TextStyle(fontSize: 20),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                BloodSugarRecord.getMeasurementTypeKorean(type),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? Colors.white : Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+    return Row(
+      children: _measurementTypes.map((type) {
+        final isSelected = _selectedMeasurementType == type;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedMeasurementType = type;
+              });
+              _updateStatus();
+            },
+            child: Container(
+              height: 35,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: ShapeDecoration(
+                color: isSelected ? const Color(0xFFFF5A8D) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: isSelected
+                      ? BorderSide.none
+                      : const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ],
+              ),
+              child: Center(
+                child: Text(
+                  type,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF898383),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        );
+      }).toList(),
     );
   }
 
@@ -370,34 +381,121 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '혈당 (mg/dL)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _bloodSugarController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-          decoration: InputDecoration(
-            hintText: '수치를 입력하세요',
-            suffixText: 'mg/dL',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            prefixIcon: const Icon(Icons.monitor_heart, color: Colors.red),
+          '혈당(mg/dL)',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
           ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '혈당 수치를 입력해주세요';
-            }
-            final bloodSugar = int.tryParse(value);
-            if (bloodSugar == null || bloodSugar < 20 || bloodSugar > 600) {
-              return '올바른 혈당 수치를 입력해주세요 (20~600mg/dL)';
-            }
-            return null;
-          },
+        ),
+        const SizedBox(height: 10),
+        Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+              borderRadius: BorderRadius.circular(7),
+            ),
+          ),
+          child: TextFormField(
+            controller: _bloodSugarController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '혈당 수치를 입력해주세요';
+              }
+              final bloodSugar = int.tryParse(value);
+              if (bloodSugar == null || bloodSugar < 20 || bloodSugar > 600) {
+                return '올바른 혈당 수치를 입력해주세요 (20~600mg/dL)';
+              }
+              return null;
+            },
+            textAlignVertical: const TextAlignVertical(y: 0.45),
+            style: const TextStyle(
+              color: Color(0xFF1A1A1A),
+              fontSize: 16,
+              fontWeight: FontWeight.w300,
+            ),
+            decoration: const InputDecoration(
+              hintText: '수치를 입력하세요',
+              hintStyle: TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontSize: 16,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.only(top: 8, bottom: 1),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 44,
+            child: OutlinedButton(
+              onPressed: (widget.record != null && !_isSaving)
+                  ? _showDeleteConfirmDialog
+                  : null,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(width: 0.5, color: Color(0xFF898383)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                '삭제',
+                style: TextStyle(
+                  color: Color(0xFF898383),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: SizedBox(
+            height: 44,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5A8D),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      widget.record == null ? '등록' : '수정',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+            ),
+          ),
         ),
       ],
     );
@@ -431,7 +529,8 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: statusColor),
+          Icon(Icons.chevron_left),
+          //Icon(Icons.info_outline, color: statusColor),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

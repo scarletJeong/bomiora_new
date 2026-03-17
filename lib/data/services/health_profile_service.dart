@@ -3,7 +3,7 @@ import '../../core/network/api_client.dart';
 import '../../presentation/user/healthprofile/models/health_profile_model.dart';
 
 class HealthProfileService {
-  // ApiClient의 동적 baseUrl 사용 (로컬: localhost:9000, 서버: bomiora.net:9000)
+  // ApiClient의 동적 baseUrl 사용 (로컬: localhost:9000, 서버: bomiora.net)
   
   // 건강프로필 조회
   static Future<HealthProfileModel?> getHealthProfile(String userId) async {

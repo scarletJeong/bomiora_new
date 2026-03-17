@@ -25,16 +25,34 @@ class StepsRecord {
     return StepsRecord(
       id: json['id'] ?? 0,
       userId: json['user_id'] ?? 0,
-      date: DateTime.parse(json['date']),
+      date: _parseDateTime(json['date']),
       totalSteps: json['total_steps'] ?? 0,
       distance: (json['distance'] ?? 0.0).toDouble(),
       calories: json['calories'] ?? 0,
       hourlySteps: (json['hourly_steps'] as List<dynamic>?)
           ?.map((item) => HourlySteps.fromJson(item))
           .toList() ?? [],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
     );
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    final parsed = DateTime.parse(value.toString());
+    if (parsed.isUtc) {
+      return DateTime(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+        parsed.microsecond,
+      );
+    }
+    return parsed;
   }
 
   Map<String, dynamic> toJson() {

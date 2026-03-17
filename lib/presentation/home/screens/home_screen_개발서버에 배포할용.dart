@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../widgets/main_banner_slider.dart';
 import '../widgets/stats_section.dart';
 import '../widgets/popular_products.dart';
@@ -8,22 +7,25 @@ import '../widgets/tester_section.dart';
 import '../widgets/bottom_banner.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
+import '../../shopping/screens/cart_screen.dart';
+import '../../shopping/screens/product_list_screen.dart';
 import '../../shopping/showcase/screens/showcase_screen.dart';
 import '../../health/dashboard/screens/health_dashboard_screen.dart';
+import '../../health/telemedicine/screens/telemedicine_webview_screen.dart';
+import '../../user/healthprofile/screens/health_profile_list_screen.dart';
+import '../../user/coupon/screens/coupon_screen.dart';
+import '../../user/mileage/screens/mileage_screen.dart';
 import '../../customer_service/screens/customer_service_screen.dart';
 import '../../shopping/wish/screens/wish_list_screen.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
 import '../../event/screens/event_list_screen.dart';
+import '../../user/delivery/delivery_list_screen.dart';
+import '../../review/screens/all_reviews_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
 
 class HomeScreen extends StatefulWidget {
-  final int initialIndex;
-
-  const HomeScreen({
-    super.key,
-    this.initialIndex = 0,
-  });
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -37,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
     _loadData();
     _loadCurrentUser();
   }
@@ -119,7 +120,13 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.shopping_cart, color: Colors.black),
             onPressed: () {
-              Navigator.pushNamed(context, '/cart');
+            
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CartScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -169,7 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '홈',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushReplacementNamed(context, '/home');
+                      setState(() {
+                        _currentIndex = 0;
+                      });
                     },
                   ),
                   _buildMenuGridItem(
@@ -177,7 +186,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '건강프로필',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/profile');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HealthProfileListScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -185,7 +199,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '주문배송',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/order');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DeliveryListScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -193,7 +212,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '장바구니',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/cart');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -201,7 +225,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '쿠폰',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/coupon');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CouponScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -209,7 +238,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: '포인트',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/point');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MileageScreen(),
+                        ),
+                      );
                     },
                   ),
                   _buildMenuGridItem(
@@ -217,7 +251,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: 'Mypage',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushReplacementNamed(context, '/my_page');
+                      setState(() {
+                        _currentIndex = 3;
+                      });   
                     },
                   ),
                   _buildMenuGridItem(
@@ -322,59 +358,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            ExpansionTile(
-              title: const Text('제품'),
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.fitness_center, size: 20),
-                  title: const Text('다이어트 제품'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(
-                      context,
-                      '/product-list',
-                      arguments: {
-                        'categoryId': '10',
-                        'categoryName': '다이어트 제품',
-                        'productKind': 'general',
-                      },
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cleaning_services, size: 20),
-                  title: const Text('디톡스 제품'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(
-                      context,
-                      '/product-list',
-                      arguments: {
-                        'categoryId': '20',
-                        'categoryName': '디톡스 제품',
-                        'productKind': 'general',
-                      },
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.content_cut, size: 20),
-                  title: const Text('헤어/탈모'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(
-                      context,
-                      '/product-list',
-                      arguments: {
-                        'categoryId': '70',
-                        'categoryName': '헤어/탈모',
-                        'productKind': 'general',
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
             ListTile(
               leading: const Icon(Icons.card_giftcard),
               title: const Text('체험단'),
@@ -388,7 +371,13 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('리뷰'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/review');
+                // 전체 리뷰 페이지로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AllReviewsScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -410,7 +399,13 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('온라인 문의'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/qna');
+                // 온라인 문의 페이지로 이동 - 내 문의내역 탭 먼저 표시
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CustomerServiceScreen(initialTabIndex: 1),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -425,65 +420,37 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       body: _getCurrentPage(),
-      // 하단 네비게이션 바
-      bottomNavigationBar: SizedBox(
-        height: kBottomNavigationBarHeight + 2.0, // overflow 방지를 위해 약간 높이 증가
-        child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // 배경 이미지
-            Positioned.fill(
-              child: SvgPicture.asset(
-                'assets/img/footer_navigation_bar.svg',
-                fit: BoxFit.fill, // cover 대신 fill 사용 (비율 무시하고 전체 영역 채움)
-              ),
-            ),
-            // 네비게이션 바
-            BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              currentIndex: _currentIndex,
-              selectedItemColor: const Color(0xFFFF3787),
-              unselectedItemColor: Colors.white,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              onTap: (index) {  
-                switch (index) {
-                  case 0:
-                    Navigator.pushReplacementNamed(context, '/home');
-                    break;
-                  case 1:
-                    Navigator.pushReplacementNamed(context, '/category');
-                    break;
-                  case 2:
-                    Navigator.pushReplacementNamed(context, '/favorite');
-                    break;
-                  case 3:
-                    Navigator.pushReplacementNamed(context, '/my_page');
-                    break;
-                }
-              },
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home),
-                  label: '홈',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.shopping_bag),
-                  label: '카테고리',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.favorite),
-                  label: '찜',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person),
-                  label: '마이페이지',
-                ),
-              ],
-            ),
-          ],
-        ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        selectedItemColor: const Color(0xFFFF3787),
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          // 건강대시보드만 활성화, 나머지는 구현 예정
+          if (index == 0) {
+            setState(() {
+              _currentIndex = index;
+            });
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: '홈',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_bag),
+            label: '카테고리',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: '찜',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: '마이페이지',
+          ),
+        ],
       ),
     ),
     );

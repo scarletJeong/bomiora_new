@@ -88,7 +88,20 @@ class FoodRecord {
         return DateTime.now();
       }
       
-      return DateTime.parse(dateStr);
+      final parsed = DateTime.parse(dateStr);
+      if (parsed.isUtc) {
+        return DateTime(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+          parsed.hour,
+          parsed.minute,
+          parsed.second,
+          parsed.millisecond,
+          parsed.microsecond,
+        );
+      }
+      return parsed;
     } catch (e) {
       print('❌ 날짜 파싱 오류: $dateValue, 현재 시간으로 대체');
       return DateTime.now();

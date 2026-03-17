@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 // import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
@@ -91,8 +92,14 @@ class BomioraApp extends StatelessWidget {
         '/cart': (context) {
           final args =
               ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final dynamic initialTabArg =
+              args == null ? null : args['initialTabIndex'];
+          final int initialTabIndex = initialTabArg is int
+              ? initialTabArg
+              : int.tryParse(initialTabArg?.toString() ?? '') ?? 0;
           return CartScreen(
             backToProductId: args?['backToProductId']?.toString(),
+            initialTabIndex: initialTabIndex,
           );
         },
         '/coupon': (context) => const CouponScreen(),
@@ -164,7 +171,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkLoginStatus() async {
-    final isLoggedIn = await AuthService.isLoggedIn();
+    final results = await Future.wait<dynamic>([
+      AuthService.isLoggedIn(),
+      Future.delayed(const Duration(milliseconds: 2500)),
+    ]);
+    final isLoggedIn = results[0] as bool;
+    if (!mounted) return;
     setState(() {
       _isLoggedIn = isLoggedIn;
       _isLoading = false;
@@ -175,13 +187,45 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
+        body: DecoratedBox(
+          decoration: BoxDecoration(color: Color(0xFFF7F7F7)),
+          child: SizedBox.expand(
+            child: _SplashImage(),
+          ),
         ),
       );
     }
 
     return _isLoggedIn ? const MobileLayoutWrapper() : const LoginScreen();
+  }
+}
+
+class _SplashImage extends StatelessWidget {
+  const _SplashImage();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = kIsWeb
+            ? (constraints.maxWidth > 600 ? 600.0 : constraints.maxWidth)
+            : constraints.maxWidth;
+
+        return Center(
+          child: SizedBox(
+            width: width,
+            height: constraints.maxHeight,
+            child: Image.asset(
+              'assets/img/splashScreen.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Center(
+                child: Text('스플래시 이미지 로드 실패'),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

@@ -13,18 +13,18 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
 
   final List<BannerItem> banners = [
     BannerItem(
-      imageUrl: 'img/banner/mainPage1.png',
-      title: '보미오라 다이어트',
+      imageUrl: 'assets/img/mainPage1.png',
+      title: '보미오라 다이어트1',
       subtitle: '건강한 체중감량의 시작',
       productId: '1686290723',
     ),
     BannerItem(
-      imageUrl: 'img/banner/mainPage2.png',
-      title: '다이어트 왜 자꾸 실패할까요?',
+      imageUrl: 'assets/img/mainPage2.png',
+      title: '다이어트 왜 자꾸 실패할까요?11',
       subtitle: '공중파, 종편 TV출연 몸짱 한의사 다이어트',
     ),
     BannerItem(
-      imageUrl: 'img/banner/mainPage3.png',
+      imageUrl: 'assets/img/mainPage3.png',
       title: '다이어트환/디톡스환 특허 등록',
       subtitle: '정대진 대표원장이 연구 배합,개발 후 특허등록',
     ),

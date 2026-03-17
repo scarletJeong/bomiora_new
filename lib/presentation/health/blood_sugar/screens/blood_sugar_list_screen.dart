@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
-import '../../../common/widgets/date_top_widget.dart';
-import '../../../common/chart_layout.dart';
-import '../../../common/widgets/period_chart_widget.dart';
+import '../../health_common/widgets/health_edit_bottom_sheet.dart';
+import '../../health_common/widgets/health_chart_expand_page.dart';
+import '../../health_common/widgets/health_date_selector.dart';
 import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
 import '../../../../data/services/auth_service.dart';
+import '../widgets/blood_sugar_chart_section.dart';
 import 'blood_sugar_input_screen.dart';
 
 class BloodSugarListScreen extends StatefulWidget {
   final DateTime? initialDate;
-  
+
   const BloodSugarListScreen({super.key, this.initialDate});
 
   @override
@@ -29,12 +30,18 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   bool isLoading = true;
   bool hasShownNoDataDialog = false;
   late DateTime selectedDate;
-  
+
   // 차트 관련
   int? selectedChartPointIndex;
   Offset? tooltipPosition;
   double timeOffset = 0.0; // 통합된 드래그 오프셋
-  double? _dragStartX;
+  VoidCallback? _refreshExpandedChart;
+
+  void _setChartState(VoidCallback updates) {
+    if (!mounted) return;
+    setState(updates);
+    _refreshExpandedChart?.call();
+  }
 
   // 표시할 3개의 날짜
   List<DateTime> get displayDates {
@@ -44,26 +51,28 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       selectedDate.add(const Duration(days: 1)),
     ];
   }
-  
+
   BloodSugarRecord? get selectedRecord {
     final dateKey = DateFormat('yyyy-MM-dd').format(selectedDate);
     return bloodSugarRecordsMap[dateKey];
   }
-  
+
   // 오늘인지 확인
   bool _isToday() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return selectedDate.year == today.year && 
-           selectedDate.month == today.month && 
-           selectedDate.day == today.day;
+    return selectedDate.year == today.year &&
+        selectedDate.month == today.month &&
+        selectedDate.day == today.day;
   }
 
   // 오늘의 혈당 데이터 가져오기
   List<BloodSugarRecord> getTodayRecords() {
-    final today = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final today =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
     return allRecords.where((record) {
-      final recordDate = DateTime(record.measuredAt.year, record.measuredAt.month, record.measuredAt.day);
+      final recordDate = DateTime(record.measuredAt.year,
+          record.measuredAt.month, record.measuredAt.day);
       return recordDate.isAtSameMomentAs(today);
     }).toList();
   }
@@ -71,9 +80,10 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   // 시간 범위 계산 (통합 로직)
   Map<String, double> _calculateTimeRange() {
     const maxStartHour = 18; // 24시 - 6시간 = 18시 (7개 라벨)
-    final startHour = (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
+    final startHour =
+        (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
     final endHour = (startHour + 6.0).clamp(6.0, 24.0);
-    
+
     return {'min': startHour, 'max': endHour};
   }
 
@@ -111,8 +121,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     final sensitivity = _getDragSensitivity();
     final dataDelta = -(deltaX / chartWidth) * sensitivity;
     final newOffset = timeOffset + dataDelta;
-    
-    setState(() {
+
+    _setChartState(() {
       timeOffset = _clampDragOffset(newOffset);
     });
   }
@@ -122,50 +132,58 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     if (selectedPeriod != '일') {
       return _getWeeklyOrMonthlyData();
     }
-    
+
     final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-    
+
     // 캐시에서 데이터 가져오기 (없으면 빈 배열)
     final dayRecords = dailyRecordsCache[selectedDateStr] ?? [];
-    
+
     dayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-    
+
     final timeRange = _calculateTimeRange();
     final minHourDiff = timeRange['min']!;
     final maxHourDiff = timeRange['max']!;
-    
+
     List<Map<String, dynamic>> chartData = [];
-    
+
     for (var record in dayRecords) {
       final recordHour = record.measuredAt.hour;
       final recordMinute = record.measuredAt.minute;
-      
+
       // 통합 로직: 모든 데이터 표시 (필터링은 Painter에서)
-      final chartPoint = _createChartPoint(record, recordHour, recordMinute, minHourDiff, maxHourDiff);
+      final chartPoint = _createChartPoint(
+          record, recordHour, recordMinute, minHourDiff, maxHourDiff);
       chartData.add(chartPoint);
     }
-    
+
     return chartData;
   }
 
   // 차트 포인트 생성 (통합)
-  Map<String, dynamic> _createChartPoint(BloodSugarRecord record, int recordHour, int recordMinute, double minHourDiff, double maxHourDiff) {
-    final secondRatio = record.measuredAt.second / 3600.0;
-    final minuteRatio = (recordMinute / 60.0) + secondRatio;
+  Map<String, dynamic> _createChartPoint(
+      BloodSugarRecord record,
+      int recordHour,
+      int recordMinute,
+      double minHourDiff,
+      double maxHourDiff) {
+    final normalizedMinute = (recordMinute / 5).floor() * 5;
+    final minuteRatio = normalizedMinute / 60.0;
     final range = maxHourDiff - minHourDiff;
-    
+
     // 통합 로직: 시작 시간 기준으로 X축 위치 계산
     double xPosition = (recordHour - minHourDiff + minuteRatio) / range;
     xPosition = xPosition.clamp(0.0, 1.0);
-    
-    String dateStr = '${recordHour.toString().padLeft(2, '0')}:${recordMinute.toString().padLeft(2, '0')}';
-    
+
+    String dateStr =
+        '${recordHour.toString().padLeft(2, '0')}:${recordMinute.toString().padLeft(2, '0')}';
+
     return {
       'date': dateStr,
       'hour': recordHour,
       'bloodSugar': record.bloodSugar,
       'measurementType': record.measurementType,
       'record': record,
+      'normalizedMinute': normalizedMinute,
       'xPosition': xPosition,
     };
   }
@@ -174,31 +192,34 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   List<Map<String, dynamic>> _getWeeklyOrMonthlyData() {
     List<Map<String, dynamic>> chartData = [];
     final days = selectedPeriod == '주' ? 7 : 30;
-    
+
     // 선택된 날짜를 기준으로 과거 데이터 생성 (선택된 날짜가 맨 오른쪽)
     final endDate = selectedDate;
     final startDate = endDate.subtract(Duration(days: days - 1));
-    
+
     // 모든 날짜에 대해 데이터 생성 (데이터가 없어도 빈 슬롯 생성)
     for (int i = 0; i < days; i++) {
       final date = startDate.add(Duration(days: i));
       final dateKey = DateFormat('yyyy-MM-dd').format(date);
-      
+
       // 해당 날짜의 모든 기록 가져오기 (allRecords에서)
       final dayRecords = allRecords.where((record) {
-        final recordDateStr = DateFormat('yyyy-MM-dd').format(record.measuredAt);
+        final recordDateStr =
+            DateFormat('yyyy-MM-dd').format(record.measuredAt);
         return recordDateStr == dateKey;
       }).toList();
-      
+
       if (dayRecords.isNotEmpty) {
         // 공복혈당만 필터링
-        final fastingRecords = dayRecords.where((record) => record.measurementType == '공복').toList();
-        
+        final fastingRecords = dayRecords
+            .where((record) => record.measurementType == '공복')
+            .toList();
+
         if (fastingRecords.isNotEmpty) {
           // 공복혈당 중 가장 높은 값 선택
           fastingRecords.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
           final highestFastingRecord = fastingRecords.first;
-          
+
           chartData.add({
             'date': DateFormat('M.d').format(date),
             'bloodSugar': highestFastingRecord.bloodSugar,
@@ -210,7 +231,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
           // 공복혈당이 없으면 일반 혈당 중 최고값 선택
           dayRecords.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
           final highestRecord = dayRecords.first;
-          
+
           chartData.add({
             'date': DateFormat('M.d').format(date),
             'bloodSugar': highestRecord.bloodSugar,
@@ -230,108 +251,20 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         });
       }
     }
-    
+
     return chartData;
   }
 
-  // X축 라벨 생성 (통합)
-  Widget _buildXAxisLabels(List<Map<String, dynamic>> chartData) {
-    if (selectedPeriod != '일') {
-      return _buildPeriodXAxisLabels(chartData);
-    }
-    
-    final timeRange = _calculateTimeRange();
-    final startHour = timeRange['min']!.round();
-    
-    List<Widget> hourLabels = [];
-    
-    // 통합 로직: 시작 시간부터 7개 라벨 표시
-    for (int i = 0; i < 7; i++) {
-      final hour = (startHour + i).clamp(0, 24);
-      final hourLabel = hour == 24 ? '24:00' : '${hour.toString().padLeft(2, '0')}:00';
-      hourLabels.add(
-        Text(hourLabel, style: TextStyle(fontSize: 12, color: Colors.grey))
-      );
-    }
-    
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: hourLabels,
-    );
-  }
-
-  // 주/월 X축 라벨 생성
-  Widget _buildPeriodXAxisLabels(List<Map<String, dynamic>> chartData) {
-    final days = selectedPeriod == '주' ? 7 : 30;
-    final endDate = selectedDate;
-    final startDate = endDate.subtract(Duration(days: days - 1));
-    
-    // 모든 날짜에 대한 라벨 생성 (데이터 유무와 관계없이)
-    List<String> allDateLabels = [];
-    for (int i = 0; i < days; i++) {
-      final date = startDate.add(Duration(days: i));
-      allDateLabels.add(DateFormat('M.d').format(date));
-    }
-    
-    if (selectedPeriod == '주') {
-      // 주별: 모든 날짜 표시
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: allDateLabels.map((label) {
-          return Expanded(
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-          );
-        }).toList(),
-      );
-    } else {
-      // 월별: 현재 보이는 7개 날짜만 표시 (슬라이드 기능)
-      final visibleDays = 7;
-      final maxOffset = (days - visibleDays) / days; // 최대 오프셋
-      final currentOffset = timeOffset.clamp(0.0, maxOffset);
-      final startIndex = (currentOffset * days).floor();
-      final endIndex = (startIndex + visibleDays).clamp(0, allDateLabels.length);
-      
-      List<String> visibleLabels = [];
-      for (int i = startIndex; i < endIndex; i++) {
-        if (i < allDateLabels.length) {
-          visibleLabels.add(allDateLabels[i]);
-        }
-      }
-      
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: visibleLabels.map((label) {
-          return Expanded(
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-          );
-        }).toList(),
-      );
-    }
-  }
-  
   // Y축 범위 계산 (혈당 기준)
   List<double> getYAxisLabels() {
     return [300, 250, 200, 150, 100, 50]; // 혈당 범위: 50-300 mg/dL
-  }
-  
-  // 점선 Y축 라벨
-  List<double> getDashedYAxisLabels() {
-    return [275, 225, 175, 125, 75];
   }
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
-    
+
     if (widget.initialDate != null) {
       selectedDate = DateTime(
         widget.initialDate!.year,
@@ -341,14 +274,14 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     } else {
       selectedDate = DateTime(now.year, now.month, now.day);
     }
-    
+
     // 오늘 날짜일 경우: 현재 시간 - 4시간을 시작점으로 초기 timeOffset 설정
     if (_isToday()) {
       final currentHour = now.hour;
       final startHourTarget = (currentHour - 4).clamp(0, 18);
       timeOffset = startHourTarget / 18.0;
     }
-    
+
     // 월별 그래프 초기 오프셋 설정 (오늘 날짜가 맨 오른쪽에 보이도록)
     if (selectedPeriod == '월') {
       final visibleDays = 7;
@@ -356,7 +289,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       final maxOffset = (totalDays - visibleDays) / totalDays;
       timeOffset = maxOffset; // 오늘 날짜가 맨 오른쪽에 표시되도록
     }
-    
+
     _loadData();
   }
 
@@ -374,19 +307,15 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
 
     try {
       currentUser = await AuthService.getUser();
-      
+
       if (currentUser != null) {
         // 전체 혈당 기록 한 번만 로드
-        allRecords = await BloodSugarRepository.getBloodSugarRecords(currentUser!.id);
-        print('📊 [혈당 리스트 로드] 총 ${allRecords.length}건');
-        for (final r in allRecords) {
-          print(
-              '  - id=${r.id}, sugar=${r.bloodSugar}, type=${r.measurementType}, status=${r.status}, at=${DateFormat('yyyy-MM-dd HH:mm:ss').format(r.measuredAt)}');
-        }
-        
+        allRecords =
+            await BloodSugarRepository.getBloodSugarRecords(currentUser!.id);
+
         // 메모리에서 날짜별로 캐싱 (API 호출 없이 필터링)
         _cacheRecordsFromMemory();
-        
+
         // 데이터가 없을 때만 다이얼로그 표시 (한 번만)
         if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
           hasShownNoDataDialog = true;
@@ -394,7 +323,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
             _showNoDataDialog();
           });
         }
-        
+
         setState(() {
           isLoading = false;
         });
@@ -415,19 +344,20 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   void _cacheRecordsFromMemory() {
     dailyRecordsCache.clear();
     bloodSugarRecordsMap.clear();
-    
+
     for (var record in allRecords) {
       final dateKey = DateFormat('yyyy-MM-dd').format(record.measuredAt);
-      
+
       // 날짜별 리스트에 추가
       if (!dailyRecordsCache.containsKey(dateKey)) {
         dailyRecordsCache[dateKey] = [];
       }
       dailyRecordsCache[dateKey]!.add(record);
-      
+
       // 요약 맵 업데이트 (가장 최근 기록)
-      if (!bloodSugarRecordsMap.containsKey(dateKey) || 
-          record.measuredAt.isAfter(bloodSugarRecordsMap[dateKey]!.measuredAt)) {
+      if (!bloodSugarRecordsMap.containsKey(dateKey) ||
+          record.measuredAt
+              .isAfter(bloodSugarRecordsMap[dateKey]!.measuredAt)) {
         bloodSugarRecordsMap[dateKey] = record;
       }
     }
@@ -436,344 +366,470 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   // 날짜 변경 시 데이터 로드 (메모리에서 필터링)
   void _loadDataForSelectedDate() {
     final dateKey = DateFormat('yyyy-MM-dd').format(selectedDate);
-    
+
     // 이미 캐시에 있으면 UI만 업데이트
     if (dailyRecordsCache.containsKey(dateKey)) {
       setState(() {});
       return;
     }
-    
+
     // 메모리에서 필터링하여 캐시에 추가
     final records = allRecords.where((record) {
       final recordDateKey = DateFormat('yyyy-MM-dd').format(record.measuredAt);
       return recordDateKey == dateKey;
     }).toList();
-    
+
     dailyRecordsCache[dateKey] = records;
-    
+
     if (records.isNotEmpty) {
       records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
       bloodSugarRecordsMap[dateKey] = records.first;
     }
-    
+
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          '혈당',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
-      child: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DateTopWidget(
-                    selectedDate: selectedDate,
-                    onDateChanged: (newDate) {
-                      setState(() {
-                        selectedDate = newDate;
-                        selectedChartPointIndex = null;
-                        tooltipPosition = null;
-                        
-                        // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
-                        final now = DateTime.now();
-                        final today = DateTime(now.year, now.month, now.day);
-                        final isSelectingToday = newDate.year == today.year && 
-                                                 newDate.month == today.month && 
-                                                 newDate.day == today.day;
-                        
-                        if (isSelectingToday) {
-                          final currentHour = now.hour;
-                          final startHourTarget = (currentHour - 4).clamp(0, 18);
-                          timeOffset = startHourTarget / 18.0;
-                        } else {
-                          timeOffset = 0.0;
-                        }
-                      });
-                      
-                      // 새로운 날짜의 데이터 로드
-                      _loadDataForSelectedDate();
-                    },
-                    recordsMap: bloodSugarRecordsMap,
-                    primaryColor: Colors.black,
-                    secondaryColor: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildBloodSugarDisplay(),
-                  const SizedBox(height: 24),
-                  _buildPeriodButtons(),
-                  const SizedBox(height: 24),
-                  _buildChart(),
-                  const SizedBox(height: 32),
-                  BtnRecord(
-                    text: '+ 기록하기',
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BloodSugarInputScreen(),
-                        ),
-                      );
-                      
-                      // 기록 후 항상 데이터 새로고침
-                      if (result == true || result == null) {
-                        await _loadData();
-                      }
-                    },
-                    backgroundColor: const Color(0xFFFF3787),
-                  ),
-                ],
-              ),
+          title: const Text(
+            '혈당',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+        ),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 27),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      HealthDateSelector(
+                        selectedDate: selectedDate,
+                        onDateChanged: (newDate) {
+                          setState(() {
+                            selectedDate = newDate;
+                            selectedChartPointIndex = null;
+                            tooltipPosition = null;
+
+                            // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
+                            final now = DateTime.now();
+                            final today =
+                                DateTime(now.year, now.month, now.day);
+                            final isSelectingToday =
+                                newDate.year == today.year &&
+                                    newDate.month == today.month &&
+                                    newDate.day == today.day;
+
+                            if (isSelectingToday) {
+                              final currentHour = now.hour;
+                              final startHourTarget =
+                                  (currentHour - 4).clamp(0, 18);
+                              timeOffset = startHourTarget / 18.0;
+                            } else {
+                              timeOffset = 0.0;
+                            }
+                          });
+
+                          // 새로운 날짜의 데이터 로드
+                          _loadDataForSelectedDate();
+                        },
+                        monthTextColor: const Color(0xFF898686),
+                        selectedTextColor: const Color(0xFFFF5A8D),
+                        unselectedTextColor: const Color(0xFFB7B7B7),
+                        dividerColor: const Color(0xFFD2D2D2),
+                        iconColor: const Color(0xFF898686),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildBloodSugarDisplay(),
+                      const SizedBox(height: 20),
+                      BloodSugarChartSection(
+                        selectedPeriod: selectedPeriod,
+                        selectedDate: selectedDate,
+                        timeOffset: timeOffset,
+                        selectedChartPointIndex: selectedChartPointIndex,
+                        tooltipPosition: tooltipPosition,
+                        isToday: _isToday(),
+                        chartData: getChartData(),
+                        yLabels: getYAxisLabels(),
+                        hasActualDailyData: (dailyRecordsCache[
+                                    DateFormat('yyyy-MM-dd')
+                                        .format(selectedDate)] ??
+                                [])
+                            .isNotEmpty,
+                        onPeriodChanged: (period) {
+                          _setChartState(() {
+                            selectedPeriod = period;
+                            selectedChartPointIndex = null;
+                            tooltipPosition = null;
+
+                            if (period == '월') {
+                              final visibleDays = 7;
+                              final totalDays = 30;
+                              final maxOffset =
+                                  (totalDays - visibleDays) / totalDays;
+                              timeOffset = maxOffset;
+                            } else if (period == '주') {
+                              timeOffset = 0.0;
+                            } else if (period == '일') {
+                              if (_isToday()) {
+                                final now = DateTime.now();
+                                final currentHour = now.hour;
+                                final startHourTarget =
+                                    (currentHour - 4).clamp(0, 18);
+                                timeOffset = startHourTarget / 18.0;
+                              } else {
+                                timeOffset = 0.0;
+                              }
+                            } else {
+                              timeOffset = 0.0;
+                            }
+                          });
+
+                          if (period == '주' || period == '월') {
+                            _loadPeriodData();
+                          }
+                        },
+                        onDragUpdate: _handleDragUpdate,
+                        onSelectionChanged: (index, position) {
+                          _setChartState(() {
+                            selectedChartPointIndex = index;
+                            tooltipPosition = position;
+                          });
+                        },
+                        onExpand: _openExpandedChartPage,
+                      ),
+                      const SizedBox(height: 20),
+                      BtnRecord(
+                        text: '+기록하기',
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const BloodSugarInputScreen(),
+                            ),
+                          );
+
+                          // 기록 후 항상 데이터 새로고침
+                          if (result == true || result == null) {
+                            await _loadData();
+                          }
+                        },
+                        backgroundColor: const Color(0xFFFF5A8D),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ),
     );
   }
 
   // 혈당 표시
   Widget _buildBloodSugarDisplay() {
-    final dateStr = DateFormat('yyyy년 M월 d일').format(selectedDate);
-    
-    // 오늘의 혈당 데이터 가져오기
     final todayRecords = getTodayRecords();
-    
-    // 공복혈당 찾기
-    final fastingRecord = todayRecords.where((record) => record.measurementType == '공복').isNotEmpty
-        ? todayRecords.where((record) => record.measurementType == '공복').first
+    final fastingRecord = _latestRecordByType(todayRecords, '공복');
+    final postMealRecord = _latestRecordByType(todayRecords, '식후');
+    final previousDate =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day - 1);
+    final previousDayRecords = _recordsForDate(previousDate);
+    final previousFasting = _latestRecordByType(previousDayRecords, '공복');
+    final previousPostMeal = _latestRecordByType(previousDayRecords, '식후');
+
+    final int? fastingDiff = (fastingRecord != null && previousFasting != null)
+        ? fastingRecord.bloodSugar - previousFasting.bloodSugar
         : null;
-    
-    // 식후혈당 찾기
-    final postMealRecord = todayRecords.where((record) => record.measurementType == '식후').isNotEmpty
-        ? todayRecords.where((record) => record.measurementType == '식후').first
+    final int? postDiff = (postMealRecord != null && previousPostMeal != null)
+        ? postMealRecord.bloodSugar - previousPostMeal.bloodSugar
         : null;
-    
+
     return GestureDetector(
-      onTap: () async {
-        if (fastingRecord != null || postMealRecord != null) {
-          final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-          final todayRecords = dailyRecordsCache[selectedDateStr] ?? [];
-          
-          todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-          
-          if (todayRecords.length > 1) {
-            _showTimeSelectionBottomSheet(todayRecords);
-          } else if (todayRecords.length == 1) {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => BloodSugarInputScreen(record: todayRecords[0]),
+      onTap: _openSelectedSugarRecordEditor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSugarSummaryCardNew(
+                  label: '공복',
+                  value: fastingRecord?.bloodSugar.toString() ?? '-',
+                  headerColor: _sugarHeaderColor(fastingRecord?.bloodSugar, '공복'),
+                  diffText: _sugarDiffText(fastingDiff),
+                  diffUp: _isDiffUp(fastingDiff),
+                ),
               ),
-            );
-            
-            // 수정 후 항상 데이터 새로고침
-            if (result == true || result == null) {
-              await _loadData();
-            }
-          }
-        }
-      },
-      child: Center(
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  dateStr,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSugarSummaryCardNew(
+                  label: '식후',
+                  value: postMealRecord?.bloodSugar.toString() ?? '-',
+                  headerColor: _sugarHeaderColor(postMealRecord?.bloodSugar, '식후'),
+                  diffText: _sugarDiffText(postDiff),
+                  diffUp: _isDiffUp(postDiff),
                 ),
-                if (selectedRecord != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Icon(
-                      Icons.edit,
-                      size: 14,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-              ],
-            ),
-            
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 공복혈당
-                Column(
+              ),
+            ],
+          ),
+          // 공복/식후 카드 ui 와 혈당 상태 색상 notice 부분 간격
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              const Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          fastingRecord != null ? fastingRecord.bloodSugar.toString() : '-',
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFE91E63), // 핑크색
-                          ),
-                        ),
-                        if (fastingRecord != null)
-                          Text(
-                            ' mg/dL',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[800],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: fastingRecord != null 
-                            ? const Color(0xFFE91E63).withOpacity(0.1)
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '공복',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: fastingRecord != null 
-                              ? const Color(0xFFE91E63)
-                              : Colors.grey,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                    _SugarLegend(color: Color(0xFF71D375), label: '정상'),
+                    _SugarLegend(color: Color(0xFFFFE78B), label: '전단계'),
+                    _SugarLegend(color: Color(0xFFFF6161), label: '의심'),
                   ],
                 ),
-                const SizedBox(width: 32),
-                // 식후혈당
-                Column(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          postMealRecord != null ? postMealRecord.bloodSugar.toString() : '-',
-                          style: TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: postMealRecord != null 
-                                ? const Color(0xFFFF3787)
-                                : Colors.grey,
-                          ),
-                        ),
-                        if (postMealRecord != null)
-                          Text(
-                            ' mg/dL',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[800],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                      ],
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: _openSelectedSugarRecordEditor,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF5A8D),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '수정하기',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: postMealRecord != null 
-                            ? const Color(0xFFFF3787).withOpacity(0.1)
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '식후',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: postMealRecord != null 
-                              ? const Color(0xFFFF3787)
-                              : Colors.grey,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            if (fastingRecord != null || postMealRecord != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  '탭하여 수정',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[500],
                   ),
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  // 기간 선택 버튼
-  Widget _buildPeriodButtons() {
-    return Row(
-      children: [
-        _buildPeriodButton('일'),
-        const SizedBox(width: 8),
-        _buildPeriodButton('주'),
-        const SizedBox(width: 8),
-        _buildPeriodButton('월'),
-      ],
+  List<BloodSugarRecord> _recordsForDate(DateTime date) {
+    final key = DateFormat('yyyy-MM-dd').format(date);
+    return dailyRecordsCache[key] ?? [];
+  }
+
+  BloodSugarRecord? _latestRecordByType(
+      List<BloodSugarRecord> records, String type) {
+    final filtered = records.where((r) => r.measurementType == type).toList();
+    if (filtered.isEmpty) return null;
+    filtered.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+    return filtered.first;
+  }
+
+  String _sugarDiffText(int? diff) {
+    if (diff == null) return '전날 대비 -';
+    return '전날 대비 ${diff.abs()} mg/dL';
+  }
+
+  bool _isDiffUp(int? diff) => diff != null && diff > 0;
+
+  /// 혈당 상태별 헤더 색상: 정상 #71D375, 전단계 #FFE78B, 의심 #FF6161.
+  /// 사용처: 공복/식후 카드 헤더(_buildSugarSummaryCardNew의 headerColor), 아래 범례(_SugarLegend)와 동일 구간 색상.
+  Color _sugarHeaderColor(int? bloodSugar, String type) {
+    if (bloodSugar == null) return const Color(0xFF71D375);
+    if (type == '공복') {
+      if (bloodSugar < 100) return const Color(0xFF71D375); // 정상
+      if (bloodSugar <= 125) return const Color(0xFFFFE78B); // 전단계
+      return const Color(0xFFFF6161); // 의심
+    }
+    // 식후
+    if (bloodSugar < 140) return const Color(0xFF71D375);
+    if (bloodSugar <= 199) return const Color(0xFFFFE78B);
+    return const Color(0xFFFF6161);
+  }
+
+  Future<void> _openSelectedSugarRecordEditor() async {
+    final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final todayRecords = dailyRecordsCache[selectedDateStr] ?? [];
+    if (todayRecords.isEmpty) return;
+
+    todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+
+    if (todayRecords.length > 1) {
+      _showTimeSelectionBottomSheet(todayRecords);
+      return;
+    }
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BloodSugarInputScreen(record: todayRecords[0]),
+      ),
+    );
+
+    if (result == true || result == null) {
+      await _loadData();
+    }
+  }
+
+  Widget _buildSugarSummaryCardNew({
+    required String label,
+    required String value,
+    required Color headerColor,
+    required String diffText,
+    required bool diffUp,
+  }) {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 10),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 0.50, color: Color(0x7FD2D2D2)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            decoration: ShapeDecoration(
+              color: headerColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.67,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 20.83,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Text(
+                    'mg/dl',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    diffText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 8,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Icon(
+                    diffUp ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                    size: 10,
+                    color: const Color(0xFF1A1A1A),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPeriodButton(String period) {
-    bool isSelected = selectedPeriod == period;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
+  Future<void> _openExpandedChartPage() async {
+    await openHealthChartExpandPage(
+      context: context,
+      periodSelectorBuilder: (_) => BloodSugarPeriodSelector(
+        selectedPeriod: selectedPeriod,
+        onChanged: (period) {
+          _setChartState(() {
             selectedPeriod = period;
-            // 차트 포인트 선택 초기화
             selectedChartPointIndex = null;
             tooltipPosition = null;
-            
-            // 월별 그래프 선택 시 초기 오프셋 설정
+
             if (period == '월') {
               final visibleDays = 7;
               final totalDays = 30;
               final maxOffset = (totalDays - visibleDays) / totalDays;
-              timeOffset = maxOffset; // 오늘 날짜가 맨 오른쪽에 보이도록
+              timeOffset = maxOffset;
             } else if (period == '주') {
-              // 주별 그래프는 초기 오프셋 없음
               timeOffset = 0.0;
             } else if (period == '일') {
-              // 일별 그래프로 돌아갈 때 오늘 날짜 기준으로 초기화
               if (_isToday()) {
                 final now = DateTime.now();
                 final currentHour = now.hour;
@@ -783,526 +839,138 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                 timeOffset = 0.0;
               }
             } else {
-              // 주별 그래프는 초기 오프셋 없음
               timeOffset = 0.0;
             }
           });
-          
-          // 주/월 탭 선택 시 데이터 다시 로드
+
           if (period == '주' || period == '월') {
             _loadPeriodData();
           }
         },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              period,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : Colors.grey[700],
-              ),
-            ),
-          ),
-        ),
       ),
-    );
-  }
-
-  // 차트 (단순화)
-  Widget _buildChart() {
-    final chartData = getChartData();
-    final yLabels = getYAxisLabels();
-    
-    // 주별/월별 차트인 경우 공통 컴포넌트 사용
-    if (selectedPeriod != '일') {
-      return PeriodChartWidget(
-        chartData: chartData,
-        yLabels: yLabels,
+      chartBuilder: (_) => BloodSugarChartSection(
         selectedPeriod: selectedPeriod,
         selectedDate: selectedDate,
         timeOffset: timeOffset,
-        height: 350,
-        onTimeOffsetChanged: (newOffset) {
-          setState(() {
-            timeOffset = newOffset;
-          });
-        },
-        onTooltipChanged: (index, position) {
-          setState(() {
+        selectedChartPointIndex: selectedChartPointIndex,
+        tooltipPosition: tooltipPosition,
+        isToday: _isToday(),
+        chartData: getChartData(),
+        yLabels: getYAxisLabels(),
+        hasActualDailyData:
+            (dailyRecordsCache[DateFormat('yyyy-MM-dd').format(selectedDate)] ??
+                    [])
+                .isNotEmpty,
+        showPeriodSelector: false,
+        showLegend: false,
+        showExpandButton: false,
+        chartHeight: 260,
+        onDragUpdate: _handleDragUpdate,
+        onSelectionChanged: (index, position) {
+          _setChartState(() {
             selectedChartPointIndex = index;
             tooltipPosition = position;
           });
         },
-        selectedChartPointIndex: selectedChartPointIndex,
-        tooltipPosition: tooltipPosition,
-        dataType: 'bloodSugar',
-        yAxisCount: yLabels.length,
-      );
-    }
-    
-    // 일별 차트: API에서 로드된 실제 데이터가 있는지 확인
-    final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-    final actualRecords = dailyRecordsCache[selectedDateStr] ?? [];
-    
-    if (actualRecords.isEmpty) {
-      return _buildNoDataMessage();
-    }
-    
-    if (chartData.isEmpty) {
-      return _buildEmptyChart(yLabels);
-    }
-    
-    return _buildDataChart(chartData, yLabels);
-  }
-
-  // 데이터 없음 메시지 빌드
-  Widget _buildNoDataMessage() {
-    return Container(
-      height: 350,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              '해당 기간에 혈당 기록이 없습니다',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '혈당을 측정해보세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 빈 차트 빌드 (격자선이 있는 빈 차트)
-  Widget _buildEmptyChart(List<double> yLabels) {
-    return _buildDraggableChart([], yLabels, isEmpty: true);
-  }
-
-  // 데이터가 있는 차트 빌드
-  Widget _buildDataChart(List<Map<String, dynamic>> chartData, List<double> yLabels) {
-    return _buildDraggableChart(chartData, yLabels, isEmpty: false);
-  }
-
-  // 드래그 가능한 차트 빌드 (통합)
-  Widget _buildDraggableChart(List<Map<String, dynamic>> chartData, List<double> yLabels, {required bool isEmpty}) {
-    return Container(
-      height: 350,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: ChartConstants.yAxisLabelWidth,
-                      child: Stack(
-                        children: yLabels.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final label = entry.value;
-                          const double topPadding = 20.0;
-                          const double bottomPadding = 20.0;
-                          final double y = topPadding + (constraints.maxHeight - topPadding - bottomPadding) * index / (yLabels.length - 1);
-                          return Positioned(
-                            top: y - 10, // Adjust for text vertical alignment
-                            right: 0,
-                            child: Text(
-                              '${label.round()}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    SizedBox(width: ChartConstants.yAxisSpacing),
-                    Expanded(
-                      child: _buildChartArea(chartData, constraints, isEmpty),
-                    ),
-                  ],
-                );
-              }
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: EdgeInsets.only(left: ChartConstants.yAxisTotalWidth),
-            child: _buildXAxisLabels(chartData),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 차트 영역 빌드
-  Widget _buildChartArea(List<Map<String, dynamic>> chartData, BoxConstraints constraints, bool isEmpty) {
-    return GestureDetector(
-      onPanStart: (selectedPeriod == '일' || selectedPeriod == '월') ? (details) => _dragStartX = details.localPosition.dx : null,
-      onPanUpdate: (selectedPeriod == '일' || selectedPeriod == '월') ? (details) {
-        if (_dragStartX != null) {
-          final deltaX = details.localPosition.dx - _dragStartX!;
-          final chartWidth = constraints.maxWidth - ChartConstants.yAxisTotalWidth;
-          _handleDragUpdate(deltaX, chartWidth);
-          _dragStartX = details.localPosition.dx;
-        }
-      } : null,
-      onPanEnd: (selectedPeriod == '일' || selectedPeriod == '월') ? (details) => _dragStartX = null : null,
-      onTapDown: isEmpty ? null : (details) {
-        _handleChartTapToggle(
-          details.localPosition, 
-          chartData, 
-          50,  // 최소값 (혈당 기준)
-          300, // 최대값 (혈당 기준)
-          constraints.maxWidth - ChartConstants.yAxisTotalWidth,
-          constraints.maxHeight,
-        );
+      onRegisterRefresh: (refresh) {
+        _refreshExpandedChart = refresh;
       },
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              child: isEmpty 
-                ? CustomPaint(painter: EmptyChartGridPainter())
-                : CustomPaint(
-                    painter: BloodSugarChartPainter(
-                      chartData, 
-                      50,  // 최소값 (혈당 기준)
-                      300, // 최대값 (혈당 기준)
-                      highlightedIndex: selectedChartPointIndex,
-                      isToday: _isToday(),
-                      timeOffset: timeOffset,
-                    ),
-                  ),
-            ),
-          ),
-          if (!isEmpty && selectedChartPointIndex != null && tooltipPosition != null)
-            _buildChartTooltip(
-              chartData[selectedChartPointIndex!],
-              constraints.maxWidth - ChartConstants.yAxisTotalWidth,
-              constraints.maxHeight,
-            ),
-        ],
-      ),
-    );
-  }
-
-  // 차트 탭 핸들러 - 툴팁 토글
-  void _handleChartTapToggle(
-    Offset tapPosition, 
-    List<Map<String, dynamic>> chartData, 
-    double minValue, 
-    double maxValue,
-    double chartWidth,
-    double chartHeight,
-  ) {
-    if (chartData.isEmpty) return;
-    
-    const double leftPadding = 0.0;
-    final double effectiveWidth = chartWidth - leftPadding;
-    
-    int? closestIndex;
-    double minDistance = double.infinity;
-    Offset? closestPoint;
-    
-    for (int i = 0; i < chartData.length; i++) {
-      if (chartData[i]['bloodSugar'] == null) continue;
-      
-      double x;
-      if (chartData[i]['xPosition'] != null) {
-        // 주별/월별 차트: xPosition 사용
-        final xPosition = chartData[i]['xPosition'] as double;
-        final selectedPeriod = this.selectedPeriod;
-        
-        if (selectedPeriod == '월') {
-          // 월별: 현재 보이는 7개 날짜만 표시
-          final visibleDays = 7;
-          final totalDays = 30;
-          final maxOffset = (totalDays - visibleDays) / totalDays;
-          final currentOffset = timeOffset.clamp(0.0, maxOffset);
-          final startIndex = (currentOffset * totalDays).floor();
-          final endIndex = startIndex + visibleDays;
-          
-          // xPosition을 인덱스로 변환
-          final dataIndex = (xPosition * totalDays).round();
-          
-          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-          
-          // 현재 보이는 범위 내에서의 상대적 위치 계산
-          final relativeIndex = dataIndex - startIndex;
-          final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = leftPadding + (effectiveWidth * adjustedRatio);
-        } else {
-          // 주별: xPosition 그대로 사용
-          x = leftPadding + (effectiveWidth * xPosition);
-        }
-      } else if (chartData.length == 1) {
-        // 일별 차트: 단일 데이터
-        x = leftPadding + effectiveWidth / 2;
-      } else {
-        // 일별 차트: 여러 데이터
-        x = leftPadding + (effectiveWidth * i / (chartData.length - 1));
-      }
-      
-      int bloodSugar = chartData[i]['bloodSugar'];
-      double normalizedValue = (300 - bloodSugar) / (300 - 50);
-      double y = chartHeight * normalizedValue;
-      
-      double dx = tapPosition.dx - x;
-      double dy = tapPosition.dy - y;
-      double distance = (dx * dx + dy * dy);
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = i;
-        closestPoint = Offset(x, y);
-      }
-    }
-    
-    if (closestIndex != null && minDistance < 1000) {
-      setState(() {
-        if (selectedChartPointIndex == closestIndex) {
-          selectedChartPointIndex = null;
-          tooltipPosition = null;
-        } else {
-          selectedChartPointIndex = closestIndex;
-          tooltipPosition = closestPoint;
-        }
-      });
-    } else {
-      setState(() {
-        selectedChartPointIndex = null;
-        tooltipPosition = null;
-      });
-    }
-  }
-
-  // 차트 툴팁 위젯
-  Widget _buildChartTooltip(Map<String, dynamic> data, double chartWidth, double chartHeight) {
-    if (tooltipPosition == null) return const SizedBox.shrink();
-    
-    if (data['bloodSugar'] == null) {
-      return const SizedBox.shrink();
-    }
-    
-    final bloodSugar = data['bloodSugar'] as int;
-    final measurementType = data['measurementType'] as String?;
-    final record = data['record'] as BloodSugarRecord?;
-    
-    String dateLabel;
-    if (selectedPeriod != '일' && record != null) {
-      // 주/월 그래프: 날짜 + 시간 형식 (10/20 14:30)
-      final dateStr = DateFormat('M/d').format(record.measuredAt);
-      final timeStr = DateFormat('HH:mm').format(record.measuredAt);
-      dateLabel = '$dateStr $timeStr';
-    } else if (record != null) {
-      // 일별 그래프: 시간만 표시
-      dateLabel = DateFormat('HH:mm').format(record.measuredAt);
-    } else {
-      // fallback
-      dateLabel = data['date'] is String ? data['date'] as String : '시간';
-    }
-    
-    final calculatedTooltipPosition = ChartConstants.calculateTooltipPosition(
-      tooltipPosition!,
-      ChartConstants.tooltipWidth,
-      ChartConstants.tooltipHeight,
-      chartWidth,
-      chartHeight,
-    );
-    
-    return Positioned(
-      left: calculatedTooltipPosition.dx,
-      top: calculatedTooltipPosition.dy,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$bloodSugar mg/dL',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              measurementType != null ? '$dateLabel ($measurementType)' : dateLabel,
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ),
+      onDisposeRefresh: () {
+        _refreshExpandedChart = null;
+      },
     );
   }
 
   // 시간별 기록 선택 바텀시트
-  void _showTimeSelectionBottomSheet(List<BloodSugarRecord> records) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '수정할 시간 선택 (${records.length}개)',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(),
-              const SizedBox(height: 8),
-              ...records.map((record) {
-                final timeStr = DateFormat('HH:mm').format(record.measuredAt);
-                return InkWell(
-                  onTap: () async {
-                    Navigator.pop(context);
-                    
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => BloodSugarInputScreen(record: record),
-                      ),
-                    );
-                    
-                    // 수정 후 항상 데이터 새로고침
-                    if (result == true || result == null) {
-                      await _loadData();
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.access_time, size: 20, color: Colors.grey[600]),
-                            const SizedBox(width: 12),
-                            Text(
-                              timeStr,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '(${record.measurementType})',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              '${record.bloodSugar}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFE91E63),
-                              ),
-                            ),
-                            Text(
-                              ' mg/dL',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(Icons.chevron_right, color: Colors.grey[400]),
-                          ],
-                        ),
-                      ],
+  void _showTimeSelectionBottomSheet(List<BloodSugarRecord> records) async {
+    final items = records
+        .map(
+          (record) => HealthEditBottomSheetItem<BloodSugarRecord>(
+            data: record,
+            timeText: DateFormat('HH:mm').format(record.measuredAt),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: ShapeDecoration(
+                    color: _measurementTypeColor(record.measurementType),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
                     ),
                   ),
-                );
-              }).toList(),
-              const SizedBox(height: 8),
-            ],
+                  child: Text(
+                    record.measurementType,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${record.bloodSugar}',
+                  style: const TextStyle(
+                    color: Color(0xFF1A1A1A),
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const Text(
+                  'mg/dL',
+                  style: TextStyle(
+                    color: Color(0xFF1A1A1A),
+                    fontSize: 12,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        )
+        .toList();
+
+    final selected = await showHealthEditBottomSheet<BloodSugarRecord>(
+      context: context,
+      items: items,
     );
+
+    if (selected == null || !mounted) return;
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BloodSugarInputScreen(record: selected),
+      ),
+    );
+
+    if ((result == true || result == null) && mounted) {
+      await _loadData();
+    }
+  }
+
+  Color _measurementTypeColor(String measurementType) {
+    switch (measurementType) {
+      case '공복':
+        return const Color(0xFF4F82E0);
+      case '식전':
+        return const Color(0xFFFC8B3A);
+      case '식후':
+        return const Color(0xFF38B769);
+      case '취침전':
+        return const Color(0xFF4FD1E0);
+      case '평상시':
+        return const Color(0xFFB24FE0);
+      default:
+        return const Color(0xFFE91E63);
+    }
   }
 
   // 데이터 없을 때 다이얼로그 표시
@@ -1326,14 +994,14 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              
+
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const BloodSugarInputScreen(),
                 ),
               );
-              
+
               // 기록 후 항상 데이터 새로고침
               if ((result == true || result == null) && mounted) {
                 await _loadData();
@@ -1347,291 +1015,38 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 }
 
-// 혈당 차트 Painter
-class BloodSugarChartPainter extends CustomPainter {
-  final List<Map<String, dynamic>> data;
-  final double minValue;
-  final double maxValue;
-  final int? highlightedIndex;
-  final bool isToday;
-  final double timeOffset;
-  
-  BloodSugarChartPainter(
-    this.data, 
-    this.minValue, 
-    this.maxValue, 
-    {this.highlightedIndex, required this.isToday, required this.timeOffset}
-  );
-  
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-    
-    const double borderWidth = 0.5;
-    const double pointRadius = 8; // 데이터 포인트 최대 반지름
-    final chartWidth = size.width - (borderWidth * 2) - (pointRadius * 2); // 좌우 보더와 포인트 반지름 제외
-    
-    // 그리드 선 (혈당 기준 Y축: 50, 100, 150, 200, 250, 300)
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-    
-    // 점선 그리드 (75, 125, 175, 225, 275)
-    final dashedGridPaint = Paint()
-      ..color = Colors.grey[200]!
-      ..strokeWidth = 0.5;
-    
-    // 고정 Y축 값들 (혈당 기준)
-    final yValues = [300, 250, 200, 150, 100, 50];
-    final dashedYValues = [275, 225, 175, 125, 75];
-    
-    // 실선 그리드 그리기
-    for (int i = 0; i < yValues.length; i++) {
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double y = topPadding + (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
-      canvas.drawLine(
-        Offset(borderWidth + pointRadius, y),
-        Offset(chartWidth + borderWidth + pointRadius, y),
-        gridPaint,
-      );
-    }
-    
-    // 점선 그리드 그리기
-    for (int dashedValue in dashedYValues) {
-      double normalizedY = (300 - dashedValue) / (300 - 50);
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double y = topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
-      
-      // 차트 영역 내에서만 점선 그리기
-      for (double x = borderWidth + pointRadius; x < chartWidth + borderWidth + pointRadius; x += 4) {
-        canvas.drawLine(
-          Offset(x, y),
-          Offset(x + 2, y),
-          dashedGridPaint,
-        );
-      }
-    }
-    
-    // 데이터 포인트 계산 - 연속된 데이터 그룹으로 분리
-    List<List<Offset>> bloodSugarSegments = [];
-    List<List<int>> indexSegments = [];
-    
-    List<Offset> currentBloodSugar = [];
-    List<int> currentIndices = [];
-    
-    // X축 라벨 범위 계산 (7개 라벨 범위) - 일별 차트에서만 적용
-    const maxStartHour = 18;
-    final startHour = (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
-    final endHour = startHour + 6;
-    
-    for (int i = 0; i < data.length; i++) {
-      if (data[i]['bloodSugar'] == null) continue;
-      
-      // 일별 차트에서만 시간 범위 필터링 적용
-      final recordHour = data[i]['hour'] as int?;
-      if (recordHour != null) {
-        if (recordHour < startHour || recordHour > endHour) {
-          // 범위 밖 데이터는 세그먼트 종료
-          if (currentBloodSugar.isNotEmpty) {
-            bloodSugarSegments.add(List.from(currentBloodSugar));
-            indexSegments.add(List.from(currentIndices));
-            currentBloodSugar.clear();
-            currentIndices.clear();
-          }
-          continue;
-        }
-      }
-      
-      // 월별 차트에서만 현재 보이는 범위 필터링 (주별은 모든 데이터 표시)
-      if (data[i]['xPosition'] != null && data.length > 7) { // 월별 차트만 (30일)
-        final xPosition = data[i]['xPosition'] as double;
-        // 현재 보이는 범위 계산 (7일씩 보여주므로)
-        final visibleDays = 7;
-        final totalDays = 30;
-        final maxOffset = (totalDays - visibleDays) / totalDays;
-        final currentOffset = timeOffset.clamp(0.0, maxOffset);
-        final startRatio = currentOffset;
-        final endRatio = (currentOffset + (visibleDays / totalDays)).clamp(0.0, 1.0);
-        
-        if (xPosition < startRatio || xPosition > endRatio) {
-          // 범위 밖 데이터는 세그먼트 종료
-          if (currentBloodSugar.isNotEmpty) {
-            bloodSugarSegments.add(List.from(currentBloodSugar));
-            indexSegments.add(List.from(currentIndices));
-            currentBloodSugar.clear();
-            currentIndices.clear();
-          }
-          continue;
-        }
-      }
-      
-      double x;
-      if (data[i]['xPosition'] != null) {
-        // 주별/월별 차트: xPosition 사용
-        final xPosition = data[i]['xPosition'] as double;
-        
-        // 월별 차트의 경우 현재 보이는 범위에 맞게 위치 조정
-        if (data.length > 7) { // 월별 차트 (30일)
-          final visibleDays = 7;
-          final totalDays = 30;
-          final maxOffset = (totalDays - visibleDays) / totalDays;
-          final currentOffset = timeOffset.clamp(0.0, maxOffset);
-          final startIndex = (currentOffset * totalDays).floor();
-          final endIndex = startIndex + visibleDays;
-          
-          // xPosition을 인덱스로 변환
-          final dataIndex = (xPosition * totalDays).round();
-          
-          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-          
-          // 현재 보이는 범위 내에서의 상대적 위치 계산
-          final relativeIndex = dataIndex - startIndex;
-          final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = borderWidth + pointRadius + (chartWidth * adjustedRatio);
-        } else {
-          // 주별 차트: 그대로 사용 (모든 데이터 표시)
-          x = borderWidth + pointRadius + (chartWidth * xPosition);
-        }
-      } else {
-        // 일별 차트: 시간 기반 위치 계산
-        x = data.length == 1 
-          ? borderWidth + pointRadius + chartWidth / 2 
-          : borderWidth + pointRadius + (chartWidth * i / (data.length - 1));
-      }
-      
-      int bloodSugar = data[i]['bloodSugar'];
-      
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double normalizedBloodSugar = (300 - bloodSugar) / (300 - 50);
-      double yBloodSugar = topPadding + (size.height - topPadding - bottomPadding) * normalizedBloodSugar;
-      
-      currentBloodSugar.add(Offset(x, yBloodSugar));
-      currentIndices.add(i);
-    }
-    
-    if (currentBloodSugar.isNotEmpty) {
-      bloodSugarSegments.add(currentBloodSugar);
-      indexSegments.add(currentIndices);
-    }
-    
-    final linePaint = Paint()
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-    
-    // 혈당 부드러운 곡선 그리기 (Catmull-Rom 스플라인)
-    linePaint.color = const Color(0xFFE91E63); // 핑크색
-    for (var segment in bloodSugarSegments) {
-      if (segment.length == 1) continue;
-      
-      final path = Path();
-      path.moveTo(segment[0].dx, segment[0].dy);
-      
-      if (segment.length == 2) {
-        path.lineTo(segment[1].dx, segment[1].dy);
-      } else {
-        for (int i = 0; i < segment.length - 1; i++) {
-          final p0 = i > 0 ? segment[i - 1] : segment[i];
-          final p1 = segment[i];
-          final p2 = segment[i + 1];
-          final p3 = i < segment.length - 2 ? segment[i + 2] : segment[i + 1];
-          
-          final cp1x = p1.dx + (p2.dx - p0.dx) / 6;
-          final cp1y = p1.dy + (p2.dy - p0.dy) / 6;
-          final cp2x = p2.dx - (p3.dx - p1.dx) / 6;
-          final cp2y = p2.dy - (p3.dy - p1.dy) / 6;
-          
-          path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.dx, p2.dy);
-        }
-      }
-      
-      canvas.drawPath(path, linePaint);
-    }
-    
-    // 포인트 그리기 (세그먼트별로)
-    for (int segIdx = 0; segIdx < bloodSugarSegments.length; segIdx++) {
-      final bloodSugarPoints = bloodSugarSegments[segIdx];
-      final dataIndices = indexSegments[segIdx];
-      
-      for (int i = 0; i < bloodSugarPoints.length; i++) {
-        final originalIndex = dataIndices[i];
-        final isHighlighted = highlightedIndex != null && highlightedIndex == originalIndex;
-        
-        // 혈당 점 (핑크색)
-        final bloodSugarPaint = Paint()
-          ..color = const Color(0xFFE91E63)
-          ..style = PaintingStyle.fill;
-        
-        if (isHighlighted) {
-          canvas.drawCircle(bloodSugarPoints[i], 8, bloodSugarPaint);
-          canvas.drawCircle(bloodSugarPoints[i], 5, Paint()..color = Colors.white);
-          canvas.drawCircle(
-            bloodSugarPoints[i], 
-            8, 
-            Paint()
-              ..color = Colors.white
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
-          );
-        } else {
-          canvas.drawCircle(bloodSugarPoints[i], 5, bloodSugarPaint);
-          canvas.drawCircle(bloodSugarPoints[i], 3, Paint()..color = Colors.white);
-        }
-      }
-    }
-  }
-  
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
+class _SugarLegend extends StatelessWidget {
+  final Color color;
+  final String label;
 
-// 빈 차트용 그리드 페인터
-class EmptyChartGridPainter extends CustomPainter {
+  const _SugarLegend({required this.color, required this.label});
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-    
-    final dashedGridPaint = Paint()
-      ..color = Colors.grey[200]!
-      ..strokeWidth = 0.5;
-    
-    final yValues = [300, 250, 200, 150, 100, 50]; // 혈당 기준
-    final dashedYValues = [275, 225, 175, 125, 75];
-    
-    // 실선 그리드 그리기
-    for (int i = 0; i < yValues.length; i++) {
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double y = topPadding + (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        gridPaint,
-      );
-    }
-    
-    // 점선 그리드 그리기
-    for (int dashedValue in dashedYValues) {
-      double normalizedY = (300 - dashedValue) / (300 - 50);
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double y = topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
-      
-      // 차트 영역 내에서만 점선 그리기
-      for (double x = 0; x < size.width; x += 4) {
-        canvas.drawLine(
-          Offset(x, y),
-          Offset(x + 2, y),
-          dashedGridPaint,
-        );
-      }
-    }
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 22,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
   }
-  
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

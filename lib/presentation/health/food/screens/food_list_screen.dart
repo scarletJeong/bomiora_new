@@ -1,0 +1,345 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/widgets/health_app_bar.dart';
+import '../../health_common/widgets/health_date_selector.dart';
+import '../widgets/food_input_widgets.dart';
+
+/// 오늘의 식사 화면
+class TodayDietScreen extends StatefulWidget {
+  const TodayDietScreen({super.key});
+
+  @override
+  State<TodayDietScreen> createState() => _TodayDietScreenState();
+}
+
+class _TodayDietScreenState extends State<TodayDietScreen> {
+  DateTime selectedDate = DateTime.now();
+  /// 열린 칼로리 검색 블록의 식사 타입 ('아침' | '점심' | '저녁' | '간식'), null이면 모두 닫힘
+  String? _expandedMealKey;
+
+  // 가라 데이터
+  int totalCalories = 1500;
+
+  void _toggleFoodSearchFor(String mealKey) {
+    setState(() {
+      _expandedMealKey = _expandedMealKey == mealKey ? null : mealKey;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MobileAppLayoutWrapper(
+      backgroundColor: Colors.white,
+      appBar: const HealthAppBar(
+        title: '식사 기록',
+        centerTitle: false,
+      ),
+      child: Column(
+        children: [
+          HealthDateSelector(
+            selectedDate: selectedDate,
+            onDateChanged: (date) {
+              setState(() => selectedDate = date);
+              _loadMealData();
+            },
+            monthTextColor: const Color(0xFF898686),
+            selectedTextColor: const Color(0xFFFF5A8D),
+            unselectedTextColor: const Color(0xFFB7B7B7),
+            dividerColor: const Color(0xFFD2D2D2),
+            iconColor: const Color(0xFF898686),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(27, 14, 27, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Column(
+                      children: [
+                        const Text(
+                          '총 섭취 칼로리',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 20,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          '${NumberFormat('#,###').format(totalCalories)}kcal',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 36,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildDashboardMacroBar(),
+                  const SizedBox(height: 14),
+                  _buildMacroSummaryBar(),
+                  const SizedBox(height: 14),
+                  _buildMealDetailCard(
+                    title: '아침',
+                    kcal: 195,
+                    carb: '-',
+                    protein: '12.2',
+                    fat: '2',
+                    onTap: () => _toggleFoodSearchFor('아침'),
+                  ),
+                  if (_expandedMealKey == '아침') ...[
+                    const SizedBox(height: 12),
+                    const CalorieSearchBlock(),
+                  ],
+                  const SizedBox(height: 8),
+                  _buildMealDetailCard(
+                    title: '점심',
+                    kcal: 285,
+                    carb: '5',
+                    protein: '12',
+                    fat: '3',
+                    onTap: () => _toggleFoodSearchFor('점심'),
+                  ),
+                  if (_expandedMealKey == '점심') ...[
+                    const SizedBox(height: 12),
+                    const CalorieSearchBlock(),
+                  ],
+                  const SizedBox(height: 8),
+                  _buildMealDetailCard(
+                    title: '저녁',
+                    kcal: 304,
+                    carb: '23',
+                    protein: '22',
+                    fat: '2',
+                    onTap: () => _toggleFoodSearchFor('저녁'),
+                  ),
+                  if (_expandedMealKey == '저녁') ...[
+                    const SizedBox(height: 12),
+                    const CalorieSearchBlock(),
+                  ],
+                  const SizedBox(height: 8),
+                  _buildMealDetailCard(
+                    title: '간식',
+                    kcal: 0,
+                    carb: '-',
+                    protein: '-',
+                    fat: '-',
+                    onTap: () => _toggleFoodSearchFor('간식'),
+                  ),
+                  if (_expandedMealKey == '간식') ...[
+                    const SizedBox(height: 12),
+                    const CalorieSearchBlock(),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 건강대시보드와 동일한 스타일의 탄단지 비율 바
+  Widget _buildDashboardMacroBar() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 35,
+            child: Container(height: 12, color: const Color(0xFFFFDFC3)),
+          ),
+          Expanded(
+            flex: 45,
+            child: Container(height: 12, color: const Color(0xFFFEA38E)),
+          ),
+          Expanded(
+            flex: 10,
+            child: Container(height: 12, color: const Color(0xFFFCF4C1)),
+          ),
+          Expanded(
+            flex: 10,
+            child: Container(height: 12, color: const Color(0xFFE2E2E2)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroSummaryBar() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: SizedBox(
+            height: 8,
+            child: Row(
+              children: const [
+                Expanded(
+                  flex: 38,
+                  child: ColoredBox(color: Color(0xFFFFDFC3)),
+                ),
+                Expanded(
+                  flex: 21,
+                  child: ColoredBox(color: Color(0xFFFCF4C1)),
+                ),
+                Expanded(
+                  flex: 41,
+                  child: ColoredBox(color: Color(0xFFFEA38E)),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            MacroLegend(color: Color(0xFFFFDFC3), label: '탄수화물'),
+            SizedBox(width: 24),
+            MacroLegend(color: Color(0xFFFEA38E), label: '단백질'),
+            SizedBox(width: 24),
+            MacroLegend(color: Color(0xFFFCF4C1), label: '지방'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMealDetailCard({
+    required String title,
+    required int kcal,
+    required String carb,
+    required String protein,
+    required String fat,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x19000000),
+              blurRadius: 4.17,
+            ),
+          ],
+        ),
+        child: Row(
+            children: [
+              Container(
+                width: 47.08,
+                height: 48.33,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9D9D9),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '$kcal',
+                            style: const TextStyle(
+                              color: Color(0xFFFF5A8D),
+                              fontSize: 12,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const TextSpan(
+                            text: ' kcal',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 2,
+                      children: [
+                        _buildNutrientText('탄수화물', carb),
+                        _buildNutrientText('단백질', protein),
+                        _buildNutrientText('지방', fat),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.expand_more,
+                size: 24,
+                color: const Color(0xFF898383),
+              ),
+            ],
+          ),
+        ),
+    );
+  }
+
+  Widget _buildNutrientText(String label, String value) {
+    final display = value == '-' ? '---' : value;
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(
+          color: Color(0xFF898383),
+          fontSize: 10,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w300,
+        ),
+        children: [
+          TextSpan(text: '$label '),
+          TextSpan(
+            text: display,
+            style: const TextStyle(
+              color: Color(0xFF1A1A1A),
+              decoration: TextDecoration.underline,
+            ),
+          ),
+          const TextSpan(text: 'g'),
+        ],
+      ),
+    );
+  }
+
+  void _loadMealData() {
+    // TODO: API로 데이터 가져오기
+    setState(() {});
+  }
+}

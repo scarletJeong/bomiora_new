@@ -18,18 +18,11 @@ class BloodPressureRepository {
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
           print('✅ 혈압 기록 ${records.length}개 로드 완료');
-          print('✅ 혈압 기록: $records');
-          return records
-              .whereType<Map>()
-              .map((json) => BloodPressureRecord.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+          return records.map((json) => BloodPressureRecord.fromJson(json)).toList();
         } else if (data is List) {
           // 배열로 직접 반환되는 경우
           print('✅ 혈압 기록 ${data.length}개 로드 완료');
-          return data
-              .whereType<Map>()
-              .map((json) => BloodPressureRecord.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+          return data.map((json) => BloodPressureRecord.fromJson(json)).toList();
         }
       }
       
@@ -55,7 +48,7 @@ class BloodPressureRepository {
         print('✅ [DEBUG] 파싱된 데이터: $data');
         
         if (data['success'] == true && data['data'] != null) {
-          return BloodPressureRecord.fromJson(Map<String, dynamic>.from(data['data']));
+          return BloodPressureRecord.fromJson(data['data']);
         }
       }
       
@@ -153,10 +146,7 @@ class BloodPressureRepository {
         
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> records = data['data'];
-          return records
-              .whereType<Map>()
-              .map((json) => BloodPressureRecord.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+          return records.map((json) => BloodPressureRecord.fromJson(json)).toList();
         }
       }
       

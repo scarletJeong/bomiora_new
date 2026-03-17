@@ -1,5 +1,3 @@
-import '../../../../core/utils/node_value_parser.dart';
-
 class BloodSugarRecord {
   final int? id;
   final String mbId;
@@ -124,7 +122,8 @@ class BloodSugarRecord {
     return {
       if (id != null) 'id': id,
       'mb_id': mbId,
-      'measured_at': measuredAt.toIso8601String(),
+      // Always send UTC with timezone suffix (Z) to avoid server/client ambiguity.
+      'measured_at': measuredAt.toUtc().toIso8601String(),
       'blood_sugar': bloodSugar,
       'measurement_type': measurementType,
       'status': status,
@@ -132,33 +131,49 @@ class BloodSugarRecord {
   }
 
   factory BloodSugarRecord.fromJson(Map<String, dynamic> json) {
-    final normalized = NodeValueParser.normalizeMap(json);
-    final measuredAtValue =
-        NodeValueParser.asString(normalized['measured_at']) ??
-        NodeValueParser.asString(normalized['measuredAt']);
-
     return BloodSugarRecord(
-      id: NodeValueParser.asInt(normalized['id']),
-      mbId:
-          NodeValueParser.asString(normalized['mb_id']) ??
-          NodeValueParser.asString(normalized['mbId']) ??
-          '',
-      measuredAt: measuredAtValue != null
-          ? (() {
-              final dt = DateTime.tryParse(measuredAtValue) ?? DateTime.now();
-              return dt.isUtc ? dt.toLocal() : dt;
-            })()
-          : DateTime.now(),
-      bloodSugar:
-          NodeValueParser.asInt(normalized['blood_sugar']) ??
-          NodeValueParser.asInt(normalized['bloodSugar']) ??
-          0,
+      id: _parseInt(json['id']),
+      mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
+      measuredAt: _parseDateTime(json['measured_at']),
+      bloodSugar: _parseInt(json['blood_sugar']) ?? 0,
       measurementType:
-          NodeValueParser.asString(normalized['measurement_type']) ??
-          NodeValueParser.asString(normalized['measurementType']) ??
-          '평상시',
-      status: NodeValueParser.asString(normalized['status']),
+          _parseString(json['measurement_type'] ?? json['measurementType']) ??
+              '',
+      status: _parseString(json['status']),
     );
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    final parsed = DateTime.parse(value.toString());
+    // API가 UTC(Z)로 내려주면 로컬 시간대로 변환해
+    // 입력/DB 표시와 그래프 시간이 동일하게 보이도록 맞춘다.
+    return parsed.isUtc ? parsed.toLocal() : parsed;
+  }
+
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is Map) {
+      if (value['type'] == 'Buffer' && value['data'] is List) {
+        final codes = (value['data'] as List)
+            .whereType<num>()
+            .map((e) => e.toInt())
+            .toList();
+        return String.fromCharCodes(codes);
+      }
+      final nested = value['value'] ?? value['text'] ?? value['name'];
+      if (nested is String) return nested;
+      return nested?.toString();
+    }
+    return value.toString();
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   // 복사 메서드

@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../data/services/cart_service.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/network/api_client.dart';
+import 'checkout_webview_screen.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;
+  final int initialTabIndex;
 
-  const CartScreen({super.key, this.backToProductId});
+  const CartScreen({
+    super.key,
+    this.backToProductId,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -46,17 +54,10 @@ class _CartScreenState extends State<CartScreen> {
     return selectedItems.intersection(_displayedItemIds);
   }
 
-  String _normalizeProxyTarget(String url) {
-    // 로컬 XAMPP 경로(localhost/bomiora/www)는 프록시에서 403 차단될 수 있어
-    // 허용되는 bomiora.kr 경로로 치환한다.
-    return url
-        .replaceAll('https://localhost/bomiora/www', 'https://bomiora.kr')
-        .replaceAll('http://localhost/bomiora/www', 'https://bomiora.kr');
-  }
-
   @override
   void initState() {
     super.initState();
+    _selectedTabIndex = widget.initialTabIndex == 1 ? 1 : 0;
     _loadCart();
   }
 
@@ -147,9 +148,7 @@ class _CartScreenState extends State<CartScreen> {
         if (kIsWeb &&
             (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
             normalized.startsWith('http')) {
-          // return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(normalized)}';
-          final target = _normalizeProxyTarget(normalized);
-          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(target)}';
+          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(normalized)}';
         }
         return normalized;
       }
@@ -160,9 +159,7 @@ class _CartScreenState extends State<CartScreen> {
     if (kIsWeb &&
         (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
         fallback.startsWith('http')) {
-      // return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
-      final target = _normalizeProxyTarget(fallback);
-      return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(target)}';
+      return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
     }
     return fallback;
   }
@@ -337,6 +334,75 @@ class _CartScreenState extends State<CartScreen> {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]},',
     );
+  }
+
+  Future<String?> _buildCheckoutUrl() async {
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty) {
+      return null;
+    }
+
+    const base = 'https://bomiora0.mycafe24.com/shop/app_checkout_bridge.php';
+    final tab = _selectedTabIndex == 0 ? 'prescription' : 'general';
+    final selectedCtIds = _selectedDisplayedItemIds.toList()..sort();
+    final selectedIdsParam = selectedCtIds.join(',');
+    final encodedMbId = Uri.encodeComponent(user.id);
+    final encodedSelectedIds = Uri.encodeComponent(selectedIdsParam);
+
+    return '$base?mb_id=$encodedMbId'
+        '&mobile_app=1&hide_header=1&hide_footer=1'
+        '&device=mobile&view=mobile'
+        '&checkout_tab=$tab'
+        '&selected_ct_ids=$encodedSelectedIds';
+  }
+
+  Future<void> _openCheckoutWebView() async {
+    if (_selectedDisplayedItemIds.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('결제할 상품을 선택해 주세요.')),
+      );
+      return;
+    }
+
+    final checkoutUrl = await _buildCheckoutUrl();
+    if (checkoutUrl == null || checkoutUrl.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보를 확인할 수 없습니다. 다시 로그인해 주세요.')),
+      );
+      return;
+    }
+
+    if (kIsWeb) {
+      final uri = Uri.parse(checkoutUrl);
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('결제 페이지를 열 수 없습니다.')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    final paymentCompleted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutWebViewScreen(
+          url: checkoutUrl,
+          title: '결제 페이지',
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    if (paymentCompleted == true) {
+      await _loadCart(showCachedData: false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('결제가 완료되어 앱으로 돌아왔습니다.')),
+      );
+    }
   }
 
   void _handleBackNavigation() {
@@ -627,12 +693,7 @@ class _CartScreenState extends State<CartScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    // 결제 페이지로 이동 (추후 구현)
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('결제 기능은 추후 구현 예정입니다')),
-                                    );
-                                  },
+                                  onPressed: _openCheckoutWebView,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFFFF3787),
                                     foregroundColor: Colors.white,

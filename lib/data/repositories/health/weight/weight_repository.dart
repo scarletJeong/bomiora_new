@@ -101,8 +101,25 @@ class WeightRepository {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final List<dynamic> records = data['data'];
+          print('📥 [DEBUG] 체중 기록 원본 데이터:');
+          for (int i = 0; i < records.length; i++) {
+            print('  - [$i] ${records[i]}');
+          }
+
+          final parsedRecords =
+              records.map((json) => WeightRecord.fromJson(json)).toList();
+          print('📊 [DEBUG] 파싱된 체중 기록:');
+          for (int i = 0; i < parsedRecords.length; i++) {
+            final record = parsedRecords[i];
+            print(
+              '  - [$i] id=${record.id}, mbId=${record.mbId}, '
+              'measuredAt=${record.measuredAt.toIso8601String()}, '
+              'weight=${record.weight}, height=${record.height}, bmi=${record.bmi}',
+            );
+          }
+
           print('✅ 체중 기록 ${records.length}개 로드 완료');
-          return records.map((json) => WeightRecord.fromJson(json)).toList();
+          return parsedRecords;
         }
       }
       
