@@ -53,12 +53,22 @@ class ApiEndpoints {
   // 건강 관리 관련 (향후 확장용)
   static const String bloodSugarRecords = '/api/health/blood-sugar';
   static const String bloodPressureRecords = '/api/health/blood-pressure';
-  static const String weightRecords = '/api/health/weight';
   static const String heartRateRecords = '/api/health/heart-rate';
+  static const String weightRecords = '/api/health/weight';
+
   static const String menstrualCycleRecords = '/api/health/menstrual-cycle';
   static const String stepsRecords = '/api/health/steps';
   static const String healthStats = '/api/health/stats';
-  
+  static String foodSearch(String q, {int limit = 20}) =>
+      '/api/health/food/search?q=${Uri.encodeComponent(q)}&limit=$limit';
+  static String foodRecords(String recordDate) =>
+      '/api/health/food/records?record_date=$recordDate';
+  static const String foodRecordCreate = '/api/health/food/records';
+  static String foodRecordItems(String foodRecordId) =>
+      '/api/health/food/records/$foodRecordId/items';
+  static String foodRecordItemDelete(String foodRecordId, String itemId) =>
+      '/api/health/food/records/$foodRecordId/items/$itemId';
+
   // 포인트 관련
   static String userPoint(String userId) => '/api/user/point?mb_id=$userId';
   static String pointHistory(String userId) => '/api/user/point/history?mb_id=$userId';

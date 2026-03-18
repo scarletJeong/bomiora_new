@@ -163,7 +163,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     );
   }
 
-  // 총 걸음수 원
   Widget _buildTotalStepsCard() {
     final totalSteps = todayStepsRecord?.totalSteps ?? 0;
     final targetSteps = 4000;
@@ -179,6 +178,31 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       ),
       child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                NumberFormat('#,###').format(totalSteps),
+                style: const TextStyle(
+                  color: Color(0xFFFF5A8D),
+                  fontSize: 36,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 20),
+              const Text(
+                '총 걸음 수',
+                style: TextStyle(
+                  color: Color(0xFF1A1A1A),
+                  fontSize: 20,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -208,30 +232,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             color: const Color(0xFFFF5A8D),
                             backgroundColor: Colors.transparent,
                           ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              '총 걸음 수',
-                              style: TextStyle(
-                                color: Color(0xFF1A1A1A),
-                                fontSize: 16,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              NumberFormat('#,###').format(totalSteps),
-                              style: const TextStyle(
-                                color: Color(0xFFFF5A8D),
-                                fontSize: 28,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -405,15 +405,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       ),
       child: Column(
         children: [
-          const SizedBox(height: 25),
           HealthPeriodSelector(
             selectedPeriod: selectedPeriod,
             onChanged: (period) {
               setState(() => selectedPeriod = period);
             },
           ),
-          // 그래프와 기간 선택(일자별/월별) 카드 간격
-          const SizedBox(height: 3),
+          const SizedBox(height: 12),
           SizedBox(
             height: 180,
             child: _buildBarChartArea(),

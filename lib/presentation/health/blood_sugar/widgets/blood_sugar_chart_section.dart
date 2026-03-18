@@ -81,11 +81,13 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.showPeriodSelector) ...[
+          const SizedBox(height: 25),
           BloodSugarPeriodSelector(
             selectedPeriod: widget.selectedPeriod,
             onChanged: (period) => widget.onPeriodChanged?.call(period),
           ),
-          const SizedBox(height: 12),
+          // 그래프와 기간 선택(일자별/월별) 카드 간격
+          const SizedBox(height: 3),
         ],
         chart,
         if (widget.showLegend) ...[

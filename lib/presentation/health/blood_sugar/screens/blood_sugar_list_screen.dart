@@ -653,7 +653,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   String _sugarDiffText(int? diff) {
-    if (diff == null) return '전날 대비 -';
+    if (diff == null) return '수치를 입력하세요';
     return '전날 대비 ${diff.abs()} mg/dL';
   }
 
@@ -761,11 +761,11 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                   Text(
                     value,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF1A1A1A),
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
                       fontSize: 20.83,
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
+                      fontWeight: value == '-' ? FontWeight.w300 : FontWeight.w700,
                     ),
                   ),
                   const Text(

@@ -531,7 +531,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       _buildBloodPressureDisplay(),
                       const SizedBox(height: 25),
                       _buildPeriodButtons(),
-                      const SizedBox(height: 8),
+                      // 그래프와 기간 선택(일자별/월별) 카드 간격
+                      const SizedBox(height: 3),
                       _buildChart(),
                       const SizedBox(height: 14),
                       const Row(
@@ -668,7 +669,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   String _diffText(int? diff) {
-    if (diff == null) return '전날 대비 -';
+    if (diff == null) return '수치를 입력하세요';
     return '전날 대비 ${diff.abs()} mmHg';
   }
 
@@ -754,11 +755,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   Text(
                     value,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.black,
                       fontSize: 20.83,
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
+                      fontWeight: value == '-' ? FontWeight.w300 : FontWeight.w700,
                     ),
                   ),
                   const Text(
@@ -1567,7 +1568,7 @@ class _PressureLegend extends StatelessWidget {
             height: 14,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(3),
+              shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 4),

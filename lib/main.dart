@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -7,6 +8,9 @@ import 'presentation/auth/screens/login_screen.dart';
 import 'presentation/auth/screens/kcp_cert_webview_screen.dart';
 import 'presentation/auth/screens/signup_screen.dart';
 import 'data/services/auth_service.dart';
+import 'data/repositories/auth/auth_repository.dart';
+import 'data/models/user/user_model.dart';
+import 'core/utils/node_value_parser.dart';
 import 'data/services/kakao_auth_service.dart';
 // 조건부 임포트: 웹과 모바일에서 다른 FCM 서비스 사용
 // import 'data/services/fcm_service_stub.dart'
@@ -15,6 +19,8 @@ import 'presentation/common/widgets/mobile_layout_wrapper.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
+import 'presentation/shopping/showcase/screens/showcase_screen.dart';
+import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
 import 'presentation/customer_service/screens/customer_service_screen.dart';
 import 'presentation/user/mileage/screens/mileage_screen.dart';

@@ -264,7 +264,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                 Expanded(child: _summaryCard('최고 심박수', maxBpm)),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 25),
             HealthPeriodSelector(
               selectedPeriod: selectedPeriod,
               onChanged: (period) {
@@ -285,7 +285,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                 });
               },
             ),
-            const SizedBox(height: 12),
+            // 그래프와 기간 선택(일자별/월별) 카드 간격
+            const SizedBox(height: 3),
             _buildChart(),
             const SizedBox(height: 12),
             const Row(
@@ -323,18 +324,19 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   }
 
   Widget _summaryCard(String title, String value) {
+    final bool hasData = value != '-';
     return Container(
-      height: 84,
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(color: Color(0x19000000), blurRadius: 4.17),
-        ],
+      padding: const EdgeInsets.only(bottom: 10),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 0.50, color: Color(0x7FD2D2D2)),
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             title,
@@ -345,17 +347,17 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           RichText(
             text: TextSpan(
               children: [
                 TextSpan(
                   text: value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
                     fontSize: 20.83,
                     fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
+                    fontWeight: hasData ? FontWeight.w700 : FontWeight.w300,
                   ),
                 ),
                 const TextSpan(
@@ -370,6 +372,18 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
               ],
             ),
           ),
+          if (!hasData) ...[
+            const SizedBox(height: 5),
+            const Text(
+              '수치를 입력하세요',
+              style: TextStyle(
+                color: Color(0xFF9C9393),
+                fontSize: 10,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ],
         ],
       ),
     );

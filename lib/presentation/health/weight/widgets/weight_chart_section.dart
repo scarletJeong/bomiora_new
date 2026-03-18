@@ -18,8 +18,10 @@ class WeightChartSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 25),
         periodSelector,
-        const SizedBox(height: 24),
+        // 그래프와 기간 선택(일자별/월별) 카드 간격
+        const SizedBox(height: 3),
         chartContent,
       ],
     );
