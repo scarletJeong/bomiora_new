@@ -18,6 +18,9 @@ dependencies:
   # 네트워킹
   http: ^1.1.0
   
+  # 암호화
+  crypto: ^3.0.3
+  
   # 유틸리티
   intl: ^0.20.2
   
@@ -48,6 +51,30 @@ dependencies:
   # 이미지 선택
   image_picker: ^1.0.4
   
+  # HTML 렌더링
+  flutter_html: ^3.0.0-beta.2
+  
+  # 인앱 웹뷰
+  flutter_inappwebview: ^6.0.0
+  
+  # 캘린더
+  table_calendar: ^3.0.9
+  
+  # 차트
+  fl_chart: ^0.68.0
+  kakao_flutter_sdk: ^1.10.0
+  
+  # SVG 이미지 지원
+  flutter_svg: ^2.0.9
+  
+  # Firebase (웹 개발 시 주석 처리, 모바일 빌드 시 주석 해제)
+  # firebase_core: ^2.24.2
+  # firebase_messaging: ^14.7.10
+  # flutter_local_notifications: ^16.3.0
+  
+  # JS 호환성 (firebase_messaging_web 호환 버전)
+  # js: ^0.6.7
+  
   # URL 런처
   # url_launcher: ^6.2.1  # 현재 사용하지 않음
 
@@ -61,13 +88,17 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/img/
 
   # 한국어 로케일 지원
   generate: true
 
-  # fonts:
-  #   - family: NotoSans
-  #     fonts:
-  #       - asset: assets/fonts/NotoSansKR-Regular.ttf
-  #       - asset: assets/fonts/NotoSansKR-Bold.ttf
-  #         weight: 700
+  fonts:
+    - family: Gmarket Sans TTF
+      fonts:
+        - asset: assets/font/GmarketSansTTFLight.ttf
+          weight: 300
+        - asset: assets/font/GmarketSansTTFMedium.ttf
+          weight: 500
+        - asset: assets/font/GmarketSansTTFBold.ttf
+          weight: 700
