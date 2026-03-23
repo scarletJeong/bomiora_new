@@ -22,6 +22,18 @@ class ChartConstants {
   
   // 계산된 상수
   static double get yAxisTotalWidth => yAxisLabelWidth + yAxisSpacing; // Y축 총 너비
+
+  /// 체중 일·주 그래프 및 [PeriodChartWidget] Y축 열 너비(동일 UI)
+  static const double weightChartYAxisWidth = 35.0;
+  static double get weightChartYAxisStripWidth =>
+      weightChartYAxisWidth + yAxisSpacing;
+
+  /// 체중 시간대별(일) 차트 플롯 영역 좌·우 여백 (그리드·점·탭 hit 동일)
+  static const double weightDailyChartInnerPadH = 6.0;
+
+  /// 체중 일·주·월 그래프 카드 공통 패딩 (시간대별과 동일)
+  static const EdgeInsets weightChartCardPadding =
+      EdgeInsets.fromLTRB(8, 16, 16, 16);
   
   // 데이터 개수에 따른 패딩 계산 헬퍼 메서드
   static double getLeftPadding(int dataCount) {

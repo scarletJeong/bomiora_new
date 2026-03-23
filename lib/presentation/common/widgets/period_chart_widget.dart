@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import '../chart_layout.dart';
 
 /// 주/월별 차트를 위한 공통 위젯
 class PeriodChartWidget extends StatefulWidget {
@@ -15,6 +17,16 @@ class PeriodChartWidget extends StatefulWidget {
   final int yAxisCount; // Y축 개수 (혈압: 4개, 체중: 4개 등)
   final DateTime selectedDate; // 선택된 날짜
   final double height; // 차트 높이
+  /// 체중 메인 그래프: Y축 상단에 단위 행 (예: `(kg)`)
+  final bool showYAxisUnitHeader;
+  final String yAxisUnitLabel;
+  /// 체중: Y축 숫자 범위 밖 값은 점·선에서 제외
+  final bool omitOutOfRangeWeightPoints;
+  /// true: 월 모드에서 30일 슬라이드 대신 해당 연도 1~12월 고정 축
+  final bool useCalendarYearMonths;
+
+  /// 카드 바깥 패딩 (체중은 [ChartConstants.weightChartCardPadding]로 일·주·월 통일)
+  final EdgeInsetsGeometry padding;
 
   const PeriodChartWidget({
     Key? key,
@@ -30,6 +42,11 @@ class PeriodChartWidget extends StatefulWidget {
     required this.yAxisCount,
     required this.selectedDate,
     required this.height,
+    this.showYAxisUnitHeader = false,
+    this.yAxisUnitLabel = '(kg)',
+    this.omitOutOfRangeWeightPoints = false,
+    this.useCalendarYearMonths = false,
+    this.padding = const EdgeInsets.all(10),
   }) : super(key: key);
 
   @override
@@ -41,49 +58,112 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   Widget build(BuildContext context) {
     return Container(
       height: widget.height,
-      padding: const EdgeInsets.all(10),
+      padding: widget.padding,
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
+        crossAxisAlignment: widget.dataType == 'weight'
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           // Y축 라벨과 차트 영역
           Expanded(
-            child: Row(
-              children: [
-                // Y축 라벨
-                SizedBox(
-                  width: 35,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: widget.yLabels.map((label) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
-                         child: Text(
-                           '${label.toStringAsFixed(0)}',
-                           style: const TextStyle(
-                             fontSize: 12,
-                             color: Colors.grey,
-                           ),
-                         ),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final totalH = c.maxHeight;
+                final kgBand = widget.showYAxisUnitHeader &&
+                        widget.yLabels.length > 1
+                    ? totalH / 6.0
+                    : 0.0;
+
+                /// spaceBetween + 큰 vertical 패딩은 눈금이 많을 때 하단 오버플로우 유발 → Stack 배치
+                Widget yLabelsColumn() {
+                  final n = widget.yLabels.length;
+                  if (n < 2) return const SizedBox.shrink();
+                  return LayoutBuilder(
+                    builder: (context, lc) {
+                      const topPad = 6.0;
+                      const botPad = 6.0;
+                      final h = lc.maxHeight - topPad - botPad;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: widget.yLabels.asMap().entries.map((e) {
+                          final i = e.key;
+                          final label = e.value;
+                          final y = topPad + h * i / (n - 1);
+                          return Positioned(
+                            top: y - 8,
+                            left: 0,
+                            right: 0,
+                            child: Text(
+                              label.toStringAsFixed(0),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // 차트 영역
-                Expanded(
-                  child: _buildChartArea(),
-                ),
-              ],
+                    },
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: ChartConstants.weightChartYAxisWidth,
+                      child: widget.showYAxisUnitHeader
+                          ? Column(
+                              children: [
+                                SizedBox(
+                                  height: kgBand,
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: Text(
+                                      widget.yAxisUnitLabel,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey[700],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(child: yLabelsColumn()),
+                              ],
+                            )
+                          : yLabelsColumn(),
+                    ),
+                    SizedBox(width: ChartConstants.yAxisSpacing),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          if (widget.showYAxisUnitHeader)
+                            SizedBox(height: kgBand),
+                          Expanded(
+                            child: _buildChartArea(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 10),
-          // X축 라벨
+          // X축 라벨 (체중은 일·주 카드와 동일: 하단 추가 패딩 없음)
           Padding(
-            padding: const EdgeInsets.only(left: 43.0, bottom: 10.0),
+            padding: EdgeInsets.only(
+              left: 43.0,
+              bottom: widget.dataType == 'weight' ? 0.0 : 10.0,
+            ),
             child: _buildPeriodXAxisLabels(),
           ),
         ],
@@ -107,7 +187,9 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
                   widget.onTooltipChanged(null, null);
                 }
               },
-              onPanUpdate: (details) => _handleDragUpdate(details.delta.dx),
+              onPanUpdate: (details) {
+                _handleDragUpdate(details.delta.dx);
+              },
               child: CustomPaint(
                 painter: PeriodChartPainter(
                   chartData: widget.chartData,
@@ -117,6 +199,9 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
                   selectedPointIndex: widget.selectedChartPointIndex,
                   dataType: widget.dataType,
                   yAxisCount: widget.yAxisCount,
+                  omitOutOfRangeWeightPoints:
+                      widget.omitOutOfRangeWeightPoints,
+                  useCalendarYearMonths: widget.useCalendarYearMonths,
                 ),
                 size: Size(chartAreaWidth, chartAreaHeight),
               ),
@@ -167,6 +252,55 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
   }
 
   Widget _buildPeriodXAxisLabels() {
+    if (widget.selectedPeriod == '월' && widget.useCalendarYearMonths) {
+      const totalMonths = 12;
+      const visibleMonths = 7;
+      final maxStart = totalMonths - visibleMonths;
+      final startIndex =
+          (widget.timeOffset * maxStart).round().clamp(0, maxStart);
+
+      final monthRow = Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(visibleMonths, (i) {
+          final m = startIndex + i + 1;
+          return Expanded(
+            child: Text(
+              '$m',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              // 체중 [_buildWeightPeriodXAxisLabels] 월 눈금과 동일 (9pt, grey[600])
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          );
+        }),
+      );
+
+      if (widget.dataType == 'weight') {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: monthRow),
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Text(
+                '(월)',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+      return monthRow;
+    }
+
     final days = widget.selectedPeriod == '주' ? 7 : 30;
     final visibleDays = 7;
     
@@ -192,7 +326,6 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
       final maxOffset = (days - visibleDays) / days;
       final currentOffset = widget.timeOffset.clamp(0.0, maxOffset);
       final startIndex = (currentOffset * days).floor();
-      final endIndex = startIndex + visibleDays;
       
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -217,12 +350,16 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     if (widget.chartData.isEmpty) return;
     
     print('🔍 클릭 위치: tapPosition = $tapPosition');
-    
-    const double leftPadding = 10.0;
-    const double rightPadding = 10.0;
+
+    final double leftPadding = widget.dataType == 'weight'
+        ? ChartConstants.weightDailyChartInnerPadH
+        : 10.0;
+    final double rightPadding = widget.dataType == 'weight'
+        ? ChartConstants.weightDailyChartInnerPadH
+        : 10.0;
     const double topPadding = 20.0;
     const double bottomPadding = 20.0;
-    
+
     final effectiveWidth = chartWidth - leftPadding - rightPadding;
     
     print('🔍 chartWidth=$chartWidth, effectiveWidth=$effectiveWidth');
@@ -240,6 +377,11 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
                         widget.dataType == 'bloodSugar' ? 'bloodSugar' : 'weight'];
       
       if (value == null) continue;
+
+      if (widget.omitOutOfRangeWeightPoints && widget.dataType == 'weight') {
+        final w = (value as num).toDouble();
+        if (w < minValue || w > maxValue) continue;
+      }
       
       // X 좌표 계산 (일별과 동일한 방식)
       double x;
@@ -249,7 +391,21 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
         final visibleDays = 7;
         final totalDays = widget.selectedPeriod == '주' ? 7 : 30;
         
-        if (widget.selectedPeriod == '월') {
+        if (widget.selectedPeriod == '월' && widget.useCalendarYearMonths) {
+          const totalMonths = 12;
+          const visibleMonths = 7;
+          final maxStart = totalMonths - visibleMonths;
+          final startIndex =
+              (widget.timeOffset * maxStart).round().clamp(0, maxStart);
+          final endIndex = startIndex + visibleMonths;
+          final dataIndex = (xPosition * (totalMonths - 1)).round();
+
+          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
+
+          final relativeIndex = dataIndex - startIndex;
+          final adjustedRatio = relativeIndex / (visibleMonths - 1);
+          x = leftPadding + (effectiveWidth * adjustedRatio);
+        } else if (widget.selectedPeriod == '월') {
           // 월별: 현재 보이는 7개 날짜만 표시
           final maxOffset = (totalDays - visibleDays) / totalDays;
           final currentOffset = widget.timeOffset.clamp(0.0, maxOffset);
@@ -412,8 +568,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     if (widget.selectedPeriod == '월') {
       final sensitivity = 3.0;
       final newOffset = widget.timeOffset - (deltaX / 1000) * sensitivity;
-      final maxOffset = (30 - 7) / 30;
-      final clampedOffset = newOffset.clamp(0.0, maxOffset);
+      final clampedOffset = newOffset.clamp(0.0, 1.0);
       widget.onTimeOffsetChanged(clampedOffset);
     }
   }
@@ -428,6 +583,8 @@ class PeriodChartPainter extends CustomPainter {
   final int? selectedPointIndex;
   final String dataType;
   final int yAxisCount;
+  final bool omitOutOfRangeWeightPoints;
+  final bool useCalendarYearMonths;
 
   PeriodChartPainter({
     required this.chartData,
@@ -437,6 +594,8 @@ class PeriodChartPainter extends CustomPainter {
     this.selectedPointIndex,
     required this.dataType,
     required this.yAxisCount,
+    this.omitOutOfRangeWeightPoints = false,
+    this.useCalendarYearMonths = false,
   });
 
   @override
@@ -445,17 +604,24 @@ class PeriodChartPainter extends CustomPainter {
     
     final minValue = yLabels[yAxisCount - 1]; // 최소값 (하단)
     final maxValue = yLabels[0]; // 최대값 (상단)
-    
+
+    /// 일·주 체중 그래프와 동일한 포인트 색
+    const weightPointColor = Color(0xFFFF5A8D);
+
     // 그리드 선 그리기 (패딩 적용)
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
-    
-    const double leftPadding = 10.0;
-    const double rightPadding = 10.0;
+
+    final double leftPadding = dataType == 'weight'
+        ? ChartConstants.weightDailyChartInnerPadH
+        : 10.0;
+    final double rightPadding = dataType == 'weight'
+        ? ChartConstants.weightDailyChartInnerPadH
+        : 10.0;
     const double topPadding = 20.0;
     const double bottomPadding = 20.0;
-    
+
     for (int i = 0; i < yAxisCount; i++) {
       final y = topPadding + (size.height - topPadding - bottomPadding) * i / (yAxisCount - 1);
       canvas.drawLine(
@@ -477,6 +643,11 @@ class PeriodChartPainter extends CustomPainter {
       final diastolicValue = dataType == 'bloodPressure' ? data['diastolic'] : null;
       
       if (systolicValue == null) continue;
+
+      if (omitOutOfRangeWeightPoints && dataType == 'weight') {
+        final w = (systolicValue as num).toDouble();
+        if (w < minValue || w > maxValue) continue;
+      }
       
       // X 좌표 계산
       double x;
@@ -484,8 +655,21 @@ class PeriodChartPainter extends CustomPainter {
       final visibleDays = 7;
       final totalDays = selectedPeriod == '주' ? 7 : 30;
       
-      // 주별과 월별 모두 동일한 방식으로 처리
-      if (selectedPeriod == '월') {
+      if (selectedPeriod == '월' && useCalendarYearMonths) {
+        const totalMonths = 12;
+        const visibleMonths = 7;
+        final maxStart = totalMonths - visibleMonths;
+        final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+        final endIndex = startIndex + visibleMonths;
+        final dataIndex = (xPosition * (totalMonths - 1)).round();
+
+        if (dataIndex < startIndex || dataIndex >= endIndex) continue;
+
+        final relativeIndex = dataIndex - startIndex;
+        final adjustedRatio = relativeIndex / (visibleMonths - 1);
+        x = leftPadding +
+            (size.width - leftPadding - rightPadding) * adjustedRatio;
+      } else if (selectedPeriod == '월') {
         final maxOffset = (totalDays - visibleDays) / totalDays;
         final currentOffset = timeOffset.clamp(0.0, maxOffset);
         final startIndex = (currentOffset * totalDays).floor();
@@ -521,16 +705,22 @@ class PeriodChartPainter extends CustomPainter {
     }
     
     if (systolicPoints.isEmpty) return;
-    
-    // 선 그리기
-    final systolicLinePaint = Paint()
-      ..color = dataType == 'bloodPressure' ? Colors.red : 
-                dataType == 'bloodSugar' ? Colors.pink : Colors.blue
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-    
-    for (int i = 0; i < systolicPoints.length - 1; i++) {
-      canvas.drawLine(systolicPoints[i], systolicPoints[i + 1], systolicLinePaint);
+
+    // 선 그리기 (체중은 [WeightChartPainter]와 같이 점만 표시)
+    if (dataType != 'weight') {
+      final systolicLinePaint = Paint()
+        ..color = dataType == 'bloodPressure'
+            ? Colors.red
+            : dataType == 'bloodSugar'
+                ? Colors.pink
+                : Colors.blue
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+
+      for (int i = 0; i < systolicPoints.length - 1; i++) {
+        canvas.drawLine(
+            systolicPoints[i], systolicPoints[i + 1], systolicLinePaint);
+      }
     }
     
     // 혈압인 경우 이완기 선도 그리기
@@ -547,30 +737,47 @@ class PeriodChartPainter extends CustomPainter {
     
     // 점 그리기
     final systolicPointPaint = Paint()
-      ..color = dataType == 'bloodPressure' ? Colors.red : 
-                dataType == 'bloodSugar' ? Colors.pink : Colors.blue
+      ..color = dataType == 'bloodPressure'
+          ? Colors.red
+          : dataType == 'bloodSugar'
+              ? Colors.pink
+              : dataType == 'weight'
+                  ? weightPointColor
+                  : Colors.blue
       ..style = PaintingStyle.fill;
-    
+
     final diastolicPointPaint = Paint()
       ..color = Colors.blue
       ..style = PaintingStyle.fill;
-    
-    final selectedPointPaint = Paint()
-      ..color = dataType == 'bloodPressure' ? Colors.red : 
-                dataType == 'bloodSugar' ? Colors.pink : Colors.blue
-      ..style = PaintingStyle.fill;
-    
+
     for (int i = 0; i < systolicPoints.length; i++) {
       final systolicPoint = systolicPoints[i];
       final isSelected = validIndices[i] == selectedPointIndex;
-      
-      // 수축기 점 그리기 (일별 그래프와 동일한 스타일)
+
+      if (dataType == 'weight') {
+        if (isSelected) {
+          canvas.drawCircle(systolicPoint, 8, systolicPointPaint);
+          canvas.drawCircle(
+            systolicPoint,
+            8,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2,
+          );
+        } else {
+          canvas.drawCircle(systolicPoint, 5, systolicPointPaint);
+        }
+        continue;
+      }
+
+      // 수축기 점 그리기 (혈압·혈당)
       if (isSelected) {
         canvas.drawCircle(systolicPoint, 8, systolicPointPaint);
         canvas.drawCircle(systolicPoint, 5, Paint()..color = Colors.white);
         canvas.drawCircle(
-          systolicPoint, 
-          8, 
+          systolicPoint,
+          8,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke

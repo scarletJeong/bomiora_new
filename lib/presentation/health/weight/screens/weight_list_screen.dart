@@ -70,7 +70,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
     _refreshExpandedChart?.call();
   }
 
-  // 오늘인지 확인
   bool _isToday() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -79,33 +78,27 @@ class _WeightListScreenState extends State<WeightListScreen> {
         selectedDate.day == today.day;
   }
 
-  // 드래그 범위 제한
+  // 드래그 범위: 월 고정 / 일별은 6시간 창 슬라이드(오늘은 현재시각 기준)
   double _clampDragOffset(double newOffset) {
     if (selectedPeriod == '월') {
-      // 월별: 0부터 최대 오프셋까지 드래그 가능 (왼쪽으로 드래그해서 과거 날짜까지 볼 수 있음)
-      final visibleDays = 7;
-      final totalDays = 30;
-      final maxOffset = (totalDays - visibleDays) / totalDays; // 23/30 = 0.767
-      return newOffset.clamp(0.0, maxOffset);
-    } else if (_isToday()) {
-      // 오늘: 현재 시간 - 4시간까지만
+      return newOffset.clamp(0.0, 1.0);
+    }
+    if (selectedPeriod == '일' && _isToday()) {
       final now = DateTime.now();
       final currentHour = now.hour;
       final maxStartHour = (currentHour - 4).clamp(0, 18);
       final maxOffset = maxStartHour / 18.0;
       return newOffset.clamp(0.0, maxOffset);
-    } else {
-      // 과거 일별: 00시~24시 전체 범위
+    }
+    if (selectedPeriod == '일') {
       return newOffset.clamp(0.0, 1.0);
     }
+    return newOffset.clamp(0.0, 1.0);
   }
 
   // 드래그 민감도
   double _getDragSensitivity() {
-    if (selectedPeriod == '월') {
-      return 3.0; // 월별 그래프는 민감도를 더 높임
-    }
-    return 0.5; // 일별 그래프는 기존 민감도 유지
+    return 0.5;
   }
 
   // 공통 드래그 핸들러
@@ -120,9 +113,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
     _notifyExpandedChart();
   }
 
-  // 시간 범위 계산 (혈압 일그래프와 동일한 6시간 뷰)
+  /// 혈압 일그래프와 동일: 6시간 뷰 시작·끝 시각
   Map<String, double> _calculateTimeRange() {
-    const maxStartHour = 18; // 24시 - 6시간 = 18시
+    const maxStartHour = 18;
     final startHour =
         (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
     final endHour = (startHour + 6.0).clamp(6.0, 24.0);
@@ -131,63 +124,65 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
   // 차트 데이터 생성
   List<Map<String, dynamic>> getChartData() {
-    if (selectedPeriod != '일') {
-      return _getWeeklyOrMonthlyData();
+    if (selectedPeriod == '월') {
+      return _getCalendarYearMonthlyWeightData();
+    }
+    if (selectedPeriod == '주') {
+      return _getSevenDayWeightChartData();
     }
 
-    // 일별 차트: 선택된 날짜의 모든 기록 (시간별)
+    // 일: 선택일 당일 기록만, 시간 순
     final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
     final todayRecords = allRecords.where((record) {
       final recordDateStr = DateFormat('yyyy-MM-dd').format(record.measuredAt);
       return recordDateStr == selectedDateStr;
     }).toList();
 
-    // 시간 순으로 정렬
     todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
 
     final timeRange = _calculateTimeRange();
     final minHourDiff = timeRange['min']!;
     final maxHourDiff = timeRange['max']!;
+    final range = maxHourDiff - minHourDiff;
+    if (range <= 0) {
+      return [];
+    }
 
-    List<Map<String, dynamic>> chartData = [];
-    for (var record in todayRecords) {
+    final chartData = <Map<String, dynamic>>[];
+    for (final record in todayRecords) {
       final recordHour = record.measuredAt.hour;
       final recordMinute = record.measuredAt.minute;
       final normalizedMinute = (recordMinute / 5).floor() * 5;
       final minuteRatio = normalizedMinute / 60.0;
-      final range = maxHourDiff - minHourDiff;
       double xPosition = (recordHour - minHourDiff + minuteRatio) / range;
       xPosition = xPosition.clamp(0.0, 1.0);
 
       chartData.add({
-        'date': DateFormat('HH:mm').format(record.measuredAt), // 시간 표시
+        'date': DateFormat('HH:mm').format(record.measuredAt),
         'weight': record.weight,
-        'record': record, // 실제 기록 객체 추가
+        'record': record,
         'hour': recordHour,
         'normalizedMinute': normalizedMinute,
-        'xPosition': xPosition, // 일별도 시간 기반 xPosition 사용
+        'xPosition': xPosition,
       });
     }
 
     return chartData;
   }
 
-  // 주/월 데이터 생성
-  List<Map<String, dynamic>> _getWeeklyOrMonthlyData() {
+  /// 주별: 선택일 포함 최근 7일 (날짜별 최신값·min/max·개수)
+  List<Map<String, dynamic>> _getSevenDayWeightChartData() {
     List<Map<String, dynamic>> chartData = [];
-    final days = selectedPeriod == '주' ? 7 : 30;
+    const days = 7;
 
-    // 선택된 날짜를 기준으로 과거 데이터 생성 (선택된 날짜가 맨 오른쪽)
     final endDate =
         DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
     final startDate = endDate.subtract(Duration(days: days - 1));
 
-    // 모든 날짜에 대해 데이터 생성 (데이터가 없어도 빈 슬롯 생성)
     for (int i = 0; i < days; i++) {
       final date = startDate.add(Duration(days: i));
       final dateKey = DateFormat('yyyy-MM-dd').format(date);
 
-      // 해당 날짜의 모든 기록 가져오기
       final dayRecords = allRecords.where((record) {
         final recordDateStr =
             DateFormat('yyyy-MM-dd').format(record.measuredAt);
@@ -195,40 +190,25 @@ class _WeightListScreenState extends State<WeightListScreen> {
       }).toList();
 
       if (dayRecords.isNotEmpty) {
-        if (selectedPeriod == '주') {
-          // 일자별(주): 하루 min/max 범위를 모두 유지
-          dayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-          final latestRecord = dayRecords.last;
-          final minWeight = dayRecords
-              .map((record) => record.weight)
-              .reduce((a, b) => a < b ? a : b);
-          final maxWeight = dayRecords
-              .map((record) => record.weight)
-              .reduce((a, b) => a > b ? a : b);
+        dayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+        final latestRecord = dayRecords.last;
+        final minWeight = dayRecords
+            .map((record) => record.weight)
+            .reduce((a, b) => a < b ? a : b);
+        final maxWeight = dayRecords
+            .map((record) => record.weight)
+            .reduce((a, b) => a > b ? a : b);
 
-          chartData.add({
-            'date': DateFormat('M.d').format(date),
-            'weight': latestRecord.weight,
-            'record': latestRecord,
-            'minWeight': minWeight,
-            'maxWeight': maxWeight,
-            'count': dayRecords.length,
-            'xPosition': i / days,
-          });
-        } else {
-          // 월별: 기존처럼 하루 최고 체중으로 대표값 생성
-          dayRecords.sort((a, b) => b.weight.compareTo(a.weight));
-          final highestWeightRecord = dayRecords.first;
-
-          chartData.add({
-            'date': DateFormat('M.d').format(date),
-            'weight': highestWeightRecord.weight,
-            'record': highestWeightRecord,
-            'xPosition': i / days,
-          });
-        }
+        chartData.add({
+          'date': DateFormat('M.d').format(date),
+          'weight': latestRecord.weight,
+          'record': latestRecord,
+          'minWeight': minWeight,
+          'maxWeight': maxWeight,
+          'count': dayRecords.length,
+          'xPosition': i / days,
+        });
       } else {
-        // 데이터가 없는 날짜는 null 값으로 추가 (차트에서 제외되지만 위치는 유지)
         chartData.add({
           'date': DateFormat('M.d').format(date),
           'weight': null,
@@ -244,56 +224,147 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return chartData;
   }
 
-  // Y축 범위 계산 (최저/최고 체중 기준)
-  List<double> getYAxisLabels() {
-    final chartData = getChartData();
-    if (chartData.isEmpty) return [0, 2, 4, 6];
+  /// 월별: [selectedDate]의 연도 기준 1~12월, 월 단위 최소·최대 체중 (주간 막대와 동일 개념)
+  List<Map<String, dynamic>> _getCalendarYearMonthlyWeightData() {
+    final year = selectedDate.year;
+    final chartData = <Map<String, dynamic>>[];
 
-    // 모든 체중 데이터 추출 (null 값 제외)
-    final weights = <double>[];
-    for (final data in chartData) {
-      if (selectedPeriod == '주') {
-        final minWeight = data['minWeight'] as double?;
-        final maxWeight = data['maxWeight'] as double?;
-        if (minWeight != null) weights.add(minWeight);
-        if (maxWeight != null) weights.add(maxWeight);
+    for (int m = 1; m <= 12; m++) {
+      final monthRecords = allRecords.where((record) {
+        return record.measuredAt.year == year && record.measuredAt.month == m;
+      }).toList();
+
+      if (monthRecords.isNotEmpty) {
+        monthRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+        final minWeight = monthRecords
+            .map((record) => record.weight)
+            .reduce((a, b) => a < b ? a : b);
+        final maxWeight = monthRecords
+            .map((record) => record.weight)
+            .reduce((a, b) => a > b ? a : b);
+        final latestRecord = monthRecords.last;
+
+        chartData.add({
+          'date': '$m월',
+          'weight': latestRecord.weight,
+          'record': latestRecord,
+          'minWeight': minWeight,
+          'maxWeight': maxWeight,
+          'count': monthRecords.length,
+          'xPosition': (m - 1) / 11.0,
+          'month': m,
+          'year': year,
+        });
       } else {
-        final weight = data['weight'] as double?;
-        if (weight != null) weights.add(weight);
+        chartData.add({
+          'date': '$m월',
+          'weight': null,
+          'record': null,
+          'minWeight': null,
+          'maxWeight': null,
+          'count': 0,
+          'xPosition': (m - 1) / 11.0,
+          'month': m,
+          'year': year,
+        });
       }
     }
 
-    // 유효한 체중 데이터가 없으면 기본값 반환
-    if (weights.isEmpty) return [60.0, 65.0, 70.0, 75.0];
+    return chartData;
+  }
 
-    // 최저/최고 체중
-    final minWeight = weights.reduce((a, b) => a < b ? a : b);
-    final maxWeight = weights.reduce((a, b) => a > b ? a : b);
+  /// 메인 체중 그래프 Y축: 정수 중심 c 기준 c-2 ~ c+2 (5개 숫자 눈금, 위→아래).
+  /// 데이터가 한눈에 들어오면 c를 조정해 [c-2, c+2] 안에 모두 포함.
+  List<double> getYAxisLabelsMain() {
+    final chartData = getChartData();
+    const fallback = <double>[67, 66, 65, 64, 63];
 
-    // 최소 범위 보장 (최소 4kg 범위로 4개 라벨이 겹치지 않고 여유 공간 확보)
-    final range = maxWeight - minWeight;
-    final minRange = 4.0; // 최소 4kg 범위 (상하 여유 공간 포함)
+    if (chartData.isEmpty) return fallback;
 
-    double adjustedMin, adjustedMax;
-
-    if (range < minRange) {
-      // 범위가 작으면 최저값 기준으로 확장 (하단 여유 확보)
-      adjustedMin = minWeight - 1.0; // 하단 1kg 여유
-      adjustedMax = adjustedMin + minRange;
-    } else {
-      // 여유 공간 추가 (위아래 여유)
-      final padding = range * 0.15; // 15% 여유
-      adjustedMin = minWeight - padding;
-      adjustedMax = maxWeight + padding;
+    final weights = <double>[];
+    for (final data in chartData) {
+      if (selectedPeriod == '주' || selectedPeriod == '월') {
+        final minW = data['minWeight'] as double?;
+        final maxW = data['maxWeight'] as double?;
+        if (minW != null) weights.add(minW);
+        if (maxW != null) weights.add(maxW);
+      } else {
+        final w = data['weight'] as double?;
+        if (w != null) weights.add(w);
+      }
     }
 
-    // 4개의 균등한 간격으로 라벨 생성 (1kg 단위로 반올림)
-    return [
-      adjustedMax.roundToDouble(), // 최고
-      (adjustedMax - (adjustedMax - adjustedMin) / 3).roundToDouble(), // 중상
-      (adjustedMax - (adjustedMax - adjustedMin) * 2 / 3).roundToDouble(), // 중하
-      adjustedMin.roundToDouble(), // 최저
-    ];
+    if (weights.isEmpty) return fallback;
+
+    final minW = weights.reduce((a, b) => a < b ? a : b);
+    final maxW = weights.reduce((a, b) => a > b ? a : b);
+    final sum = weights.fold<double>(0, (a, b) => a + b);
+    final avg = sum / weights.length;
+    int c = avg.round();
+
+    if (maxW - minW <= 4) {
+      final cMin = (maxW - 2).ceil();
+      final cMax = (minW + 2).floor();
+      if (cMin <= cMax) {
+        c = c.clamp(cMin, cMax);
+      } else {
+        c = ((minW + maxW) / 2).round();
+      }
+
+      return [
+        (c + 2).toDouble(),
+        (c + 1).toDouble(),
+        c.toDouble(),
+        (c - 1).toDouble(),
+        (c - 2).toDouble(),
+      ];
+    }
+
+    // 주간 등 범위가 4kg 초과: c±2로는 축이 데이터를 못 덮어 omit에 의해 막대가 전부 사라짐 → min~max를 5눈금으로 균등 분할
+    const pad = 0.25;
+    final hi = maxW + pad;
+    final lo = minW - pad;
+    final step = (hi - lo) / 4.0;
+    return List<double>.generate(5, (i) => hi - i * step);
+  }
+
+  /// 확대 화면 전용: 현재 그래프에 쓰인 체중들의 평균을 가운데(4번째 눈금)로,
+  /// ±3kg 간격으로 Y축 라벨 7개 (상단 avg+3 → 하단 avg-3).
+  List<double> getYAxisLabelsExpanded() {
+    final chartData = getChartData();
+    const fallback = <double>[69, 68, 67, 66, 65, 64, 63];
+
+    if (chartData.isEmpty) return fallback;
+
+    final weights = <double>[];
+    for (final data in chartData) {
+      if (selectedPeriod == '주' || selectedPeriod == '월') {
+        final minW = data['minWeight'] as double?;
+        final maxW = data['maxWeight'] as double?;
+        if (minW != null) weights.add(minW);
+        if (maxW != null) weights.add(maxW);
+      } else {
+        final w = data['weight'] as double?;
+        if (w != null) weights.add(w);
+      }
+    }
+
+    if (weights.isEmpty) return fallback;
+
+    final minW = weights.reduce((a, b) => a < b ? a : b);
+    final maxW = weights.reduce((a, b) => a > b ? a : b);
+
+    if (maxW - minW > 6) {
+      const pad = 0.25;
+      final hi = maxW + pad;
+      final lo = minW - pad;
+      final step = (hi - lo) / 6.0;
+      return List<double>.generate(7, (i) => hi - i * step);
+    }
+
+    final sum = weights.fold<double>(0, (a, b) => a + b);
+    final avg = sum / weights.length;
+    return List<double>.generate(7, (i) => avg + (3 - i));
   }
 
   @override
@@ -1030,10 +1101,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
           tooltipPosition = null;
 
           if (period == '월') {
-            final visibleDays = 7;
-            final totalDays = 30;
-            final maxOffset = (totalDays - visibleDays) / totalDays;
-            timeOffset = maxOffset;
+            timeOffset = 0.0;
           } else if (period == '주') {
             timeOffset = 0.0;
           } else if (period == '일') {
@@ -1059,10 +1127,13 @@ class _WeightListScreenState extends State<WeightListScreen> {
   // 5. 차트
   Widget _buildChartContent({
     bool showExpandButton = true,
-    double chartHeight = 250,
+    double chartHeight = 280,
+    bool expandedChartView = false,
   }) {
     final chartData = getChartData();
-    final yLabels = getYAxisLabels();
+    final yLabels = expandedChartView
+        ? getYAxisLabelsExpanded()
+        : getYAxisLabelsMain();
     return WeightChartContent(
       selectedPeriod: selectedPeriod,
       chartData: chartData,
@@ -1079,6 +1150,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
         chartHeight: height,
         timeOffset: timeOffset,
         selectedDate: selectedDate,
+        showYAxisKgHeader: !expandedChartView,
+        omitOutOfRangeWeights: !expandedChartView,
         onTimeOffsetChanged: (newOffset) {
           setState(() {
             timeOffset = newOffset;
@@ -1092,7 +1165,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
           });
           _notifyExpandedChart();
         },
-        chartAreaBuilder: _buildChartArea,
+        chartAreaBuilder: (a, b, c, d) => _buildChartArea(a, b, c, d),
         tooltipBuilder: _buildChartTooltip,
       ),
       emptyChartBuilder: (height) => WeightEmptyChart(
@@ -1100,6 +1173,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
         selectedPeriod: selectedPeriod,
         selectedDate: selectedDate,
         timeOffset: timeOffset,
+        yLabels: yLabels,
+        showYAxisKgHeader: !expandedChartView,
       ),
     );
   }
@@ -1108,8 +1183,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
     await openHealthChartExpandPage(
       context: context,
       periodSelectorBuilder: (_) => _buildPeriodButtons(),
-      chartBuilder: (_) =>
-          _buildChartContent(showExpandButton: false, chartHeight: 260),
+      chartBuilder: (_) => _buildChartContent(
+            showExpandButton: false,
+            chartHeight: 320,
+            expandedChartView: true,
+          ),
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;
       },
@@ -1120,37 +1198,44 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }
 
   // 차트 영역 빌드
-  Widget _buildChartArea(List<Map<String, dynamic>> chartData,
-      List<double> yLabels, BoxConstraints constraints) {
+  Widget _buildChartArea(
+    List<Map<String, dynamic>> chartData,
+    List<double> yLabels,
+    BoxConstraints constraints,
+    bool omitOutOfRangeWeights,
+  ) {
     return GestureDetector(
       onTapDown: (details) {
         _handleChartTap(
           details.localPosition,
           chartData,
-          yLabels[3],
-          yLabels[0],
-          constraints.maxWidth - ChartConstants.yAxisTotalWidth,
+          yLabels.last,
+          yLabels.first,
+          constraints.maxWidth - ChartConstants.weightChartYAxisStripWidth,
           constraints.maxHeight,
+          omitOutOfRangeWeights: omitOutOfRangeWeights,
         );
       },
       onLongPressStart: (details) {
         _handleChartHover(
           details.localPosition,
           chartData,
-          yLabels[3],
-          yLabels[0],
-          constraints.maxWidth - ChartConstants.yAxisTotalWidth,
+          yLabels.last,
+          yLabels.first,
+          constraints.maxWidth - ChartConstants.weightChartYAxisStripWidth,
           constraints.maxHeight,
+          omitOutOfRangeWeights: omitOutOfRangeWeights,
         );
       },
       onLongPressMoveUpdate: (details) {
         _handleChartHover(
           details.localPosition,
           chartData,
-          yLabels[3],
-          yLabels[0],
-          constraints.maxWidth - ChartConstants.yAxisTotalWidth,
+          yLabels.last,
+          yLabels.first,
+          constraints.maxWidth - ChartConstants.weightChartYAxisStripWidth,
           constraints.maxHeight,
+          omitOutOfRangeWeights: omitOutOfRangeWeights,
         );
       },
       onLongPressEnd: (details) {
@@ -1160,7 +1245,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         });
         _notifyExpandedChart();
       },
-      // 드래그 기능 추가 (일별/월별)
+      // 드래그: 일별(6시간 창)·월별
       onPanStart: (details) {
         if (selectedPeriod == '일' || selectedPeriod == '월') {
           _dragStartX = details.localPosition.dx;
@@ -1170,7 +1255,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
         if (selectedPeriod == '일' || selectedPeriod == '월') {
           final deltaX = details.localPosition.dx - (_dragStartX ?? 0);
           _handleDragUpdate(
-              deltaX, constraints.maxWidth - ChartConstants.yAxisTotalWidth);
+              deltaX,
+              constraints.maxWidth -
+                  ChartConstants.weightChartYAxisStripWidth);
           _dragStartX = details.localPosition.dx;
         }
       },
@@ -1188,9 +1275,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 timeOffset: timeOffset,
                 selectedPeriod: selectedPeriod,
                 selectedPointIndex: selectedChartPointIndex,
+                omitOutOfRangeWeights: omitOutOfRangeWeights,
               ),
               size: Size(
-                constraints.maxWidth - ChartConstants.yAxisTotalWidth,
+                constraints.maxWidth -
+                    ChartConstants.weightChartYAxisStripWidth,
                 constraints.maxHeight,
               ),
             ),
@@ -1482,8 +1571,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
     double minWeight,
     double maxWeight,
     double chartWidth,
-    double chartHeight,
-  ) {
+    double chartHeight, {
+    bool omitOutOfRangeWeights = false,
+  }) {
     if (chartData.isEmpty) return;
 
     // 가장 가까운 점 찾기
@@ -1497,6 +1587,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
       if (weight == null) continue; // null 값 스킵
 
+      if (omitOutOfRangeWeights) {
+        final w = (weight as num).toDouble();
+        if (w < minWeight || w > maxWeight) continue;
+      }
+
       if (selectedPeriod == '일') {
         final timeRange = _calculateTimeRange();
         final minHour = timeRange['min']!;
@@ -1508,47 +1603,49 @@ class _WeightListScreenState extends State<WeightListScreen> {
         }
       }
 
-      // X 좌표 계산
       double x;
       if (data['xPosition'] != null) {
         final xPosition = data['xPosition'] as double;
-        x = 10.0 + (chartWidth - 20.0) * xPosition;
+        final leftPad = ChartConstants.weightDailyChartInnerPadH;
+        final rightPad = ChartConstants.weightDailyChartInnerPadH +
+            ChartConstants.weightXAxisUnitReservedWidth;
+        x = leftPad + (chartWidth - leftPad - rightPad) * xPosition;
       } else if (selectedPeriod == '일') {
-        const double leftPadding = 10.0;
-        const double rightPadding = 10.0;
-        final effectiveWidth = chartWidth - leftPadding - rightPadding;
+        final leftPad = ChartConstants.weightDailyChartInnerPadH;
+        final rightPad = ChartConstants.weightDailyChartInnerPadH +
+            ChartConstants.weightXAxisUnitReservedWidth;
+        final effectiveWidth = chartWidth - leftPad - rightPad;
         x = chartData.length == 1
-            ? leftPadding + effectiveWidth / 2
-            : leftPadding + effectiveWidth * i / (chartData.length - 1);
+            ? leftPad + effectiveWidth / 2
+            : leftPad + effectiveWidth * i / (chartData.length - 1);
       } else {
-        // 주/월별: xPosition 기반 계산
         final xPosition = data['xPosition'] as double;
-        final visibleDays = selectedPeriod == '주' ? 7 : 7;
-        final totalDays = selectedPeriod == '주' ? 7 : 30;
-
+        const visibleDays = 7;
+        const totalDays = 30;
+        final leftPad = ChartConstants.weightDailyChartInnerPadH;
+        final rightPad = ChartConstants.weightDailyChartInnerPadH +
+            ChartConstants.weightXAxisUnitReservedWidth;
         if (selectedPeriod == '월') {
           final maxOffset = (totalDays - visibleDays) / totalDays;
           final currentOffset = timeOffset.clamp(0.0, maxOffset);
           final startIndex = (currentOffset * totalDays).floor();
           final endIndex = startIndex + visibleDays;
-
-          // xPosition을 인덱스로 변환
           final dataIndex = (xPosition * totalDays).round();
-
           if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-
-          // 현재 보이는 범위 내에서의 상대적 위치 계산
           final relativeIndex = dataIndex - startIndex;
           final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = 10.0 + (chartWidth - 20.0) * adjustedRatio;
+          x = leftPad + (chartWidth - leftPad - rightPad) * adjustedRatio;
         } else {
-          x = 10.0 + (chartWidth - 20.0) * xPosition;
+          x = leftPad + (chartWidth - leftPad - rightPad) * xPosition;
         }
       }
 
-      // Y 좌표 계산
+      // Y 좌표 계산 (페인터와 동일한 상하 패딩 적용)
+      const topPadding = 20.0;
+      const bottomPadding = 20.0;
+      final drawableHeight = chartHeight - topPadding - bottomPadding;
       final normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
-      final y = chartHeight * normalizedWeight;
+      final y = topPadding + drawableHeight * normalizedWeight;
 
       // 클릭 위치와 점 사이의 거리 계산
       final dx = tapPosition.dx - x;
@@ -1586,8 +1683,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
     double minWeight,
     double maxWeight,
     double chartWidth,
-    double chartHeight,
-  ) {
+    double chartHeight, {
+    bool omitOutOfRangeWeights = false,
+  }) {
     if (chartData.isEmpty) return;
 
     // 가장 가까운 점 찾기
@@ -1601,6 +1699,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
       if (weight == null) continue; // null 값 스킵
 
+      if (omitOutOfRangeWeights) {
+        final w = (weight as num).toDouble();
+        if (w < minWeight || w > maxWeight) continue;
+      }
+
       if (selectedPeriod == '일') {
         final timeRange = _calculateTimeRange();
         final minHour = timeRange['min']!;
@@ -1612,47 +1715,49 @@ class _WeightListScreenState extends State<WeightListScreen> {
         }
       }
 
-      // X 좌표 계산
       double x;
       if (data['xPosition'] != null) {
         final xPosition = data['xPosition'] as double;
-        x = 10.0 + (chartWidth - 20.0) * xPosition;
+        final leftPad = ChartConstants.weightDailyChartInnerPadH;
+        final rightPad = ChartConstants.weightDailyChartInnerPadH +
+            ChartConstants.weightXAxisUnitReservedWidth;
+        x = leftPad + (chartWidth - leftPad - rightPad) * xPosition;
       } else if (selectedPeriod == '일') {
-        const double leftPadding = 10.0;
-        const double rightPadding = 10.0;
-        final effectiveWidth = chartWidth - leftPadding - rightPadding;
+        final leftPad = ChartConstants.weightDailyChartInnerPadH;
+        final rightPad = ChartConstants.weightDailyChartInnerPadH +
+            ChartConstants.weightXAxisUnitReservedWidth;
+        final effectiveWidth = chartWidth - leftPad - rightPad;
         x = chartData.length == 1
-            ? leftPadding + effectiveWidth / 2
-            : leftPadding + effectiveWidth * i / (chartData.length - 1);
+            ? leftPad + effectiveWidth / 2
+            : leftPad + effectiveWidth * i / (chartData.length - 1);
       } else {
-        // 주/월별: xPosition 기반 계산
         final xPosition = data['xPosition'] as double;
-        final visibleDays = selectedPeriod == '주' ? 7 : 7;
-        final totalDays = selectedPeriod == '주' ? 7 : 30;
-
+        const visibleDays = 7;
+        const totalDays = 30;
+        final leftPad = ChartConstants.weightDailyChartInnerPadH;
+        final rightPad = ChartConstants.weightDailyChartInnerPadH +
+            ChartConstants.weightXAxisUnitReservedWidth;
         if (selectedPeriod == '월') {
           final maxOffset = (totalDays - visibleDays) / totalDays;
           final currentOffset = timeOffset.clamp(0.0, maxOffset);
           final startIndex = (currentOffset * totalDays).floor();
           final endIndex = startIndex + visibleDays;
-
-          // xPosition을 인덱스로 변환
           final dataIndex = (xPosition * totalDays).round();
-
           if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-
-          // 현재 보이는 범위 내에서의 상대적 위치 계산
           final relativeIndex = dataIndex - startIndex;
           final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = 10.0 + (chartWidth - 20.0) * adjustedRatio;
+          x = leftPad + (chartWidth - leftPad - rightPad) * adjustedRatio;
         } else {
-          x = 10.0 + (chartWidth - 20.0) * xPosition;
+          x = leftPad + (chartWidth - leftPad - rightPad) * xPosition;
         }
       }
 
-      // Y 좌표 계산
+      // Y 좌표 계산 (페인터와 동일한 상하 패딩 적용)
+      const topPadding = 20.0;
+      const bottomPadding = 20.0;
+      final drawableHeight = chartHeight - topPadding - bottomPadding;
       final normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
-      final y = chartHeight * normalizedWeight;
+      final y = topPadding + drawableHeight * normalizedWeight;
 
       // 거리 계산
       final dx = hoverPosition.dx - x;
@@ -1696,35 +1801,52 @@ class _WeightListScreenState extends State<WeightListScreen> {
     final weightValue = weight as double;
     final weightRecord = record as WeightRecord;
 
-    // 측정 시간 표시 (일 기간일 때는 시간, 주/월 기간일 때는 날짜+시간)
-    String timeLabel;
-    if (selectedPeriod == '일') {
-      timeLabel = DateFormat('HH:mm').format(weightRecord.measuredAt);
-    } else {
-      timeLabel = DateFormat('M/d HH:mm').format(weightRecord.measuredAt);
+    String formatKoreanTime(DateTime dt) {
+      final rounded = ((dt.minute / 5).round()) * 5;
+      final hour = rounded == 60 ? (dt.hour + 1) % 24 : dt.hour;
+      final minute = rounded == 60 ? 0 : rounded;
+      return '$hour시 ${minute.toString().padLeft(2, '0')}분';
     }
 
-    // 간단한 툴팁 위치 계산 (차트 영역 내에서만 표시)
+    final String timeLabel = selectedPeriod == '일'
+        ? formatKoreanTime(weightRecord.measuredAt)
+        : DateFormat('M/d HH:mm').format(weightRecord.measuredAt);
+
+    // 부모 Positioned(점 위치 기준) 내에서 상대 이동으로 배치
     double tooltipX = tooltipPosition!.dx;
-    double tooltipY = tooltipPosition!.dy - 60; // 툴팁을 점 위쪽에 표시
+    double tooltipY = tooltipPosition!.dy - 60;
+    const tooltipWidth = 110.0;
+    const tooltipHeight = 56.0;
 
-    // 차트 영역을 벗어나지 않도록 조정
     if (tooltipX < 0) tooltipX = 0;
-    if (tooltipX > chartWidth - 100) tooltipX = chartWidth - 100; // 툴팁 너비 고려
-    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + 20; // 아래쪽에 표시
-    if (tooltipY > chartHeight - 50) tooltipY = chartHeight - 50; // 툴팁 높이 고려
+    if (tooltipX > chartWidth - tooltipWidth) tooltipX = chartWidth - tooltipWidth;
+    if (tooltipY < 0) tooltipY = tooltipPosition!.dy + 20;
+    if (tooltipY > chartHeight - tooltipHeight) tooltipY = chartHeight - tooltipHeight;
 
-    return Positioned(
-      left: tooltipX,
-      top: tooltipY,
+    final timeStyle = TextStyle(
+      color: Colors.grey[700],
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+    );
+    final weightStyle = const TextStyle(
+      color: Colors.black87,
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+    );
+
+    return Transform.translate(
+      offset: Offset(
+        tooltipX - tooltipPosition!.dx,
+        tooltipY - tooltipPosition!.dy,
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.85),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.12),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1732,24 +1854,26 @@ class _WeightListScreenState extends State<WeightListScreen> {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${weightValue.toStringAsFixed(1)} kg',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              timeLabel,
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 12,
-              ),
-            ),
-          ],
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: selectedPeriod == '일'
+              ? [
+                  Text(timeLabel, style: timeStyle, textAlign: TextAlign.center),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${weightValue.toStringAsFixed(1)} kg',
+                    style: weightStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ]
+              : [
+                  Text(
+                    '${weightValue.toStringAsFixed(1)} kg',
+                    style: weightStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(timeLabel, style: timeStyle, textAlign: TextAlign.center),
+                ],
         ),
       ),
     );
@@ -1858,6 +1982,7 @@ class WeightChartPainter extends CustomPainter {
   final double timeOffset;
   final String selectedPeriod;
   final int? selectedPointIndex;
+  final bool omitOutOfRangeWeights;
 
   WeightChartPainter({
     required this.chartData,
@@ -1865,30 +1990,36 @@ class WeightChartPainter extends CustomPainter {
     required this.timeOffset,
     required this.selectedPeriod,
     this.selectedPointIndex,
+    this.omitOutOfRangeWeights = false,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (chartData.isEmpty) return;
+    if (chartData.isEmpty || yLabels.length < 2) return;
 
-    final minWeight = yLabels[3]; // 최소값 (하단)
-    final maxWeight = yLabels[0]; // 최대값 (상단)
+    final minWeight = yLabels.last; // 최소값 (하단)
+    final maxWeight = yLabels.first; // 최대값 (상단)
+    final weightRange = maxWeight - minWeight;
+    if (weightRange == 0) return;
 
     // 그리드 선 그리기 (패딩 적용)
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
 
-    const double leftPadding = 10.0;
-    const double rightPadding = 10.0;
+    const double leftPadding = ChartConstants.weightDailyChartInnerPadH;
+    const double rightPadding = ChartConstants.weightDailyChartInnerPadH +
+        ChartConstants.weightXAxisUnitReservedWidth;
+    const double topPadding = 20.0;
+    const double bottomPadding = 20.0;
+    final gridSegments = yLabels.length - 1;
 
-    for (int i = 0; i <= 3; i++) {
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      final y = topPadding + (size.height - topPadding - bottomPadding) * i / 3;
+    for (int i = 0; i <= gridSegments; i++) {
+      final y = topPadding +
+          (size.height - topPadding - bottomPadding) * i / gridSegments;
       canvas.drawLine(
-        Offset(leftPadding, y), // 왼쪽 패딩 추가
-        Offset(size.width - rightPadding, y), // 오른쪽 패딩 추가
+        Offset(leftPadding, y),
+        Offset(size.width - rightPadding, y),
         gridPaint,
       );
     }
@@ -1907,7 +2038,12 @@ class WeightChartPainter extends CustomPainter {
 
       if (weight == null) continue; // null 값 스킵
 
-      // 일별 차트는 현재 6시간 뷰 범위만 표시
+      final w = (weight as num).toDouble();
+      if (omitOutOfRangeWeights &&
+          (w < minWeight || w > maxWeight)) {
+        continue;
+      }
+
       if (selectedPeriod == '일') {
         final recordHour = data['hour'] as int?;
         if (recordHour != null &&
@@ -1916,29 +2052,23 @@ class WeightChartPainter extends CustomPainter {
         }
       }
 
-      // X 좌표 계산
       double x;
       if (selectedPeriod == '일') {
         final xPosition = (data['xPosition'] as double?) ?? 0.5;
-        x = leftPadding + (size.width - leftPadding - rightPadding) * xPosition;
+        x = leftPadding +
+            (size.width - leftPadding - rightPadding) * xPosition;
       } else {
-        // 주/월별: xPosition 기반 계산
+        if (data['xPosition'] == null) continue;
         final xPosition = data['xPosition'] as double;
-        final visibleDays = selectedPeriod == '주' ? 7 : 7;
-        final totalDays = selectedPeriod == '주' ? 7 : 30;
-
+        const visibleDays = 7;
+        const totalDays = 30;
         if (selectedPeriod == '월') {
           final maxOffset = (totalDays - visibleDays) / totalDays;
           final currentOffset = timeOffset.clamp(0.0, maxOffset);
           final startIndex = (currentOffset * totalDays).floor();
           final endIndex = startIndex + visibleDays;
-
-          // xPosition을 인덱스로 변환
           final dataIndex = (xPosition * totalDays).round();
-
           if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-
-          // 현재 보이는 범위 내에서의 상대적 위치 계산
           final relativeIndex = dataIndex - startIndex;
           final adjustedRatio = relativeIndex / (visibleDays - 1);
           x = leftPadding +
@@ -1952,7 +2082,7 @@ class WeightChartPainter extends CustomPainter {
       // Y 좌표 계산
       const double topPadding = 20.0;
       const double bottomPadding = 20.0;
-      final normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
+      final normalizedWeight = (maxWeight - w) / weightRange;
       final y = topPadding +
           (size.height - topPadding - bottomPadding) * normalizedWeight;
 
