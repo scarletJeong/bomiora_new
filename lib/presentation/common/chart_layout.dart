@@ -30,6 +30,8 @@ class ChartConstants {
 
   /// 체중 시간대별(일) 차트 플롯 영역 좌·우 여백 (그리드·점·탭 hit 동일)
   static const double weightDailyChartInnerPadH = 6.0;
+  /// 체중 X축 오른쪽 단위 `(시)/(일)/(월)`을 위한 여유 폭
+  static const double weightXAxisUnitReservedWidth = 18.0;
 
   /// 체중 일·주·월 그래프 카드 공통 패딩 (시간대별과 동일)
   static const EdgeInsets weightChartCardPadding =
