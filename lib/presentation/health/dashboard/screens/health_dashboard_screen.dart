@@ -8,11 +8,15 @@ import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
+import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
+import '../../../../data/models/health/steps/steps_record_model.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
 import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
-import '../../../../data/services/health_sync_service.dart';
+import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
+import '../../../../data/repositories/health/steps/steps_repository.dart';
+import '../../../../data/repositories/health/food/food_repository.dart';
 import '../../weight/screens/weight_list_screen.dart';
 import '../../blood_pressure/screens/blood_pressure_list_screen.dart';
 import '../../blood_sugar/screens/blood_sugar_list_screen.dart';
@@ -38,6 +42,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   BloodPressureRecord? latestBloodPressureRecord;
   BloodSugarRecord? latestBloodSugarRecord;
   MenstrualCycleRecord? latestMenstrualCycleRecord;
+  HeartRateRecord? latestHeartRateRecord;
+  StepsRecord? latestStepsRecord;
 
   double targetWeight = 74.0;
   double currentWeight = 0.0;
@@ -49,6 +55,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
   int consumedCalories = 1500;
   int targetCalories = 2000;
+  num totalCarbs = 0;
+  num totalProtein = 0;
+  num totalFat = 0;
 
   int steps = 6320;
   int heartRate = 96;
@@ -56,10 +65,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   int diastolicBP = 0;
 
   final Map<String, int> mealCalories = {
-    'Breakfast': 206,
-    'Lunch': 622,
+    'Breakfast': 0,
+    'Lunch': 0,
     'Dinner': 0,
-    'Snack': 672,
+    'Snack': 0,
   };
 
   @override
@@ -84,21 +93,43 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         return;
       }
 
+      final userId = user.id.toString();
+      final intUserId = int.tryParse(userId);
+
       final results = await Future.wait([
-        WeightRepository.getLatestWeightRecord(user.id),
-        BloodPressureRepository.getLatestBloodPressureRecord(user.id)
+        WeightRepository.getWeightRecords(userId).catchError((_) => <WeightRecord>[]),
+        BloodPressureRepository.getBloodPressureRecords(userId)
+            .catchError((_) => <BloodPressureRecord>[]),
+        BloodSugarRepository.getBloodSugarRecords(userId)
+            .catchError((_) => <BloodSugarRecord>[]),
+        HeartRateRepository.getHeartRateRecords(userId)
+            .catchError((_) => <HeartRateRecord>[]),
+        MenstrualCycleRepository.getLatestMenstrualCycleRecord(userId)
             .catchError((_) => null),
-        BloodSugarRepository.getLatestBloodSugarRecord(user.id)
-            .catchError((_) => null),
-        MenstrualCycleRepository.getLatestMenstrualCycleRecord(user.id)
-            .catchError((_) => null),
+        if (intUserId != null)
+          StepsRepository.getStepsRecordByDate(intUserId, selectedDate)
+              .catchError((_) => null)
+        else
+          Future.value(null),
       ]);
 
-      final weightRecord = results[0] as WeightRecord?;
-      final bloodPressureRecord = results[1] as BloodPressureRecord?;
-      final bloodSugarRecord = results[2] as BloodSugarRecord?;
-      final menstrualCycleRecord = results[3] as MenstrualCycleRecord?;
-      final healthResult = await HealthSyncService.fetchToday();
+      final weightRecords = results[0] as List<WeightRecord>;
+      final bpRecords = results[1] as List<BloodPressureRecord>;
+      final sugarRecords = results[2] as List<BloodSugarRecord>;
+      final heartRateRecords = results[3] as List<HeartRateRecord>;
+      final menstrualCycleRecord = results[4] as MenstrualCycleRecord?;
+      final stepsRecord = results[5] as StepsRecord?;
+      final weightRecord = _latestOfDate(weightRecords, (e) => e.measuredAt);
+      final bloodPressureRecord =
+          _latestOfDate(bpRecords, (e) => e.measuredAt);
+      final bloodSugarRecord =
+          _latestOfDate(sugarRecords, (e) => e.measuredAt);
+      final heartRateRecord =
+          _latestOfDate(heartRateRecords, (e) => e.measuredAt);
+      final foodRecords = await FoodRepository.getRecordsForDate(
+        userId,
+        selectedDate,
+      );
 
       setState(() {
         currentUser = user;
@@ -106,24 +137,40 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         latestBloodPressureRecord = bloodPressureRecord;
         latestBloodSugarRecord = bloodSugarRecord;
         latestMenstrualCycleRecord = menstrualCycleRecord;
+        latestHeartRateRecord = heartRateRecord;
+        latestStepsRecord = stepsRecord;
 
         if (weightRecord != null) {
           currentWeight = weightRecord.weight;
           height = weightRecord.height ?? 170.0;
           bmi = weightRecord.bmi ?? 0.0;
+        } else {
+          currentWeight = 0.0;
+          height = 170.0;
+          bmi = 0.0;
         }
 
         if (bloodPressureRecord != null) {
           systolicBP = bloodPressureRecord.systolic;
           diastolicBP = bloodPressureRecord.diastolic;
+        } else {
+          systolicBP = 0;
+          diastolicBP = 0;
         }
 
-        if (healthResult.success) {
-          steps = healthResult.steps ?? 0;
-          if (healthResult.heartRate != null) {
-            heartRate = healthResult.heartRate!;
-          }
-        }
+        heartRate = heartRateRecord?.heartRate ?? 0;
+        steps = stepsRecord?.totalSteps ?? 0;
+
+        consumedCalories =
+            foodRecords.fold<int>(0, (sum, r) => sum + (r.calories ?? 0));
+        totalCarbs = foodRecords.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
+        totalProtein =
+            foodRecords.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
+        totalFat = foodRecords.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
+        mealCalories['Breakfast'] = _recordForMeal(foodRecords, '아침')?.calories ?? 0;
+        mealCalories['Lunch'] = _recordForMeal(foodRecords, '점심')?.calories ?? 0;
+        mealCalories['Dinner'] = _recordForMeal(foodRecords, '저녁')?.calories ?? 0;
+        mealCalories['Snack'] = _recordForMeal(foodRecords, '간식')?.calories ?? 0;
 
         isLoading = false;
       });
@@ -136,6 +183,31 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         );
       }
     }
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  T? _latestOfDate<T>(
+    List<T> records,
+    DateTime Function(T) getDateTime,
+  ) {
+    final sameDayRecords =
+        records.where((r) => _isSameDay(getDateTime(r), selectedDate)).toList();
+    if (sameDayRecords.isEmpty) return null;
+    sameDayRecords.sort((a, b) => getDateTime(a).compareTo(getDateTime(b)));
+    return sameDayRecords.last;
+  }
+
+  FoodRecordSummary? _recordForMeal(
+    List<FoodRecordSummary> records,
+    String mealKey,
+  ) {
+    final foodTime = FoodRepository.foodTimeFromMealKey(mealKey).toLowerCase();
+    for (final r in records) {
+      if (r.foodTime.toLowerCase() == foodTime) return r;
+    }
+    return null;
   }
 
   @override
@@ -179,6 +251,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                 setState(() {
                                   selectedDate = newDate;
                                 });
+                                _loadData();
                               },
                               monthTextColor: const Color(0xFF898686),
                               selectedTextColor: const Color(0xFFFF5A8D),
@@ -540,13 +613,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
   Widget _buildMealSection() {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => const TodayDietScreen(),
           ),
         );
+        if (!mounted) return;
+        _loadData();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -636,17 +711,17 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               children: [
                 Expanded(
                     child: _buildMealItemCard(
-                        '아침', mealCalories['Breakfast']!, true,
+                        '아침', mealCalories['Breakfast']!, (mealCalories['Breakfast'] ?? 0) > 0,
                         centerText: true)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _buildMealItemCard(
-                        '점심', mealCalories['Lunch']!, true,
+                        '점심', mealCalories['Lunch']!, (mealCalories['Lunch'] ?? 0) > 0,
                         centerText: true)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _buildMealItemCard(
-                        '저녁', mealCalories['Dinner']!, false)),
+                        '저녁', mealCalories['Dinner']!, (mealCalories['Dinner'] ?? 0) > 0)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _buildMealItemCard(
@@ -664,30 +739,59 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   Widget _buildMacroBar() {
+    final fillRatio = (targetCalories > 0 && consumedCalories > 0)
+        ? (consumedCalories / targetCalories).clamp(0.0, 1.0)
+        : 0.0;
+    final carbsKcal = (totalCarbs * 4).toDouble();
+    final proteinKcal = (totalProtein * 4).toDouble();
+    final fatKcal = (totalFat * 9).toDouble();
+    final totalKcalFromMacros = carbsKcal + proteinKcal + fatKcal;
+    int carbsFlex = 1, proteinFlex = 1, fatFlex = 1;
+    if (totalKcalFromMacros > 0) {
+      carbsFlex =
+          (carbsKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
+      proteinFlex =
+          (proteinKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
+      fatFlex = (fatKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
+    }
+    final filledFlex = (fillRatio * 100).round().clamp(0, 100);
+    final emptyFlex = (100 - filledFlex).clamp(1, 100);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
-      child: Row(
-        children: [
-          Expanded(
-              flex: 35,
-              child: Container(height: 12, color: const Color(0xFFFFDFC3))),
-          Expanded(
-              flex: 45,
-              child: Container(height: 12, color: const Color(0xFFFEA38E))),
-          Expanded(
-              flex: 10,
-              child: Container(height: 12, color: const Color(0xFFFCF4C1))),
-          Expanded(
-              flex: 10,
-              child: Container(height: 12, color: const Color(0xFFE2E2E2))),
-        ],
+      child: SizedBox(
+        height: 12,
+        child: Row(
+          children: [
+            if (filledFlex > 0)
+              Expanded(
+                flex: filledFlex,
+                child: Row(
+                  children: [
+                    Expanded(
+                        flex: carbsFlex,
+                        child: Container(color: const Color(0xFFFFDFC3))),
+                    Expanded(
+                        flex: proteinFlex,
+                        child: Container(color: const Color(0xFFFEA38E))),
+                    Expanded(
+                        flex: fatFlex,
+                        child: Container(color: const Color(0xFFFCF4C1))),
+                  ],
+                ),
+              ),
+            Expanded(
+              flex: emptyFlex,
+              child: Container(color: const Color(0xFFE2E2E2)),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildMealItemCard(String mealName, int calories, bool hasMeal,
       {bool centerText = false}) {
-    final bool isDinnerEmpty = mealName == '저녁' && !hasMeal;
     return AspectRatio(
       aspectRatio: 0.75,
       child: Container(
@@ -701,9 +805,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   colors: [Color(0xFFB8B8B8), Color(0xFF6C6C6C)],
                 )
               : null,
-          color: hasMeal
-              ? null
-              : (isDinnerEmpty ? const Color(0xFFE2E2E2) : Colors.white),
+          color: hasMeal ? null : const Color(0xFFE2E2E2),
         ),
         child: hasMeal
             ? Container(
@@ -714,13 +816,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   color: Colors.black.withOpacity(0.25),
                 ),
                 child: Column(
-                  mainAxisAlignment: centerText
-                      ? MainAxisAlignment.center
-                      : MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(mealName,
                         style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w800)),
+                            color: Colors.white, fontWeight: FontWeight.w800),
+                        textAlign: TextAlign.center),
                     const SizedBox(height: 2),
                     Text(
                       '$calories kcal',
@@ -729,22 +831,23 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           fontSize: 11,
                           fontFamily: 'Gmarket Sans TTF', 
                           fontWeight: FontWeight.w800),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(mealName,
                       style: const TextStyle(
-                          color: Color(0xFF9CA3AF),
+                          color: Colors.white,
                           fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
-                  Icon(
+                  const Icon(
                     Icons.add,
-                    color:
-                        isDinnerEmpty ? Colors.white : const Color(0xFFFF5A8D),
+                    color: Colors.white,
                     size: 28,
                   ),
                 ],
@@ -808,11 +911,11 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         title: '혈당',
                         value: latestBloodSugarRecord != null
                             ? '${latestBloodSugarRecord!.bloodSugar.toStringAsFixed(1)} mg/dL'
-                            : 'No data',
+                            : '입력하세요.',
                         subtitle: latestBloodSugarRecord != null
                             ? BloodSugarRecord.getMeasurementTypeKorean(
                                 latestBloodSugarRecord!.measurementType)
-                            : '혈당을 기록해주세요',
+                            : '',
                         statusText: _bloodSugarStatusLabel(),
                         icon: Icons.favorite,
                         titleFontSize: 14,
@@ -831,7 +934,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         title: '혈압',
                         value: latestBloodPressureRecord != null
                             ? '수축기 $systolicBP mmHg\n이완기 $diastolicBP mmHg'
-                            : '입력해주세요',
+                            : '입력하세요.',
                         subtitle: '',
                         statusText: _bloodPressureStatusLabel(),
                         icon: Icons.monitor_heart,
@@ -860,7 +963,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               Expanded(
                 child: _buildBottomRecordCard(
                   title: '심박수',
-                  value: '$heartRate bpm',
+                  value: latestHeartRateRecord != null
+                      ? '$heartRate bpm'
+                      : '입력하세요.',
                   titleFontSize: 14,
                   valueFontSize: 16,
                   onMore: () => Navigator.push(
@@ -978,6 +1083,65 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   Widget _buildStepsCard() {
+    if (latestStepsRecord == null) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StepsTodayScreen(initialDate: selectedDate),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFF0F0F0)),
+          ),
+          child: Column(
+            children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '걸음수',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                '입력하세요.',
+                style: TextStyle(
+                  color: Color(0xFF9CA3AF),
+                  fontSize: 16,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: _buildMoreButton(() {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          StepsTodayScreen(initialDate: selectedDate),
+                    ),
+                  );
+                }, minHeight: 30, verticalPadding: 8),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final double ratio = (steps / 8000).clamp(0.0, 1.0);
 
     return GestureDetector(
@@ -1043,7 +1207,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const Spacer(),
             SizedBox(
               width: double.infinity,
               child: _buildMoreButton(() {
@@ -1053,7 +1217,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       builder: (context) =>
                           StepsTodayScreen(initialDate: selectedDate)),
                 );
-              }),
+              }, minHeight: 34, verticalPadding: 8),
             ),
           ],
         ),
@@ -1111,15 +1275,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   // more 버튼튼
-  Widget _buildMoreButton(VoidCallback onPressed) {
+  Widget _buildMoreButton(
+    VoidCallback onPressed, {
+    double minHeight = 0,
+    double verticalPadding = 6,
+  }) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFFF5A8D),
         foregroundColor: Colors.white,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        minimumSize: Size.zero,
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: verticalPadding),
+        minimumSize: minHeight > 0 ? Size(0, minHeight) : Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
