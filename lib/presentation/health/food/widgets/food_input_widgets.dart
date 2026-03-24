@@ -178,7 +178,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         ),
         const SizedBox(height: 14),
         const Text(
-          '칼로리 검색',
+          '음식 검색',
           style: TextStyle(
             color: Colors.black,
             fontSize: 16,
@@ -266,76 +266,66 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             ),
           ),
         ],
-        // 드롭다운은 추가한 음식 카드 위에 겹쳐서 표시(오버레이)
-        ConstrainedBox(
-          constraints: BoxConstraints(minHeight: _results.isNotEmpty ? 220 : 0),
-          child: Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.addedItems.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    ...List.generate(widget.addedItems.length, (i) {
-                      final item = widget.addedItems[i];
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: i < widget.addedItems.length - 1 ? 6 : 0),
-                        child: AddedFoodCard(
-                          name: item.foodName,
-                          kcal: item.kcal?.toInt() ?? 0,
-                          desc: item.desc,
-                          itemId: item.itemId,
-                          foodRecordId: widget.foodRecordId,
-                          onDelete: widget.foodRecordId.isNotEmpty && item.itemId.isNotEmpty
-                              ? () => _deleteItem(context, widget.foodRecordId, item.itemId, item.foodName)
-                              : null,
-                        ),
-                      );
-                    }),
-                  ],
-                ],
-              ),
-              if (_results.isNotEmpty)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFD2D2D2)),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1A000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    constraints: const BoxConstraints(maxHeight: 220),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      itemCount: _results.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, thickness: 1, color: Color(0xFFF1F1F1)),
-                      itemBuilder: (context, i) {
-                        final item = _results[i];
-                        return SearchResultRow(
-                          name: item.foodName,
-                          kcal: item.kcal?.toInt() ?? 0,
-                          desc: item.desc,
-                          onSelect: _isAdding ? null : () => _addToMealRecord(item),
-                        );
-                      },
-                    ),
-                  ),
+        // 검색 결과 리스트 (항상 보이는 일반 컬럼 렌더링)
+        if (_results.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFD2D2D2)),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1A000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
                 ),
-            ],
+              ],
+            ),
+            constraints: const BoxConstraints(maxHeight: 220),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: _results.length,
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFF1F1F1)),
+              itemBuilder: (context, i) {
+                final item = _results[i];
+                return SearchResultRow(
+                  name: item.foodName,
+                  kcal: item.kcal?.toInt() ?? 0,
+                  desc: item.desc,
+                  onSelect: _isAdding ? null : () => _addToMealRecord(item),
+                );
+              },
+            ),
           ),
-        ),
+        ],
+        if (widget.addedItems.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          ...List.generate(widget.addedItems.length, (i) {
+            final item = widget.addedItems[i];
+            return Padding(
+              padding:
+                  EdgeInsets.only(bottom: i < widget.addedItems.length - 1 ? 6 : 0),
+              child: AddedFoodCard(
+                name: item.foodName,
+                kcal: item.kcal?.toInt() ?? 0,
+                desc: item.desc,
+                itemId: item.itemId,
+                foodRecordId: widget.foodRecordId,
+                onDelete: widget.foodRecordId.isNotEmpty && item.itemId.isNotEmpty
+                    ? () => _deleteItem(
+                          context,
+                          widget.foodRecordId,
+                          item.itemId,
+                          item.foodName,
+                        )
+                    : null,
+              ),
+            );
+          }),
+        ],
       ],
     );
   }
