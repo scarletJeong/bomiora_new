@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
@@ -87,25 +88,66 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     return {'min': startHour, 'max': endHour};
   }
 
+  /// 일별 그래프: 기본 timeOffset이 6시간 창 밖에 기록이 있으면(오후 식후 등) 안 보임.
+  /// 해당 날 기록의 최소·최대 시각이 한 창에 들어가도록 timeOffset을 맞춘다.
+  void _syncTimeOffsetForSelectedDayRecords() {
+    if (selectedPeriod != '일') return;
+
+    final key = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final dayRecords = dailyRecordsCache[key] ?? [];
+    if (dayRecords.isEmpty) return;
+
+    var minH = 24;
+    var maxH = 0;
+    for (final r in dayRecords) {
+      final h = r.measuredAt.hour;
+      if (h < minH) minH = h;
+      if (h > maxH) maxH = h;
+    }
+
+    var start = minH.clamp(0, 18);
+    if (start + 6 < maxH) {
+      start = (maxH - 6).clamp(0, 18);
+    }
+    timeOffset = start / 18.0;
+
+    // 오늘은 드래그 상한(현재 시각 − 4시간)과 동일하게 맞춤
+    if (_isToday()) {
+      final now = DateTime.now();
+      final maxStartHour = (now.hour - 4).clamp(0, 18);
+      final maxOffset = maxStartHour / 18.0;
+      if (timeOffset > maxOffset) timeOffset = maxOffset;
+    }
+  }
+
   // 드래그 범위 제한
   double _clampDragOffset(double newOffset) {
-    if (_isToday()) {
-      // 오늘: 현재 시간 - 4시간까지만
-      final now = DateTime.now();
-      final currentHour = now.hour;
-      final maxStartHour = (currentHour - 4).clamp(0, 18);
-      final maxOffset = maxStartHour / 18.0;
-      return newOffset.clamp(0.0, maxOffset);
-    } else if (selectedPeriod == '월') {
-      // 월별: 0부터 최대 오프셋까지 드래그 가능 (왼쪽으로 드래그해서 과거 날짜까지 볼 수 있음)
-      final visibleDays = 7;
-      final totalDays = 30;
-      final maxOffset = (totalDays - visibleDays) / totalDays; // 23/30 = 0.767
-      return newOffset.clamp(0.0, maxOffset);
-    } else {
-      // 과거 일별: 00시~24시 전체 범위
+    if (selectedPeriod == '월') {
+      // 체중·혈압과 동일: 12개월 중 7개월 창 (timeOffset 0~1)
       return newOffset.clamp(0.0, 1.0);
     }
+    if (selectedPeriod == '일' && _isToday()) {
+      final now = DateTime.now();
+      final maxStartHour = (now.hour - 4).clamp(0, 18);
+      final maxOffset = maxStartHour / 18.0;
+      return newOffset.clamp(0.0, maxOffset);
+    }
+    return newOffset.clamp(0.0, 1.0);
+  }
+
+  /// 월별: 선택 날짜의 달이 보이도록 7개월 창 시작 위치
+  void _syncMonthlyTimeOffsetForSelectedDate() {
+    if (selectedPeriod != '월') return;
+    const totalMonths = 12;
+    const visibleMonths = 7;
+    final maxStart = totalMonths - visibleMonths;
+    if (maxStart <= 0) {
+      timeOffset = 0.0;
+      return;
+    }
+    final targetStart =
+        (selectedDate.month - visibleMonths).clamp(0, maxStart);
+    timeOffset = targetStart / maxStart;
   }
 
   // 드래그 민감도
@@ -188,71 +230,136 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     };
   }
 
-  // 주/월 데이터 생성 - 공복혈당 중 최고값만 선택
+  // 주/월 데이터 — 주: 7일, 월: 체중·혈압과 동일 연도 1~12월 중 7개월 창
   List<Map<String, dynamic>> _getWeeklyOrMonthlyData() {
-    List<Map<String, dynamic>> chartData = [];
-    final days = selectedPeriod == '주' ? 7 : 30;
+    if (selectedPeriod == '주') {
+      return _buildWeeklyBloodSugarData();
+    }
+    return _buildMonthlyBloodSugarData();
+  }
 
-    // 선택된 날짜를 기준으로 과거 데이터 생성 (선택된 날짜가 맨 오른쪽)
+  /// 주별: 각 날짜·측정유형별로 그날 해당 유형 수치의 최댓값 1점 (여러 점이 평면 리스트로 전달됨)
+  List<Map<String, dynamic>> _buildWeeklyBloodSugarData() {
+    const days = 7;
+    final chartPoints = <Map<String, dynamic>>[];
     final endDate = selectedDate;
     final startDate = endDate.subtract(Duration(days: days - 1));
 
-    // 모든 날짜에 대해 데이터 생성 (데이터가 없어도 빈 슬롯 생성)
     for (int i = 0; i < days; i++) {
       final date = startDate.add(Duration(days: i));
       final dateKey = DateFormat('yyyy-MM-dd').format(date);
-
-      // 해당 날짜의 모든 기록 가져오기 (allRecords에서)
       final dayRecords = allRecords.where((record) {
         final recordDateStr =
             DateFormat('yyyy-MM-dd').format(record.measuredAt);
         return recordDateStr == dateKey;
       }).toList();
 
-      if (dayRecords.isNotEmpty) {
-        // 공복혈당만 필터링
-        final fastingRecords = dayRecords
-            .where((record) => record.measurementType == '공복')
-            .toList();
+      final xPos = days <= 1 ? 0.5 : i / (days - 1);
+      final dateLabel = DateFormat('M.d').format(date);
 
-        if (fastingRecords.isNotEmpty) {
-          // 공복혈당 중 가장 높은 값 선택
-          fastingRecords.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
-          final highestFastingRecord = fastingRecords.first;
+      if (dayRecords.isEmpty) continue;
 
-          chartData.add({
-            'date': DateFormat('M.d').format(date),
-            'bloodSugar': highestFastingRecord.bloodSugar,
-            'measurementType': highestFastingRecord.measurementType,
-            'record': highestFastingRecord,
-            'xPosition': i / days, // X축 위치 (0~1)
-          });
-        } else {
-          // 공복혈당이 없으면 일반 혈당 중 최고값 선택
-          dayRecords.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
-          final highestRecord = dayRecords.first;
+      final byType = <String, List<BloodSugarRecord>>{};
+      for (final r in dayRecords) {
+        final key = r.measurementType.trim().isEmpty
+            ? '_기타'
+            : r.measurementType.trim();
+        byType.putIfAbsent(key, () => []).add(r);
+      }
 
-          chartData.add({
-            'date': DateFormat('M.d').format(date),
-            'bloodSugar': highestRecord.bloodSugar,
-            'measurementType': highestRecord.measurementType,
-            'record': highestRecord,
-            'xPosition': i / days, // X축 위치 (0~1)
-          });
-        }
-      } else {
-        // 데이터가 없는 날짜는 null 값으로 추가 (차트에서 제외되지만 위치는 유지)
-        chartData.add({
-          'date': DateFormat('M.d').format(date),
-          'bloodSugar': null,
-          'measurementType': null,
-          'record': null,
-          'xPosition': i / days, // X축 위치 (0~1)
+      for (final e in byType.entries) {
+        final list = e.value;
+        list.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
+        final best = list.first;
+        chartPoints.add({
+          'date': dateLabel,
+          'slotIndex': i,
+          'bloodSugar': best.bloodSugar,
+          'measurementType': best.measurementType.trim().isEmpty
+              ? '기타'
+              : best.measurementType.trim(),
+          'record': best,
+          'xPosition': xPos,
+          'useSlotDateTooltip': true,
         });
       }
     }
 
-    return chartData;
+    chartPoints.sort((a, b) {
+      final si = a['slotIndex'] as int;
+      final sj = b['slotIndex'] as int;
+      if (si != sj) return si.compareTo(sj);
+      return _measurementTypeOrder(a['measurementType'] as String?)
+          .compareTo(_measurementTypeOrder(b['measurementType'] as String?));
+    });
+    return chartPoints;
+  }
+
+  /// 월별: 각 월·측정유형별로 해당 월 해당 유형 수치의 최댓값 1점
+  List<Map<String, dynamic>> _buildMonthlyBloodSugarData() {
+    const totalMonths = 12;
+    const visibleMonths = 7;
+    final year = selectedDate.year;
+    final maxStart = totalMonths - visibleMonths;
+    final startMonthIndex =
+        (timeOffset * maxStart).round().clamp(0, maxStart);
+
+    final chartPoints = <Map<String, dynamic>>[];
+    for (int i = 0; i < visibleMonths; i++) {
+      final month = startMonthIndex + i + 1;
+      final monthRecords = allRecords
+          .where(
+            (r) => r.measuredAt.year == year && r.measuredAt.month == month,
+          )
+          .toList();
+
+      final xPos = visibleMonths <= 1 ? 0.5 : i / (visibleMonths - 1);
+      final label = '$month월';
+
+      if (monthRecords.isEmpty) continue;
+
+      final byType = <String, List<BloodSugarRecord>>{};
+      for (final r in monthRecords) {
+        final key = r.measurementType.trim().isEmpty
+            ? '_기타'
+            : r.measurementType.trim();
+        byType.putIfAbsent(key, () => []).add(r);
+      }
+
+      for (final e in byType.entries) {
+        final list = e.value;
+        list.sort((a, b) => b.bloodSugar.compareTo(a.bloodSugar));
+        final best = list.first;
+        chartPoints.add({
+          'date': label,
+          'chartYear': year,
+          'slotIndex': i,
+          'bloodSugar': best.bloodSugar,
+          'measurementType': best.measurementType.trim().isEmpty
+              ? '기타'
+              : best.measurementType.trim(),
+          'record': best,
+          'xPosition': xPos,
+          'useSlotDateTooltip': true,
+        });
+      }
+    }
+
+    chartPoints.sort((a, b) {
+      final si = a['slotIndex'] as int;
+      final sj = b['slotIndex'] as int;
+      if (si != sj) return si.compareTo(sj);
+      return _measurementTypeOrder(a['measurementType'] as String?)
+          .compareTo(_measurementTypeOrder(b['measurementType'] as String?));
+    });
+    return chartPoints;
+  }
+
+  static int _measurementTypeOrder(String? type) {
+    const order = ['공복', '식전', '식후', '취침전', '평상시'];
+    final t = type ?? '';
+    final i = order.indexOf(t);
+    return i >= 0 ? i : 50;
   }
 
   // Y축 범위 계산 (혈당 기준)
@@ -275,19 +382,12 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       selectedDate = DateTime(now.year, now.month, now.day);
     }
 
-    // 오늘 날짜일 경우: 현재 시간 - 4시간을 시작점으로 초기 timeOffset 설정
-    if (_isToday()) {
+    if (selectedPeriod == '월') {
+      _syncMonthlyTimeOffsetForSelectedDate();
+    } else if (_isToday()) {
       final currentHour = now.hour;
       final startHourTarget = (currentHour - 4).clamp(0, 18);
       timeOffset = startHourTarget / 18.0;
-    }
-
-    // 월별 그래프 초기 오프셋 설정 (오늘 날짜가 맨 오른쪽에 보이도록)
-    if (selectedPeriod == '월') {
-      final visibleDays = 7;
-      final totalDays = 30;
-      final maxOffset = (totalDays - visibleDays) / totalDays;
-      timeOffset = maxOffset; // 오늘 날짜가 맨 오른쪽에 표시되도록
     }
 
     _loadData();
@@ -325,6 +425,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         }
 
         setState(() {
+          _syncTimeOffsetForSelectedDayRecords();
           isLoading = false;
         });
       } else {
@@ -369,7 +470,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
 
     // 이미 캐시에 있으면 UI만 업데이트
     if (dailyRecordsCache.containsKey(dateKey)) {
-      setState(() {});
+      setState(() {
+        _syncTimeOffsetForSelectedDayRecords();
+      });
       return;
     }
 
@@ -386,7 +489,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       bloodSugarRecordsMap[dateKey] = records.first;
     }
 
-    setState(() {});
+    setState(() {
+      _syncTimeOffsetForSelectedDayRecords();
+    });
   }
 
   @override
@@ -435,20 +540,24 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                             selectedChartPointIndex = null;
                             tooltipPosition = null;
 
-                            // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
-                            final now = DateTime.now();
-                            final today =
-                                DateTime(now.year, now.month, now.day);
-                            final isSelectingToday =
-                                newDate.year == today.year &&
-                                    newDate.month == today.month &&
-                                    newDate.day == today.day;
-
-                            if (isSelectingToday) {
-                              final currentHour = now.hour;
-                              final startHourTarget =
-                                  (currentHour - 4).clamp(0, 18);
-                              timeOffset = startHourTarget / 18.0;
+                            if (selectedPeriod == '월') {
+                              _syncMonthlyTimeOffsetForSelectedDate();
+                            } else if (selectedPeriod == '일') {
+                              final now = DateTime.now();
+                              final today =
+                                  DateTime(now.year, now.month, now.day);
+                              final isSelectingToday =
+                                  newDate.year == today.year &&
+                                      newDate.month == today.month &&
+                                      newDate.day == today.day;
+                              if (isSelectingToday) {
+                                final currentHour = now.hour;
+                                final startHourTarget =
+                                    (currentHour - 4).clamp(0, 18);
+                                timeOffset = startHourTarget / 18.0;
+                              } else {
+                                timeOffset = 0.0;
+                              }
                             } else {
                               timeOffset = 0.0;
                             }
@@ -487,11 +596,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                             tooltipPosition = null;
 
                             if (period == '월') {
-                              final visibleDays = 7;
-                              final totalDays = 30;
-                              final maxOffset =
-                                  (totalDays - visibleDays) / totalDays;
-                              timeOffset = maxOffset;
+                              _syncMonthlyTimeOffsetForSelectedDate();
                             } else if (period == '주') {
                               timeOffset = 0.0;
                             } else if (period == '일') {
@@ -506,6 +611,10 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                               }
                             } else {
                               timeOffset = 0.0;
+                            }
+
+                            if (period == '일' && !_isToday()) {
+                              _syncTimeOffsetForSelectedDayRecords();
                             }
                           });
 
@@ -823,10 +932,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
             tooltipPosition = null;
 
             if (period == '월') {
-              final visibleDays = 7;
-              final totalDays = 30;
-              final maxOffset = (totalDays - visibleDays) / totalDays;
-              timeOffset = maxOffset;
+              _syncMonthlyTimeOffsetForSelectedDate();
             } else if (period == '주') {
               timeOffset = 0.0;
             } else if (period == '일') {
@@ -864,7 +970,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         showPeriodSelector: false,
         showLegend: false,
         showExpandButton: false,
-        chartHeight: 260,
+        chartHeight: ChartConstants.healthChartHeight,
         onDragUpdate: _handleDragUpdate,
         onSelectionChanged: (index, position) {
           _setChartState(() {

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
@@ -565,24 +566,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            '혈압',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.transparent,
-        ),
+        appBar: const HealthAppBar(title: '혈압'),
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
@@ -1039,7 +1023,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   // 차트
-  Widget _buildChart({bool showExpandButton = true, double chartHeight = 350}) {
+  Widget _buildChart(
+      {bool showExpandButton = true,
+      double chartHeight = ChartConstants.healthChartHeight}) {
     final chartData = getChartData();
     final yLabels = getYAxisLabels();
 
@@ -1083,7 +1069,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   // 데이터 없음 메시지 빌드
-  Widget _buildNoDataMessage({double chartHeight = 350}) {
+  Widget _buildNoDataMessage(
+      {double chartHeight = ChartConstants.healthChartHeight}) {
     return Container(
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
@@ -1122,7 +1109,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 데이터가 있는 차트 빌드
   Widget _buildDataChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
-      {double chartHeight = 350}) {
+      {double chartHeight = ChartConstants.healthChartHeight}) {
     return _buildDraggableChart(
       chartData,
       yLabels,
@@ -1134,7 +1121,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 드래그 가능한 차트 빌드 (체중 그래프와 동일 패딩·Y축·X축 단위)
   Widget _buildDraggableChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
-      {required bool isEmpty, double chartHeight = 350}) {
+      {required bool isEmpty,
+      double chartHeight = ChartConstants.healthChartHeight}) {
     return Container(
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
@@ -1394,7 +1382,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       context: context,
       periodSelectorBuilder: (_) => _buildPeriodButtons(),
       chartBuilder: (_) =>
-          _buildChart(showExpandButton: false, chartHeight: 260),
+          _buildChart(
+              showExpandButton: false,
+              chartHeight: ChartConstants.healthChartHeight),
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;
       },

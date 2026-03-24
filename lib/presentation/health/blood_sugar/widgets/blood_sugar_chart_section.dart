@@ -1,8 +1,184 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/chart_layout.dart';
 import '../../health_common/widgets/health_period_selector.dart';
+import '../../blood_pressure/widgets/blood_pressure_chart_section.dart'
+    show buildBloodPressureYAxisStrip;
 import 'blood_sugar_tooltip.dart';
+
+/// 반지름 [r]인 두 원의 교차 면적이 π·r²·[minAreaFraction] 이상일 때의 최대 중심거리 (이하이면 겹침으로 본다).
+double _maxCenterDistanceForCircleOverlapFraction(
+  double r, {
+  double minAreaFraction = 1.0 / 3.0,
+}) {
+  if (r <= 0) return 0;
+  final target = minAreaFraction * math.pi * r * r;
+  var lo = 0.0;
+  var hi = 2 * r;
+  for (var k = 0; k < 48; k++) {
+    final mid = (lo + hi) / 2;
+    final area = _circleIntersectionAreaSameR(r, mid);
+    if (area >= target) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+double _circleIntersectionAreaSameR(double r, double d) {
+  if (d <= 0) return math.pi * r * r;
+  if (d >= 2 * r) return 0;
+  final half = d / 2;
+  return 2 * r * r * math.acos(half / r) -
+      half * math.sqrt(4 * r * r - d * d);
+}
+
+/// 겹침(+) 마커 테두리·플러스 색
+const Color bloodSugarOverlapAccentColor = Color(0xFFFF5A8D);
+
+/// 주/월 차트에서 겹침으로 묶인 점 그룹(데이터 인덱스 + 플롯 중심, CustomPaint 좌표).
+class BloodSugarOverlapCluster {
+  BloodSugarOverlapCluster({
+    required this.dataIndices,
+    required this.centroid,
+  });
+
+  final List<int> dataIndices;
+  final Offset centroid;
+}
+
+int _tooltipMeasurementTypeOrder(String? type) {
+  const order = ['공복', '식전', '식후', '취침전', '평상시'];
+  final t = type ?? '';
+  final i = order.indexOf(t);
+  return i >= 0 ? i : 50;
+}
+
+/// Painter·탭·툴팁이 동일한 겹침 그룹/중심을 쓰도록 공통 계산.
+List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
+  List<Map<String, dynamic>> data,
+  Size size,
+) {
+  final indices = <int>[];
+  for (var i = 0; i < data.length; i++) {
+    if (data[i]['bloodSugar'] != null) indices.add(i);
+  }
+  if (indices.isEmpty) return [];
+
+  const double overlapCircleRadiusPx = 5.0;
+  final maxMergeDist = _maxCenterDistanceForCircleOverlapFraction(
+    overlapCircleRadiusPx,
+    minAreaFraction: 1.0 / 3.0,
+  );
+  final maxMergeDistSq = maxMergeDist * maxMergeDist;
+
+  const double borderWidth = 0.5;
+  const double pointRadius = 8;
+  final x0 = borderWidth + pointRadius;
+  final chartWidth = size.width -
+      (borderWidth * 2) -
+      (pointRadius * 2) -
+      ChartConstants.weightXAxisUnitReservedWidth;
+
+  const plotTop = 20.0;
+  const plotBottom = 20.0;
+
+  double yForValue(int v) {
+    final normalized = (300 - v) / (300 - 50);
+    return plotTop + (size.height - plotTop - plotBottom) * normalized;
+  }
+
+  Offset offsetForIndex(int i) {
+    final xPosition = data[i]['xPosition'] as double;
+    final x = x0 + chartWidth * xPosition;
+    final y = yForValue(data[i]['bloodSugar'] as int);
+    return Offset(x, y);
+  }
+
+  String typeOf(int i) => data[i]['measurementType']?.toString() ?? '';
+
+  final n = indices.length;
+  final uf = List<int>.generate(n, (i) => i);
+  int find(int i) {
+    if (uf[i] != i) uf[i] = find(uf[i]);
+    return uf[i];
+  }
+
+  void union(int a, int b) {
+    final ra = find(a);
+    final rb = find(b);
+    if (ra != rb) uf[ra] = rb;
+  }
+
+  for (var a = 0; a < n; a++) {
+    for (var b = a + 1; b < n; b++) {
+      final ia = indices[a];
+      final ib = indices[b];
+      if (typeOf(ia) == typeOf(ib)) continue;
+      final da = offsetForIndex(ia);
+      final db = offsetForIndex(ib);
+      final dx = da.dx - db.dx;
+      final dy = da.dy - db.dy;
+      if (dx * dx + dy * dy <= maxMergeDistSq) {
+        union(a, b);
+      }
+    }
+  }
+
+  final buckets = <int, List<int>>{};
+  for (var k = 0; k < n; k++) {
+    final root = find(k);
+    buckets.putIfAbsent(root, () => []).add(k);
+  }
+
+  final rawGroups = <List<int>>[];
+  for (final members in buckets.values) {
+    if (members.length < 2) continue;
+    final types = members.map((k) => typeOf(indices[k])).toSet();
+    if (types.length >= 2) rawGroups.add(members);
+  }
+
+  final result = <BloodSugarOverlapCluster>[];
+  for (final members in rawGroups) {
+    final dataIndices = members.map((k) => indices[k]).toList();
+    var sx = 0.0;
+    var sy = 0.0;
+    for (final di in dataIndices) {
+      final o = offsetForIndex(di);
+      sx += o.dx;
+      sy += o.dy;
+    }
+    final nMembers = dataIndices.length;
+    result.add(BloodSugarOverlapCluster(
+      dataIndices: dataIndices,
+      centroid: Offset(sx / nMembers, sy / nMembers),
+    ));
+  }
+
+  int minSlotCount(List<int> di) {
+    var m = 1 << 30;
+    for (final i in di) {
+      final s = data[i]['slotIndex'];
+      if (s is int && s < m) m = s;
+    }
+    return m == 1 << 30 ? 0 : m;
+  }
+
+  result.sort((a, b) {
+    final sa = minSlotCount(a.dataIndices);
+    final sb = minSlotCount(b.dataIndices);
+    if (sa != sb) return sa.compareTo(sb);
+    final ia = a.dataIndices.reduce(math.min);
+    final ib = b.dataIndices.reduce(math.min);
+    return ia.compareTo(ib);
+  });
+
+  return result;
+}
 
 class BloodSugarPeriodSelector extends StatelessWidget {
   final String selectedPeriod;
@@ -58,7 +234,7 @@ class BloodSugarChartSection extends StatefulWidget {
     this.showPeriodSelector = true,
     this.showLegend = true,
     this.showExpandButton = true,
-    this.chartHeight = 350,
+    this.chartHeight = ChartConstants.healthChartHeight,
     this.onExpand,
     this.onPeriodChanged,
   });
@@ -110,7 +286,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     );
   }
 
-  Widget _buildChart({bool showExpandButton = true, double chartHeight = 350}) {
+  Widget _buildChart(
+      {bool showExpandButton = true,
+      double chartHeight = ChartConstants.healthChartHeight}) {
     Widget chartBody;
     if (widget.selectedPeriod == '일' && !widget.hasActualDailyData) {
       chartBody = _buildNoDataMessage(chartHeight: chartHeight);
@@ -161,10 +339,11 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     );
   }
 
-  Widget _buildNoDataMessage({double chartHeight = 350}) {
+  Widget _buildNoDataMessage(
+      {double chartHeight = ChartConstants.healthChartHeight}) {
     return Container(
       height: chartHeight,
-      padding: const EdgeInsets.all(16),
+      padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
@@ -201,11 +380,11 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     List<Map<String, dynamic>> chartData,
     List<double> yLabels, {
     required bool isEmpty,
-    double chartHeight = 350,
+    double chartHeight = ChartConstants.healthChartHeight,
   }) {
     return Container(
       height: chartHeight,
-      padding: const EdgeInsets.all(16),
+      padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
@@ -216,68 +395,49 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         children: [
           Expanded(
             child: LayoutBuilder(
-              builder: (context, constraints) {
+              builder: (context, outerConstraints) {
+                final totalH = outerConstraints.maxHeight;
+                final showYHeader = yLabels.length > 1;
+                final headerBand = showYHeader ? totalH / 6.0 : 0.0;
+
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(
-                      width: ChartConstants.yAxisLabelWidth,
-                      child: Stack(
-                        children: yLabels.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final label = entry.value;
-                          const double topPadding = 20.0;
-                          const double bottomPadding = 20.0;
-                          final double y = topPadding +
-                              (constraints.maxHeight -
-                                      topPadding -
-                                      bottomPadding) *
-                                  index /
-                                  (yLabels.length - 1);
-                          return Positioned(
-                            top: y - 10,
-                            right: 0,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (index == 0)
-                                  const Padding(
-                                    padding: EdgeInsets.only(bottom: 4),
-                                    child: Text(
-                                      '(mg/dl)',
-                                      style: TextStyle(
-                                        fontSize: 6,
-                                        color: Color(0xFF898383),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                Text(
-                                  '${label.round()}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF1A1A1A),
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    buildBloodPressureYAxisStrip(
+                      yLabels: yLabels,
+                      showYAxisHeader: showYHeader,
+                      unitLabel: '(mg/dL)',
                     ),
                     SizedBox(width: ChartConstants.yAxisSpacing),
                     Expanded(
-                      child: _buildChartArea(chartData, constraints, isEmpty),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showYHeader) SizedBox(height: headerBand),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, plotConstraints) {
+                                return _buildChartArea(
+                                  chartData,
+                                  plotConstraints,
+                                  isEmpty,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 );
               },
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Padding(
-            padding: EdgeInsets.only(left: ChartConstants.yAxisTotalWidth),
+            padding: EdgeInsets.only(
+              left: ChartConstants.weightChartYAxisStripWidth,
+            ),
             child: buildBloodSugarXAxisLabels(
               selectedPeriod: widget.selectedPeriod,
               selectedDate: widget.selectedDate,
@@ -291,18 +451,25 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
 
   Widget _buildChartArea(List<Map<String, dynamic>> chartData,
       BoxConstraints constraints, bool isEmpty) {
+    final chartW = constraints.maxWidth;
+    final chartH = constraints.maxHeight;
+
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onPanStart: (widget.selectedPeriod == '일' || widget.selectedPeriod == '월')
-          ? (details) => _dragStartX = details.localPosition.dx
+          ? (details) {
+              if (widget.selectedPeriod == '월') {
+                widget.onSelectionChanged(null, null);
+              }
+              _dragStartX = details.localPosition.dx;
+            }
           : null,
       onPanUpdate:
           (widget.selectedPeriod == '일' || widget.selectedPeriod == '월')
               ? (details) {
                   if (_dragStartX != null) {
                     final deltaX = details.localPosition.dx - _dragStartX!;
-                    final chartWidth =
-                        constraints.maxWidth - ChartConstants.yAxisTotalWidth;
-                    widget.onDragUpdate(deltaX, chartWidth);
+                    widget.onDragUpdate(deltaX, chartW);
                     _dragStartX = details.localPosition.dx;
                   }
                 }
@@ -316,11 +483,12 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
               _handleChartTapToggle(
                 details.localPosition,
                 chartData,
-                constraints.maxWidth - ChartConstants.yAxisTotalWidth,
-                constraints.maxHeight,
+                chartW,
+                chartH,
               );
             },
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Positioned.fill(
             child: isEmpty
@@ -341,10 +509,17 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
               widget.selectedChartPointIndex != null &&
               widget.tooltipPosition != null)
             BloodSugarTooltip(
-              data: chartData[widget.selectedChartPointIndex!],
+              data: _tooltipRowForChartIndex(
+                chartData,
+                widget.selectedChartPointIndex!,
+                chartW,
+                chartH,
+              ),
+              selectedPeriod: widget.selectedPeriod,
+              selectedDate: widget.selectedDate,
               tooltipPosition: widget.tooltipPosition,
-              chartWidth: constraints.maxWidth - ChartConstants.yAxisTotalWidth,
-              chartHeight: constraints.maxHeight,
+              chartWidth: chartW,
+              chartHeight: chartH,
             ),
         ],
       ),
@@ -366,48 +541,50 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     double minDistance = double.infinity;
     Offset? closestPoint;
 
+    void considerPoint(double x, double y, int selectionIndex) {
+      final dx = tapPosition.dx - x;
+      final dy = tapPosition.dy - y;
+      final distance = dx * dx + dy * dy;
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = selectionIndex;
+        closestPoint = Offset(x, y);
+      }
+    }
+
+    final inOverlapDataIndex = <int>{};
+    if (widget.selectedPeriod == '주' || widget.selectedPeriod == '월') {
+      final occ = bloodSugarComputeWeekMonthOverlapClusters(
+        chartData,
+        Size(chartWidth, chartHeight),
+      );
+      for (var ci = 0; ci < occ.length; ci++) {
+        final c = occ[ci];
+        for (final di in c.dataIndices) {
+          inOverlapDataIndex.add(di);
+        }
+        considerPoint(c.centroid.dx, c.centroid.dy, -(ci + 1));
+      }
+    }
+
     for (int i = 0; i < chartData.length; i++) {
       if (chartData[i]['bloodSugar'] == null) continue;
+      if (inOverlapDataIndex.contains(i)) continue;
 
-      double x;
+      late final double x;
       if (chartData[i]['xPosition'] != null) {
         final xPosition = chartData[i]['xPosition'] as double;
-
-        if (widget.selectedPeriod == '월') {
-          const visibleDays = 7;
-          const totalDays = 30;
-          final maxOffset = (totalDays - visibleDays) / totalDays;
-          final currentOffset = widget.timeOffset.clamp(0.0, maxOffset);
-          final startIndex = (currentOffset * totalDays).floor();
-          final endIndex = startIndex + visibleDays;
-          final dataIndex = (xPosition * totalDays).round();
-          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-
-          final relativeIndex = dataIndex - startIndex;
-          final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = leftPadding + (effectiveWidth * adjustedRatio);
-        } else {
-          x = leftPadding + (effectiveWidth * xPosition);
-        }
+        x = leftPadding + (effectiveWidth * xPosition);
       } else if (chartData.length == 1) {
         x = leftPadding + effectiveWidth / 2;
       } else {
         x = leftPadding + (effectiveWidth * i / (chartData.length - 1));
       }
 
-      final int bloodSugar = chartData[i]['bloodSugar'];
+      final int bloodSugar = chartData[i]['bloodSugar'] as int;
       final double normalizedValue = (300 - bloodSugar) / (300 - 50);
       final double y = chartHeight * normalizedValue;
-
-      final dx = tapPosition.dx - x;
-      final dy = tapPosition.dy - y;
-      final distance = (dx * dx + dy * dy);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = i;
-        closestPoint = Offset(x, y);
-      }
+      considerPoint(x, y, i);
     }
 
     if (closestIndex != null && minDistance < 1000) {
@@ -420,6 +597,50 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       widget.onSelectionChanged(null, null);
     }
   }
+}
+
+Map<String, dynamic> _tooltipRowForChartIndex(
+  List<Map<String, dynamic>> chartData,
+  int index,
+  double chartWidth,
+  double chartHeight,
+) {
+  if (index < 0) {
+    final ci = -index - 1;
+    final clusters = bloodSugarComputeWeekMonthOverlapClusters(
+      chartData,
+      Size(chartWidth, chartHeight),
+    );
+    if (ci < 0 || ci >= clusters.length) {
+      return chartData.isNotEmpty ? chartData[0] : {};
+    }
+    final raw = clusters[ci].dataIndices.map((di) {
+      final row = chartData[di];
+      return <String, dynamic>{
+        'measurementType': row['measurementType']?.toString() ?? '',
+        'bloodSugar': row['bloodSugar'],
+        'record': row['record'],
+        'date': row['date']?.toString() ?? '',
+      };
+    }).toList();
+    raw.sort((a, b) => _tooltipMeasurementTypeOrder(
+          a['measurementType'] as String?,
+        ).compareTo(
+          _tooltipMeasurementTypeOrder(b['measurementType'] as String?),
+        ));
+    final firstDi = clusters[ci].dataIndices.first;
+    final firstRow = chartData[firstDi];
+    final slotDate = raw.isNotEmpty ? (raw.first['date'] as String? ?? '') : '';
+    return {
+      'bloodSugarOverlapCluster': true,
+      'overlapEntries': raw,
+      'date': slotDate,
+      'chartYear': firstRow['chartYear'],
+      'record': firstRow['record'],
+    };
+  }
+  if (index >= 0 && index < chartData.length) return chartData[index];
+  return chartData.isNotEmpty ? chartData[0] : {};
 }
 
 Widget buildBloodSugarXAxisLabels({
@@ -443,13 +664,19 @@ Widget buildBloodSugarXAxisLabels({
     final hour = (startHour + i).clamp(0, 24);
     final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
     hourLabels.add(
-      Text(hourLabel, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      Text(
+        hourLabel,
+        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      ),
     );
   }
 
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: hourLabels,
+  return _buildBloodSugarXAxisWithUnit(
+    labelRow: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: hourLabels,
+    ),
+    unitText: '(시)',
   );
 }
 
@@ -458,7 +685,33 @@ Widget _buildBloodSugarPeriodXAxisLabels({
   required DateTime selectedDate,
   required double timeOffset,
 }) {
-  final days = selectedPeriod == '주' ? 7 : 30;
+  if (selectedPeriod == '월') {
+    const totalMonths = 12;
+    const visibleMonths = 7;
+    final maxStart = totalMonths - visibleMonths;
+    final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+
+    return _buildBloodSugarXAxisWithUnit(
+      labelRow: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(visibleMonths, (i) {
+          final m = startIndex + i + 1;
+          return Expanded(
+            child: Text(
+              '$m',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          );
+        }),
+      ),
+      unitText: '(월)',
+    );
+  }
+
+  const days = 7;
   final endDate =
       DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
   final startDate = endDate.subtract(Duration(days: days - 1));
@@ -469,41 +722,55 @@ Widget _buildBloodSugarPeriodXAxisLabels({
     allDateLabels.add(DateFormat('M.d').format(date));
   }
 
-  if (selectedPeriod == '주') {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: allDateLabels.map((label) {
-        return Expanded(
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-        );
-      }).toList(),
-    );
-  }
+  final dateRow = Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: allDateLabels.map((label) {
+      return Expanded(
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }).toList(),
+  );
 
-  const visibleDays = 7;
-  final maxOffset = (days - visibleDays) / days;
-  final currentOffset = timeOffset.clamp(0.0, maxOffset);
-  final startIndex = (currentOffset * days).floor();
-  final endIndex = (startIndex + visibleDays).clamp(0, allDateLabels.length);
+  return _buildBloodSugarXAxisWithUnit(
+    labelRow: dateRow,
+    unitText: '(일)',
+  );
+}
 
-  return Row(
-    children: List.generate(visibleDays, (index) {
-      final actualIndex = startIndex + index;
-      if (actualIndex < endIndex && actualIndex < allDateLabels.length) {
-        return Expanded(
+Widget _buildBloodSugarXAxisWithUnit({
+  required Widget labelRow,
+  required String unitText,
+}) {
+  return Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(
+          right: ChartConstants.weightXAxisUnitReservedWidth,
+        ),
+        child: labelRow,
+      ),
+      Positioned(
+        right: -10,
+        top: 1,
+        bottom: 0,
+        child: Align(
+          alignment: Alignment.center,
           child: Text(
-            allDateLabels[actualIndex],
-            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
+            unitText,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        );
-      }
-      return const Expanded(child: SizedBox.shrink());
-    }),
+        ),
+      ),
+    ],
   );
 }
 
@@ -561,7 +828,11 @@ class BloodSugarChartPainter extends CustomPainter {
     if (data.isEmpty) return;
     const double borderWidth = 0.5;
     const double pointRadius = 8;
-    final chartWidth = size.width - (borderWidth * 2) - (pointRadius * 2);
+    final x0 = borderWidth + pointRadius;
+    final chartWidth = size.width -
+        (borderWidth * 2) -
+        (pointRadius * 2) -
+        ChartConstants.weightXAxisUnitReservedWidth;
 
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
@@ -576,11 +847,7 @@ class BloodSugarChartPainter extends CustomPainter {
       const topPadding = 20.0;
       const bottomPadding = 20.0;
       final y = topPadding + (size.height - topPadding - bottomPadding) * i / 5;
-      canvas.drawLine(
-        Offset(borderWidth + pointRadius, y),
-        Offset(chartWidth + borderWidth + pointRadius, y),
-        gridPaint,
-      );
+      canvas.drawLine(Offset(x0, y), Offset(x0 + chartWidth, y), gridPaint);
     }
 
     for (final dashedValue in dashedYValues) {
@@ -589,13 +856,27 @@ class BloodSugarChartPainter extends CustomPainter {
       const bottomPadding = 20.0;
       final y =
           topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
-      for (double x = borderWidth + pointRadius;
-          x < chartWidth + borderWidth + pointRadius;
-          x += 4) {
+      for (double x = x0; x < x0 + chartWidth; x += 4) {
         canvas.drawLine(Offset(x, y), Offset(x + 2, y), dashedGridPaint);
       }
     }
 
+    if (selectedPeriod == '일') {
+      _paintDailySeries(canvas, size, x0, chartWidth);
+    } else {
+      _paintWeekMonthSeries(canvas, size, x0, chartWidth);
+    }
+  }
+
+  static const double _plotTopPadding = 20.0;
+  static const double _plotBottomPadding = 20.0;
+
+  void _paintDailySeries(
+    Canvas canvas,
+    Size size,
+    double x0,
+    double chartWidth,
+  ) {
     final segments = <List<Offset>>[];
     final indexSegments = <List<int>>[];
     final currentPoints = <Offset>[];
@@ -620,56 +901,20 @@ class BloodSugarChartPainter extends CustomPainter {
         continue;
       }
 
-      if (data[i]['xPosition'] != null && data.length > 7) {
-        final xPosition = data[i]['xPosition'] as double;
-        const visibleDays = 7;
-        const totalDays = 30;
-        final maxOffset = (totalDays - visibleDays) / totalDays;
-        final currentOffset = timeOffset.clamp(0.0, maxOffset);
-        final startRatio = currentOffset;
-        final endRatio =
-            (currentOffset + (visibleDays / totalDays)).clamp(0.0, 1.0);
-        if (xPosition < startRatio || xPosition > endRatio) {
-          if (currentPoints.isNotEmpty) {
-            segments.add(List.from(currentPoints));
-            indexSegments.add(List.from(currentIndices));
-            currentPoints.clear();
-            currentIndices.clear();
-          }
-          continue;
-        }
-      }
-
       double x;
       if (data[i]['xPosition'] != null) {
         final xPosition = data[i]['xPosition'] as double;
-        if (data.length > 7) {
-          const visibleDays = 7;
-          const totalDays = 30;
-          final maxOffset = (totalDays - visibleDays) / totalDays;
-          final currentOffset = timeOffset.clamp(0.0, maxOffset);
-          final startIndex = (currentOffset * totalDays).floor();
-          final endIndex = startIndex + visibleDays;
-          final dataIndex = (xPosition * totalDays).round();
-          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-          final relativeIndex = dataIndex - startIndex;
-          final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = borderWidth + pointRadius + (chartWidth * adjustedRatio);
-        } else {
-          x = borderWidth + pointRadius + (chartWidth * xPosition);
-        }
+        x = x0 + (chartWidth * xPosition);
       } else {
         x = data.length == 1
-            ? borderWidth + pointRadius + chartWidth / 2
-            : borderWidth + pointRadius + (chartWidth * i / (data.length - 1));
+            ? x0 + chartWidth / 2
+            : x0 + (chartWidth * i / (data.length - 1));
       }
 
       final bloodSugar = data[i]['bloodSugar'] as int;
-      const topPadding = 20.0;
-      const bottomPadding = 20.0;
       final normalized = (300 - bloodSugar) / (300 - 50);
-      final y =
-          topPadding + (size.height - topPadding - bottomPadding) * normalized;
+      final y = _plotTopPadding +
+          (size.height - _plotTopPadding - _plotBottomPadding) * normalized;
 
       currentPoints.add(Offset(x, y));
       currentIndices.add(i);
@@ -678,28 +923,6 @@ class BloodSugarChartPainter extends CustomPainter {
     if (currentPoints.isNotEmpty) {
       segments.add(currentPoints);
       indexSegments.add(currentIndices);
-    }
-
-    // 시간대별(일)에서는 점 연결선을 그리지 않음
-    if (selectedPeriod != '일') {
-      for (int segIdx = 0; segIdx < segments.length; segIdx++) {
-        final segment = segments[segIdx];
-        final indices = indexSegments[segIdx];
-        if (segment.length <= 1) continue;
-
-        for (int i = 0; i < segment.length - 1; i++) {
-          final from = segment[i];
-          final to = segment[i + 1];
-          final originalIndex = indices[i];
-          final seriesColor = _seriesColorForDataIndex(originalIndex);
-          final linePaint = Paint()
-            ..strokeWidth = 2.5
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round
-            ..color = seriesColor;
-          canvas.drawLine(from, to, linePaint);
-        }
-      }
     }
 
     for (int segIdx = 0; segIdx < segments.length; segIdx++) {
@@ -729,6 +952,128 @@ class BloodSugarChartPainter extends CustomPainter {
     }
   }
 
+  /// 주/월: 측정유형별로 같은 유형의 점만 연결.
+  /// 서로 다른 측정유형인데 점(반지름 5)이 원 면적 기준 1/3 이상 겹치면 흰 원+핑크 테두리+플러스 1개.
+  void _paintWeekMonthSeries(
+    Canvas canvas,
+    Size size,
+    double x0,
+    double chartWidth,
+  ) {
+    final indices = <int>[];
+    for (int i = 0; i < data.length; i++) {
+      if (data[i]['bloodSugar'] != null) indices.add(i);
+    }
+    if (indices.isEmpty) return;
+
+    final overlapRender = bloodSugarComputeWeekMonthOverlapClusters(data, size);
+
+    double yForValue(int v) {
+      final normalized = (300 - v) / (300 - 50);
+      return _plotTopPadding +
+          (size.height - _plotTopPadding - _plotBottomPadding) * normalized;
+    }
+
+    Offset offsetForIndex(int i) {
+      final xPosition = data[i]['xPosition'] as double;
+      final x = x0 + chartWidth * xPosition;
+      final y = yForValue(data[i]['bloodSugar'] as int);
+      return Offset(x, y);
+    }
+
+    final inOverlap = <int>{};
+    for (final c in overlapRender) {
+      for (final di in c.dataIndices) {
+        inOverlap.add(di);
+      }
+    }
+
+    final byType = <String, List<int>>{};
+    for (final i in indices) {
+      final t = data[i]['measurementType']?.toString() ?? '';
+      byType.putIfAbsent(t, () => []).add(i);
+    }
+
+    final lineBase = Paint()
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    for (final type in byType.keys) {
+      final idxs = List<int>.from(byType[type]!);
+      idxs.sort((a, b) {
+        final sa = data[a]['slotIndex'];
+        final sb = data[b]['slotIndex'];
+        if (sa is int && sb is int && sa != sb) return sa.compareTo(sb);
+        return a.compareTo(b);
+      });
+      if (idxs.length <= 1) continue;
+      final c = _seriesColorForType(type);
+      lineBase.color = c;
+      for (int k = 0; k < idxs.length - 1; k++) {
+        canvas.drawLine(
+          offsetForIndex(idxs[k]),
+          offsetForIndex(idxs[k + 1]),
+          lineBase,
+        );
+      }
+    }
+
+    for (final i in indices) {
+      if (inOverlap.contains(i)) continue;
+      final o = offsetForIndex(i);
+      final isHighlighted =
+          highlightedIndex != null && highlightedIndex == i;
+      final pointPaint = Paint()
+        ..color = _seriesColorForDataIndex(i)
+        ..style = PaintingStyle.fill;
+      if (isHighlighted) {
+        canvas.drawCircle(o, 8, pointPaint);
+        canvas.drawCircle(
+          o,
+          8,
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      } else {
+        canvas.drawCircle(o, 5, pointPaint);
+      }
+    }
+
+    for (var ci = 0; ci < overlapRender.length; ci++) {
+      final cluster = overlapRender[ci];
+      final o = cluster.centroid;
+      final clusterTapIndex = -(ci + 1);
+      final highlighted = highlightedIndex != null &&
+          (highlightedIndex == clusterTapIndex ||
+              cluster.dataIndices.contains(highlightedIndex));
+      final r = highlighted ? 8.0 : 5.0;
+      canvas.drawCircle(
+        o,
+        r,
+        Paint()..color = Colors.white..style = PaintingStyle.fill,
+      );
+      canvas.drawCircle(
+        o,
+        r,
+        Paint()
+          ..color = bloodSugarOverlapAccentColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+      final arm = r * 0.45;
+      final plus = Paint()
+        ..color = bloodSugarOverlapAccentColor
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(o + Offset(-arm, 0), o + Offset(arm, 0), plus);
+      canvas.drawLine(o + Offset(0, -arm), o + Offset(0, arm), plus);
+    }
+  }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 
@@ -736,7 +1081,10 @@ class BloodSugarChartPainter extends CustomPainter {
     if (index < 0 || index >= data.length) {
       return const Color(0xFFE91E63);
     }
-    final type = data[index]['measurementType']?.toString() ?? '';
+    return _seriesColorForType(data[index]['measurementType']?.toString() ?? '');
+  }
+
+  Color _seriesColorForType(String type) {
     switch (type) {
       case '공복':
         return const Color(0xFF4F82E0);
@@ -757,6 +1105,9 @@ class BloodSugarChartPainter extends CustomPainter {
 class EmptyBloodSugarChartGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    const x0 = 8.5;
+    final plotRight =
+        size.width - ChartConstants.weightXAxisUnitReservedWidth - x0;
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
@@ -770,7 +1121,7 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
       const topPadding = 20.0;
       const bottomPadding = 20.0;
       final y = topPadding + (size.height - topPadding - bottomPadding) * i / 5;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+      canvas.drawLine(Offset(x0, y), Offset(x0 + plotRight, y), gridPaint);
     }
 
     for (final dashedValue in dashedYValues) {
@@ -779,7 +1130,7 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
       const bottomPadding = 20.0;
       final y =
           topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
-      for (double x = 0; x < size.width; x += 4) {
+      for (double x = x0; x < x0 + plotRight; x += 4) {
         canvas.drawLine(Offset(x, y), Offset(x + 2, y), dashedGridPaint);
       }
     }
