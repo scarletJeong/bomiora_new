@@ -939,7 +939,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         statusText: _bloodPressureStatusLabel(),
                         icon: Icons.monitor_heart,
                         titleFontSize: 14,
-                        valueFontSize: 16,
+                        valueFontSize: 12,
                         statusFontSize: 9,
                         onMore: () => Navigator.push(
                           context,
@@ -963,6 +963,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               Expanded(
                 child: _buildBottomRecordCard(
                   title: '심박수',
+                  titleIcon: Icons.access_time,
                   value: latestHeartRateRecord != null
                       ? '$heartRate bpm'
                       : '입력하세요.',
@@ -1229,6 +1230,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     required String title,
     required String value,
     required VoidCallback onMore,
+    IconData titleIcon = Icons.favorite_border,
     double titleFontSize = 16,
     double valueFontSize = 20,
   }) {
@@ -1243,8 +1245,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.favorite_border,
-                  color: Color(0xFFFF5A8D), size: 18),
+              Icon(titleIcon, color: const Color(0xFFFF5A8D), size: 18),
               const SizedBox(width: 6),
               Text(title,
                   style: TextStyle(
