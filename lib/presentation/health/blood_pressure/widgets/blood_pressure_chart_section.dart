@@ -1,12 +1,101 @@
 import 'package:flutter/material.dart';
 
+import '../../../common/chart_layout.dart';
+
+/// 체중 그래프 Y축 스트립과 동일 레이아웃: 상단 단위 밴드 + 숫자 눈금
+Widget buildBloodPressureYAxisStrip({
+  required List<double> yLabels,
+  required bool showYAxisHeader,
+  String unitLabel = '(mmHg)',
+}) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final totalH = constraints.maxHeight;
+      final unitBand =
+          showYAxisHeader && yLabels.length > 1 ? totalH / 6.0 : 0.0;
+
+      Widget numericLabels(double forHeight) {
+        final n = yLabels.length;
+        if (n < 2) return const SizedBox.shrink();
+        return SizedBox(
+          height: forHeight,
+          child: LayoutBuilder(
+            builder: (context, lc) {
+              const topPad = 6.0;
+              const botPad = 6.0;
+              final h = lc.maxHeight - topPad - botPad;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: yLabels.asMap().entries.map((e) {
+                  final i = e.key;
+                  final label = e.value;
+                  final y = topPad + h * i / (n - 1);
+                  return Positioned(
+                    top: y - 8,
+                    left: 0,
+                    right: 0,
+                    child: Text(
+                      label.toStringAsFixed(0),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        );
+      }
+
+      return SizedBox(
+        width: ChartConstants.weightChartYAxisWidth,
+        child: showYAxisHeader && yLabels.length > 1
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: unitBand,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Text(
+                        unitLabel,
+                        style: TextStyle(
+                          // 그래프 mmHg 단위 표시
+                          fontSize: 8,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, inner) {
+                        return numericLabels(inner.maxHeight);
+                      },
+                    ),
+                  ),
+                ],
+              )
+            : numericLabels(totalH),
+      );
+    },
+  );
+}
+
 /// 수축기 색상 (레전드와 동일)
 const Color _systolicColor = Color(0xFF86B0FF);
 
 /// 이완기 색상 (레전드와 동일)
 const Color _diastolicColor = Color(0xFFFFC686);
 
-/// 혈압 차트 Painter (수축기/이완기 라인 + 꽉 찬 점)
+/// 혈압 차트 Painter
+/// - 슬롯 내 측정 1건: 점
+/// - 슬롯 내 측정 2건 이상: 최저~최고 막대
+/// - 수축기·이완기는 동일 X축 위에 겹침 (겹칠 때 이완기 먼저, 수축기가 위)
 class BloodPressureChartPainter extends CustomPainter {
   final List<Map<String, dynamic>> data;
   final double minValue;
@@ -15,17 +104,76 @@ class BloodPressureChartPainter extends CustomPainter {
   final bool isToday;
   final double timeOffset;
 
-  BloodPressureChartPainter(this.data, this.minValue, this.maxValue,
-      {this.highlightedIndex, required this.isToday, required this.timeOffset});
+  /// 일(시간대별): X축 `spaceBetween` — 끝점 분포. 주/월: `Expanded` 칸 중앙.
+  final bool cellCenterXSlots;
+
+  BloodPressureChartPainter(
+    this.data,
+    this.minValue,
+    this.maxValue, {
+    this.highlightedIndex,
+    required this.isToday,
+    required this.timeOffset,
+    this.cellCenterXSlots = false,
+  });
+
+  static const double _borderWidth = 0.5;
+  static const double _pointRadius = 5.0;
+
+  /// X축 라벨 Row의 `weightXAxisUnitReservedWidth`와 동일하게 오른쪽 여백 제외
+  static double _contentWidth(double plotWidth) {
+    return plotWidth -
+        (_borderWidth * 2) -
+        (_pointRadius * 2) -
+        ChartConstants.weightXAxisUnitReservedWidth;
+  }
+
+  /// 탭 히트 영역과 동일한 슬롯 중심 X
+  static double slotCenterX(
+    int index,
+    int slotCount,
+    double plotWidth, {
+    required bool cellCenterXSlots,
+  }) {
+    final left = _borderWidth + _pointRadius;
+    final cw = _contentWidth(plotWidth);
+    if (cw <= 1) {
+      return plotWidth / 2;
+    }
+    if (slotCount <= 1) {
+      return left + cw / 2;
+    }
+    if (cellCenterXSlots) {
+      return left + cw * (index + 0.5) / slotCount;
+    }
+    return left + cw * index / (slotCount - 1);
+  }
+
+  /// 탭 판정: 슬롯 가로 허용 반폭 (체중 주간 막대와 유사)
+  static double slotHitHalfWidth(
+    double plotWidth,
+    int slotCount, {
+    required bool cellCenterXSlots,
+  }) {
+    final cw = _contentWidth(plotWidth);
+    if (cw <= 1 || slotCount < 1) return 24.0;
+    if (slotCount == 1) return cw * 0.48;
+    if (cellCenterXSlots) {
+      return cw / (2 * slotCount) * 1.05;
+    }
+    return cw / (2 * (slotCount - 1)) * 1.05;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    const double borderWidth = 0.5;
-    const double pointRadius = 8;
-    final chartWidth =
-        size.width - (borderWidth * 2) - (pointRadius * 2);
+    // 막대 두께는 체중 주/월 막대와 동일(10 / 선택 12). 단일 점은 체중 일별과 같이 5 / 선택 8
+    const double highlightRadius = 8.0;
+    const double barStrokeWidth = 10.0;
+    final left = _borderWidth + _pointRadius;
+    final contentW = _contentWidth(size.width);
+    final plotRight = left + contentW;
 
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
@@ -44,8 +192,8 @@ class BloodPressureChartPainter extends CustomPainter {
       double y = topPadding +
           (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
       canvas.drawLine(
-        Offset(borderWidth + pointRadius, y),
-        Offset(chartWidth + borderWidth + pointRadius, y),
+        Offset(left, y),
+        Offset(plotRight, y),
         gridPaint,
       );
     }
@@ -57,9 +205,7 @@ class BloodPressureChartPainter extends CustomPainter {
       double y =
           topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
 
-      for (double x = borderWidth + pointRadius;
-          x < chartWidth + borderWidth + pointRadius;
-          x += 4) {
+      for (double x = left; x < plotRight; x += 4) {
         canvas.drawLine(
           Offset(x, y),
           Offset(x + 2, y),
@@ -68,226 +214,104 @@ class BloodPressureChartPainter extends CustomPainter {
       }
     }
 
-    List<List<Offset>> systolicSegments = [];
-    List<List<Offset>> diastolicSegments = [];
-    List<List<int>> indexSegments = [];
-
-    List<Offset> currentSystolic = [];
-    List<Offset> currentDiastolic = [];
-    List<int> currentIndices = [];
-
-    const maxStartHour = 18;
-    final startHour =
-        (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
-    final endHour = startHour + 6;
-
     for (int i = 0; i < data.length; i++) {
-      if (data[i]['systolic'] == null || data[i]['diastolic'] == null) continue;
+      final recordCount = (data[i]['recordCount'] as int?) ?? 0;
+      if (recordCount <= 0) continue;
 
-      final recordHour = data[i]['hour'] as int?;
-      if (recordHour != null) {
-        if (recordHour < startHour || recordHour > endHour) {
-          if (currentSystolic.isNotEmpty) {
-            systolicSegments.add(List.from(currentSystolic));
-            diastolicSegments.add(List.from(currentDiastolic));
-            indexSegments.add(List.from(currentIndices));
-            currentSystolic.clear();
-            currentDiastolic.clear();
-            currentIndices.clear();
-          }
-          continue;
-        }
+      final x = slotCenterX(
+        i,
+        data.length,
+        size.width,
+        cellCenterXSlots: cellCenterXSlots,
+      );
+      final isHighlighted = highlightedIndex != null && highlightedIndex == i;
+
+      final systolicMin = data[i]['systolicMin'] as int?;
+      final systolicMax = data[i]['systolicMax'] as int?;
+      final diastolicMin = data[i]['diastolicMin'] as int?;
+      final diastolicMax = data[i]['diastolicMax'] as int?;
+      if (systolicMin == null ||
+          systolicMax == null ||
+          diastolicMin == null ||
+          diastolicMax == null) {
+        continue;
       }
 
-      if (data[i]['xPosition'] != null && data.length > 7) {
-        final xPosition = data[i]['xPosition'] as double;
-        final visibleDays = 7;
-        final totalDays = 30;
-        final maxOffset = (totalDays - visibleDays) / totalDays;
-        final currentOffset = timeOffset.clamp(0.0, maxOffset);
-        final startRatio = currentOffset;
-        final endRatio =
-            (currentOffset + (visibleDays / totalDays)).clamp(0.0, 1.0);
-
-        if (xPosition < startRatio || xPosition > endRatio) {
-          if (currentSystolic.isNotEmpty) {
-            systolicSegments.add(List.from(currentSystolic));
-            diastolicSegments.add(List.from(currentDiastolic));
-            indexSegments.add(List.from(currentIndices));
-            currentSystolic.clear();
-            currentDiastolic.clear();
-            currentIndices.clear();
-          }
-          continue;
-        }
+      double toY(int value) {
+        const double topPadding = 20.0;
+        const double bottomPadding = 20.0;
+        final normalized = (250 - value) / (250 - 50);
+        return topPadding + (size.height - topPadding - bottomPadding) * normalized;
       }
 
-      double x;
-      if (data[i]['xPosition'] != null) {
-        final xPosition = data[i]['xPosition'] as double;
+      final ySysMin = toY(systolicMin);
+      final ySysMax = toY(systolicMax);
+      final yDiaMin = toY(diastolicMin);
+      final yDiaMax = toY(diastolicMax);
 
-        if (data.length > 7) {
-          final visibleDays = 7;
-          final totalDays = 30;
-          final maxOffset = (totalDays - visibleDays) / totalDays;
-          final currentOffset = timeOffset.clamp(0.0, maxOffset);
-          final startIndex = (currentOffset * totalDays).floor();
-          final endIndex = startIndex + visibleDays;
+      final sysPaint = Paint()
+        ..color = _systolicColor
+        ..style = PaintingStyle.fill;
+      final diaPaint = Paint()
+        ..color = _diastolicColor
+        ..style = PaintingStyle.fill;
 
-          final dataIndex = (xPosition * totalDays).round();
+      if (recordCount >= 2) {
+        final strokeW = isHighlighted ? 12.0 : barStrokeWidth;
 
-          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-
-          final relativeIndex = dataIndex - startIndex;
-          final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = borderWidth + pointRadius + (chartWidth * adjustedRatio);
-        } else {
-          x = borderWidth + pointRadius + (chartWidth * xPosition);
-        }
-      } else {
-        x = data.length == 1
-            ? borderWidth + pointRadius + chartWidth / 2
-            : borderWidth + pointRadius + (chartWidth * i / (data.length - 1));
-      }
-
-      int systolic = data[i]['systolic'];
-      int diastolic = data[i]['diastolic'];
-
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double normalizedSystolic = (250 - systolic) / (250 - 50);
-      double ySystolic = topPadding +
-          (size.height - topPadding - bottomPadding) * normalizedSystolic;
-
-      double normalizedDiastolic = (250 - diastolic) / (250 - 50);
-      double yDiastolic = topPadding +
-          (size.height - topPadding - bottomPadding) * normalizedDiastolic;
-
-      currentSystolic.add(Offset(x, ySystolic));
-      currentDiastolic.add(Offset(x, yDiastolic));
-      currentIndices.add(i);
-    }
-
-    if (currentSystolic.isNotEmpty) {
-      systolicSegments.add(currentSystolic);
-      diastolicSegments.add(currentDiastolic);
-      indexSegments.add(currentIndices);
-    }
-
-    final linePaint = Paint()
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-
-    // 수축기 곡선 (#86B0FF)
-    linePaint.color = _systolicColor;
-    for (var segment in systolicSegments) {
-      if (segment.length == 1) continue;
-
-      final path = Path();
-      path.moveTo(segment[0].dx, segment[0].dy);
-
-      if (segment.length == 2) {
-        path.lineTo(segment[1].dx, segment[1].dy);
-      } else {
-        for (int i = 0; i < segment.length - 1; i++) {
-          final p0 = i > 0 ? segment[i - 1] : segment[i];
-          final p1 = segment[i];
-          final p2 = segment[i + 1];
-          final p3 = i < segment.length - 2 ? segment[i + 2] : segment[i + 1];
-
-          final cp1x = p1.dx + (p2.dx - p0.dx) / 6;
-          final cp1y = p1.dy + (p2.dy - p0.dy) / 6;
-          final cp2x = p2.dx - (p3.dx - p1.dx) / 6;
-          final cp2y = p2.dy - (p3.dy - p1.dy) / 6;
-
-          path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.dx, p2.dy);
-        }
-      }
-
-      canvas.drawPath(path, linePaint);
-    }
-
-    // 이완기 곡선 (#FFC686)
-    linePaint.color = _diastolicColor;
-    for (var segment in diastolicSegments) {
-      if (segment.length == 1) continue;
-
-      final path = Path();
-      path.moveTo(segment[0].dx, segment[0].dy);
-
-      if (segment.length == 2) {
-        path.lineTo(segment[1].dx, segment[1].dy);
-      } else {
-        for (int i = 0; i < segment.length - 1; i++) {
-          final p0 = i > 0 ? segment[i - 1] : segment[i];
-          final p1 = segment[i];
-          final p2 = segment[i + 1];
-          final p3 = i < segment.length - 2 ? segment[i + 2] : segment[i + 1];
-
-          final cp1x = p1.dx + (p2.dx - p0.dx) / 6;
-          final cp1y = p1.dy + (p2.dy - p0.dy) / 6;
-          final cp2x = p2.dx - (p3.dx - p1.dx) / 6;
-          final cp2y = p2.dy - (p3.dy - p1.dy) / 6;
-
-          path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.dx, p2.dy);
-        }
-      }
-
-      canvas.drawPath(path, linePaint);
-    }
-
-    // 포인트 그리기 (꽉 찬 원 + 선택 시 흰색 외곽선만)
-    for (int segIdx = 0; segIdx < systolicSegments.length; segIdx++) {
-      final systolicPoints = systolicSegments[segIdx];
-      final diastolicPoints = diastolicSegments[segIdx];
-      final dataIndices = indexSegments[segIdx];
-
-      for (int i = 0; i < systolicPoints.length; i++) {
-        final originalIndex = dataIndices[i];
-        final isHighlighted =
-            highlightedIndex != null && highlightedIndex == originalIndex;
-
-        final systolicPaint = Paint()
+        final barPaintSys = Paint()
           ..color = _systolicColor
-          ..style = PaintingStyle.fill;
-
-        if (isHighlighted) {
-          canvas.drawCircle(systolicPoints[i], 8, systolicPaint);
-          canvas.drawCircle(
-            systolicPoints[i],
-            8,
-            Paint()
-              ..color = Colors.white
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
-          );
-        } else {
-          canvas.drawCircle(systolicPoints[i], 5, systolicPaint);
-        }
-
-        final diastolicPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeW
+          ..strokeCap = StrokeCap.round;
+        final barPaintDia = Paint()
           ..color = _diastolicColor
-          ..style = PaintingStyle.fill;
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeW
+          ..strokeCap = StrokeCap.round;
+
+        // 이완기 먼저, 수축기를 위에 겹침 (선택 시 막대 전체 두께↑ — 체중 주/월과 동일 개념)
+        canvas.drawLine(Offset(x, yDiaMax), Offset(x, yDiaMin), barPaintDia);
+        canvas.drawLine(Offset(x, ySysMax), Offset(x, ySysMin), barPaintSys);
+      } else {
+        final ySys = toY(systolicMax);
+        final yDia = toY(diastolicMax);
+        // 점도 동일 X (세로 위치만 다름)
+        canvas.drawCircle(
+            Offset(x, yDia), isHighlighted ? highlightRadius : _pointRadius, diaPaint);
+        canvas.drawCircle(
+            Offset(x, ySys), isHighlighted ? highlightRadius : _pointRadius, sysPaint);
 
         if (isHighlighted) {
-          canvas.drawCircle(diastolicPoints[i], 8, diastolicPaint);
           canvas.drawCircle(
-            diastolicPoints[i],
-            8,
+            Offset(x, yDia),
+            highlightRadius,
             Paint()
               ..color = Colors.white
               ..style = PaintingStyle.stroke
               ..strokeWidth = 2,
           );
-        } else {
-          canvas.drawCircle(diastolicPoints[i], 5, diastolicPaint);
+          canvas.drawCircle(
+            Offset(x, ySys),
+            highlightRadius,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2,
+          );
         }
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant BloodPressureChartPainter oldDelegate) {
+    return oldDelegate.cellCenterXSlots != cellCenterXSlots ||
+        oldDelegate.data != data ||
+        oldDelegate.highlightedIndex != highlightedIndex ||
+        oldDelegate.timeOffset != timeOffset ||
+        oldDelegate.isToday != isToday;
+  }
 }
 
 /// 빈 차트용 그리드 페인터

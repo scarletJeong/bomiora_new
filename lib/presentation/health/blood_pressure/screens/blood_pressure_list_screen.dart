@@ -1,9 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../common/chart_layout.dart';
-import '../../../common/widgets/period_chart_widget.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
@@ -41,6 +42,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   double timeOffset = 0.0; // 통합된 드래그 오프셋
   double? _dragStartX;
   VoidCallback? _refreshExpandedChart;
+  double _bpDragAccumDX = 0;
+  bool _bpDragFrameScheduled = false;
+  double _bpLastPlotWidth = 1.0;
 
   void _setChartState(VoidCallback updates) {
     if (!mounted) return;
@@ -83,18 +87,21 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
   // 드래그 범위 제한
   double _clampDragOffset(double newOffset) {
+    if (selectedPeriod == '월') {
+      // 월별: 12개월 중 7개월 창 이동
+      final totalMonths = 12;
+      final visibleMonths = 7;
+      final maxStart = (totalMonths - visibleMonths).clamp(0, 99);
+      if (maxStart == 0) return 0.0;
+      return newOffset.clamp(0.0, 1.0);
+    }
+
     if (_isToday()) {
       // 오늘: 현재 시간 - 4시간까지만
       final now = DateTime.now();
       final currentHour = now.hour;
       final maxStartHour = (currentHour - 4).clamp(0, 18);
       final maxOffset = maxStartHour / 18.0;
-      return newOffset.clamp(0.0, maxOffset);
-    } else if (selectedPeriod == '월') {
-      // 월별: 0부터 최대 오프셋까지 드래그 가능 (왼쪽으로 드래그해서 과거 날짜까지 볼 수 있음)
-      final visibleDays = 7;
-      final totalDays = 30;
-      final maxOffset = (totalDays - visibleDays) / totalDays; // 23/30 = 0.767
       return newOffset.clamp(0.0, maxOffset);
     } else {
       // 과거 일별: 00시~24시 전체 범위
@@ -110,208 +117,301 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return 0.5; // 일별 그래프는 기존 민감도 유지
   }
 
-  // 공통 드래그 핸들러
+  // 공통 드래그 핸들러 (프레임당 1회 setState — onPanUpdate 중 mouse_tracker 재진입 방지)
   void _handleDragUpdate(double deltaX, double chartWidth) {
-    final sensitivity = _getDragSensitivity();
-    final dataDelta = -(deltaX / chartWidth) * sensitivity;
-    final newOffset = timeOffset + dataDelta;
-
-    _setChartState(() {
-      timeOffset = _clampDragOffset(newOffset);
+    _bpLastPlotWidth = chartWidth;
+    _bpDragAccumDX += deltaX;
+    if (_bpDragFrameScheduled) return;
+    _bpDragFrameScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bpDragFrameScheduled = false;
+      if (!mounted) return;
+      final dx = _bpDragAccumDX;
+      _bpDragAccumDX = 0;
+      if (dx == 0) return;
+      final w = _bpLastPlotWidth;
+      if (w <= 0) return;
+      final sensitivity = _getDragSensitivity();
+      final dataDelta = -(dx / w) * sensitivity;
+      _setChartState(() {
+        timeOffset = _clampDragOffset(timeOffset + dataDelta);
+      });
     });
   }
 
-  // 차트 데이터 생성 (캐시 없이 매번 로드)
+  // 차트 데이터 생성
+  // - 슬롯 내 기록 1건: 점
+  // - 슬롯 내 기록 2건 이상: 최저~최고 막대
   List<Map<String, dynamic>> getChartData() {
-    if (selectedPeriod != '일') {
-      return _getWeeklyOrMonthlyData();
+    if (selectedPeriod == '일') {
+      return _buildHourlyChartData();
     }
-
-    final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-
-    // 캐시에서 데이터 가져오기 (없으면 빈 배열)
-    final dayRecords = dailyRecordsCache[selectedDateStr] ?? [];
-
-    // 시간 내림차순 정렬 (최신 시간이 먼저)
-    dayRecords.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-
-    final timeRange = _calculateTimeRange();
-    final minHourDiff = timeRange['min']!;
-    final maxHourDiff = timeRange['max']!;
-
-    List<Map<String, dynamic>> chartData = [];
-
-    for (var record in dayRecords) {
-      final recordHour = record.measuredAt.hour;
-      final recordMinute = record.measuredAt.minute;
-
-      // 통합 로직: 모든 데이터 표시 (필터링은 Painter에서)
-      final chartPoint = _createChartPoint(
-          record, recordHour, recordMinute, minHourDiff, maxHourDiff);
-      chartData.add(chartPoint);
+    if (selectedPeriod == '주') {
+      return _buildDailyRangeChartData();
     }
-
-    return chartData;
+    return _buildMonthlyRangeChartData();
   }
 
-  // 차트 포인트 생성 (통합)
-  Map<String, dynamic> _createChartPoint(
-      BloodPressureRecord record,
-      int recordHour,
-      int recordMinute,
-      double minHourDiff,
-      double maxHourDiff) {
-    final normalizedMinute = (recordMinute / 5).floor() * 5;
-    final minuteRatio = normalizedMinute / 60.0;
-    final range = maxHourDiff - minHourDiff;
+  /// 시간대별 차트는 7시간 창만 보여 줌. 창 밖에만 기록이 있으면 빈 그래프로 보이므로
+  /// 해당 날 기록이 보이도록 timeOffset을 맞춤.
+  void _ensureHourlyWindowShowsData() {
+    if (selectedPeriod != '일') return;
+    final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final dayRecords = dailyRecordsCache[selectedDateStr] ?? [];
+    if (dayRecords.isEmpty) return;
 
-    // 통합 로직: 시작 시간 기준으로 X축 위치 계산
-    double xPosition = (recordHour - minHourDiff + minuteRatio) / range;
-    xPosition = xPosition.clamp(0.0, 1.0);
+    final startHour = _calculateTimeRange()['min']!.floor();
+    var visibleHasData = false;
+    for (int i = 0; i < 7; i++) {
+      final slotHour = (startHour + i).clamp(0, 23);
+      if (dayRecords.any((r) => r.measuredAt.hour == slotHour)) {
+        visibleHasData = true;
+        break;
+      }
+    }
+    if (visibleHasData) return;
 
-    String dateStr =
-        '${recordHour.toString().padLeft(2, '0')}:${recordMinute.toString().padLeft(2, '0')}';
+    final hours = dayRecords.map((r) => r.measuredAt.hour).toList();
+    final minH = hours.reduce(math.min);
+    final maxH = hours.reduce(math.max);
+    // 7슬롯(start..start+6)에 [minH,maxH]가 들어가도록 start 선택 (가능할 때)
+    final low = (maxH - 6).clamp(0, 18);
+    final high = minH.clamp(0, 18);
+    final startTarget = low <= high ? low : (maxH - 6).clamp(0, 18);
+    timeOffset = _clampDragOffset(startTarget / 18.0);
+  }
+
+  List<Map<String, dynamic>> _buildHourlyChartData() {
+    final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final dayRecords = (dailyRecordsCache[selectedDateStr] ?? [])
+      ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+
+    final startHour = _calculateTimeRange()['min']!.floor();
+    final labels = List.generate(
+      7,
+      (i) => (startHour + i).clamp(0, 23).toString().padLeft(2, '0'),
+    );
+
+    final result = <Map<String, dynamic>>[];
+    for (int i = 0; i < 7; i++) {
+      final slotHour = (startHour + i).clamp(0, 23);
+      final records = dayRecords
+          .where((r) => r.measuredAt.hour == slotHour)
+          .toList()
+        ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+
+      result.add(_buildPressureRangeSlotData(
+        label: labels[i],
+        records: records,
+      ));
+    }
+    return result;
+  }
+
+  List<Map<String, dynamic>> _buildDailyRangeChartData() {
+    final endDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final startDate = endDate.subtract(const Duration(days: 6));
+    final result = <Map<String, dynamic>>[];
+
+    for (int i = 0; i < 7; i++) {
+      final day = startDate.add(Duration(days: i));
+      final records = allRecords
+          .where((r) =>
+              r.measuredAt.year == day.year &&
+              r.measuredAt.month == day.month &&
+              r.measuredAt.day == day.day)
+          .toList()
+        ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+
+      result.add(_buildPressureRangeSlotData(
+        label: DateFormat('M.d').format(day),
+        records: records,
+      ));
+    }
+
+    return result;
+  }
+
+  /// 체중 월별과 동일: [selectedDate] 연도 기준 1~12월 중 7개월 창 슬라이드
+  List<Map<String, dynamic>> _buildMonthlyRangeChartData() {
+    const totalMonths = 12;
+    const visibleMonths = 7;
+    final year = selectedDate.year;
+    final maxStart = totalMonths - visibleMonths;
+    final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+
+    final result = <Map<String, dynamic>>[];
+    for (int i = 0; i < visibleMonths; i++) {
+      final month = startIndex + i + 1;
+      final records = allRecords
+          .where((r) => r.measuredAt.year == year && r.measuredAt.month == month)
+          .toList()
+        ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+
+      result.add(_buildPressureRangeSlotData(
+        label: '$month',
+        records: records,
+      ));
+    }
+    return result;
+  }
+
+  Map<String, dynamic> _buildPressureRangeSlotData({
+    required String label,
+    required List<BloodPressureRecord> records,
+  }) {
+    if (records.isEmpty) {
+      return {
+        'date': label,
+        'recordCount': 0,
+        'systolicMin': null,
+        'systolicMax': null,
+        'diastolicMin': null,
+        'diastolicMax': null,
+        'record': null,
+      };
+    }
+
+    var systolicMin = records.first.systolic;
+    var systolicMax = records.first.systolic;
+    var diastolicMin = records.first.diastolic;
+    var diastolicMax = records.first.diastolic;
+
+    for (final r in records) {
+      if (r.systolic < systolicMin) systolicMin = r.systolic;
+      if (r.systolic > systolicMax) systolicMax = r.systolic;
+      if (r.diastolic < diastolicMin) diastolicMin = r.diastolic;
+      if (r.diastolic > diastolicMax) diastolicMax = r.diastolic;
+    }
 
     return {
-      'date': dateStr,
-      'hour': recordHour,
-      'systolic': record.systolic,
-      'diastolic': record.diastolic,
-      'record': record,
-      'normalizedMinute': normalizedMinute,
-      'xPosition': xPosition,
+      'date': label,
+      'recordCount': records.length,
+      'systolicMin': systolicMin,
+      'systolicMax': systolicMax,
+      'diastolicMin': diastolicMin,
+      'diastolicMax': diastolicMax,
+      'record': records.last,
     };
   }
 
-  // 주/월 데이터 생성 (체중과 동일한 방식) - 하루에 최고 수축기 값만 선택
-  List<Map<String, dynamic>> _getWeeklyOrMonthlyData() {
-    List<Map<String, dynamic>> chartData = [];
-    final days = selectedPeriod == '주' ? 7 : 30;
-
-    // 선택된 날짜를 기준으로 과거 데이터 생성 (선택된 날짜가 맨 오른쪽)
-    final endDate = selectedDate;
-    final startDate = endDate.subtract(Duration(days: days - 1));
-
-    // 모든 날짜에 대해 데이터 생성 (데이터가 없어도 빈 슬롯 생성)
-    for (int i = 0; i < days; i++) {
-      final date = startDate.add(Duration(days: i));
-      final dateKey = DateFormat('yyyy-MM-dd').format(date);
-
-      // 해당 날짜의 모든 기록 가져오기 (allRecords에서)
-      final dayRecords = allRecords.where((record) {
-        final recordDateStr =
-            DateFormat('yyyy-MM-dd').format(record.measuredAt);
-        return recordDateStr == dateKey;
-      }).toList();
-
-      if (dayRecords.isNotEmpty) {
-        // 하루 중 수축기가 가장 높은 기록 선택
-        dayRecords.sort((a, b) => b.systolic.compareTo(a.systolic));
-        final highestSystolicRecord = dayRecords.first;
-
-        chartData.add({
-          'date': DateFormat('M.d').format(date),
-          'systolic': highestSystolicRecord.systolic,
-          'diastolic': highestSystolicRecord.diastolic,
-          'record': highestSystolicRecord,
-          'xPosition': i / days, // X축 위치 (0~1)
-        });
-      } else {
-        // 데이터가 없는 날짜는 null 값으로 추가 (차트에서 제외되지만 위치는 유지)
-        chartData.add({
-          'date': DateFormat('M.d').format(date),
-          'systolic': null,
-          'diastolic': null,
-          'record': null,
-          'xPosition': i / days, // X축 위치 (0~1)
-        });
-      }
-    }
-
-    return chartData;
-  }
-
-  // X축 라벨 생성 (통합)
-  Widget _buildXAxisLabels(List<Map<String, dynamic>> chartData) {
-    if (selectedPeriod != '일') {
-      return _buildPeriodXAxisLabels(chartData);
-    }
-
-    final timeRange = _calculateTimeRange();
-    final startHour = timeRange['min']!.round();
-
-    List<Widget> hourLabels = [];
-
-    // 통합 로직: 시작 시간부터 7개 라벨 표시
-    for (int i = 0; i < 7; i++) {
-      final hour = (startHour + i).clamp(0, 24);
-      final hourLabel = hour.toString().padLeft(2, '0');
-      hourLabels.add(
-          Text(hourLabel, style: TextStyle(fontSize: 12, color: Colors.grey)));
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: hourLabels,
+  /// 체중 그래프와 동일: 오른쪽 (시)/(일)/(월) 단위
+  Widget _buildBloodPressureXAxisWithUnit({
+    required Widget labelRow,
+    required String unitText,
+  }) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(
+            right: ChartConstants.weightXAxisUnitReservedWidth,
+          ),
+          child: labelRow,
+        ),
+        Positioned(
+          right: -10,
+          top: 1,
+          bottom: 0,
+          child: Align(
+            alignment: Alignment.center,
+            child: Text(
+              unitText,
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  // 주/월 X축 라벨 생성
-  Widget _buildPeriodXAxisLabels(List<Map<String, dynamic>> chartData) {
-    final days = selectedPeriod == '주' ? 7 : 30;
-    final endDate = selectedDate;
+  Widget _buildBloodPressureXAxisLabels() {
+    if (selectedPeriod == '일') {
+      const maxStartHour = 18;
+      final startHour =
+          (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
+      final hourLabels = <Widget>[];
+      for (int i = 0; i < 7; i++) {
+        final hour = (startHour + i).clamp(0, 24);
+        final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
+        hourLabels.add(
+          Text(
+            hourLabel,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        );
+      }
+      return _buildBloodPressureXAxisWithUnit(
+        labelRow: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: hourLabels,
+        ),
+        unitText: '(시)',
+      );
+    }
+
+    if (selectedPeriod == '월') {
+      const totalMonths = 12;
+      const visibleMonths = 7;
+      final maxStart = totalMonths - visibleMonths;
+      final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+
+      return _buildBloodPressureXAxisWithUnit(
+        labelRow: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(visibleMonths, (i) {
+            final m = startIndex + i + 1;
+            return Expanded(
+              child: Text(
+                '$m',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            );
+          }),
+        ),
+        unitText: '(월)',
+      );
+    }
+
+    const days = 7;
+    final endDate =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
     final startDate = endDate.subtract(Duration(days: days - 1));
 
-    // 모든 날짜에 대한 라벨 생성 (데이터 유무와 관계없이)
-    List<String> allDateLabels = [];
-    for (int i = 0; i < days; i++) {
-      final date = startDate.add(Duration(days: i));
-      allDateLabels.add(DateFormat('M.d').format(date));
+    final dateRow = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(days, (i) {
+        final date = startDate.add(Duration(days: i));
+        return Expanded(
+          child: Text(
+            DateFormat('M.d').format(date),
+            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+            textAlign: TextAlign.center,
+          ),
+        );
+      }),
+    );
+
+    return _buildBloodPressureXAxisWithUnit(
+      labelRow: dateRow,
+      unitText: '(일)',
+    );
+  }
+
+  /// 체중 일별과 같이: 선택일에 기록이 하나도 없을 때만 안내 카드 (드래그로 창만 비어도 그리드 유지)
+  bool _shouldShowBloodPressureNoDataCard() {
+    if (selectedPeriod == '일') {
+      final key = DateFormat('yyyy-MM-dd').format(selectedDate);
+      return (dailyRecordsCache[key] ?? []).isEmpty;
     }
-
-    if (selectedPeriod == '주') {
-      // 주별: 모든 날짜 표시
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: allDateLabels.map((label) {
-          return Expanded(
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-          );
-        }).toList(),
-      );
-    } else {
-      // 월별: 현재 보이는 7개 날짜만 표시 (슬라이드 기능)
-      final visibleDays = 7;
-      final maxOffset = (days - visibleDays) / days; // 최대 오프셋
-      final currentOffset = timeOffset.clamp(0.0, maxOffset);
-      final startIndex = (currentOffset * days).floor();
-      final endIndex =
-          (startIndex + visibleDays).clamp(0, allDateLabels.length);
-
-      List<String> visibleLabels = [];
-      for (int i = startIndex; i < endIndex; i++) {
-        if (i < allDateLabels.length) {
-          visibleLabels.add(allDateLabels[i]);
-        }
-      }
-
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: visibleLabels.map((label) {
-          return Expanded(
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-          );
-        }).toList(),
-      );
-    }
+    return false;
   }
 
   // Y축 범위 계산 (고정 범위)
@@ -346,12 +446,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       timeOffset = startHourTarget / 18.0;
     }
 
-    // 월별 그래프 초기 오프셋 설정 (오늘 날짜가 맨 오른쪽에 보이도록) jjy
+    // 월별: 체중과 동일 1~7월부터 시작, 드래그로 6~12월까지
     if (selectedPeriod == '월') {
-      final visibleDays = 7;
-      final totalDays = 30;
-      final maxOffset = (totalDays - visibleDays) / totalDays;
-      timeOffset = maxOffset; // 오늘 날짜가 맨 오른쪽에 표시되도록
+      timeOffset = 0.0;
     }
 
     _loadData();
@@ -379,6 +476,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
         // 메모리에서 날짜별로 캐싱 (API 호출 없이 필터링)
         _cacheRecordsFromMemory();
+        _ensureHourlyWindowShowsData();
 
         // 데이터가 없을 때만 다이얼로그 표시 (한 번만)
         if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
@@ -433,6 +531,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
     // 이미 캐시에 있으면 UI만 업데이트
     if (dailyRecordsCache.containsKey(dateKey)) {
+      _ensureHourlyWindowShowsData();
       setState(() {});
       return;
     }
@@ -450,6 +549,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       bloodPressureRecordsMap[dateKey] = records.first;
     }
 
+    _ensureHourlyWindowShowsData();
     setState(() {});
   }
 
@@ -913,10 +1013,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           selectedChartPointIndex = null;
           tooltipPosition = null;
           if (period == '월') {
-            final visibleDays = 7;
-            final totalDays = 30;
-            final maxOffset = (totalDays - visibleDays) / totalDays;
-            timeOffset = maxOffset;
+            timeOffset = 0.0;
           } else if (period == '주') {
             timeOffset = 0.0;
           } else if (period == '일') {
@@ -928,6 +1025,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             } else {
               timeOffset = 0.0;
             }
+            _ensureHourlyWindowShowsData();
           } else {
             timeOffset = 0.0;
           }
@@ -940,51 +1038,17 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-  // 차트 (단순화)
+  // 차트
   Widget _buildChart({bool showExpandButton = true, double chartHeight = 350}) {
     final chartData = getChartData();
     final yLabels = getYAxisLabels();
 
     Widget chartBody;
 
-    // 주별/월별 차트인 경우 공통 컴포넌트 사용
-    if (selectedPeriod != '일') {
-      chartBody = PeriodChartWidget(
-        chartData: chartData,
-        yLabels: yLabels,
-        selectedPeriod: selectedPeriod,
-        selectedDate: selectedDate,
-        timeOffset: timeOffset,
-        height: chartHeight,
-        onTimeOffsetChanged: (newOffset) {
-          _setChartState(() {
-            timeOffset = newOffset;
-          });
-        },
-        onTooltipChanged: (index, position) {
-          _setChartState(() {
-            selectedChartPointIndex = index;
-            tooltipPosition = position;
-          });
-        },
-        selectedChartPointIndex: selectedChartPointIndex,
-        tooltipPosition: tooltipPosition,
-        dataType: 'bloodPressure',
-        yAxisCount: yLabels.length,
-      );
+    if (_shouldShowBloodPressureNoDataCard()) {
+      chartBody = _buildNoDataMessage(chartHeight: chartHeight);
     } else {
-      // 일별 차트: API에서 로드된 실제 데이터가 있는지 확인
-      final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-      final actualRecords = dailyRecordsCache[selectedDateStr] ?? [];
-
-      if (actualRecords.isEmpty) {
-        chartBody = _buildNoDataMessage(chartHeight: chartHeight);
-      } else if (chartData.isEmpty) {
-        chartBody = _buildEmptyChart(yLabels, chartHeight: chartHeight);
-      } else {
-        chartBody =
-            _buildDataChart(chartData, yLabels, chartHeight: chartHeight);
-      }
+      chartBody = _buildDataChart(chartData, yLabels, chartHeight: chartHeight);
     }
 
     if (!showExpandButton) return chartBody;
@@ -1022,7 +1086,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Widget _buildNoDataMessage({double chartHeight = 350}) {
     return Container(
       height: chartHeight,
-      padding: const EdgeInsets.all(16),
+      padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
@@ -1055,12 +1119,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-  // 빈 차트 빌드 (격자선이 있는 빈 차트)
-  Widget _buildEmptyChart(List<double> yLabels, {double chartHeight = 350}) {
-    return _buildDraggableChart([], yLabels,
-        isEmpty: true, chartHeight: chartHeight);
-  }
-
   // 데이터가 있는 차트 빌드
   Widget _buildDataChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
@@ -1073,13 +1131,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-  // 드래그 가능한 차트 빌드 (통합)
+  // 드래그 가능한 차트 빌드 (체중 그래프와 동일 패딩·Y축·X축 단위)
   Widget _buildDraggableChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
       {required bool isEmpty, double chartHeight = 350}) {
     return Container(
       height: chartHeight,
-      padding: const EdgeInsets.all(16),
+      padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
@@ -1089,68 +1147,48 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: LayoutBuilder(builder: (context, constraints) {
+            child: LayoutBuilder(builder: (context, outerConstraints) {
+              final totalH = outerConstraints.maxHeight;
+              final showYHeader = yLabels.length > 1;
+              final headerBand = showYHeader ? totalH / 6.0 : 0.0;
+
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    width: ChartConstants.yAxisLabelWidth,
-                    child: Stack(
-                      children: yLabels.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final label = entry.value;
-                        const double topPadding = 20.0;
-                        const double bottomPadding = 20.0;
-                        final double y = topPadding +
-                            (constraints.maxHeight -
-                                    topPadding -
-                                    bottomPadding) *
-                                index /
-                                (yLabels.length - 1);
-                        return Positioned(
-                          top: y - 10,
-                          right: 0,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              if (index == 0)
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    '(mmHg)',
-                                    style: TextStyle(
-                                      fontSize: 6,
-                                      color: Color(0xFF898383),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              Text(
-                                '${label.round()}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF1A1A1A),
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                  buildBloodPressureYAxisStrip(
+                    yLabels: yLabels,
+                    showYAxisHeader: showYHeader,
                   ),
                   SizedBox(width: ChartConstants.yAxisSpacing),
                   Expanded(
-                    child: _buildChartArea(chartData, constraints, isEmpty),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (showYHeader) SizedBox(height: headerBand),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, plotConstraints) {
+                              return _buildChartArea(
+                                chartData,
+                                plotConstraints,
+                                isEmpty,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               );
             }),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Padding(
-            padding: EdgeInsets.only(left: ChartConstants.yAxisTotalWidth),
-            child: _buildXAxisLabels(chartData),
+            padding: EdgeInsets.only(
+              left: ChartConstants.weightChartYAxisStripWidth,
+            ),
+            child: _buildBloodPressureXAxisLabels(),
           ),
         ],
       ),
@@ -1160,17 +1198,27 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 차트 영역 빌드
   Widget _buildChartArea(List<Map<String, dynamic>> chartData,
       BoxConstraints constraints, bool isEmpty) {
+    _bpLastPlotWidth = constraints.maxWidth;
+    final chartW = constraints.maxWidth;
+    final chartH = constraints.maxHeight;
+
+    // 체중 주간·월간과 동일: GestureDetector가 차트+툴팁 Stack을 감싸 onTapDown이 바로 동작
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onPanStart: (selectedPeriod == '일' || selectedPeriod == '월')
-          ? (details) => _dragStartX = details.localPosition.dx
+          ? (details) {
+              _setChartState(() {
+                selectedChartPointIndex = null;
+                tooltipPosition = null;
+              });
+              _dragStartX = details.localPosition.dx;
+            }
           : null,
       onPanUpdate: (selectedPeriod == '일' || selectedPeriod == '월')
           ? (details) {
               if (_dragStartX != null) {
                 final deltaX = details.localPosition.dx - _dragStartX!;
-                final chartWidth =
-                    constraints.maxWidth - ChartConstants.yAxisTotalWidth;
-                _handleDragUpdate(deltaX, chartWidth);
+                _handleDragUpdate(deltaX, constraints.maxWidth);
                 _dragStartX = details.localPosition.dx;
               }
             }
@@ -1184,44 +1232,51 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               _handleChartTapToggle(
                 details.localPosition,
                 chartData,
-                50, // 최소값 (고정)
-                250, // 최대값 (고정)
-                constraints.maxWidth - ChartConstants.yAxisTotalWidth,
-                constraints.maxHeight,
+                50,
+                250,
+                chartW,
+                chartH,
               );
             },
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Positioned.fill(
-            child: Container(
-              child: isEmpty
-                  ? CustomPaint(painter: EmptyChartGridPainter())
-                  : CustomPaint(
-                      painter: BloodPressureChartPainter(
-                        chartData,
-                        50, // 최소값 (고정)
-                        250, // 최대값 (고정)
-                        highlightedIndex: selectedChartPointIndex,
-                        isToday: _isToday(),
-                        timeOffset: timeOffset,
-                      ),
+            child: isEmpty
+                ? CustomPaint(painter: EmptyChartGridPainter())
+                : CustomPaint(
+                    painter: BloodPressureChartPainter(
+                      chartData,
+                      50, // 최소값 (고정)
+                      250, // 최대값 (고정)
+                      highlightedIndex: selectedChartPointIndex,
+                      isToday: _isToday(),
+                      timeOffset: timeOffset,
+                      cellCenterXSlots:
+                          selectedPeriod == '주' || selectedPeriod == '월',
                     ),
-            ),
+                  ),
           ),
           if (!isEmpty &&
               selectedChartPointIndex != null &&
-              tooltipPosition != null)
-            _buildChartTooltip(
-              chartData[selectedChartPointIndex!],
-              constraints.maxWidth - ChartConstants.yAxisTotalWidth,
-              constraints.maxHeight,
+              tooltipPosition != null &&
+              selectedChartPointIndex! >= 0 &&
+              selectedChartPointIndex! < chartData.length)
+            Positioned(
+              left: tooltipPosition!.dx,
+              top: tooltipPosition!.dy,
+              child: _buildChartTooltip(
+                chartData[selectedChartPointIndex!],
+                chartW,
+                chartH,
+              ),
             ),
         ],
       ),
     );
   }
 
-  // 차트 탭 핸들러 - 툴팁 토글
+  // 차트 탭 핸들러 - 툴팁 토글 (막대는 세로 전체 밴드 히트, 체중 주/월과 동일 패턴)
   void _handleChartTapToggle(
     Offset tapPosition,
     List<Map<String, dynamic>> chartData,
@@ -1232,76 +1287,98 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   ) {
     if (chartData.isEmpty) return;
 
-    const double leftPadding = 0.0;
-    final double effectiveWidth = chartWidth - leftPadding;
+    final cellCenter =
+        selectedPeriod == '주' || selectedPeriod == '월';
+    final halfHitW = BloodPressureChartPainter.slotHitHalfWidth(
+      chartWidth,
+      chartData.length,
+      cellCenterXSlots: cellCenter,
+    );
 
     int? closestIndex;
     double minDistance = double.infinity;
     Offset? closestPoint;
 
+    const double topPadding = 20.0;
+    const double bottomPadding = 20.0;
+    double toY(int value) {
+      final nv = (250 - value) / (250 - 50);
+      return topPadding +
+          (chartHeight - topPadding - bottomPadding) * nv;
+    }
+
     for (int i = 0; i < chartData.length; i++) {
-      if (chartData[i]['systolic'] == null || chartData[i]['diastolic'] == null)
+      if ((chartData[i]['recordCount'] as int? ?? 0) == 0) {
         continue;
-
-      double x;
-      if (chartData[i]['xPosition'] != null) {
-        // 주별/월별 차트: xPosition 사용
-        final xPosition = chartData[i]['xPosition'] as double;
-        final selectedPeriod = this.selectedPeriod;
-
-        if (selectedPeriod == '월') {
-          // 월별: 현재 보이는 7개 날짜만 표시
-          final visibleDays = 7;
-          final totalDays = 30;
-          final maxOffset = (totalDays - visibleDays) / totalDays;
-          final currentOffset = timeOffset.clamp(0.0, maxOffset);
-          final startIndex = (currentOffset * totalDays).floor();
-          final endIndex = startIndex + visibleDays;
-
-          // xPosition을 인덱스로 변환
-          final dataIndex = (xPosition * totalDays).round();
-
-          if (dataIndex < startIndex || dataIndex >= endIndex) continue;
-
-          // 현재 보이는 범위 내에서의 상대적 위치 계산
-          final relativeIndex = dataIndex - startIndex;
-          final adjustedRatio = relativeIndex / (visibleDays - 1);
-          x = leftPadding + (effectiveWidth * adjustedRatio);
-        } else {
-          // 주별: xPosition 그대로 사용
-          x = leftPadding + (effectiveWidth * xPosition);
-        }
-      } else if (chartData.length == 1) {
-        // 일별 차트: 단일 데이터
-        x = leftPadding + effectiveWidth / 2;
-      } else {
-        // 일별 차트: 여러 데이터
-        x = leftPadding + (effectiveWidth * i / (chartData.length - 1));
       }
 
-      int systolic = chartData[i]['systolic'] as int;
-      double normalizedValue = (250 - systolic) / (250 - 50);
-      double y = chartHeight * normalizedValue;
+      final x = BloodPressureChartPainter.slotCenterX(
+        i,
+        chartData.length,
+        chartWidth,
+        cellCenterXSlots: cellCenter,
+      );
 
-      double dx = tapPosition.dx - x;
-      double dy = tapPosition.dy - y;
-      double distance = (dx * dx + dy * dy);
+      final dx = (tapPosition.dx - x).abs();
+      if (dx > halfHitW * 1.35) {
+        continue;
+      }
 
-      if (distance < minDistance) {
-        minDistance = distance;
+      final systolicMin = chartData[i]['systolicMin'] as int;
+      final systolicMax = chartData[i]['systolicMax'] as int;
+      final diastolicMin = chartData[i]['diastolicMin'] as int;
+      final diastolicMax = chartData[i]['diastolicMax'] as int;
+      final recordCount = chartData[i]['recordCount'] as int? ?? 0;
+
+      final ySysMin = toY(systolicMin);
+      final ySysMax = toY(systolicMax);
+      final yDiaMin = toY(diastolicMin);
+      final yDiaMax = toY(diastolicMax);
+
+      double bandDistance;
+      Offset tooltipAnchor;
+
+      if (recordCount >= 2) {
+        final colTop = math.min(ySysMax, yDiaMax);
+        final colBottom = math.max(ySysMin, yDiaMin);
+        const yMargin = 14.0;
+        final inYBand = tapPosition.dy >= colTop - yMargin &&
+            tapPosition.dy <= colBottom + yMargin;
+        final yCenter = (colTop + colBottom) / 2;
+        bandDistance =
+            dx + (inYBand ? 0 : (tapPosition.dy - yCenter).abs());
+        tooltipAnchor = Offset(x, colTop);
+      } else {
+        final ySys = toY(systolicMax);
+        final yDia = toY(diastolicMax);
+        final yTop = math.min(ySys, yDia);
+        final yBot = math.max(ySys, yDia);
+        const yMargin = 18.0;
+        final inYBand = tapPosition.dy >= yTop - yMargin &&
+            tapPosition.dy <= yBot + yMargin;
+        final yCenter = (yTop + yBot) / 2;
+        bandDistance =
+            dx + (inYBand ? 0 : (tapPosition.dy - yCenter).abs());
+        tooltipAnchor = Offset(x, yTop);
+      }
+
+      if (bandDistance < minDistance) {
+        minDistance = bandDistance;
         closestIndex = i;
-        closestPoint = Offset(x, y);
+        closestPoint = tooltipAnchor;
       }
     }
 
-    if (closestIndex != null && minDistance < 1000) {
+    if (closestIndex != null && minDistance < 220) {
+      final idx = closestIndex;
+      final pt = closestPoint;
       _setChartState(() {
-        if (selectedChartPointIndex == closestIndex) {
+        if (selectedChartPointIndex == idx) {
           selectedChartPointIndex = null;
           tooltipPosition = null;
         } else {
-          selectedChartPointIndex = closestIndex;
-          tooltipPosition = closestPoint;
+          selectedChartPointIndex = idx;
+          tooltipPosition = pt;
         }
       });
     } else {
@@ -1327,77 +1404,168 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-  // 차트 툴팁 위젯
+  // 차트 툴팁 (공통: 흰 배경, 수·이 배지는 수정하기 바텀시트와 동일)
   Widget _buildChartTooltip(
       Map<String, dynamic> data, double chartWidth, double chartHeight) {
     if (tooltipPosition == null) return const SizedBox.shrink();
 
-    if (data['systolic'] == null || data['diastolic'] == null) {
+    if ((data['recordCount'] as int? ?? 0) == 0) {
       return const SizedBox.shrink();
     }
 
-    final systolic = data['systolic'] as int;
-    final diastolic = data['diastolic'] as int;
+    final systolicMin = data['systolicMin'] as int;
+    final systolicMax = data['systolicMax'] as int;
+    final diastolicMin = data['diastolicMin'] as int;
+    final diastolicMax = data['diastolicMax'] as int;
+    final recordCount = data['recordCount'] as int? ?? 0;
     final record = data['record'] as BloodPressureRecord?;
 
-    String dateLabel;
-    if (selectedPeriod != '일' && record != null) {
-      // 주/월 그래프: 날짜 + 시간 형식 (10/20 14:30)
-      final dateStr = DateFormat('M/d').format(record.measuredAt);
-      final timeStr = DateFormat('HH:mm').format(record.measuredAt);
-      dateLabel = '$dateStr $timeStr';
-    } else if (record != null) {
-      // 일별 그래프: 시간만 표시
-      dateLabel = DateFormat('HH:mm').format(record.measuredAt);
+    final bool isRange = recordCount >= 2;
+    final String sysText =
+        isRange ? '$systolicMin~$systolicMax' : '$systolicMax';
+    final String diaText =
+        isRange ? '$diastolicMin~$diastolicMax' : '$diastolicMax';
+
+    String headerText;
+    if (selectedPeriod == '일') {
+      if (record != null) {
+        final d = record.measuredAt;
+        headerText = '${d.hour}시 ${d.minute}분';
+      } else {
+        final slot = data['date']?.toString() ?? '';
+        final h = int.tryParse(slot) ?? 0;
+        headerText = '$h시 0분';
+      }
+    } else if (selectedPeriod == '주') {
+      if (record != null) {
+        final d = record.measuredAt;
+        headerText = '${d.month}월 ${d.day}일';
+      } else {
+        headerText = data['date']?.toString() ?? '';
+      }
     } else {
-      // fallback
-      dateLabel = data['date'] is String ? data['date'] as String : '시간';
+      final month = int.tryParse(data['date']?.toString() ?? '') ??
+          selectedDate.month;
+      headerText = '${selectedDate.year}년 $month월';
     }
+
+    const double tooltipW = 88.0;
+    const double tooltipH = 82.0;
 
     final calculatedTooltipPosition = ChartConstants.calculateTooltipPosition(
       tooltipPosition!,
-      ChartConstants.tooltipWidth,
-      ChartConstants.tooltipHeight,
+      tooltipW,
+      tooltipH,
       chartWidth,
       chartHeight,
     );
 
-    return Positioned(
-      left: calculatedTooltipPosition.dx,
-      top: calculatedTooltipPosition.dy,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    // 툴팁 width 제한
+    final maxTooltipWidth = math.min(
+      142.0,
+      math.max(96.0, chartWidth - calculatedTooltipPosition.dx - 8),
+    );
+
+    Widget valueRowWithBadge({
+      required String badgeLabel,
+      required Color badgeColor,
+      required String value,
+    }) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 16,
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            decoration: ShapeDecoration(
+              color: badgeColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(19),
+              ),
             ),
-          ],
+            child: Center(
+              child: Text(
+                badgeLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 14,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Transform.translate(
+      offset: Offset(
+        calculatedTooltipPosition.dx - tooltipPosition!.dx,
+        calculatedTooltipPosition.dy - tooltipPosition!.dy,
+      ),
+      child: ConstrainedBox(
+        // 툴팁 width 제한
+        constraints: BoxConstraints(
+          minWidth: 88,
+          maxWidth: maxTooltipWidth,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$systolic / $diastolic mmHg',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF000000).withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              dateLabel,
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 11,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                headerText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  fontFamily: 'Gmarket Sans TTF',
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Center(
+                child: valueRowWithBadge(
+                  badgeLabel: '수',
+                  badgeColor: const Color(0xFF85B0FF),
+                  value: sysText,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Center(
+                child: valueRowWithBadge(
+                  badgeLabel: '이',
+                  badgeColor: const Color(0xFFFFBC71),
+                  value: diaText,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
