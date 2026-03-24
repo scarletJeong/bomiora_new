@@ -346,6 +346,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   Widget _summaryCard(String title, String value) {
     final bool hasData = value != '-';
     return Container(
+      constraints: const BoxConstraints(minHeight: 90),
       padding: const EdgeInsets.only(bottom: 10),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(

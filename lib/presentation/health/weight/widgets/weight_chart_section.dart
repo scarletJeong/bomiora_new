@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/chart_layout.dart';
+
+const double _weightYAxisUnitBandHeight = 16.0;
+
 /// 주·월 그래프와 동일: 상단 `(kg)` 밴드 + 숫자 눈금 Stack(가운데 정렬, 11pt)
 Widget _buildWeightYAxisStripLikePeriodChart({
   required List<double> yLabels,
@@ -11,7 +14,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
     builder: (context, constraints) {
       final totalH = constraints.maxHeight;
       final kgBand =
-          showYAxisKgHeader && yLabels.length > 1 ? totalH / 6.0 : 0.0;
+          showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
 
       Widget numericLabels(double forHeight) {
         final n = yLabels.length;
@@ -20,8 +23,9 @@ Widget _buildWeightYAxisStripLikePeriodChart({
           height: forHeight,
           child: LayoutBuilder(
             builder: (context, lc) {
-              const topPad = 6.0;
-              const botPad = 6.0;
+              // 차트 그리드의 상하 여백(20)과 동일하게 맞춰 라벨/선 정렬
+              const topPad = 20.0;
+              const botPad = 20.0;
               final h = lc.maxHeight - topPad - botPad;
               return Stack(
                 clipBehavior: Clip.none,
@@ -58,7 +62,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                   SizedBox(
                     height: kgBand,
                     child: Align(
-                      alignment: Alignment.topCenter,
+                      alignment: Alignment.bottomCenter,
                       child: Text(
                         unitLabel,
                         style: TextStyle(
@@ -373,7 +377,7 @@ class WeightEmptyChart extends StatelessWidget {
               builder: (context, constraints) {
                 final totalH = constraints.maxHeight;
                 final kgBand = showYAxisKgHeader && yLabels.length > 1
-                    ? totalH / 6.0
+                    ? _weightYAxisUnitBandHeight
                     : 0.0;
                 final zoneH = totalH - kgBand;
 
@@ -537,7 +541,7 @@ class WeightDataChart extends StatelessWidget {
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
               final kgBand =
-                  showYAxisKgHeader && yLabels.length > 1 ? totalH / 6.0 : 0.0;
+                  showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
               final zoneH = totalH - kgBand;
 
               return Row(
@@ -652,7 +656,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
               final kgBand =
-                  showYAxisKgHeader && yLabels.length > 1 ? totalH / 6.0 : 0.0;
+                  showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
               final zoneH = totalH - kgBand;
               final chartW =
                   constraints.maxWidth -
@@ -987,7 +991,8 @@ class _WeightMonthlyRangePainter extends CustomPainter {
       final yMin = toY(minWeight);
       final yMax = toY(maxWeight);
 
-      if (count == 1 || (yMin - yMax).abs() < 2) {
+      // 월별은 "해당 월 측정 2건 이상"이면 높이가 작아도 막대로 유지
+      if (count == 1) {
         final radius = selectedIndex == dataIndex ? 6.5 : 5.0;
         canvas.drawCircle(
             Offset(x, (yMin + yMax) / 2), radius, singlePointPaint);
@@ -1056,7 +1061,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
               final kgBand =
-                  showYAxisKgHeader && yLabels.length > 1 ? totalH / 6.0 : 0.0;
+                  showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
               final zoneH = totalH - kgBand;
               final chartW =
                   constraints.maxWidth -

@@ -320,12 +320,14 @@ class _WeightListScreenState extends State<WeightListScreen> {
       ];
     }
 
-    // 주간 등 범위가 4kg 초과: c±2로는 축이 데이터를 못 덮어 omit에 의해 막대가 전부 사라짐 → min~max를 5눈금으로 균등 분할
-    const pad = 0.25;
-    final hi = maxW + pad;
-    final lo = minW - pad;
-    final step = (hi - lo) / 4.0;
-    return List<double>.generate(5, (i) => hi - i * step);
+    // 범위가 넓을 때도 눈금선은 정수(.0) 기준으로 고정
+    final span = maxW - minW;
+    final stepInt = (span / 4.0).ceil().clamp(1, 100);
+    int topInt = ((maxW / stepInt).ceil()) * stepInt;
+    while ((topInt - 4 * stepInt) > minW) {
+      topInt -= stepInt;
+    }
+    return List<double>.generate(5, (i) => (topInt - i * stepInt).toDouble());
   }
 
   /// 확대 화면 전용: 현재 그래프에 쓰인 체중들의 평균을 가운데(4번째 눈금)로,
@@ -355,16 +357,20 @@ class _WeightListScreenState extends State<WeightListScreen> {
     final maxW = weights.reduce((a, b) => a > b ? a : b);
 
     if (maxW - minW > 6) {
-      const pad = 0.25;
-      final hi = maxW + pad;
-      final lo = minW - pad;
-      final step = (hi - lo) / 6.0;
-      return List<double>.generate(7, (i) => hi - i * step);
+      // 확대 그래프도 정수(.0) 눈금 기준
+      final span = maxW - minW;
+      final stepInt = (span / 6.0).ceil().clamp(1, 100);
+      int topInt = ((maxW / stepInt).ceil()) * stepInt;
+      while ((topInt - 6 * stepInt) > minW) {
+        topInt -= stepInt;
+      }
+      return List<double>.generate(7, (i) => (topInt - i * stepInt).toDouble());
     }
 
     final sum = weights.fold<double>(0, (a, b) => a + b);
     final avg = sum / weights.length;
-    return List<double>.generate(7, (i) => avg + (3 - i));
+    final center = avg.round();
+    return List<double>.generate(7, (i) => (center + (3 - i)).toDouble());
   }
 
   @override
@@ -1150,8 +1156,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
         chartHeight: height,
         timeOffset: timeOffset,
         selectedDate: selectedDate,
-        showYAxisKgHeader: !expandedChartView,
-        omitOutOfRangeWeights: !expandedChartView,
+        showYAxisKgHeader: true,
+        // 메인에서도 월/주는 범위 밖 잘림 없이 표시(확대와 동일 동작)
+        omitOutOfRangeWeights: selectedPeriod == '일' ? !expandedChartView : false,
         onTimeOffsetChanged: (newOffset) {
           setState(() {
             timeOffset = newOffset;
@@ -1174,7 +1181,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         selectedDate: selectedDate,
         timeOffset: timeOffset,
         yLabels: yLabels,
-        showYAxisKgHeader: !expandedChartView,
+        showYAxisKgHeader: true,
       ),
     );
   }

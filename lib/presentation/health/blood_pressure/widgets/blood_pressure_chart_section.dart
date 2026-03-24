@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
 
+const double bloodPressureYAxisUnitBandHeight = 16.0;
+
 /// 체중 그래프 Y축 스트립과 동일 레이아웃: 상단 단위 밴드 + 숫자 눈금
 Widget buildBloodPressureYAxisStrip({
   required List<double> yLabels,
@@ -12,7 +14,7 @@ Widget buildBloodPressureYAxisStrip({
     builder: (context, constraints) {
       final totalH = constraints.maxHeight;
       final unitBand =
-          showYAxisHeader && yLabels.length > 1 ? totalH / 6.0 : 0.0;
+          showYAxisHeader && yLabels.length > 1 ? bloodPressureYAxisUnitBandHeight : 0.0;
 
       Widget numericLabels(double forHeight) {
         final n = yLabels.length;
@@ -21,15 +23,16 @@ Widget buildBloodPressureYAxisStrip({
           height: forHeight,
           child: LayoutBuilder(
             builder: (context, lc) {
-              const topPad = 6.0;
-              const botPad = 6.0;
-              final h = lc.maxHeight - topPad - botPad;
+              // 플롯 그리드(top/bottom 20)와 Y축 숫자 위치를 일치시킨다.
+              const plotTopPad = 20.0;
+              const plotBottomPad = 20.0;
+              final h = lc.maxHeight - plotTopPad - plotBottomPad;
               return Stack(
                 clipBehavior: Clip.none,
                 children: yLabels.asMap().entries.map((e) {
                   final i = e.key;
                   final label = e.value;
-                  final y = topPad + h * i / (n - 1);
+                  final y = plotTopPad + h * i / (n - 1);
                   return Positioned(
                     top: y - 8,
                     left: 0,
@@ -59,7 +62,7 @@ Widget buildBloodPressureYAxisStrip({
                   SizedBox(
                     height: unitBand,
                     child: Align(
-                      alignment: Alignment.topCenter,
+                      alignment: Alignment.bottomCenter,
                       child: Text(
                         unitLabel,
                         style: TextStyle(
@@ -100,6 +103,7 @@ class BloodPressureChartPainter extends CustomPainter {
   final List<Map<String, dynamic>> data;
   final double minValue;
   final double maxValue;
+  final List<double>? yLabels;
   final int? highlightedIndex;
   final bool isToday;
   final double timeOffset;
@@ -111,6 +115,7 @@ class BloodPressureChartPainter extends CustomPainter {
     this.data,
     this.minValue,
     this.maxValue, {
+    this.yLabels,
     this.highlightedIndex,
     required this.isToday,
     required this.timeOffset,
@@ -183,8 +188,9 @@ class BloodPressureChartPainter extends CustomPainter {
       ..color = Colors.grey[200]!
       ..strokeWidth = 0.5;
 
-    final yValues = [250, 200, 150, 100, 50];
-    final dashedYValues = [225, 175, 125, 75];
+    final yValues = (yLabels != null && yLabels!.length >= 2)
+        ? yLabels!
+        : [maxValue, minValue];
 
     for (int i = 0; i < yValues.length; i++) {
       const double topPadding = 20.0;
@@ -198,8 +204,8 @@ class BloodPressureChartPainter extends CustomPainter {
       );
     }
 
-    for (int dashedValue in dashedYValues) {
-      double normalizedY = (250 - dashedValue) / (250 - 50);
+    for (int i = 0; i < yValues.length - 1; i++) {
+      final normalizedY = (i + 0.5) / (yValues.length - 1);
       const double topPadding = 20.0;
       const double bottomPadding = 20.0;
       double y =
@@ -240,7 +246,8 @@ class BloodPressureChartPainter extends CustomPainter {
       double toY(int value) {
         const double topPadding = 20.0;
         const double bottomPadding = 20.0;
-        final normalized = (250 - value) / (250 - 50);
+        final clampedValue = value.clamp(minValue.toInt(), maxValue.toInt());
+        final normalized = (maxValue - clampedValue) / (maxValue - minValue);
         return topPadding + (size.height - topPadding - bottomPadding) * normalized;
       }
 
@@ -308,6 +315,9 @@ class BloodPressureChartPainter extends CustomPainter {
   bool shouldRepaint(covariant BloodPressureChartPainter oldDelegate) {
     return oldDelegate.cellCenterXSlots != cellCenterXSlots ||
         oldDelegate.data != data ||
+        oldDelegate.minValue != minValue ||
+        oldDelegate.maxValue != maxValue ||
+        oldDelegate.yLabels != yLabels ||
         oldDelegate.highlightedIndex != highlightedIndex ||
         oldDelegate.timeOffset != timeOffset ||
         oldDelegate.isToday != isToday;
@@ -316,6 +326,10 @@ class BloodPressureChartPainter extends CustomPainter {
 
 /// 빈 차트용 그리드 페인터
 class EmptyChartGridPainter extends CustomPainter {
+  final List<double> yLabels;
+
+  const EmptyChartGridPainter({required this.yLabels});
+
   @override
   void paint(Canvas canvas, Size size) {
     final gridPaint = Paint()
@@ -326,8 +340,7 @@ class EmptyChartGridPainter extends CustomPainter {
       ..color = Colors.grey[200]!
       ..strokeWidth = 0.5;
 
-    final yValues = [250, 200, 150, 100, 50];
-    final dashedYValues = [225, 175, 125, 75];
+    final yValues = yLabels.length >= 2 ? yLabels : [200, 0];
 
     for (int i = 0; i < yValues.length; i++) {
       const double topPadding = 20.0;
@@ -341,8 +354,8 @@ class EmptyChartGridPainter extends CustomPainter {
       );
     }
 
-    for (int dashedValue in dashedYValues) {
-      double normalizedY = (250 - dashedValue) / (250 - 50);
+    for (int i = 0; i < yValues.length - 1; i++) {
+      final normalizedY = (i + 0.5) / (yValues.length - 1);
       const double topPadding = 20.0;
       const double bottomPadding = 20.0;
       double y =

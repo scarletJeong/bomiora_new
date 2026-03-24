@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../common/chart_layout.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart'
-    show buildBloodPressureYAxisStrip;
+    show buildBloodPressureYAxisStrip, bloodPressureYAxisUnitBandHeight;
 import 'blood_sugar_tooltip.dart';
 
 /// 반지름 [r]인 두 원의 교차 면적이 π·r²·[minAreaFraction] 이상일 때의 최대 중심거리 (이하이면 겹침으로 본다).
@@ -62,6 +62,8 @@ int _tooltipMeasurementTypeOrder(String? type) {
 List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   List<Map<String, dynamic>> data,
   Size size,
+  double minValue,
+  double maxValue,
 ) {
   final indices = <int>[];
   for (var i = 0; i < data.length; i++) {
@@ -88,7 +90,8 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   const plotBottom = 20.0;
 
   double yForValue(int v) {
-    final normalized = (300 - v) / (300 - 50);
+    final clamped = v.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+    final normalized = (maxValue - clamped) / (maxValue - minValue);
     return plotTop + (size.height - plotTop - plotBottom) * normalized;
   }
 
@@ -396,9 +399,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, outerConstraints) {
-                final totalH = outerConstraints.maxHeight;
                 final showYHeader = yLabels.length > 1;
-                final headerBand = showYHeader ? totalH / 6.0 : 0.0;
+                final headerBand =
+                    showYHeader ? bloodPressureYAxisUnitBandHeight : 0.0;
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -433,15 +436,18 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
               },
             ),
           ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: EdgeInsets.only(
-              left: ChartConstants.weightChartYAxisStripWidth,
-            ),
-            child: buildBloodSugarXAxisLabels(
-              selectedPeriod: widget.selectedPeriod,
-              selectedDate: widget.selectedDate,
-              timeOffset: widget.timeOffset,
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 20,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: ChartConstants.weightChartYAxisStripWidth,
+              ),
+              child: buildBloodSugarXAxisLabels(
+                selectedPeriod: widget.selectedPeriod,
+                selectedDate: widget.selectedDate,
+                timeOffset: widget.timeOffset,
+              ),
             ),
           ),
         ],
@@ -492,12 +498,19 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         children: [
           Positioned.fill(
             child: isEmpty
-                ? CustomPaint(painter: EmptyBloodSugarChartGridPainter())
+                ? CustomPaint(
+                    painter: EmptyBloodSugarChartGridPainter(
+                      yLabels: widget.yLabels,
+                      minValue: widget.yLabels.last,
+                      maxValue: widget.yLabels.first,
+                    ),
+                  )
                 : CustomPaint(
                     painter: BloodSugarChartPainter(
                       chartData,
-                      50,
-                      300,
+                      widget.yLabels.last,
+                      widget.yLabels.first,
+                      yLabels: widget.yLabels,
                       highlightedIndex: widget.selectedChartPointIndex,
                       isToday: widget.isToday,
                       timeOffset: widget.timeOffset,
@@ -514,6 +527,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 widget.selectedChartPointIndex!,
                 chartW,
                 chartH,
+                widget.yLabels.last,
+                widget.yLabels.first,
               ),
               selectedPeriod: widget.selectedPeriod,
               selectedDate: widget.selectedDate,
@@ -554,10 +569,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
 
     final inOverlapDataIndex = <int>{};
     if (widget.selectedPeriod == '주' || widget.selectedPeriod == '월') {
-      final occ = bloodSugarComputeWeekMonthOverlapClusters(
-        chartData,
-        Size(chartWidth, chartHeight),
-      );
+      final occ = bloodSugarComputeWeekMonthOverlapClusters(chartData,
+          Size(chartWidth, chartHeight), widget.yLabels.last, widget.yLabels.first);
       for (var ci = 0; ci < occ.length; ci++) {
         final c = occ[ci];
         for (final di in c.dataIndices) {
@@ -582,8 +595,14 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       }
 
       final int bloodSugar = chartData[i]['bloodSugar'] as int;
-      final double normalizedValue = (300 - bloodSugar) / (300 - 50);
-      final double y = chartHeight * normalizedValue;
+      const double topPadding = 20.0;
+      const double bottomPadding = 20.0;
+      final clamped =
+          bloodSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
+      final double normalizedValue =
+          (widget.yLabels.first - clamped) / (widget.yLabels.first - widget.yLabels.last);
+      final double y = topPadding +
+          (chartHeight - topPadding - bottomPadding) * normalizedValue;
       considerPoint(x, y, i);
     }
 
@@ -604,12 +623,16 @@ Map<String, dynamic> _tooltipRowForChartIndex(
   int index,
   double chartWidth,
   double chartHeight,
+  double minValue,
+  double maxValue,
 ) {
   if (index < 0) {
     final ci = -index - 1;
     final clusters = bloodSugarComputeWeekMonthOverlapClusters(
       chartData,
       Size(chartWidth, chartHeight),
+      minValue,
+      maxValue,
     );
     if (ci < 0 || ci >= clusters.length) {
       return chartData.isNotEmpty ? chartData[0] : {};
@@ -808,6 +831,7 @@ class BloodSugarChartPainter extends CustomPainter {
   final List<Map<String, dynamic>> data;
   final double minValue;
   final double maxValue;
+  final List<double>? yLabels;
   final int? highlightedIndex;
   final bool isToday;
   final double timeOffset;
@@ -817,6 +841,7 @@ class BloodSugarChartPainter extends CustomPainter {
     this.data,
     this.minValue,
     this.maxValue, {
+    this.yLabels,
     this.highlightedIndex,
     required this.isToday,
     required this.timeOffset,
@@ -840,18 +865,20 @@ class BloodSugarChartPainter extends CustomPainter {
     final dashedGridPaint = Paint()
       ..color = Colors.grey[200]!
       ..strokeWidth = 0.5;
-    final yValues = [300, 250, 200, 150, 100, 50];
-    final dashedYValues = [275, 225, 175, 125, 75];
+    final yValues = (yLabels != null && yLabels!.length >= 2)
+        ? yLabels!
+        : [maxValue, minValue];
 
     for (int i = 0; i < yValues.length; i++) {
       const topPadding = 20.0;
       const bottomPadding = 20.0;
-      final y = topPadding + (size.height - topPadding - bottomPadding) * i / 5;
+      final y = topPadding +
+          (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
       canvas.drawLine(Offset(x0, y), Offset(x0 + chartWidth, y), gridPaint);
     }
 
-    for (final dashedValue in dashedYValues) {
-      final normalizedY = (300 - dashedValue) / (300 - 50);
+    for (int i = 0; i < yValues.length - 1; i++) {
+      final normalizedY = (i + 0.5) / (yValues.length - 1);
       const topPadding = 20.0;
       const bottomPadding = 20.0;
       final y =
@@ -912,7 +939,8 @@ class BloodSugarChartPainter extends CustomPainter {
       }
 
       final bloodSugar = data[i]['bloodSugar'] as int;
-      final normalized = (300 - bloodSugar) / (300 - 50);
+      final clamped = bloodSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+      final normalized = (maxValue - clamped) / (maxValue - minValue);
       final y = _plotTopPadding +
           (size.height - _plotTopPadding - _plotBottomPadding) * normalized;
 
@@ -966,10 +994,16 @@ class BloodSugarChartPainter extends CustomPainter {
     }
     if (indices.isEmpty) return;
 
-    final overlapRender = bloodSugarComputeWeekMonthOverlapClusters(data, size);
+    final overlapRender = bloodSugarComputeWeekMonthOverlapClusters(
+      data,
+      size,
+      minValue,
+      maxValue,
+    );
 
     double yForValue(int v) {
-      final normalized = (300 - v) / (300 - 50);
+      final clamped = v.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+      final normalized = (maxValue - clamped) / (maxValue - minValue);
       return _plotTopPadding +
           (size.height - _plotTopPadding - _plotBottomPadding) * normalized;
     }
@@ -1103,6 +1137,16 @@ class BloodSugarChartPainter extends CustomPainter {
 }
 
 class EmptyBloodSugarChartGridPainter extends CustomPainter {
+  final List<double>? yLabels;
+  final double minValue;
+  final double maxValue;
+
+  EmptyBloodSugarChartGridPainter({
+    this.yLabels,
+    this.minValue = 20,
+    this.maxValue = 200,
+  });
+
   @override
   void paint(Canvas canvas, Size size) {
     const x0 = 8.5;
@@ -1114,18 +1158,20 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
     final dashedGridPaint = Paint()
       ..color = Colors.grey[200]!
       ..strokeWidth = 0.5;
-    final yValues = [300, 250, 200, 150, 100, 50];
-    final dashedYValues = [275, 225, 175, 125, 75];
+    final yValues = (yLabels != null && yLabels!.length >= 2)
+        ? yLabels!
+        : [maxValue, minValue];
 
     for (int i = 0; i < yValues.length; i++) {
       const topPadding = 20.0;
       const bottomPadding = 20.0;
-      final y = topPadding + (size.height - topPadding - bottomPadding) * i / 5;
+      final y = topPadding +
+          (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
       canvas.drawLine(Offset(x0, y), Offset(x0 + plotRight, y), gridPaint);
     }
 
-    for (final dashedValue in dashedYValues) {
-      final normalizedY = (300 - dashedValue) / (300 - 50);
+    for (int i = 0; i < yValues.length - 1; i++) {
+      final normalizedY = (i + 0.5) / (yValues.length - 1);
       const topPadding = 20.0;
       const bottomPadding = 20.0;
       final y =

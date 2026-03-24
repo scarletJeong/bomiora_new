@@ -415,8 +415,12 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return false;
   }
 
-  // Y축 범위 계산 (고정 범위)
-  List<double> getYAxisLabels() {
+  // Y축 범위 계산
+  // 확대 그래프: 0~200, 20 간격(총 11개)
+  List<double> getYAxisLabels({bool forExpandedChart = false}) {
+    if (forExpandedChart) {
+      return List<double>.generate(11, (i) => (200 - i * 20).toDouble());
+    }
     return [250, 200, 150, 100, 50];
   }
 
@@ -1025,9 +1029,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 차트
   Widget _buildChart(
       {bool showExpandButton = true,
+      bool forExpandedChart = false,
       double chartHeight = ChartConstants.healthChartHeight}) {
     final chartData = getChartData();
-    final yLabels = getYAxisLabels();
+    final yLabels = getYAxisLabels(forExpandedChart: forExpandedChart);
 
     Widget chartBody;
 
@@ -1138,7 +1143,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             child: LayoutBuilder(builder: (context, outerConstraints) {
               final totalH = outerConstraints.maxHeight;
               final showYHeader = yLabels.length > 1;
-              final headerBand = showYHeader ? totalH / 6.0 : 0.0;
+              final headerBand =
+                  showYHeader ? bloodPressureYAxisUnitBandHeight : 0.0;
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1160,6 +1166,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                                 chartData,
                                 plotConstraints,
                                 isEmpty,
+                                yLabels,
                               );
                             },
                           ),
@@ -1185,7 +1192,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
   // 차트 영역 빌드
   Widget _buildChartArea(List<Map<String, dynamic>> chartData,
-      BoxConstraints constraints, bool isEmpty) {
+      BoxConstraints constraints, bool isEmpty, List<double> yLabels) {
     _bpLastPlotWidth = constraints.maxWidth;
     final chartW = constraints.maxWidth;
     final chartH = constraints.maxHeight;
@@ -1220,8 +1227,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               _handleChartTapToggle(
                 details.localPosition,
                 chartData,
-                50,
-                250,
+                yLabels.last,
+                yLabels.first,
                 chartW,
                 chartH,
               );
@@ -1231,12 +1238,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         children: [
           Positioned.fill(
             child: isEmpty
-                ? CustomPaint(painter: EmptyChartGridPainter())
+                ? CustomPaint(painter: EmptyChartGridPainter(yLabels: yLabels))
                 : CustomPaint(
                     painter: BloodPressureChartPainter(
                       chartData,
-                      50, // 최소값 (고정)
-                      250, // 최대값 (고정)
+                      yLabels.last,
+                      yLabels.first,
+                      yLabels: yLabels,
                       highlightedIndex: selectedChartPointIndex,
                       isToday: _isToday(),
                       timeOffset: timeOffset,
@@ -1290,7 +1298,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     const double topPadding = 20.0;
     const double bottomPadding = 20.0;
     double toY(int value) {
-      final nv = (250 - value) / (250 - 50);
+      final clampedValue = value.clamp(minValue.toInt(), maxValue.toInt());
+      final nv = (maxValue - clampedValue) / (maxValue - minValue);
       return topPadding +
           (chartHeight - topPadding - bottomPadding) * nv;
     }
@@ -1384,6 +1393,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       chartBuilder: (_) =>
           _buildChart(
               showExpandButton: false,
+              forExpandedChart: true,
               chartHeight: ChartConstants.healthChartHeight),
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;

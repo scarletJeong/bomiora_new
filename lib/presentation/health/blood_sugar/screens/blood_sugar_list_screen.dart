@@ -362,9 +362,14 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     return i >= 0 ? i : 50;
   }
 
-  // Y축 범위 계산 (혈당 기준)
-  List<double> getYAxisLabels() {
-    return [300, 250, 200, 150, 100, 50]; // 혈당 범위: 50-300 mg/dL
+  // 메인 그래프 Y축: 기존 유지 (50~250)
+  List<double> getYAxisLabelsMain() {
+    return const [250, 200, 150, 100, 50];
+  }
+
+  // 확대 그래프 Y축: 요청 반영 (20~200, 20단위 10개)
+  List<double> getYAxisLabelsExpanded() {
+    return const [200, 180, 160, 140, 120, 100, 80, 60, 40, 20];
   }
 
   @override
@@ -583,7 +588,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         tooltipPosition: tooltipPosition,
                         isToday: _isToday(),
                         chartData: getChartData(),
-                        yLabels: getYAxisLabels(),
+                        yLabels: getYAxisLabelsMain(),
                         hasActualDailyData: (dailyRecordsCache[
                                     DateFormat('yyyy-MM-dd')
                                         .format(selectedDate)] ??
@@ -954,29 +959,38 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
           }
         },
       ),
-      chartBuilder: (_) => BloodSugarChartSection(
-        selectedPeriod: selectedPeriod,
-        selectedDate: selectedDate,
-        timeOffset: timeOffset,
-        selectedChartPointIndex: selectedChartPointIndex,
-        tooltipPosition: tooltipPosition,
-        isToday: _isToday(),
-        chartData: getChartData(),
-        yLabels: getYAxisLabels(),
-        hasActualDailyData:
-            (dailyRecordsCache[DateFormat('yyyy-MM-dd').format(selectedDate)] ??
-                    [])
-                .isNotEmpty,
-        showPeriodSelector: false,
-        showLegend: false,
-        showExpandButton: false,
-        chartHeight: ChartConstants.healthChartHeight,
-        onDragUpdate: _handleDragUpdate,
-        onSelectionChanged: (index, position) {
-          _setChartState(() {
-            selectedChartPointIndex = index;
-            tooltipPosition = position;
-          });
+      chartBuilder: (_) => LayoutBuilder(
+        builder: (context, constraints) {
+          final maxHeight = constraints.maxHeight;
+          final desired = ChartConstants.healthChartHeight;
+          final safeHeight = (maxHeight - 8).clamp(180.0, desired);
+
+          return BloodSugarChartSection(
+            selectedPeriod: selectedPeriod,
+            selectedDate: selectedDate,
+            timeOffset: timeOffset,
+            selectedChartPointIndex: selectedChartPointIndex,
+            tooltipPosition: tooltipPosition,
+            isToday: _isToday(),
+            chartData: getChartData(),
+            yLabels: getYAxisLabelsExpanded(),
+            hasActualDailyData:
+                (dailyRecordsCache[
+                            DateFormat('yyyy-MM-dd').format(selectedDate)] ??
+                        [])
+                    .isNotEmpty,
+            showPeriodSelector: false,
+            showLegend: false,
+            showExpandButton: false,
+            chartHeight: safeHeight,
+            onDragUpdate: _handleDragUpdate,
+            onSelectionChanged: (index, position) {
+              _setChartState(() {
+                selectedChartPointIndex = index;
+                tooltipPosition = position;
+              });
+            },
+          );
         },
       ),
       onRegisterRefresh: (refresh) {
