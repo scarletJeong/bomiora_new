@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// 건강 그래프 전체화면: 진입 시 가로 고정, 종료 시 세로 복귀 ([SystemChrome]).
 Future<void> openHealthChartExpandPage({
   required BuildContext context,
   required WidgetBuilder periodSelectorBuilder,
