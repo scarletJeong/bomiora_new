@@ -557,7 +557,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
   Widget _buildTopWeightSummaryCard() {
     final weight = selectedRecord?.weight ?? 0.0;
     final height = selectedRecord?.height ?? 0.0;
-    const targetWeight = 75.0;
+    const targetWeight = 50.0;
     final lostWeight =
         (weight > 0 && targetWeight > 0) ? (weight - targetWeight) : 0.0;
     final progressRatio = (weight <= 0 || targetWeight <= 0)

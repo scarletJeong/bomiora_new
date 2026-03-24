@@ -852,6 +852,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
 
     double x = tooltipPosition!.dx;
     double y = tooltipPosition!.dy;
+    // 임시 목쵸 체중
     const tooltipWidth = 120.0;
     const tooltipHeight = 52.0;
 
