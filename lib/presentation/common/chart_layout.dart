@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 /// 차트 관련 공통 상수들
 class ChartConstants {
+  /// 건강 모듈 목록·그래프 확대 공통 높이 (혈압/혈당/심박수/체중/걸음)
+  static const double healthChartHeight = 320.0;
+
   // Y축 관련 상수
   static const double yAxisLabelWidth = 25.0; // Y축 라벨 영역 너비
   static const double yAxisSpacing = 8.0; // Y축과 차트 사이 간격

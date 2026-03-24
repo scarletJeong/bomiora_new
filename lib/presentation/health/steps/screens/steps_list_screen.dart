@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -415,7 +416,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           // 그래프와 기간 선택(일자별/월별) 카드 간격
           const SizedBox(height: 3),
           SizedBox(
-            height: 180,
+            height: ChartConstants.healthChartHeight,
             child: _buildBarChartArea(),
           ),
         ],
@@ -462,28 +463,37 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           child: Column(
             children: [
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: List.generate(data.length, (index) {
-                    final value = data[index];
-                    final heightFactor = maxValue == 0 ? 0.0 : value / maxValue;
-                    return Expanded(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          width: 8,
-                          height: (140 * heightFactor).clamp(4, 140).toDouble(),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFF5A8D),
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(2.5),
-                              topRight: Radius.circular(2.5),
+                child: LayoutBuilder(
+                  builder: (context, barConstraints) {
+                    final maxBar =
+                        (barConstraints.maxHeight - 4).clamp(40.0, 600.0);
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(data.length, (index) {
+                        final value = data[index];
+                        final heightFactor =
+                            maxValue == 0 ? 0.0 : value / maxValue;
+                        return Expanded(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Container(
+                              width: 8,
+                              height: (maxBar * heightFactor)
+                                  .clamp(4.0, maxBar)
+                                  .toDouble(),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFF5A8D),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(2.5),
+                                  topRight: Radius.circular(2.5),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                     );
-                  }),
+                  },
                 ),
               ),
               const SizedBox(height: 8),

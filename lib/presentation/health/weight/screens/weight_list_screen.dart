@@ -1127,7 +1127,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
   // 5. 차트
   Widget _buildChartContent({
     bool showExpandButton = true,
-    double chartHeight = 280,
+    double chartHeight = ChartConstants.healthChartHeight,
     bool expandedChartView = false,
   }) {
     final chartData = getChartData();
@@ -1185,7 +1185,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
       periodSelectorBuilder: (_) => _buildPeriodButtons(),
       chartBuilder: (_) => _buildChartContent(
             showExpandButton: false,
-            chartHeight: 320,
+            chartHeight: ChartConstants.healthChartHeight,
             expandedChartView: true,
           ),
       onRegisterRefresh: (refresh) {

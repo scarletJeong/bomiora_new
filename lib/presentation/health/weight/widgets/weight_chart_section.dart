@@ -133,7 +133,7 @@ class WeightChartContent extends StatelessWidget {
     required this.yLabels,
     required this.dataChartBuilder,
     required this.emptyChartBuilder,
-    this.chartHeight = 280,
+    this.chartHeight = ChartConstants.healthChartHeight,
     this.showExpandButton = true,
     this.onExpand,
   });
