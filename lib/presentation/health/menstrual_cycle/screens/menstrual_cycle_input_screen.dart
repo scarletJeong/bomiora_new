@@ -28,6 +28,10 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  late final PageController _calendarPageController;
+
+  static final DateTime _calendarFirstDay = DateTime.utc(2020, 1, 1);
+  static final DateTime _calendarLastDay = DateTime.utc(2030, 12, 31);
 
   // 선택 모드 (시작일 선택 중인지 종료일 선택 중인지)
   bool _isSelectingStart = true;
@@ -37,6 +41,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   void initState() {
     super.initState();
     _cycleLengthController = TextEditingController(text: '$_cycleLength');
+    _calendarPageController = PageController(
+      initialPage: _monthPageIndex(_focusedDay),
+      // 1.0에 매우 가깝게 두어, 다음/이전 달이 아주 조금만 보이게 합니다.
+      viewportFraction: 1.0,
+    );
     _loadExistingData();
   }
 
@@ -54,14 +63,27 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         _clickCount = 2; // 기존 데이터가 있으면 이미 시작일과 종료일이 모두 선택된 상태
         _isSelectingStart = false; // 다음 클릭은 새로운 시작일 선택
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_calendarPageController.hasClients) {
+          _calendarPageController.jumpToPage(_monthPageIndex(_focusedDay));
+        }
+      });
     }
   }
 
   @override
   void dispose() {
+    _calendarPageController.dispose();
     _cycleLengthController.dispose();
     super.dispose();
   }
+
+  int _monthPageIndex(DateTime day) =>
+      (day.year - _calendarFirstDay.year) * 12 +
+      (day.month - _calendarFirstDay.month);
+
+  DateTime _monthFromPageIndex(int index) =>
+      DateTime(_calendarFirstDay.year, _calendarFirstDay.month + index, 1);
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +107,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         ),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -98,11 +120,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 fontWeight: FontWeight.w300,
               ),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 10),
             _buildCalendar(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 0),
             _buildCycleLengthSection(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
             _buildSaveButton(),
           ],
         ),
@@ -112,168 +134,177 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   Widget _buildCalendar() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Column(
         children: [
           _buildCalendarMonthHeader(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 0),
           _buildWeekdayHeader(),
-          const SizedBox(height: 20),
-          TableCalendar<dynamic>(
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            rowHeight: 60, // 요일 행 간격
-            daysOfWeekVisible: false,
-            headerVisible: false,
-            calendarFormat: _calendarFormat,
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              }
-            },
-            onDaySelected: (selectedDay, focusedDay) {
-              if (!mounted) return;
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-                _clickCount++;
-              });
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 380,
+            child: PageView.builder(
+              controller: _calendarPageController,
+              scrollDirection: Axis.vertical,
+              itemBuilder: (context, index) {
+                final monthDay = _monthFromPageIndex(index);
+                return TableCalendar<dynamic>(
+                  firstDay: _calendarFirstDay,
+                  lastDay: _calendarLastDay,
+                  focusedDay: monthDay,
+                  rowHeight: 60,
+                  daysOfWeekVisible: false,
+                  headerVisible: false,
+                  calendarFormat: _calendarFormat,
+                  availableGestures: AvailableGestures.none,
+                  onFormatChanged: (format) {
+                    if (_calendarFormat != format) {
+                      setState(() {
+                        _calendarFormat = format;
+                      });
+                    }
+                  },
+                  onPageChanged: (focusedDay) {
+                    if (!mounted) return;
+                    setState(() {
+                      _focusedDay = DateTime(
+                          focusedDay.year, focusedDay.month, 1);
+                    });
+                  },
+                  onDaySelected: (selectedDay, focusedDay) {
+                    if (!mounted) return;
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                      _clickCount++;
+                    });
 
-              // 홀수 클릭: 시작일 선택
-              if (_clickCount % 2 == 1) {
-                // 기존 종료일이 있고, 새로 선택한 시작일이 종료일보다 늦으면 순서 바꾸기
-                if (_lastPeriodEnd != null &&
-                    selectedDay.isAfter(_lastPeriodEnd!)) {
-                  // 기존 종료일을 새로운 시작일로, 새로 선택한 날짜를 종료일로
-                  _lastPeriodStart = _lastPeriodEnd;
-                  _lastPeriodEnd = selectedDay;
-                  _isSelectingStart = false; // 다음은 종료일 선택
-                } else {
-                  _lastPeriodStart = selectedDay;
-                  _lastPeriodEnd = null; // 시작일이 바뀌면 종료일 초기화
-                  _isSelectingStart = true;
-                }
-              } else {
-                // 짝수 클릭: 종료일 선택
-                if (_lastPeriodStart != null &&
-                    selectedDay.isAfter(_lastPeriodStart!)) {
-                  _lastPeriodEnd = selectedDay;
-                  _isSelectingStart = false;
-                } else if (_lastPeriodStart != null &&
-                    selectedDay.isBefore(_lastPeriodStart!)) {
-                  // 종료일이 시작일보다 이전이면 순서 바꾸기
-                  _lastPeriodEnd = _lastPeriodStart;
-                  _lastPeriodStart = selectedDay;
-                  _isSelectingStart = false;
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('종료일은 시작일보다 늦어야 합니다')),
-                  );
-                  // 잘못된 선택이면 클릭 카운트 되돌리기
-                  _clickCount--;
-                }
-              }
-            },
-            selectedDayPredicate: (day) {
-              if (_lastPeriodStart != null && _lastPeriodEnd != null) {
-                return day.isAtSameMomentAs(_lastPeriodStart!) ||
-                    day.isAtSameMomentAs(_lastPeriodEnd!) ||
-                    (day.isAfter(_lastPeriodStart!) &&
-                        day.isBefore(_lastPeriodEnd!));
-              } else if (_lastPeriodStart != null) {
-                return day.isAtSameMomentAs(_lastPeriodStart!);
-              }
-              return false;
-            },
-            rangeStartDay: _lastPeriodStart,
-            rangeEndDay: _lastPeriodEnd,
-            onRangeSelected: (start, end, focusedDay) {
-              if (!mounted) return;
-              setState(() {
-                _lastPeriodStart = start;
-                _lastPeriodEnd = end;
-                _focusedDay = focusedDay;
-              });
-            },
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              weekendTextStyle: const TextStyle(color: Colors.red),
-              holidayTextStyle: const TextStyle(color: Colors.red),
-              selectedDecoration: BoxDecoration(
-                color: Colors.pink,
-                shape: BoxShape.circle,
-              ),
-              todayDecoration: BoxDecoration(
-                color: Colors.pink[200],
-                shape: BoxShape.circle,
-              ),
-              // 날짜 사이에 이어지는 기본 라인(하이라이트 바) 제거
-              rangeHighlightColor: Colors.transparent,
-              withinRangeDecoration: BoxDecoration(
-                color: Colors.pink[50],
-                shape: BoxShape.circle,
-              ),
-              rangeStartDecoration: BoxDecoration(
-                color: Colors.pink,
-                shape: BoxShape.circle,
-              ),
-              rangeEndDecoration: BoxDecoration(
-                color: Colors.pink,
-                shape: BoxShape.circle,
-              ),
-            ),
-            calendarBuilders: CalendarBuilders(
-              defaultBuilder: (context, day, focusedDay) {
-                return _buildCalendarDayCell(
-                  day: day,
+                    if (_clickCount % 2 == 1) {
+                      if (_lastPeriodEnd != null &&
+                          selectedDay.isAfter(_lastPeriodEnd!)) {
+                        _lastPeriodStart = _lastPeriodEnd;
+                        _lastPeriodEnd = selectedDay;
+                        _isSelectingStart = false;
+                      } else {
+                        _lastPeriodStart = selectedDay;
+                        _lastPeriodEnd = null;
+                        _isSelectingStart = true;
+                      }
+                    } else {
+                      if (_lastPeriodStart != null &&
+                          selectedDay.isAfter(_lastPeriodStart!)) {
+                        _lastPeriodEnd = selectedDay;
+                        _isSelectingStart = false;
+                      } else if (_lastPeriodStart != null &&
+                          selectedDay.isBefore(_lastPeriodStart!)) {
+                        _lastPeriodEnd = _lastPeriodStart;
+                        _lastPeriodStart = selectedDay;
+                        _isSelectingStart = false;
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('종료일은 시작일보다 늦어야 합니다')),
+                        );
+                        _clickCount--;
+                      }
+                    }
+                  },
+                  selectedDayPredicate: (day) {
+                    if (_lastPeriodStart != null && _lastPeriodEnd != null) {
+                      return day.isAtSameMomentAs(_lastPeriodStart!) ||
+                          day.isAtSameMomentAs(_lastPeriodEnd!) ||
+                          (day.isAfter(_lastPeriodStart!) &&
+                              day.isBefore(_lastPeriodEnd!));
+                    } else if (_lastPeriodStart != null) {
+                      return day.isAtSameMomentAs(_lastPeriodStart!);
+                    }
+                    return false;
+                  },
+                  rangeStartDay: _lastPeriodStart,
+                  rangeEndDay: _lastPeriodEnd,
+                  onRangeSelected: (start, end, focusedDay) {
+                    if (!mounted) return;
+                    setState(() {
+                      _lastPeriodStart = start;
+                      _lastPeriodEnd = end;
+                      _focusedDay = focusedDay;
+                    });
+                  },
+                  calendarStyle: CalendarStyle(
+                    outsideDaysVisible: false,
+                    weekendTextStyle: const TextStyle(color: Colors.red),
+                    holidayTextStyle: const TextStyle(color: Colors.red),
+                    selectedDecoration: const BoxDecoration(
+                      color: Colors.pink,
+                      shape: BoxShape.circle,
+                    ),
+                    todayDecoration: BoxDecoration(
+                      color: Colors.pink[200],
+                      shape: BoxShape.circle,
+                    ),
+                    rangeHighlightColor: Colors.transparent,
+                    withinRangeDecoration: BoxDecoration(
+                      color: Colors.pink[50],
+                      shape: BoxShape.circle,
+                    ),
+                    rangeStartDecoration: const BoxDecoration(
+                      color: Colors.pink,
+                      shape: BoxShape.circle,
+                    ),
+                    rangeEndDecoration: const BoxDecoration(
+                      color: Colors.pink,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  calendarBuilders: CalendarBuilders(
+                    defaultBuilder: (context, day, focusedDay) =>
+                        _buildCalendarDayCell(day: day),
+                    todayBuilder: (context, day, focusedDay) =>
+                        _buildCalendarDayCell(
+                      day: day,
+                      borderColor: const Color(0xFFFF5A8D),
+                      textColor: const Color(0xFFFF5A8D),
+                    ),
+                    selectedBuilder: (context, day, focusedDay) =>
+                        _buildCalendarDayCell(
+                      day: day,
+                      backgroundColor: const Color(0xFFFF5A8D),
+                      borderColor: const Color(0xFFFF5A8D),
+                      textColor: Colors.white,
+                    ),
+                    rangeStartBuilder: (context, day, focusedDay) =>
+                        _buildCalendarDayCell(
+                      day: day,
+                      backgroundColor: const Color(0xFFFF5A8D),
+                      borderColor: const Color(0xFFFF5A8D),
+                      textColor: Colors.white,
+                    ),
+                    rangeEndBuilder: (context, day, focusedDay) =>
+                        _buildCalendarDayCell(
+                      day: day,
+                      backgroundColor: const Color(0xFFFF5A8D),
+                      borderColor: const Color(0xFFFF5A8D),
+                      textColor: Colors.white,
+                    ),
+                    withinRangeBuilder: (context, day, focusedDay) =>
+                        _buildCalendarDayCell(
+                      day: day,
+                      backgroundColor: const Color(0xFFFFEFF4),
+                      borderColor: const Color(0xFFD2D2D2),
+                      textColor: const Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  headerStyle: const HeaderStyle(
+                    formatButtonVisible: false,
+                    titleCentered: true,
+                  ),
                 );
               },
-              todayBuilder: (context, day, focusedDay) {
-                return _buildCalendarDayCell(
-                  day: day,
-                  borderColor: const Color(0xFFFF5A8D),
-                  textColor: const Color(0xFFFF5A8D),
-                );
+              onPageChanged: (index) {
+                final monthDay = _monthFromPageIndex(index);
+                if (!mounted) return;
+                setState(() {
+                  _focusedDay = monthDay;
+                });
               },
-              selectedBuilder: (context, day, focusedDay) {
-                return _buildCalendarDayCell(
-                  day: day,
-                  backgroundColor: const Color(0xFFFF5A8D),
-                  borderColor: const Color(0xFFFF5A8D),
-                  textColor: Colors.white,
-                );
-              },
-              rangeStartBuilder: (context, day, focusedDay) {
-                return _buildCalendarDayCell(
-                  day: day,
-                  backgroundColor: const Color(0xFFFF5A8D),
-                  borderColor: const Color(0xFFFF5A8D),
-                  textColor: Colors.white,
-                );
-              },
-              rangeEndBuilder: (context, day, focusedDay) {
-                return _buildCalendarDayCell(
-                  day: day,
-                  backgroundColor: const Color(0xFFFF5A8D),
-                  borderColor: const Color(0xFFFF5A8D),
-                  textColor: Colors.white,
-                );
-              },
-              withinRangeBuilder: (context, day, focusedDay) {
-                return _buildCalendarDayCell(
-                  day: day,
-                  backgroundColor: const Color(0xFFFFEFF4),
-                  borderColor: const Color(0xFFD2D2D2),
-                  textColor: const Color(0xFF1A1A1A),
-                );
-              },
-            ),
-            headerStyle: const HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
             ),
           ),
         ],
@@ -281,43 +312,129 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     );
   }
 
+  // 달력 월 헤더
   Widget _buildCalendarMonthHeader() {
     return Row(
       children: [
-        IconButton(
-          onPressed: () {
-            setState(() {
-              _focusedDay =
-                  DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
-            });
-          },
-          icon: const Icon(Icons.chevron_left, size: 20),
-          visualDensity: const VisualDensity(horizontal: -3, vertical: -3),
-        ),
-        Expanded(
-          child: Text(
-            DateFormat('yyyy년 M월').format(_focusedDay),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: _showMonthDropdown,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Row(
+              children: [
+                Text(
+                  DateFormat('yyyy년 M월').format(_focusedDay),
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.keyboard_arrow_down, size: 18),
+              ],
             ),
           ),
         ),
-        IconButton(
-          onPressed: () {
-            setState(() {
-              _focusedDay =
-                  DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
-            });
-          },
-          icon: const Icon(Icons.chevron_right, size: 20),
-          visualDensity: const VisualDensity(horizontal: -3, vertical: -3),
-        ),
+        const Spacer(),
       ],
     );
+  }
+
+  // 달력 월 드롭다운
+  Future<void> _showMonthDropdown() async {
+    final pickedMonth = await showDialog<int>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.15),
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_focusedDay.year}년',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 12,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 2.1,
+                  ),
+                  itemBuilder: (context, index) {
+                    final month = index + 1;
+                    final isSelected = month == _focusedDay.month;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => Navigator.of(dialogContext).pop(month),
+                      child: Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFFFFEFF4)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFFFF5A8D)
+                                : const Color(0xFFD9D9D9),
+                          ),
+                        ),
+                        child: Text(
+                          '$month월',
+                          style: TextStyle(
+                            color: isSelected
+                                ? const Color(0xFFFF5A8D)
+                                : const Color(0xFF1A1A1A),
+                            fontSize: 13,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (pickedMonth == null || !mounted) return;
+    _moveToYearMonth(_focusedDay.year, pickedMonth);
+  }
+
+  void _moveToYearMonth(int year, int month) {
+    final target = DateTime(year, month, 1);
+    final page = _monthPageIndex(target);
+    _calendarPageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+    setState(() {
+      _focusedDay = target;
+    });
   }
 
   Widget _buildWeekdayHeader() {
@@ -367,7 +484,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   Widget _buildCycleLengthSection() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -384,7 +500,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             children: [
               Container(
                 width: 51,
-                height: 30,
                 clipBehavior: Clip.antiAlias,
                 decoration: ShapeDecoration(
                   color: Colors.white,

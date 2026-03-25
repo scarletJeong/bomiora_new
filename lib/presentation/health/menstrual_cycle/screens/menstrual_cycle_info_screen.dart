@@ -218,22 +218,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   }
 
   Widget _buildCurrentStatusInfo() {
-    // selectedDate를 기준으로 현재 주기 일차 계산
-    final daysSinceLastPeriod = selectedDate.difference(_currentRecord!.lastPeriodStart).inDays;
-    final cycleDay = (daysSinceLastPeriod % _currentRecord!.cycleLength) + 1;
-    
-    // selectedDate를 기준으로 현재 단계 계산
-    MenstrualPhase currentPhase;
-    if (cycleDay <= _currentRecord!.periodLength) {
-      currentPhase = MenstrualPhase.menstrual; // 월경기
-    } else if (cycleDay <= 14) {
-      currentPhase = MenstrualPhase.follicular; // 난포기
-    } else if (cycleDay <= 17) {
-      currentPhase = MenstrualPhase.ovulation; // 배란기
-    } else {
-      currentPhase = MenstrualPhase.luteal; // 황체기
-    }
-    
+    final currentPhase = _currentRecord!.phaseOn(selectedDate);
     final phaseInfo = MenstrualPhaseInfo.getPhaseInfo(currentPhase);
     
     return Column(
@@ -735,24 +720,16 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
 
   // 현재 단계의 색상 반환
   Color _getCurrentPhaseColor() {
-    final daysSinceLastPeriod = selectedDate.difference(_currentRecord!.lastPeriodStart).inDays;
-    final cycleDay = (daysSinceLastPeriod % _currentRecord!.cycleLength) + 1;
-    
-    if (cycleDay <= 5) {
-      // 월경기 (1~5일) - 빨간색
-      return Colors.red[500]!;
-    } else if (cycleDay <= 14) {
-      // 난포기 (6~14일) - 주황색
-      return Colors.orange[500]!;
-    } else if (cycleDay <= 17) {
-      // 배란기 (15~17일) - 노란색
-      return Colors.yellow[500]!;
-    } else if (cycleDay <= 28) {
-      // 황체기 (18~28일) - 분홍색
-      return Colors.pink[500]!;
-    } else {
-      // 다음 주기 준비 (29일~) - 회색
-      return Colors.grey[500]!;
+    final currentPhase = _currentRecord!.phaseOn(selectedDate);
+    switch (currentPhase) {
+      case MenstrualPhase.menstrual:
+        return Colors.red[500]!;
+      case MenstrualPhase.follicular:
+        return Colors.orange[500]!;
+      case MenstrualPhase.ovulation:
+        return Colors.yellow[500]!;
+      case MenstrualPhase.luteal:
+        return Colors.pink[500]!;
     }
   }
 }

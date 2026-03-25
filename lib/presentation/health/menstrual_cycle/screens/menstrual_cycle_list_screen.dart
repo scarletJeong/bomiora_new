@@ -1,8 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
-import '../../health_common/widgets/health_date_selector.dart';
+import '../widgets/menstrual_cycle_date_header.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/services/auth_service.dart';
@@ -200,19 +202,9 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 날짜 선택 위젯
-          HealthDateSelector(
+          MenstrualCycleDateHeader(
             selectedDate: selectedDate,
-            onDateChanged: (newDate) {
-              setState(() {
-                selectedDate = newDate;
-              });
-            },
-            monthTextColor: const Color(0xFF898686),
-            selectedTextColor: const Color(0xFFFF5A8D),
-            unselectedTextColor: const Color(0xFFB7B7B7),
-            dividerColor: const Color(0xFFD2D2D2),
-            iconColor: const Color(0xFF898686),
+            onDateChanged: (d) => setState(() => selectedDate = d),
           ),
           const SizedBox(height: 16),
 
@@ -224,23 +216,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   }
 
   Widget _buildCurrentStatusInfo() {
-    // selectedDate를 기준으로 현재 주기 일차 계산
-    final daysSinceLastPeriod =
-        selectedDate.difference(_currentRecord!.lastPeriodStart).inDays;
-    final cycleDay = (daysSinceLastPeriod % _currentRecord!.cycleLength) + 1;
-
-    // selectedDate를 기준으로 현재 단계 계산
-    MenstrualPhase currentPhase;
-    if (cycleDay <= _currentRecord!.periodLength) {
-      currentPhase = MenstrualPhase.menstrual; // 월경기
-    } else if (cycleDay <= 14) {
-      currentPhase = MenstrualPhase.follicular; // 난포기
-    } else if (cycleDay <= 17) {
-      currentPhase = MenstrualPhase.ovulation; // 배란기
-    } else {
-      currentPhase = MenstrualPhase.luteal; // 황체기
-    }
-
+    final currentPhase = _currentRecord!.phaseOn(selectedDate);
     final phaseInfo = MenstrualPhaseInfo.getPhaseInfo(currentPhase);
 
     return Column(
@@ -300,6 +276,16 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     final elapsedDays =
         selectedDate.difference(_currentRecord!.lastPeriodStart).inDays + 1;
     final boundedElapsedDays = elapsedDays.clamp(0, cycleLength);
+    final daySweep = (3.141592653589793 * 2) / cycleLength;
+    final markerAngle = -3.141592653589793 / 2 - (daySweep * boundedElapsedDays);
+    const chartSize = 200.0;
+    const markerDotSize = MenstrualCyclePainter.ringStrokeWidth + 4.0;
+    final center = chartSize / 2;
+    // Painter arc 중심선 반지름과 동일하게 맞춰 끝점 정렬
+    final markerRadius = (chartSize / 2 - MenstrualCyclePainter.arcCenterInset);
+    final markerX = center + markerRadius * cos(markerAngle);
+    final markerY = center + markerRadius * sin(markerAngle);
+    final todayLabel = DateFormat('M/d').format(selectedDate);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -312,6 +298,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
               width: 200,
               height: 200,
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   // 원 기본색은 흰색
                   Container(
@@ -399,6 +386,32 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: markerX - (markerDotSize / 2),
+                    top: markerY - (markerDotSize / 2),
+                    child: Container(
+                      width: markerDotSize,
+                      height: markerDotSize,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        border: Border.all(
+                          color: const Color(0xFFFF5A8D),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        todayLabel,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF1A1A1A),
                         ),
                       ),
                     ),
@@ -513,11 +526,11 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: const [
-           _PhaseLegendItem(color: Color(0xFFFFDFC3), label: '배란기'),
+          _PhaseLegendItem(color: Color(0xFFFFDFC3), label: '가임기',isCircle: true ),
           SizedBox(width: 10),
-          _PhaseLegendItem(color: Color(0xFFFEA38E), label: '가임기'),
+          _PhaseLegendItem(color: Color(0xFFFEA38E), label: '배란기', isCircle: true),
           SizedBox(width: 10),
-          _PhaseLegendItem(color: Color(0xFFFF5A8D), label: '생리기간'),
+          _PhaseLegendItem(color: Color(0xFFFF5A8D), label: '생리기간', isCircle: true),
         ],
       ),
     );
@@ -569,15 +582,15 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDateRangeCard(
-            title: '예상 배란일',
-            date: _ovulationRangeText(),
+            title: '예상 가임기',
+            date:
+                '${DateFormat('M월 d일').format(_currentRecord!.fertileWindowStart)} - ${DateFormat('M월 d일').format(_currentRecord!.fertileWindowEnd)}',
             color: const Color(0xFFFFDFC3),
           ),
           const SizedBox(height: 10),
           _buildDateRangeCard(
-            title: '예상 가임기',
-            date:
-                '${DateFormat('M월 d일').format(_currentRecord!.fertileWindowStart)} - ${DateFormat('M월 d일').format(_currentRecord!.fertileWindowEnd)}',
+            title: '예상 배란일',
+            date: _ovulationRangeText(),
             color: const Color(0xFFFEA38E),
           ),
           const SizedBox(height: 10),
@@ -593,10 +606,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   }
 
   String _ovulationRangeText() {
-    final start =
-        _currentRecord!.ovulationDate.subtract(const Duration(days: 1));
-    final end = _currentRecord!.ovulationDate.add(const Duration(days: 1));
-    return '${DateFormat('M월 d일').format(start)} - ${DateFormat('M월 d일').format(end)}';
+    return DateFormat('M월 d일').format(_currentRecord!.ovulationDate);
   }
 
   Widget _buildDateRangeCard({
@@ -728,6 +738,9 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
 
 // 생리주기 사분면별 진행을 그리는 CustomPainter
 class MenstrualCyclePainter extends CustomPainter {
+  static const double arcCenterInset = 11.0;
+  static const double ringStrokeWidth = 20.0;
+
   final int cycleLength;
   final int elapsedDays;
   final DateTime cycleStartDate;
@@ -749,7 +762,7 @@ class MenstrualCyclePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 8;
+    final radius = size.width / 2 - arcCenterInset;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
     if (cycleLength <= 0 || elapsedDays <= 0) return;
@@ -757,8 +770,9 @@ class MenstrualCyclePainter extends CustomPainter {
     final daySweep = (3.141592653589793 * 2) / cycleLength;
     final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 28 // 원 두께
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = ringStrokeWidth // 회색 바깥원 안쪽에 맞는 두께
+      // 일수 길이를 정확히 맞추기 위해 캡 확장을 제거
+      ..strokeCap = StrokeCap.butt;
 
     // 우선순위: 배란기 > 가임기 > 생리기간 > 회색
     // 따라서 그리기 순서는 회색 -> 생리기간 -> 가임기 -> 배란기
@@ -777,6 +791,7 @@ class MenstrualCyclePainter extends CustomPainter {
       daySweep: daySweep,
       paint: stroke,
       color: const Color(0xFFFF5A8D),
+      roundEndCap: true,
       shouldPaintDay: (dayDate) {
         final dayIndex = dayDate.difference(cycleStartDate).inDays + 1;
         return dayIndex >= 1 && dayIndex <= periodLength;
@@ -794,18 +809,97 @@ class MenstrualCyclePainter extends CustomPainter {
           !_isAfterDate(dayDate, fertileWindowEnd),
     );
 
-    final ovulationStart = ovulationDate.subtract(const Duration(days: 1));
-    final ovulationEnd = ovulationDate.add(const Duration(days: 1));
+    // 배란일은 1일만 표시
+    final ovulationStart = ovulationDate;
+    final ovulationEnd = ovulationDate;
+    final ovulationStroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = ringStrokeWidth
+      ..strokeCap = StrokeCap.round;
     _drawSegments(
       canvas: canvas,
       rect: rect,
       daySweep: daySweep,
-      paint: stroke,
+      paint: ovulationStroke,
       color: const Color(0xFFFEA38E),
+      // 원형차드 배란기 표시 넓이 조절
+      trimSweepEachSide: daySweep * 0.45,
       shouldPaintDay: (dayDate) =>
           !_isBeforeDate(dayDate, ovulationStart) &&
           !_isAfterDate(dayDate, ovulationEnd),
     );
+
+    // 가임기 시작일 위치 표시선
+    _drawPhaseMarker(
+      canvas: canvas,
+      center: center,
+      radius: radius,
+      daySweep: daySweep,
+      markerDate: fertileWindowStart,
+      roundEnd: false,
+    );
+
+    // 가임기 종료 경계(종료일 다음날 시작점) 표시선
+    _drawPhaseMarker(
+      canvas: canvas,
+      center: center,
+      radius: radius,
+      daySweep: daySweep,
+      markerDate: fertileWindowEnd.add(const Duration(days: 1)),
+      roundEnd: false,
+    );
+
+  }
+
+  void _drawPhaseMarker({
+    required Canvas canvas,
+    required Offset center,
+    required double radius,
+    required double daySweep,
+    required DateTime markerDate,
+    bool roundEnd = false,
+  }) {
+    final normalizedStart = DateTime(
+      cycleStartDate.year,
+      cycleStartDate.month,
+      cycleStartDate.day,
+    );
+    final normalizedMarker = DateTime(
+      markerDate.year,
+      markerDate.month,
+      markerDate.day,
+    );
+    final markerIndex = normalizedMarker.difference(normalizedStart).inDays;
+    if (markerIndex < 0 || markerIndex >= cycleLength) return;
+
+    final markerAngle = -3.141592653589793 / 2 - (daySweep * markerIndex);
+
+    final outerR = radius + (ringStrokeWidth / 2) - 0.5;
+    final innerR = radius - (ringStrokeWidth / 2) + 2.0;
+    final start = Offset(
+      center.dx + outerR * cos(markerAngle),
+      center.dy + outerR * sin(markerAngle),
+    );
+    final end = Offset(
+      center.dx + innerR * cos(markerAngle),
+      center.dy + innerR * sin(markerAngle),
+    );
+
+    final markerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = const Color(0xFF303030)
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.butt
+      ..isAntiAlias = false;
+    canvas.drawLine(start, end, markerPaint);
+
+    if (roundEnd) {
+      final capPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = const Color(0xFF303030)
+        ..isAntiAlias = true;
+      canvas.drawCircle(end, markerPaint.strokeWidth / 2, capPaint);
+    }
   }
 
   void _drawSegments({
@@ -815,6 +909,9 @@ class MenstrualCyclePainter extends CustomPainter {
     required Paint paint,
     required Color color,
     required bool Function(DateTime dayDate) shouldPaintDay,
+    double trimSweepEachSide = 0.0,
+    /// 생리기간 등: 호 끝만 둥글게(선 마커 없음). 시작은 butt 유지.
+    bool roundEndCap = false,
   }) {
     int? segmentStart;
 
@@ -836,13 +933,33 @@ class MenstrualCyclePainter extends CustomPainter {
         final segmentLength = endIndex - segmentStart + 1;
         if (segmentLength > 0) {
           paint.color = color;
+          final rawSweep = daySweep * segmentLength;
+          final canTrim = trimSweepEachSide > 0 &&
+              rawSweep > (trimSweepEachSide * 2 + 0.0001);
+          final startAngle = -3.141592653589793 / 2 -
+              (daySweep * segmentStart) -
+              (canTrim ? trimSweepEachSide : 0.0);
+          final sweep = -(rawSweep - (canTrim ? trimSweepEachSide * 2 : 0.0));
           canvas.drawArc(
             rect,
-            -3.141592653589793 / 2 - (daySweep * segmentStart),
-            -(daySweep * segmentLength),
+            startAngle,
+            sweep,
             false,
             paint,
           );
+          if (roundEndCap) {
+            final ringRadius = rect.width / 2;
+            final endAngle = startAngle + sweep;
+            final capCenter = Offset(
+              rect.center.dx + ringRadius * cos(endAngle),
+              rect.center.dy + ringRadius * sin(endAngle),
+            );
+            final capPaint = Paint()
+              ..style = PaintingStyle.fill
+              ..color = color
+              ..isAntiAlias = true;
+            canvas.drawCircle(capCenter, paint.strokeWidth / 2, capPaint);
+          }
         }
         segmentStart = null;
       }
@@ -877,10 +994,12 @@ class MenstrualCyclePainter extends CustomPainter {
 class _PhaseLegendItem extends StatelessWidget {
   final Color color;
   final String label;
+  final bool isCircle;
 
   const _PhaseLegendItem({
     required this.color,
     required this.label,
+    this.isCircle = false,
   });
 
   @override
@@ -893,9 +1012,11 @@ class _PhaseLegendItem extends StatelessWidget {
           height: 16.23,
           decoration: ShapeDecoration(
             color: color,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(3),
-            ),
+            shape: isCircle
+                ? const OvalBorder()
+                : RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(3),
+                  ),
           ),
         ),
         const SizedBox(width: 3),
