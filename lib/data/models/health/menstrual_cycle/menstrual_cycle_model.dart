@@ -1,3 +1,5 @@
+import 'menstrual_cycle_calculator.dart';
+
 class MenstrualCycleRecord {
   final int? id;
   final String mbId;
@@ -31,46 +33,65 @@ class MenstrualCycleRecord {
 
   // 배란일 계산 (다음 생리 예정일에서 14일 전)
   DateTime get ovulationDate {
-    return nextPeriodStart.subtract(const Duration(days: 14));
+    return lastPeriodStart.add(Duration(days: ovulationDay - 1));
   }
 
-  // 가임기 시작일 (배란일에서 5일 전)
+  int get ovulationDay => MenstrualCycleCalculator.ovulationDay(cycleLength);
+
+  // 가임기 시작일 (배란일에서 3일 전)
   DateTime get fertileWindowStart {
-    return ovulationDate.subtract(const Duration(days: 5));
+    return lastPeriodStart.add(Duration(days: fertileWindowStartDay - 1));
   }
+
+  int get fertileWindowStartDay =>
+      MenstrualCycleCalculator.fertileWindowStartDay(cycleLength);
 
   // 가임기 종료일 (배란일에서 1일 후)
   DateTime get fertileWindowEnd {
-    return ovulationDate.add(const Duration(days: 1));
+    return lastPeriodStart.add(Duration(days: fertileWindowEndDay - 1));
   }
+
+  int get fertileWindowEndDay =>
+      MenstrualCycleCalculator.fertileWindowEndDay(cycleLength);
 
   // 현재 생리주기에서 몇 일째인지 계산
   int get currentCycleDay {
-    final now = DateTime.now();
-    final daysSinceLastPeriod = now.difference(lastPeriodStart).inDays;
-    return (daysSinceLastPeriod % cycleLength) + 1;
+    return cycleDayOn(DateTime.now());
   }
 
   // 현재 생리주기 단계 반환
   MenstrualPhase get currentPhase {
-    final cycleDay = currentCycleDay;
-    
-    if (cycleDay <= periodLength) {
-      return MenstrualPhase.menstrual; // 월경기
-    } else if (cycleDay <= 14) {
-      return MenstrualPhase.follicular; // 난포기
-    } else if (cycleDay <= 17) {
-      return MenstrualPhase.ovulation; // 배란기
-    } else {
-      return MenstrualPhase.luteal; // 황체기
+    return phaseOn(DateTime.now());
+  }
+
+  int cycleDayOn(DateTime date) {
+    return MenstrualCycleCalculator.cycleDayForDate(
+      date: date,
+      cycleStartDate: lastPeriodStart,
+      cycleLength: cycleLength,
+    );
+  }
+
+  MenstrualPhase phaseOn(DateTime date) {
+    final cycleDay = cycleDayOn(date);
+    final safePeriodLength = periodLength.clamp(1, cycleLength).toInt();
+    final ovulation = ovulationDay;
+    if (cycleDay <= safePeriodLength) {
+      return MenstrualPhase.menstrual;
     }
+    if (cycleDay == ovulation) {
+      return MenstrualPhase.ovulation;
+    }
+    if (cycleDay < ovulation) {
+      return MenstrualPhase.follicular;
+    }
+    return MenstrualPhase.luteal;
   }
 
   // 현재 단계에 따른 상태 메시지
   String get currentPhaseMessage {
     final phase = currentPhase;
-    final cycleDay = currentCycleDay;
-    
+
     switch (phase) {
       case MenstrualPhase.menstrual:
         return '월경기입니다. 충분한 휴식을 취하세요.';
