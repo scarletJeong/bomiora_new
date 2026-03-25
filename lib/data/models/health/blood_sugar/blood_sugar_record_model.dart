@@ -136,9 +136,10 @@ class BloodSugarRecord {
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
       measuredAt: _parseDateTime(json['measured_at']),
       bloodSugar: _parseInt(json['blood_sugar']) ?? 0,
-      measurementType:
-          _parseString(json['measurement_type'] ?? json['measurementType']) ??
-              '',
+      measurementType: (_parseString(
+                  json['measurement_type'] ?? json['measurementType']) ??
+              '')
+          .trim(),
       status: _parseString(json['status']),
     );
   }

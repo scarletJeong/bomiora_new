@@ -3,6 +3,7 @@ class HeartRateRecord {
   final String mbId;
   final int heartRate;
   final DateTime measuredAt;
+  final String status;
   final String sourceType;
   final int? sourceRecordId;
   final DateTime? createdAt;
@@ -12,6 +13,7 @@ class HeartRateRecord {
     required this.mbId,
     required this.heartRate,
     required this.measuredAt,
+    this.status = '일상',
     this.sourceType = 'health_sync',
     this.sourceRecordId,
     this.createdAt,
@@ -23,6 +25,7 @@ class HeartRateRecord {
       'mb_id': mbId,
       'heart_rate': heartRate,
       'measured_at': measuredAt.toUtc().toIso8601String(),
+      'status': status,
       'source_type': sourceType,
       if (sourceRecordId != null) 'source_record_id': sourceRecordId,
     };
@@ -34,6 +37,7 @@ class HeartRateRecord {
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
       heartRate: _parseInt(json['heart_rate'] ?? json['heartRate']) ?? 0,
       measuredAt: _parseDateTime(json['measured_at'] ?? json['measuredAt']),
+      status: _parseString(json['status']) ?? '일상',
       sourceType:
           _parseString(json['source_type'] ?? json['sourceType']) ??
           'health_sync',
