@@ -23,8 +23,9 @@ class HealthPeriodSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5E5E5)),
       ),
       child: Row(
         children: [
@@ -35,9 +36,7 @@ class HealthPeriodSelector extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   decoration: BoxDecoration(
-                    color: selectedPeriod == periods[i]
-                        ? Colors.white
-                        : Colors.transparent,
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Center(

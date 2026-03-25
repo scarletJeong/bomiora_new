@@ -189,7 +189,7 @@ class WeightChartContent extends StatelessWidget {
         height: chartHeight,
         padding: ChartConstants.weightChartCardPadding,
         decoration: BoxDecoration(
-          color: Colors.grey[50],
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey[200]!),
         ),
@@ -365,7 +365,7 @@ class WeightEmptyChart extends StatelessWidget {
       height: chartHeight,
       padding: outerPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -530,7 +530,7 @@ class WeightDataChart extends StatelessWidget {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -645,7 +645,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -1050,7 +1050,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),

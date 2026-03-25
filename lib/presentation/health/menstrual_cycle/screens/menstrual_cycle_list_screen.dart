@@ -15,7 +15,10 @@ import 'menstrual_cycle_input_screen.dart';
 const Color _kOvulationTodayMarkerFill = Color(0xFFFEA38E);
 
 class MenstrualCycleInfoScreen extends StatefulWidget {
-  const MenstrualCycleInfoScreen({super.key});
+  const MenstrualCycleInfoScreen({super.key, this.initialDate});
+
+  /// 건강 대시보드 등에서 열 때 동일 날짜로 맞춤
+  final DateTime? initialDate;
 
   @override
   State<MenstrualCycleInfoScreen> createState() =>
@@ -25,11 +28,15 @@ class MenstrualCycleInfoScreen extends StatefulWidget {
 class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   MenstrualCycleRecord? _currentRecord;
   bool _isLoading = true;
-  DateTime selectedDate = DateTime.now(); // 선택된 날짜 추가
+  late DateTime selectedDate;
 
   @override
   void initState() {
     super.initState();
+    final d = widget.initialDate;
+    selectedDate = d != null
+        ? DateTime(d.year, d.month, d.day)
+        : DateTime.now();
     _loadMenstrualCycleData();
   }
 
@@ -82,32 +89,31 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             )
           : _currentRecord == null
               ? _buildNoDataView()
-              : SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20), // 좌우 20px 패딩
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 현재 상태 섹션
-                      _buildCurrentStatusSection(),
-                      const SizedBox(height: 0),
-
-                      // 생리주기 원형 차트
-                      _buildCycleChart(),
-                      const SizedBox(height: 10),
-                      _buildPhaseLegend(),
-                      const SizedBox(height: 20),
-
-                      // 현재 단계별 추천사항
-                      _buildPhaseRecommendations(),
-                      const SizedBox(height: 30),
-
-                      // 생리기간/가임기/배란일 카드
-                      _buildExpectedDatesSection(),
-                      const SizedBox(height: 30),
-
-                      // 기록하기 버튼
-                      BtnRecord(
+              : Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildCurrentStatusSection(),
+                            const SizedBox(height: 0),
+                            _buildCycleChart(),
+                            const SizedBox(height: 10),
+                            _buildPhaseLegend(),
+                            const SizedBox(height: 20),
+                            _buildPhaseRecommendations(),
+                            const SizedBox(height: 30),
+                            _buildExpectedDatesSection(),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: BtnRecord(
                         text: '+ 기록하기',
                         onPressed: () async {
                           final result = await Navigator.push(
@@ -122,64 +128,70 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                           }
                         },
                       ),
-                      const SizedBox(height: 30),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
     );
   }
 
   Widget _buildNoDataView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.calendar_today,
-              size: 80,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '생리주기 정보가 없습니다',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '첫 번째 생리주기 정보를 입력해주세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-            const SizedBox(height: 32),
-            BtnRecord(
-              text: '+ 기록하기',
-              onPressed: () async {
-                // 선택한 날짜에 맞는 레코드 찾기
-                final recordForDate = await _getRecordForDate(selectedDate);
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MenstrualCycleInputScreen(
-                      existingRecord: recordForDate,
+    return Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    '생리주기 정보가 없습니다',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
                     ),
                   ),
-                );
-                if (result == true) {
-                  _loadMenstrualCycleData();
-                }
-              },
+                  const SizedBox(height: 8),
+                  Text(
+                    '첫 번째 생리주기 정보를 입력해주세요',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
+          child: BtnRecord(
+            text: '+ 기록하기',
+            onPressed: () async {
+              final recordForDate = await _getRecordForDate(selectedDate);
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MenstrualCycleInputScreen(
+                    existingRecord: recordForDate,
+                  ),
+                ),
+              );
+              if (result == true) {
+                _loadMenstrualCycleData();
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -695,7 +707,7 @@ class MenstrualCyclePainter extends CustomPainter {
   /// 200×200 기준 레이아웃(링 두께·인셋 스케일 기준)
   static const double kDesignChartDiameter = 200.0;
   static const double kDesignArcInset = 11.0;
-  static const double kDesignRingStroke = 20.0;
+  static const double kDesignRingStroke = 22.0;
   static const double kDesignPhaseMarkerStroke = 1.4;
 
   final double layoutDiameter;

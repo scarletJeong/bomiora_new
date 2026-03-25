@@ -211,6 +211,8 @@ class BloodSugarChartSection extends StatefulWidget {
   final bool isToday;
   final bool showPeriodSelector;
   final bool showLegend;
+  /// 확대 화면 등에서 범례를 더 작게 표시
+  final bool compactLegend;
   final bool showExpandButton;
   final double chartHeight;
   final List<Map<String, dynamic>> chartData;
@@ -236,6 +238,7 @@ class BloodSugarChartSection extends StatefulWidget {
     required this.onSelectionChanged,
     this.showPeriodSelector = true,
     this.showLegend = true,
+    this.compactLegend = false,
     this.showExpandButton = true,
     this.chartHeight = ChartConstants.healthChartHeight,
     this.onExpand,
@@ -270,18 +273,33 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         ],
         chart,
         if (widget.showLegend) ...[
-          const SizedBox(height: 14),
-          const Row(
+          SizedBox(height: widget.compactLegend ? 6 : 14),
+          Row(
             children: [
-              _GlucoseSeriesLegend(color: Color(0xFF4F82E0), label: '공복'),
-              SizedBox(width: 10),
-              _GlucoseSeriesLegend(color: Color(0xFFFC8B3A), label: '식전'),
-              SizedBox(width: 10),
-              _GlucoseSeriesLegend(color: Color(0xFF38B769), label: '식후'),
-              SizedBox(width: 10),
-              _GlucoseSeriesLegend(color: Color(0xFF4FD1E0), label: '취침전'),
-              SizedBox(width: 10),
-              _GlucoseSeriesLegend(color: Color(0xFFB24FE0), label: '평상시'),
+              _GlucoseSeriesLegend(
+                  color: const Color(0xFF4F82E0),
+                  label: '공복',
+                  compact: widget.compactLegend),
+              SizedBox(width: widget.compactLegend ? 6 : 10),
+              _GlucoseSeriesLegend(
+                  color: const Color(0xFFFC8B3A),
+                  label: '식전',
+                  compact: widget.compactLegend),
+              SizedBox(width: widget.compactLegend ? 6 : 10),
+              _GlucoseSeriesLegend(
+                  color: const Color(0xFF38B769),
+                  label: '식후',
+                  compact: widget.compactLegend),
+              SizedBox(width: widget.compactLegend ? 6 : 10),
+              _GlucoseSeriesLegend(
+                  color: const Color(0xFF4FD1E0),
+                  label: '취침전',
+                  compact: widget.compactLegend),
+              SizedBox(width: widget.compactLegend ? 6 : 10),
+              _GlucoseSeriesLegend(
+                  color: const Color(0xFFB24FE0),
+                  label: '평상시',
+                  compact: widget.compactLegend),
             ],
           ),
         ],
@@ -348,7 +366,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[300]!),
       ),
@@ -389,7 +407,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -800,25 +818,33 @@ Widget _buildBloodSugarXAxisWithUnit({
 class _GlucoseSeriesLegend extends StatelessWidget {
   final Color color;
   final String label;
+  final bool compact;
 
-  const _GlucoseSeriesLegend({required this.color, required this.label});
+  const _GlucoseSeriesLegend({
+    required this.color,
+    required this.label,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final dot = compact ? 8.0 : 12.0;
+    final gap = compact ? 3.0 : 5.0;
+    final fontSize = compact ? 9.0 : 12.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: dot,
+          height: dot,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: gap),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 12,
+            fontSize: fontSize,
             fontWeight: FontWeight.w500,
           ),
         ),

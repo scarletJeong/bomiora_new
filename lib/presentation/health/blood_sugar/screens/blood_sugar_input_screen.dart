@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
+import '../../health_common/widgets/health_measurement_datetime_dialogs.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
 import '../../../../data/services/auth_service.dart';
@@ -59,30 +61,20 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   }
 
   Future<void> _selectDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _selectedDateTime,
+    final picked = await showHealthDateThenTimePickers(
+      context,
+      initialDateTime: _selectedDateTime,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      locale: const Locale('ko'),
     );
-
-    if (date != null) {
-      setState(() {
-        _selectedDateTime = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          _selectedDateTime.hour,
-          _selectedDateTime.minute,
-        );
-      });
+    if (picked != null) {
+      setState(() => _selectedDateTime = picked);
     }
   }
 
   Future<void> _selectTime() async {
-    final time = await showTimePicker(
-      context: context,
+    final time = await showHealthTimePickerDialog(
+      context,
       initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
     );
 
@@ -239,17 +231,8 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(widget.record == null ? '혈당 기록하기' : '혈당 수정하기'),
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.transparent,
+        appBar: HealthAppBar(
+          title: widget.record == null ? '혈당 기록하기' : '혈당 수정하기',
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),

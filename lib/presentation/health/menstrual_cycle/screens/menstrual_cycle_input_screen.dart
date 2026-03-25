@@ -94,7 +94,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         title: widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -107,7 +107,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 fontWeight: FontWeight.w300,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             _buildCalendar(),
             const SizedBox(height: 0),
             _buildCycleLengthSection(),

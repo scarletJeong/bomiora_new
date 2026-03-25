@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
+import '../../health_common/widgets/health_measurement_datetime_dialogs.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
@@ -93,32 +95,33 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     });
   }
 
-  Future<void> _selectDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _selectedDateTime,
+  Future<void> _selectDateThenTime() async {
+    final picked = await showHealthDateThenTimePickers(
+      context,
+      initialDateTime: _selectedDateTime,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      locale: const Locale('ko'),
     );
+    if (picked != null) {
+      setState(() => _selectedDateTime = picked);
+    }
+  }
 
-    if (date != null) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
-      );
-
-      if (time != null) {
-        setState(() {
-          _selectedDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
-          );
-        });
-      }
+  Future<void> _selectTimeOnly() async {
+    final time = await showHealthTimePickerDialog(
+      context,
+      initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
+    );
+    if (time != null) {
+      setState(() {
+        _selectedDateTime = DateTime(
+          _selectedDateTime.year,
+          _selectedDateTime.month,
+          _selectedDateTime.day,
+          time.hour,
+          time.minute,
+        );
+      });
     }
   }
 
@@ -263,23 +266,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.record == null ? '체중 기록하기' : '체중 수정하기',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: HealthAppBar(
+        title: widget.record == null ? '체중 기록하기' : '체중 수정하기',
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(25),
@@ -321,84 +309,71 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       children: [
         _buildSectionLabel('측정일시'),
         const SizedBox(height: 10),
-        InkWell(
-          onTap: _selectDateTime,
-          borderRadius: BorderRadius.circular(7),
-          child: Container(
-            width: double.infinity,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    clipBehavior: Clip.antiAlias,
-                    decoration: ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        side: const BorderSide(
-                          width: 1,
-                          color: Color(0x7FD2D2D2),
-                        ),
-                        borderRadius: BorderRadius.circular(7),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: _selectDateThenTime,
+                borderRadius: BorderRadius.circular(7),
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(
+                        width: 1,
+                        color: Color(0x7FD2D2D2),
                       ),
+                      borderRadius: BorderRadius.circular(7),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          dateStr,
-                          style: const TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 16,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ],
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    dateStr,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 16,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    clipBehavior: Clip.antiAlias,
-                    decoration: ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        side: const BorderSide(
-                          width: 1,
-                          color: Color(0x7FD2D2D2),
-                        ),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          timeStr,
-                          style: const TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 16,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: InkWell(
+                onTap: _selectTimeOnly,
+                borderRadius: BorderRadius.circular(7),
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(
+                        width: 1,
+                        color: Color(0x7FD2D2D2),
+                      ),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    timeStr,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 16,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

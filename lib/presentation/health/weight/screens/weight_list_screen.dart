@@ -478,12 +478,15 @@ class _WeightListScreenState extends State<WeightListScreen> {
       ),
       child: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 27),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          : Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 27),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                     // 0. 날짜 선택 공통 위젯
                     HealthDateSelector(
                       selectedDate: selectedDate,
@@ -533,29 +536,32 @@ class _WeightListScreenState extends State<WeightListScreen> {
                     // 6. 눈바디 이미지
                     _buildBodyImages(),
                     const SizedBox(height: 24),
-
-                    // 7. 기록하기 버튼
-                    BtnRecord(
-                      text: '+ 기록하기',
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const WeightInputScreen(),
-                          ),
-                        );
-
-                        // 기록 추가 후 데이터 새로고침
-                        if (result == true) {
-                          _loadData();
-                        }
-                      },
-                      backgroundColor: const Color(0xFFFF3787),
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 8),
                   ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                  child: BtnRecord(
+                    text: '+ 기록하기',
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WeightInputScreen(),
+                        ),
+                      );
+
+                      if (result == true) {
+                        _loadData();
+                      }
+                    },
+                    backgroundColor: const Color(0xFFFF3787),
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -1895,13 +1901,28 @@ class _WeightListScreenState extends State<WeightListScreen> {
             (record) => HealthEditBottomSheetItem<WeightRecord>(
               data: record,
               timeText: DateFormat('HH:mm').format(record.measuredAt),
-              trailing: Text(
-                '${record.weight.toStringAsFixed(1)} kg',
-                style: const TextStyle(
-                  color: Color(0xFFFF5A8D),
-                  fontSize: 18,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
+              trailing: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: record.weight.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: Color(0xFFFF5A8D),
+                        fontSize: 18,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: ' kg',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -537,7 +537,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -664,6 +664,19 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           _buildChart(
               showExpandButton: false,
               chartHeight: ChartConstants.healthChartHeight),
+      legendBuilder: (_) => Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const _HeartLegend(
+                color: Color(0xFFFF8686), label: '운동', compact: true),
+            const SizedBox(width: 8),
+            const _HeartLegend(
+                color: Color(0xFF86B0FF), label: '일상', compact: true),
+          ],
+        ),
+      ),
       onRegisterRefresh: (refresh) => _refreshExpandedChart = refresh,
       onDisposeRefresh: () => _refreshExpandedChart = null,
     );
@@ -673,25 +686,33 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 class _HeartLegend extends StatelessWidget {
   final Color color;
   final String label;
+  final bool compact;
 
-  const _HeartLegend({required this.color, required this.label});
+  const _HeartLegend({
+    required this.color,
+    required this.label,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final dot = compact ? 8.0 : 12.0;
+    final gap = compact ? 3.0 : 5.0;
+    final fontSize = compact ? 9.0 : 12.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: dot,
+          height: dot,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: gap),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 12,
+            fontSize: fontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),

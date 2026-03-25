@@ -11,14 +11,17 @@ import '../widgets/food_input_widgets.dart';
 
 /// 오늘의 식사 화면
 class TodayDietScreen extends StatefulWidget {
-  const TodayDietScreen({super.key});
+  const TodayDietScreen({super.key, this.initialDate});
+
+  /// 건강 대시보드 등에서 열 때 해당 날짜로 맞춤
+  final DateTime? initialDate;
 
   @override
   State<TodayDietScreen> createState() => _TodayDietScreenState();
 }
 
 class _TodayDietScreenState extends State<TodayDietScreen> {
-  DateTime selectedDate = DateTime.now();
+  late DateTime selectedDate;
   /// 열린 칼로리 검색 블록의 식사 타입 ('아침' | '점심' | '저녁' | '간식'), null이면 모두 닫힘
   String? _expandedMealKey;
 
@@ -79,6 +82,10 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
   @override
   void initState() {
     super.initState();
+    final d = widget.initialDate;
+    selectedDate = d != null
+        ? DateTime(d.year, d.month, d.day)
+        : DateTime.now();
     _loadUser().then((_) => _loadMealData());
   }
 
@@ -125,7 +132,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          '${NumberFormat('#,###').format(totalCalories)} / ${NumberFormat('#,###').format(_maxCalories)} kcal',
+                          '${NumberFormat('#,###').format(totalCalories)} kcal',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.black,
@@ -139,15 +146,16 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                   ),
                   const SizedBox(height: 14),
                   _buildDashboardMacroBar(),
-                  const SizedBox(height: 14),
-                  _buildMacroSummaryBar(),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
+                  _buildMacroLegendRow(),
+                  const SizedBox(height: 28),
                   _buildMealDetailCard(
                     title: '아침',
                     kcal: _recordFor('아침')?.calories ?? 0,
                     carb: _recordFor('아침')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('아침')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('아침')?.fat?.toStringAsFixed(1) ?? '-',
+                    mealRecord: _recordFor('아침'),
                     onTap: () => _toggleFoodSearchFor('아침'),
                   ),
                   if (_expandedMealKey == '아침') ...[
@@ -168,6 +176,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     carb: _recordFor('점심')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('점심')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('점심')?.fat?.toStringAsFixed(1) ?? '-',
+                    mealRecord: _recordFor('점심'),
                     onTap: () => _toggleFoodSearchFor('점심'),
                   ),
                   if (_expandedMealKey == '점심') ...[
@@ -188,6 +197,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     carb: _recordFor('저녁')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('저녁')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('저녁')?.fat?.toStringAsFixed(1) ?? '-',
+                    mealRecord: _recordFor('저녁'),
                     onTap: () => _toggleFoodSearchFor('저녁'),
                   ),
                   if (_expandedMealKey == '저녁') ...[
@@ -208,6 +218,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     carb: _recordFor('간식')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('간식')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('간식')?.fat?.toStringAsFixed(1) ?? '-',
+                    mealRecord: _recordFor('간식'),
                     onTap: () => _toggleFoodSearchFor('간식'),
                   ),
                   if (_expandedMealKey == '간식') ...[
@@ -274,43 +285,18 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     );
   }
 
-  Widget _buildMacroSummaryBar() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  /// 메인 매크로 바 바로 아래, 왼쪽 정렬 범례
+  Widget _buildMacroLegendRow() {
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: SizedBox(
-            height: 8,
-            child: Row(
-              children: const [
-                Expanded(
-                  flex: 38,
-                  child: ColoredBox(color: Color(0xFFFFDFC3)),
-                ),
-                Expanded(
-                  flex: 21,
-                  child: ColoredBox(color: Color(0xFFFCF4C1)),
-                ),
-                Expanded(
-                  flex: 41,
-                  child: ColoredBox(color: Color(0xFFFEA38E)),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            MacroLegend(color: Color(0xFFFFDFC3), label: '탄수화물'),
-            SizedBox(width: 24),
-            MacroLegend(color: Color(0xFFFEA38E), label: '단백질'),
-            SizedBox(width: 24),
-            MacroLegend(color: Color(0xFFFCF4C1), label: '지방'),
-          ],
-        ),
+        MacroLegend(color: Color(0xFFFFDFC3), label: '탄수화물'),
+        SizedBox(width: 24),
+        MacroLegend(color: Color(0xFFFEA38E), label: '단백질'),
+        SizedBox(width: 24),
+        MacroLegend(color: Color(0xFFFCF4C1), label: '지방'),
+        SizedBox(width: 24),
+        MacroLegend(color: Color(0xFFE2E2E2), label: '기타'),
       ],
     );
   }
@@ -321,8 +307,11 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     required String carb,
     required String protein,
     required String fat,
+    FoodRecordSummary? mealRecord,
     VoidCallback? onTap,
   }) {
+    final isEmptyMeal = mealRecord == null ||
+        (mealRecord.items.isEmpty && (mealRecord.calories ?? 0) == 0);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -345,9 +334,15 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                 width: 47.08,
                 height: 48.33,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD9D9D9),
+                  color: isEmptyMeal
+                      ? const Color(0xFFD9D9D9)
+                      : const Color(0xFFFF5A8D),
                   borderRadius: BorderRadius.circular(5),
                 ),
+                alignment: Alignment.center,
+                child: isEmptyMeal
+                    ? const Icon(Icons.add, color: Colors.white, size: 22)
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(

@@ -573,12 +573,15 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         appBar: const HealthAppBar(title: '혈압'),
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 27),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+            : Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 27),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                       HealthDateSelector(
                         selectedDate: selectedDate,
                         onDateChanged: (newDate) {
@@ -632,27 +635,33 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                               color: Color(0xFFFFC686), label: '이완기'),
                         ],
                       ),
-                      const SizedBox(height: 60),
-                      BtnRecord(
-                        text: '+기록하기',
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const BloodPressureInputScreen(),
-                            ),
-                          );
-
-                          if (result == true) {
-                            _loadData();
-                          }
-                        },
-                        backgroundColor: const Color(0xFFFF5A8D),
-                      ),
+                      const SizedBox(height: 24),
                     ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                    child: BtnRecord(
+                      text: '+기록하기',
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const BloodPressureInputScreen(),
+                          ),
+                        );
+
+                        if (result == true) {
+                          _loadData();
+                        }
+                      },
+                      backgroundColor: const Color(0xFFFF5A8D),
+                    ),
+                  ),
+                ],
               ),
       ),
     );
@@ -1080,7 +1089,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[300]!),
       ),
@@ -1132,7 +1141,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
@@ -1395,6 +1404,22 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               showExpandButton: false,
               forExpandedChart: true,
               chartHeight: ChartConstants.healthChartHeight),
+      legendBuilder: (_) => Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Row(
+          children: [
+            const _GraphSeriesLegend(
+                color: Color(0xFF86B0FF),
+                label: '수축기',
+                compact: true),
+            const SizedBox(width: 8),
+            const _GraphSeriesLegend(
+                color: Color(0xFFFFC686),
+                label: '이완기',
+                compact: true),
+          ],
+        ),
+      ),
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;
       },
@@ -1757,25 +1782,33 @@ class _PressureLegend extends StatelessWidget {
 class _GraphSeriesLegend extends StatelessWidget {
   final Color color;
   final String label;
+  final bool compact;
 
-  const _GraphSeriesLegend({required this.color, required this.label});
+  const _GraphSeriesLegend({
+    required this.color,
+    required this.label,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final dot = compact ? 8.0 : 12.0;
+    final gap = compact ? 3.0 : 5.0;
+    final fontSize = compact ? 9.0 : 12.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: dot,
+          height: dot,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: gap),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 12,
+            fontSize: fontSize,
             fontWeight: FontWeight.w500,
           ),
         ),

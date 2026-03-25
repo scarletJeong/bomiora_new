@@ -531,12 +531,15 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         ),
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 27),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+            : Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 27),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                       HealthDateSelector(
                         selectedDate: selectedDate,
                         onDateChanged: (newDate) {
@@ -636,28 +639,33 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         },
                         onExpand: _openExpandedChartPage,
                       ),
-                      const SizedBox(height: 20),
-                      BtnRecord(
-                        text: '+기록하기',
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const BloodSugarInputScreen(),
-                            ),
-                          );
-
-                          // 기록 후 항상 데이터 새로고침
-                          if (result == true || result == null) {
-                            await _loadData();
-                          }
-                        },
-                        backgroundColor: const Color(0xFFFF5A8D),
-                      ),
+                      const SizedBox(height: 16),
                     ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                    child: BtnRecord(
+                      text: '+기록하기',
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const BloodSugarInputScreen(),
+                          ),
+                        );
+
+                        if (result == true || result == null) {
+                          await _loadData();
+                        }
+                      },
+                      backgroundColor: const Color(0xFFFF5A8D),
+                    ),
+                  ),
+                ],
               ),
       ),
     );
@@ -963,7 +971,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         builder: (context, constraints) {
           final maxHeight = constraints.maxHeight;
           final desired = ChartConstants.healthChartHeight;
-          final safeHeight = (maxHeight - 8).clamp(180.0, desired);
+          const legendReserve = 34.0;
+          final safeHeight =
+              (maxHeight - 8 - legendReserve).clamp(160.0, desired);
 
           return BloodSugarChartSection(
             selectedPeriod: selectedPeriod,
@@ -980,7 +990,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         [])
                     .isNotEmpty,
             showPeriodSelector: false,
-            showLegend: false,
+            showLegend: true,
+            compactLegend: true,
             showExpandButton: false,
             chartHeight: safeHeight,
             onDragUpdate: _handleDragUpdate,
