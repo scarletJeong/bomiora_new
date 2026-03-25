@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/services/auth_service.dart';
@@ -89,22 +90,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: HealthAppBar(
+        title: widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
