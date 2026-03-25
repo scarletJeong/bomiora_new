@@ -8,6 +8,8 @@ class StepsRecord {
   final List<HourlySteps> hourlySteps;
   final DateTime createdAt;
   final DateTime updatedAt;
+  /// 선택 일자 기준 전날 대비 걸음 차이 (`/api/steps/daily-total` 등에서만 채워질 수 있음)
+  final int? stepsDifference;
 
   StepsRecord({
     required this.id,
@@ -19,40 +21,73 @@ class StepsRecord {
     required this.hourlySteps,
     required this.createdAt,
     required this.updatedAt,
+    this.stepsDifference,
   });
 
+  static int _intVal(dynamic v, [int def = 0]) {
+    if (v == null) return def;
+    if (v is int) return v;
+    if (v is num) return v.round();
+    return int.tryParse(v.toString()) ?? def;
+  }
+
+  static int? _intNullable(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.round();
+    return int.tryParse(v.toString());
+  }
+
+  static double _doubleVal(dynamic v, [double def = 0.0]) {
+    if (v == null) return def;
+    if (v is double) return v;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? def;
+  }
+
   factory StepsRecord.fromJson(Map<String, dynamic> json) {
+    final dateRaw =
+        json['date'] ?? json['record_date'] ?? json['recordDate'];
     return StepsRecord(
-      id: json['id'] ?? 0,
-      userId: json['user_id'] ?? 0,
-      date: _parseDateTime(json['date']),
-      totalSteps: json['total_steps'] ?? 0,
-      distance: (json['distance'] ?? 0.0).toDouble(),
-      calories: json['calories'] ?? 0,
-      hourlySteps: (json['hourly_steps'] as List<dynamic>?)
-          ?.map((item) => HourlySteps.fromJson(item))
-          .toList() ?? [],
-      createdAt: _parseDateTime(json['created_at']),
-      updatedAt: _parseDateTime(json['updated_at']),
+      id: _intVal(json['id']),
+      userId: _intVal(json['user_id'] ?? json['userId']),
+      date: _parseDate(dateRaw),
+      totalSteps: _intVal(json['total_steps'] ?? json['totalSteps']),
+      distance: _doubleVal(
+        json['distance'] ?? json['distance_km'] ?? json['distanceKm'],
+      ),
+      calories: _intVal(json['calories'] ?? json['calories_burned'] ?? json['caloriesBurned']),
+      hourlySteps: (json['hourly_steps'] ?? json['hourlySteps']) is List
+          ? ((json['hourly_steps'] ?? json['hourlySteps']) as List<dynamic>)
+              .map((e) => HourlySteps.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList()
+          : [],
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']) ?? DateTime.now(),
+      stepsDifference: _intNullable(json['steps_difference'] ?? json['stepsDifference']),
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
+  static DateTime _parseDate(dynamic value) {
     if (value == null) return DateTime.now();
-    final parsed = DateTime.parse(value.toString());
-    if (parsed.isUtc) {
-      return DateTime(
-        parsed.year,
-        parsed.month,
-        parsed.day,
-        parsed.hour,
-        parsed.minute,
-        parsed.second,
-        parsed.millisecond,
-        parsed.microsecond,
-      );
+    final s = value.toString();
+    try {
+      if (s.length == 10 && s.contains('-')) {
+        return DateTime.parse('${s}T12:00:00');
+      }
+      return DateTime.parse(s);
+    } catch (_) {
+      return DateTime.now();
     }
-    return parsed;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    try {
+      return DateTime.parse(value.toString());
+    } catch (_) {
+      return null;
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -66,6 +101,7 @@ class StepsRecord {
       'hourly_steps': hourlySteps.map((item) => item.toJson()).toList(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      if (stepsDifference != null) 'steps_difference': stepsDifference,
     };
   }
 
@@ -79,6 +115,7 @@ class StepsRecord {
     List<HourlySteps>? hourlySteps,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? stepsDifference,
   }) {
     return StepsRecord(
       id: id ?? this.id,
@@ -90,6 +127,7 @@ class StepsRecord {
       hourlySteps: hourlySteps ?? this.hourlySteps,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      stepsDifference: stepsDifference ?? this.stepsDifference,
     );
   }
 }
@@ -107,12 +145,28 @@ class HourlySteps {
     required this.calories,
   });
 
+  static int _intVal(dynamic v, [int def = 0]) {
+    if (v == null) return def;
+    if (v is int) return v;
+    if (v is num) return v.round();
+    return int.tryParse(v.toString()) ?? def;
+  }
+
+  static double _doubleVal(dynamic v, [double def = 0.0]) {
+    if (v == null) return def;
+    if (v is double) return v;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? def;
+  }
+
   factory HourlySteps.fromJson(Map<String, dynamic> json) {
     return HourlySteps(
-      hour: json['hour'] ?? 0,
-      steps: json['steps'] ?? 0,
-      distance: (json['distance'] ?? 0.0).toDouble(),
-      calories: json['calories'] ?? 0,
+      hour: _intVal(json['hour']),
+      steps: _intVal(json['steps']),
+      distance: _doubleVal(
+        json['distance'] ?? json['distance_km'] ?? json['distanceKm'],
+      ),
+      calories: _intVal(json['calories'] ?? json['calories_burned'] ?? json['caloriesBurned']),
     );
   }
 
@@ -140,7 +194,7 @@ class HourlySteps {
   }
 }
 
-// 걸음수 통계 모델
+// 걸음수 통계 모델 (Node /api/steps/statistics 의 camelCase 응답 호환)
 class StepsStatistics {
   final int todaySteps;
   final int yesterdaySteps;
@@ -160,15 +214,39 @@ class StepsStatistics {
     required this.caloriesDifference,
   });
 
+  static int _i(Map<String, dynamic> json, List<String> keys, [int def = 0]) {
+    for (final k in keys) {
+      final v = json[k];
+      if (v == null) continue;
+      if (v is int) return v;
+      if (v is num) return v.round();
+      final p = int.tryParse(v.toString());
+      if (p != null) return p;
+    }
+    return def;
+  }
+
+  static double _d(Map<String, dynamic> json, List<String> keys, [double def = 0.0]) {
+    for (final k in keys) {
+      final v = json[k];
+      if (v == null) continue;
+      if (v is double) return v;
+      if (v is num) return v.toDouble();
+      final p = double.tryParse(v.toString());
+      if (p != null) return p;
+    }
+    return def;
+  }
+
   factory StepsStatistics.fromJson(Map<String, dynamic> json) {
     return StepsStatistics(
-      todaySteps: json['today_steps'] ?? 0,
-      yesterdaySteps: json['yesterday_steps'] ?? 0,
-      weeklyAverage: json['weekly_average'] ?? 0,
-      monthlyAverage: json['monthly_average'] ?? 0,
-      stepsDifference: json['steps_difference'] ?? 0,
-      distanceDifference: (json['distance_difference'] ?? 0.0).toDouble(),
-      caloriesDifference: json['calories_difference'] ?? 0,
+      todaySteps: _i(json, ['today_steps', 'todaySteps']),
+      yesterdaySteps: _i(json, ['yesterday_steps', 'yesterdaySteps']),
+      weeklyAverage: _i(json, ['weekly_average', 'weeklyAverageSteps', 'weeklyAverage']),
+      monthlyAverage: _i(json, ['monthly_average', 'monthlyAverageSteps', 'monthlyAverage']),
+      stepsDifference: _i(json, ['steps_difference', 'stepsDifference']),
+      distanceDifference: _d(json, ['distance_difference', 'distanceDifference']),
+      caloriesDifference: _i(json, ['calories_difference', 'caloriesDifference']),
     );
   }
 

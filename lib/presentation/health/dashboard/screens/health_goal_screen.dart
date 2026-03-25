@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 
 class HealthGoalScreen extends StatefulWidget {
@@ -10,20 +12,34 @@ class HealthGoalScreen extends StatefulWidget {
   State<HealthGoalScreen> createState() => _HealthGoalScreenState();
 }
 
-// 하루 걸음 수 휠 스크롤 픽커
 class _HealthGoalScreenState extends State<HealthGoalScreen> {
   static const int _stepMin = 0;
   static const int _stepMax = 20000;
   static const int _stepUnit = 100;
 
+  final TextEditingController _currentWeightController =
+      TextEditingController();
+  final TextEditingController _targetWeightController =
+      TextEditingController();
   late final FixedExtentScrollController _stepsWheelController;
+
   int _selectedSteps = 6000;
+  bool _loading = true;
+  bool _submitting = false;
 
   int get _stepsItemCount => ((_stepMax - _stepMin) ~/ _stepUnit) + 1;
 
   int _stepsFromIndex(int index) => _stepMin + (index * _stepUnit);
 
-  int _indexFromSteps(int steps) => ((steps - _stepMin) ~/ _stepUnit);
+  int _indexFromSteps(int steps) =>
+      ((steps - _stepMin) ~/ _stepUnit).clamp(0, _stepsItemCount - 1);
+
+  int _snapStepsToGrid(int steps) {
+    final rounded =
+        ((_stepUnit * (steps / _stepUnit).round()).clamp(_stepMin, _stepMax))
+            .toInt();
+    return rounded;
+  }
 
   String _formatNumber(int value) => NumberFormat('#,###').format(value);
 
@@ -33,10 +49,106 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     _stepsWheelController = FixedExtentScrollController(
       initialItem: _indexFromSteps(_selectedSteps),
     );
+    _loadLatestGoal();
+  }
+
+  Future<void> _loadLatestGoal() async {
+    final user = await AuthService.getUser();
+    final mbId = user?.id;
+    if (!mounted) return;
+    if (mbId == null || mbId.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    final latest = await HealthGoalRepository.fetchLatest(mbId);
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+      if (latest != null) {
+        if (latest.currentWeight != null) {
+          _currentWeightController.text =
+              _trimTrailingZeros(latest.currentWeight!);
+        }
+        if (latest.targetWeight != null) {
+          _targetWeightController.text =
+              _trimTrailingZeros(latest.targetWeight!);
+        }
+        if (latest.dailyStepGoal != null) {
+          _selectedSteps = _snapStepsToGrid(latest.dailyStepGoal!);
+        }
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_stepsWheelController.hasClients) return;
+      final idx = _indexFromSteps(_selectedSteps);
+      _stepsWheelController.jumpToItem(idx);
+    });
+  }
+
+  String _trimTrailingZeros(double v) {
+    final s = v.toStringAsFixed(1);
+    if (s.endsWith('.0')) return s.substring(0, s.length - 2);
+    return s;
+  }
+
+  double? _parseWeightField(String raw) {
+    final t = raw.replaceAll(',', '.').trim();
+    if (t.isEmpty) return null;
+    return double.tryParse(t);
+  }
+
+  Future<void> _onRegister() async {
+    final user = await AuthService.getUser();
+    final mbId = user?.id;
+    if (mbId == null || mbId.isEmpty) {
+      _showSnack('로그인이 필요합니다.');
+      return;
+    }
+
+    final current = _parseWeightField(_currentWeightController.text);
+    final target = _parseWeightField(_targetWeightController.text);
+
+    if (current == null || current <= 0) {
+      _showSnack('현재 체중을 올바르게 입력해주세요.');
+      return;
+    }
+    if (target == null || target <= 0) {
+      _showSnack('목표 체중을 올바르게 입력해주세요.');
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final result = await HealthGoalRepository.register(
+      mbId: mbId,
+      currentWeight: current,
+      targetWeight: target,
+      dailyStepGoal: _selectedSteps,
+      measuredAt: DateTime.now(),
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+
+    if (result.success) {
+      _showSnack(result.message ?? '저장되었습니다.');
+      Navigator.pop(context, true);
+    } else {
+      _showSnack(result.message ?? '저장에 실패했습니다.');
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
   void dispose() {
+    _currentWeightController.dispose();
+    _targetWeightController.dispose();
     _stepsWheelController.dispose();
     super.dispose();
   }
@@ -66,50 +178,79 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
           surfaceTintColor: Colors.transparent,
         ),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInputSection(
-                  title: '현재 체중(kg)',
-                  hint: '몸무게를 입력해주세요.',
-                ),
-                const SizedBox(height: 20),
-                _buildInputSection(
-                  title: '목표 체중(kg)',
-                  hint: '몸무게를 입력해주세요.',
-                ),
-                const SizedBox(height: 20),
-                _buildStepsPickerSection(),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5A8D),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 27, vertical: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInputSection(
+                              title: '현재 체중(kg)',
+                              hint: '몸무게를 입력해주세요.',
+                              controller: _currentWeightController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildInputSection(
+                              title: '목표 체중(kg)',
+                              hint: '몸무게를 입력해주세요.',
+                              controller: _targetWeightController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildStepsPickerSection(),
+                            const SizedBox(height: 30),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _submitting ? null : _onRegister,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF5A8D),
+                                  foregroundColor: Colors.white,
+                                  disabledBackgroundColor:
+                                      const Color(0xFFFF5A8D)
+                                          .withValues(alpha: 0.5),
+                                  elevation: 0,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: _submitting
+                                    ? const SizedBox(
+                                        height: 22,
+                                        width: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        '등록',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontFamily: 'Gmarket Sans TTF',
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      '등록',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-                const Spacer(),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -191,6 +332,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   Widget _buildInputSection({
     required String title,
     required String hint,
+    required TextEditingController controller,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,6 +349,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
         ),
         const SizedBox(height: 10),
         TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
           style: const TextStyle(
             color: Color(0xFF1A1A1A),
             fontSize: 16,

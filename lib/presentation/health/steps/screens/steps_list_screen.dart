@@ -6,6 +6,8 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/steps/steps_repository.dart';
+import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
+import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
@@ -23,6 +25,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   UserModel? currentUser;
   StepsRecord? todayStepsRecord;
   StepsStatistics? stepsStatistics;
+  HealthGoalRecordModel? latestHealthGoal;
   DateTime selectedDate = DateTime.now();
   bool isLoading = true;
   String selectedPeriod = '일';
@@ -53,17 +56,20 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       }
 
       final results = await Future.wait([
-        StepsRepository.getStepsRecordByDate(int.parse(user.id), selectedDate),
-        StepsRepository.getStepsStatistics(int.parse(user.id)),
+        StepsRepository.getStepsRecordByMbId(user.id, selectedDate),
+        StepsRepository.getStepsStatisticsByMbId(user.id),
+        HealthGoalRepository.fetchLatest(user.id).catchError((_) => null),
       ]);
 
       setState(() {
         currentUser = user;
         todayStepsRecord = results[0] as StepsRecord?;
         stepsStatistics = results[1] as StepsStatistics?;
+        latestHealthGoal = results[2] as HealthGoalRecordModel?;
         isLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('StepsTodayScreen._loadData: $e\n$st');
       setState(() => isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,10 +173,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   // 총 걸음수 원
   Widget _buildTotalStepsCard() {
     final totalSteps = todayStepsRecord?.totalSteps ?? 0;
-    final targetSteps = 4000;
-    final ratio =
-        (targetSteps == 0 ? 0.0 : totalSteps / targetSteps).clamp(0.0, 1.0);
-    final diff = stepsStatistics?.stepsDifference ?? 0;
+    final int? goalSteps = latestHealthGoal?.dailyStepGoal;
+    final ratio = (goalSteps == null || goalSteps <= 0)
+        ? 0.0
+        : (totalSteps / goalSteps).clamp(0.0, 1.0);
+    final diff = todayStepsRecord?.stepsDifference ??
+        stepsStatistics?.stepsDifference ??
+        0;
     final diffUp = diff > 0;
 
     return Container(
@@ -254,7 +263,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      NumberFormat('#,###').format(targetSteps),
+                      goalSteps != null
+                          ? NumberFormat('#,###').format(goalSteps)
+                          : '-',
                       style: const TextStyle(
                         color: Color(0xFF1A1A1A),
                         fontSize: 20,

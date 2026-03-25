@@ -55,9 +55,19 @@ class ApiEndpoints {
   static const String bloodPressureRecords = '/api/health/blood-pressure';
   static const String heartRateRecords = '/api/health/heart-rate';
   static const String weightRecords = '/api/health/weight';
-
   static const String menstrualCycleRecords = '/api/health/menstrual-cycle';
+  /// 목표설정 (현재/목표 체중, 일일 목표 걸음) — Node: POST/GET latest
+  static const String healthGoal = '/api/health/health-goal';
+  static String healthGoalLatest(String mbId) =>
+      '/api/health/health-goal/latest?mb_id=${Uri.encodeComponent(mbId)}';
   static const String stepsRecords = '/api/health/steps';
+
+  /// Node 걸음 API — 일별 총 걸음 (`bomiora_back`: GET /api/steps/daily-total)
+  static String stepsDailyTotal({required String mbId, required String dateYyyyMmDd}) =>
+      '/api/steps/daily-total?mb_id=${Uri.encodeComponent(mbId)}&date=${Uri.encodeComponent(dateYyyyMmDd)}';
+
+  /// 주간/월간/통계 등 기존 경로 (userId = 숫자 회원 ID)
+  static String stepsStatistics(int userId) => '/api/steps/statistics/$userId';
   static const String healthStats = '/api/health/stats';
   static String foodSearch(String q, {int limit = 20}) =>
       '/api/health/food/search?q=${Uri.encodeComponent(q)}&limit=$limit';

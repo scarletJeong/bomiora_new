@@ -17,6 +17,8 @@ import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_rep
 import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
 import '../../../../data/repositories/health/steps/steps_repository.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
+import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
+import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../weight/screens/weight_list_screen.dart';
 import '../../blood_pressure/screens/blood_pressure_list_screen.dart';
 import '../../blood_sugar/screens/blood_sugar_list_screen.dart';
@@ -44,8 +46,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   MenstrualCycleRecord? latestMenstrualCycleRecord;
   HeartRateRecord? latestHeartRateRecord;
   StepsRecord? latestStepsRecord;
+  HealthGoalRecordModel? latestHealthGoal;
 
-  double targetWeight = 74.0;
   double currentWeight = 0.0;
   double height = 170.0;
   double bmi = 0.0;
@@ -94,7 +96,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       }
 
       final userId = user.id.toString();
-      final intUserId = int.tryParse(userId);
 
       final results = await Future.wait([
         WeightRepository.getWeightRecords(userId).catchError((_) => <WeightRecord>[]),
@@ -106,11 +107,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             .catchError((_) => <HeartRateRecord>[]),
         MenstrualCycleRepository.getLatestMenstrualCycleRecord(userId)
             .catchError((_) => null),
-        if (intUserId != null)
-          StepsRepository.getStepsRecordByDate(intUserId, selectedDate)
-              .catchError((_) => null)
-        else
-          Future.value(null),
+        StepsRepository.getStepsRecordByMbId(userId, selectedDate)
+            .catchError((_) => null),
+        HealthGoalRepository.fetchLatest(userId).catchError((_) => null),
       ]);
 
       final weightRecords = results[0] as List<WeightRecord>;
@@ -119,6 +118,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       final heartRateRecords = results[3] as List<HeartRateRecord>;
       final menstrualCycleRecord = results[4] as MenstrualCycleRecord?;
       final stepsRecord = results[5] as StepsRecord?;
+      final healthGoal = results[6] as HealthGoalRecordModel?;
       final weightRecord = _latestOfDate(weightRecords, (e) => e.measuredAt);
       final bloodPressureRecord =
           _latestOfDate(bpRecords, (e) => e.measuredAt);
@@ -139,6 +139,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         latestMenstrualCycleRecord = menstrualCycleRecord;
         latestHeartRateRecord = heartRateRecord;
         latestStepsRecord = stepsRecord;
+        latestHealthGoal = healthGoal;
 
         if (weightRecord != null) {
           currentWeight = weightRecord.weight;
@@ -354,13 +355,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               OutlinedButton(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  final saved = await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const HealthGoalScreen(),
                     ),
                   );
+                  if (!mounted) return;
+                  if (saved == true) _loadData();
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white70),
@@ -405,22 +408,50 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     );
   }
 
-  // 목표 체중 진행 바
+  /// 목표 체중까지의 진행률(0~1). 왼쪽=현재·오른쪽=목표로 향함. 목표 이력의 등록 시 현재체중을 앵커로 사용.
+  double _weightTowardGoalRatio(double cur, double tgt, double? goalAnchor) {
+    if (tgt <= 0 || cur <= 0) return 0.0;
+    if ((cur - tgt).abs() < 0.05) return 1.0;
+    final anchor = goalAnchor;
+    if (anchor == null || (anchor - tgt).abs() < 0.05) {
+      final d = (cur - tgt).abs();
+      final scale = math.max(math.max(cur, tgt), 30.0) * 0.2;
+      return (1.0 - (d / scale)).clamp(0.0, 1.0);
+    }
+    if (anchor > tgt) {
+      if (cur >= anchor) return 0.0;
+      if (cur <= tgt) return 1.0;
+      return ((anchor - cur) / (anchor - tgt)).clamp(0.0, 1.0);
+    }
+    if (anchor < tgt) {
+      if (cur <= anchor) return 0.0;
+      if (cur >= tgt) return 1.0;
+      return ((cur - anchor) / (tgt - anchor)).clamp(0.0, 1.0);
+    }
+    return 1.0;
+  }
+
+  // 목표 체중 진행 바 (좌: 현재 체중, 우: 목표 체중, 채움은 목표 방향 진행)
   Widget _buildWeightProgressBar() {
-    final double startWeight =
-        (currentWeight > targetWeight ? currentWeight : targetWeight) + 6;
-    final double whole = (startWeight - targetWeight).abs() < 0.1
-        ? 1
-        : (startWeight - targetWeight);
-    final double ratio =
-        ((startWeight - currentWeight) / whole).clamp(0.0, 1.0);
-    final int diff = (currentWeight - targetWeight).round();
+    final double? goalTgt = latestHealthGoal?.targetWeight;
+    final double? anchor = latestHealthGoal?.currentWeight;
+    final double ratio = goalTgt != null
+        ? _weightTowardGoalRatio(currentWeight, goalTgt, anchor)
+        : 0.0;
+    final int diff = goalTgt != null
+        ? (currentWeight - goalTgt).round()
+        : 0;
+    final String rightLabel = goalTgt != null
+        ? (goalTgt == goalTgt.roundToDouble()
+            ? '${goalTgt.toInt()}kg'
+            : '${goalTgt.toStringAsFixed(1)}kg')
+        : '-';
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final double barHeight = 14;
         final double arrowTipWidth = 10;
-        const double bubbleWidth = 36;
+        const double bubbleWidth = 40;
         final double markerX = constraints.maxWidth * ratio;
         final double bubbleLeft = (markerX - bubbleWidth / 2).clamp(
           0.0,
@@ -438,50 +469,56 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                // 배경 트랙
+                // 배경 트랙 (흰색)
                 Container(
                   width: double.infinity,
                   height: barHeight,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.35),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      width: 1,
+                    ),
                   ),
                 ),
                 // 화살표 모양 채우기 (왼쪽 둥글게, 오른쪽 뾰족하게)
-                SizedBox(
-                  width: fillWidth,
-                  height: barHeight,
-                  child: CustomPaint(
-                    painter: _WeightBarArrowPainter(
-                      color: Colors.white,
-                      barHeight: barHeight,
-                      arrowTipWidth: arrowTipWidth,
+                if (goalTgt != null && currentWeight > 0)
+                  SizedBox(
+                    width: fillWidth,
+                    height: barHeight,
+                    child: CustomPaint(
+                      painter: _WeightBarArrowPainter(
+                        color: const Color(0xFFFF5A8D),
+                        barHeight: barHeight,
+                        arrowTipWidth: arrowTipWidth,
+                      ),
+                      size: Size(fillWidth, barHeight),
                     ),
-                    size: Size(fillWidth, barHeight),
                   ),
-                ),
-                // 체중 바 말풍선 
-                Positioned(
-                  left: bubbleLeft,
-                  top: -28,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      diff <= 0 ? '${diff}kg' : '-${diff}kg',
-                      style: const TextStyle(
-                        color: Color(0xFFFF5A8D),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
+                // 체중 바 말풍선
+                if (goalTgt != null && currentWeight > 0)
+                  Positioned(
+                    left: bubbleLeft,
+                    top: -28,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        diff <= 0 ? '${diff}kg' : '-${diff}kg',
+                        style: const TextStyle(
+                          color: Color(0xFFFF5A8D),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -505,7 +542,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     ),
                   ),
                   Text(
-                    '${targetWeight.toStringAsFixed(0)}kg',
+                    rightLabel,
                     style: const TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
@@ -617,7 +654,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const TodayDietScreen(),
+            builder: (context) => TodayDietScreen(initialDate: selectedDate),
           ),
         );
         if (!mounted) return;
@@ -638,12 +675,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 Row(
                   children: [
                     const SizedBox(
-                      width: 1,
-                      height: 20,
+                      width: 2,
+                      height: 22,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: Color(0xFF1A1A1A),
-                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                          borderRadius: BorderRadius.all(Radius.circular(3)),
                         ),
                       ),
                     ),
@@ -865,12 +902,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           Row(
             children: [
               const SizedBox(
-                width: 1,
-                height: 20,
+                width: 2,
+                height: 22,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.all(Radius.circular(999)),
+                    borderRadius: BorderRadius.all(Radius.circular(1)),
                   ),
                 ),
               ),
@@ -988,7 +1025,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   onMore: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => MenstrualCycleInfoScreen()),
+                      builder: (context) => MenstrualCycleInfoScreen(
+                        initialDate: selectedDate,
+                      ),
+                    ),
                   ),
                 ),
               ),
