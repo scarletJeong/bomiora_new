@@ -4,19 +4,24 @@ class Coupon {
   final int no; // cp_no
   final String id; // cp_id
   final String subject; // cp_subject
-  final int method; // cp_method (할인 방법: 0=정액할인, 1=정률할인)
-  final String target; // cp_target (대상)
+  /// 보미오라 cp_method: 0=제품(it_id), 1=카테고리(ca_id), 2=주문금액, 3=배송비
+  final int method;
+  final String target; // cp_target
   final String userId; // mb_id
   final int zoneId; // cz_id
   final DateTime startDate; // cp_start
   final DateTime endDate; // cp_end
-  final int price; // cp_price (할인 금액)
-  final int type; // cp_type
-  final int trunc; // cp_trunc (할인율, 정률일 때)
-  final int minimum; // cp_minimum (최소 주문 금액)
-  final int maximum; // cp_maximum (최대 할인 금액)
+  /// 할인율(%) 또는 할인액(원). % 인지 구분은 [maximum] 참고
+  final int price; // cp_price
+  final int type; // cp_type (쿠폰 구분 등, 표시는 method 우선)
+  final int trunc; // cp_trunc
+  final int minimum; // cp_minimum
+  /// 0 초과면 `cp_price` 는 할인율(%), 0 이면 `cp_price` 는 할인액(원)
+  final int maximum; // cp_maximum
   final int? orderId; // od_id
   final DateTime? datetime; // cp_datetime
+  /// API `applied_product` — `적용상품: …` 문구 (카테고리·상품명 조회 결과)
+  final String? appliedProduct;
 
   Coupon({
     required this.no,
@@ -35,6 +40,7 @@ class Coupon {
     required this.maximum,
     this.orderId,
     this.datetime,
+    this.appliedProduct,
   });
 
   factory Coupon.fromJson(Map<String, dynamic> json) {
@@ -70,6 +76,7 @@ class Coupon {
       datetime: normalized['cp_datetime'] != null || normalized['datetime'] != null
           ? _parseDateTime(normalized['cp_datetime'] ?? normalized['datetime'])
           : null,
+      appliedProduct: NodeValueParser.asString(normalized['applied_product']),
     );
   }
 
@@ -149,18 +156,25 @@ class Coupon {
     return today.isAfter(end) && !isUsed;
   }
 
+  /// `cp_maximum` 이 있으면 `cp_price` 는 할인율(%), 없으면 할인액(원)
+  bool get _cpPriceIsPercent => maximum > 0;
+
   /// 할인 금액 표시 텍스트
   String get discountText {
-    if (method == 1) {
-      // 정률할인
-      return '${trunc}% 할인';
-    } else {
-      // 정액할인
-      return '${price.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (Match m) => '${m[1]},',
-      )}원 할인';
+    if (price <= 0) return '할인';
+    if (_cpPriceIsPercent) {
+      return '$price% 할인';
     }
+    return '${_commaWon(price)}원 할인';
+  }
+
+  /// 카드 우측(큰 글씨)용: `20%` / `10,000원`
+  String get discountPrimaryLabel {
+    if (price <= 0) return '—';
+    if (_cpPriceIsPercent) {
+      return '$price%';
+    }
+    return '${_commaWon(price)}원';
   }
 
   /// 포맷된 날짜 범위
@@ -168,6 +182,45 @@ class Coupon {
     final start = '${startDate.year}.${startDate.month.toString().padLeft(2, '0')}.${startDate.day.toString().padLeft(2, '0')}';
     final end = '${endDate.year}.${endDate.month.toString().padLeft(2, '0')}.${endDate.day.toString().padLeft(2, '0')}';
     return '$start – $end';
+  }
+
+  static String _commaWon(int n) {
+    return n.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+
+  /// 화면에 그릴 `적용상품:` 한 줄 (API 없을 때 `cp_method` 기준 폴백)
+  String get displayAppliedLine {
+    final a = appliedProduct?.trim();
+    if (a != null && a.isNotEmpty) return a;
+    switch (method) {
+      case 0:
+        if (target.isNotEmpty) return '적용상품: $target 상품할인';
+        return '적용상품: 지정 상품 상품할인';
+      case 1:
+        if (target.isNotEmpty) return '적용상품: $target 상품할인';
+        return '적용상품: 지정 카테고리 상품할인';
+      case 2:
+        return '적용상품: 주문 금액 할인';
+      case 3:
+        return '적용상품: 배송비 할인';
+      default:
+        return '';
+    }
+  }
+
+  /// `최소 n원 이상`, `최대 m원까지` 조합 (둘 다 없으면 null)
+  String? get minMaxOrderDescription {
+    final hasMin = minimum > 0;
+    final hasMax = maximum > 0;
+    if (hasMin && hasMax) {
+      return '최소 ${_commaWon(minimum)}원 이상, 최대 ${_commaWon(maximum)}원까지';
+    }
+    if (hasMin) return '최소 ${_commaWon(minimum)}원 이상';
+    if (hasMax) return '최대 ${_commaWon(maximum)}원까지';
+    return null;
   }
 }
 

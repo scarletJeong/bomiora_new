@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/coupon/coupon_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_footer.dart';
+import '../../../common/widgets/app_bar.dart';
 
 class CouponScreen extends StatefulWidget {
   const CouponScreen({super.key});
@@ -13,28 +15,31 @@ class CouponScreen extends StatefulWidget {
   State<CouponScreen> createState() => _CouponScreenState();
 }
 
-class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderStateMixin {
+class _CouponScreenState extends State<CouponScreen> {
   UserModel? _currentUser;
-  List<Coupon> _allCoupons = [];
   List<Coupon> _availableCoupons = [];
   List<Coupon> _usedCoupons = [];
   List<Coupon> _expiredCoupons = [];
   bool _isLoading = true;
-  late TabController _tabController;
+  int _selectedCouponTab = 0;
   final TextEditingController _couponCodeController = TextEditingController();
+
+  static const Color _pink = Color(0xFFFF5A8D);
+  static const Color _border = Color(0x7FD2D2D2);
+  static const Color _textMain = Color(0xFF1A1A1A);
+  static const Color _textMuted = Color(0xFF898383);
+  static const Color _textSub = Color(0xFF898686);
+
+  @override
+  void dispose() {
+    _couponCodeController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _loadData();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _couponCodeController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -48,7 +53,6 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
         setState(() {
           _currentUser = user;
         });
-
         await _loadCoupons();
       }
     } catch (e) {
@@ -71,25 +75,45 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
     if (_currentUser == null) return;
 
     try {
-      // 백엔드에서 분리된 API로 각각 조회
       final results = await Future.wait([
         CouponService.getAvailableCoupons(_currentUser!.id),
         CouponService.getUsedCoupons(_currentUser!.id),
         CouponService.getExpiredCoupons(_currentUser!.id),
       ]);
-      
+
       setState(() {
         _availableCoupons = results[0];
         _usedCoupons = results[1];
         _expiredCoupons = results[2];
-        _allCoupons = [
-          ..._availableCoupons,
-          ..._usedCoupons,
-          ..._expiredCoupons,
-        ];
       });
     } catch (e) {
-      print('쿠폰 조회 오류: $e');
+      debugPrint('쿠폰 조회 오류: $e');
+    }
+  }
+
+  List<Coupon> get _filteredCoupons {
+    switch (_selectedCouponTab) {
+      case 0:
+        return _availableCoupons;
+      case 1:
+        return _usedCoupons;
+      case 2:
+        return _expiredCoupons;
+      default:
+        return [];
+    }
+  }
+
+  String get _emptyMessage {
+    switch (_selectedCouponTab) {
+      case 0:
+        return '사용할 수 있는 쿠폰이 없습니다.';
+      case 1:
+        return '사용한 쿠폰이 없습니다.';
+      case 2:
+        return '만료된 쿠폰이 없습니다.';
+      default:
+        return '';
     }
   }
 
@@ -137,20 +161,15 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text('쿠폰'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
+      appBar: const HealthAppBar(
+        title: '쿠폰',
       ),
       child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF5A8D),
+              ),
+            )
           : _currentUser == null
               ? _buildLoginRequired()
               : _buildContent(),
@@ -158,210 +177,303 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLoginRequired() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.lock, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            '로그인이 필요합니다',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-          ),
-        ],
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              '로그인이 필요합니다',
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 내 쿠폰 개수 섹션
-        _buildCouponSummary(),
-        
-        // 탭
-        TabBar(
-          controller: _tabController,
-          labelColor: Colors.black,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFFFF4081),
-          tabs: const [
-            Tab(text: '사용가능한 쿠폰'),
-            Tab(text: '사용한 쿠폰'),
-            Tab(text: '지난 쿠폰'),
+    final filtered = _filteredCoupons;
+
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(color: Colors.white),
+        clipBehavior: Clip.antiAlias,
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 27),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    _buildCouponSummaryCard(),
+                    const SizedBox(height: 20),
+                    _buildCouponFilterTabs(),
+                    const SizedBox(height: 20),
+                    if (_selectedCouponTab == 0) ...[
+                      _buildCouponRegistration(),
+                      const SizedBox(height: 20),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (filtered.isEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 27),
+                sliver: SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        _emptyMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontFamily: 'Gmarket Sans TTF',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(27, 0, 27, 24),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => Padding(
+                      padding: EdgeInsets.only(bottom: index < filtered.length - 1 ? 10 : 0),
+                      child: _buildCouponCard(filtered[index], _selectedCouponTab),
+                    ),
+                    childCount: filtered.length,
+                  ),
+                ),
+              ),
           ],
         ),
-        
-        // 쿠폰 등록 섹션
-        _buildCouponRegistration(),
-        
-        // 쿠폰 리스트
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildCouponList(_availableCoupons, '사용할 수 있는 쿠폰이 없습니다.'),
-              _buildCouponList(_usedCoupons, '사용한 쿠폰이 없습니다.'),
-              _buildCouponList(_expiredCoupons, '만료된 쿠폰이 없습니다.'),
-            ],
+      ),
+    );
+  }
+
+  Widget _buildCouponSummaryCard() {
+    final count = _availableCoupons.length;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(bottom: 10),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(
+            width: 1,
+            color: _border,
           ),
+          borderRadius: BorderRadius.circular(7),
         ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Opacity(
+            opacity: 0.80,
+            child: SizedBox(
+              width: double.infinity,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SvgPicture.asset(
+                    AppAssets.couponIcon,
+                    width: 80,
+                    height: 80,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  '내 쿠폰',
+                  style: TextStyle(
+                    color: _textMain,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  '$count',
+                  style: const TextStyle(
+                    color: _pink,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponFilterTabs() {
+    Widget vDivider() => Container(
+          width: 0.5,
+          height: 11,
+          color: const Color(0xFFD2D2D2),
+        );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: _buildTabChip(0, '사용가능한 쿠폰')),
+        vDivider(),
+        Expanded(child: _buildTabChip(1, '사용한 쿠폰')),
+        vDivider(),
+        Expanded(child: _buildTabChip(2, '지난 쿠폰')),
       ],
     );
   }
 
-  Widget _buildCouponSummary() {
-    final totalCoupons = _availableCoupons.length; // 사용 가능한 쿠폰만 카운트
-    
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          // 쿠폰 아이콘 (단일 태그 형태)
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFFF4081),
-                  Color(0xFFFF6BA3),
-                ],
+  Widget _buildTabChip(int index, String label) {
+    final selected = _selectedCouponTab == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedCouponTab = index),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected ? _pink : _textMuted,
+                fontSize: 14,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.pink.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
             ),
-            child: Stack(
-              children: [
-                // 노란색 끈 (상단)
-                Positioned(
-                  top: 4,
-                  left: 15,
-                  right: 15,
-                  child: Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: Colors.yellow[600],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                // 3줄 바코드 스타일 (중앙)
-                const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 3,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(color: Colors.white),
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      SizedBox(
-                        width: 20,
-                        height: 3,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(color: Colors.white),
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      SizedBox(
-                        width: 20,
-                        height: 3,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const SizedBox(height: 4),
+            Container(
+              height: 1,
+              color: selected ? _pink : Colors.transparent,
             ),
-          ),
-          const SizedBox(height: 24),
-          // 내 쿠폰 텍스트
-          Text(
-            '내 쿠폰 $totalCoupons개',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildCouponRegistration() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _border),
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '쿠폰 등록하기',
+            '쿠폰등록하기',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+              color: _textMain,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            height: 1,
+            color: _border,
+          ),
+          const SizedBox(height: 10),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: TextField(
                   controller: _couponCodeController,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    color: _textMain,
+                  ),
                   decoration: InputDecoration(
+                    isDense: true,
                     hintText: '쿠폰 코드를 입력해주세요',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    hintStyle: const TextStyle(
+                      color: _textMuted,
+                      fontSize: 10,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(width: 1, color: _border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(width: 1, color: _border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(width: 1, color: _border),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: _registerCoupon,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal[300],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              const SizedBox(width: 10),
+              Material(
+                color: const Color(0xFFD2D2D2),
+                borderRadius: BorderRadius.circular(7),
+                child: InkWell(
+                  onTap: _registerCoupon,
+                  borderRadius: BorderRadius.circular(7),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Text(
+                      '등록',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
-                child: const Text('쿠폰 등록하기'),
               ),
             ],
           ),
@@ -370,123 +482,114 @@ class _CouponScreenState extends State<CouponScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildCouponList(List<Coupon> coupons, String emptyMessage) {
-    if (coupons.isEmpty) {
-      return SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 빈 상태 메시지 (padding 적용)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Center(
-                  child: Text(
-                    emptyMessage,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 300),
-            
-            // Footer  
-            const AppFooter(),
-          ],
-        ),
-      );
-    }
+  Widget _buildCouponCard(Coupon coupon, int tabIndex) {
+    final dateLine = coupon.formattedDateRange.replaceAll('–', '~');
+    final appliedLine = coupon.displayAppliedLine;
+    final minMaxLine = coupon.minMaxOrderDescription;
+    final showUsageDetail = tabIndex != 1;
+    final showOrderId = tabIndex == 1 &&
+        coupon.orderId != null &&
+        coupon.orderId! > 0;
 
-    return CustomScrollView(
-      slivers: [
-        // 쿠폰 리스트 (padding 적용)
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                return _buildCouponCard(coupons[index]);
-              },
-              childCount: coupons.length,
-            ),
-          ),
-        ),
-        
-        // Footer  
-        const SliverToBoxAdapter(
-          child: Column(
-            children: [
-              SizedBox(height: 300),
-              AppFooter(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCouponCard(Coupon coupon) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: ShapeDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _border),
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 날짜 범위
           Text(
-            coupon.formattedDateRange,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // 쿠폰 정보
-          Text(
-            coupon.subject,
+            dateLine,
             style: const TextStyle(
-              fontSize: 15,
+              color: _textMain,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
           ),
-          if (coupon.target.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              coupon.target,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
+          const SizedBox(height: 10),
+          Container(height: 1, color: _border),
+          const SizedBox(height: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '보미오라',
+                style: TextStyle(
+                  color: _textMain,
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
-          const SizedBox(height: 8),
-          // 할인 금액
-          Text(
-            coupon.discountText,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFFF4081),
-            ),
+              const SizedBox(height: 2),
+              Text(
+                coupon.subject.isNotEmpty ? coupon.subject : '쿠폰',
+                style: const TextStyle(
+                  color: _textMain,
+                  fontSize: 16,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (showUsageDetail && appliedLine.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  appliedLine,
+                  style: const TextStyle(
+                    color: _textSub,
+                    fontSize: 10,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              if (showUsageDetail && minMaxLine != null) ...[
+                const SizedBox(height: 5),
+                Text(
+                  minMaxLine,
+                  style: const TextStyle(
+                    color: _textSub,
+                    fontSize: 10,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              if (showOrderId) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '주문번호: ${coupon.orderId}',
+                  style: const TextStyle(
+                    color: _textMain,
+                    fontSize: 12,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                coupon.discountPrimaryLabel,
+                style: const TextStyle(
+                  color: _pink,
+                  fontSize: 20,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 }
-
