@@ -5,6 +5,8 @@ class ReviewModel {
   final int? isId;
   final String itId;
   final String? itName; // 제품명
+  /// `prescription`(비대면·처방) / `general`(일반) 등 상품 구분 (API: it_kind, itKind)
+  final String? itKind;
   final String mbId;
   final String? isName;
   final DateTime? isTime;
@@ -55,6 +57,7 @@ class ReviewModel {
     this.isId,
     required this.itId,
     this.itName,
+    this.itKind,
     required this.mbId,
     this.isName,
     this.isTime,
@@ -80,6 +83,27 @@ class ReviewModel {
     this.odId,
   });
   
+  static String? _readProductNameFromMap(Map<String, dynamic> m) {
+    const keys = [
+      'itName',
+      'it_name',
+      'productName',
+      'product_name',
+      'itemName',
+      'item_name',
+      'goodsName',
+      'goods_name',
+      'itSubject',
+      'it_subject',
+      'name',
+    ];
+    for (final k in keys) {
+      final s = NodeValueParser.asString(m[k]);
+      if (s != null && s.trim().isNotEmpty) return s.trim();
+    }
+    return null;
+  }
+
   /// JSON에서 모델로 변환
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
@@ -90,11 +114,75 @@ class ReviewModel {
           .where((e) => e.isNotEmpty)
           .toList();
     }
-    
+
+    String? itName = _readProductNameFromMap(normalized);
+    if (itName == null || itName.isEmpty) {
+      for (final nestedKey in [
+        'product',
+        'item',
+        'goods',
+        'itInfo',
+        'it',
+        'reviewItem',
+        'review_item',
+      ]) {
+        final raw = normalized[nestedKey];
+        if (raw is Map) {
+          final nm = NodeValueParser.normalizeMap(
+            Map<String, dynamic>.from(raw),
+          );
+          itName = _readProductNameFromMap(nm);
+          if (itName != null && itName.isNotEmpty) break;
+        }
+      }
+    }
+
+    Map<String, dynamic>? productMap;
+    final productRaw = normalized['product'];
+    if (productRaw is Map) {
+      productMap = NodeValueParser.normalizeMap(
+        Map<String, dynamic>.from(productRaw),
+      );
+    }
+
+    if ((itName == null || itName.isEmpty) && productMap != null) {
+      itName = _readProductNameFromMap(productMap);
+    }
+
+    String? itKind = NodeValueParser.asString(
+      normalized['itKind'] ?? normalized['it_kind'],
+    );
+    if ((itKind == null || itKind.isEmpty) && productMap != null) {
+      itKind = NodeValueParser.asString(
+        productMap['itKind'] ?? productMap['it_kind'],
+      );
+    }
+    if (itKind == null || itKind.isEmpty) {
+      for (final nestedKey in [
+        'item',
+        'goods',
+        'itInfo',
+        'it',
+        'reviewItem',
+        'review_item',
+      ]) {
+        final raw = normalized[nestedKey];
+        if (raw is Map) {
+          final nm = NodeValueParser.normalizeMap(
+            Map<String, dynamic>.from(raw),
+          );
+          itKind = NodeValueParser.asString(nm['itKind'] ?? nm['it_kind']);
+          if (itKind != null && itKind.isNotEmpty) break;
+        }
+      }
+    }
+
     return ReviewModel(
       isId: NodeValueParser.asInt(normalized['isId']),
-      itId: NodeValueParser.asString(normalized['itId']) ?? '',
-      itName: NodeValueParser.asString(normalized['itName']),
+      itId: NodeValueParser.asString(normalized['itId'] ?? normalized['it_id']) ??
+          '',
+      itName: itName,
+      itKind: itKind,
       mbId: NodeValueParser.asString(normalized['mbId']) ?? '',
       isName: NodeValueParser.asString(normalized['isName']),
       isTime: NodeValueParser.asDateTime(normalized['isTime']),
@@ -127,6 +215,7 @@ class ReviewModel {
       if (isId != null) 'isId': isId,
       'itId': itId,
       if (itName != null) 'itName': itName,
+      if (itKind != null) 'itKind': itKind,
       'mbId': mbId,
       if (isName != null) 'isName': isName,
       if (isTime != null) 'isTime': isTime!.toIso8601String(),

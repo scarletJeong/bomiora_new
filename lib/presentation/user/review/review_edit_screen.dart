@@ -47,7 +47,13 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
   @override
   void initState() {
     super.initState();
-    
+
+    final r = widget.review;
+    debugPrint(
+      '📝 [리뷰 수정] 어떤 리뷰/상품인지 — isId=${r.isId} itId=${r.itId} '
+      'itName=${r.itName} itKind=${r.itKind} isRvkind=${r.isRvkind} odId=${r.odId}',
+    );
+
     // 기존 리뷰 데이터로 초기화
     _score1 = widget.review.isScore1;
     _score2 = widget.review.isScore2;

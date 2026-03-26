@@ -1,21 +1,31 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_footer.dart';
-import '../../../data/models/review/review_model.dart';
+
 import '../../../data/models/delivery/delivery_model.dart';
-import '../../../data/services/review_service.dart';
+import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/review_service.dart';
+import '../../common/widgets/app_bar.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 
 /// 리뷰 작성 화면
 class ReviewWriteScreen extends StatefulWidget {
-  final OrderDetailModel orderDetail;
-  
+  final OrderDetailModel? orderDetail;
+  final ReviewModel? initialReview;
+
   const ReviewWriteScreen({
     super.key,
-    required this.orderDetail,
+    this.orderDetail,
+    this.initialReview,
   });
+
+  const ReviewWriteScreen.edit({
+    super.key,
+    required ReviewModel review,
+  })  : orderDetail = null,
+        initialReview = review;
 
   @override
   State<ReviewWriteScreen> createState() => _ReviewWriteScreenState();
@@ -23,27 +33,53 @@ class ReviewWriteScreen extends StatefulWidget {
 
 class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  // 평점
-  int _score1 = 5; // 효과
-  int _score2 = 5; // 가성비
-  int _score3 = 5; // 맛/향
-  int _score4 = 5; // 편리함
-  
-  // 추천 여부
-  bool _recommend = true;
-  
-  // 리뷰 내용
+
+  static const Color _kPink = Color(0xFFFF5A8D);
+  static const Color _kInk = Color(0xFF1A1A1A);
+  static const Color _kMuted = Color(0xFF898686);
+  static const Color _kBorder = Color(0x7FD2D2D2);
+
+  int _score1 = 0;
+  int _score2 = 0;
+  int _score3 = 0;
+  int _score4 = 0;
+  int _weightLossKg = 0;
+
   final _positiveController = TextEditingController();
   final _negativeController = TextEditingController();
   final _moreController = TextEditingController();
-  
-  // 이미지
-  List<File> _imageFiles = [];
+
+  final List<File> _imageFiles = [];
   final ImagePicker _picker = ImagePicker();
-  
-  // 로딩
+
   bool _isLoading = false;
+  bool get _isEditMode => widget.initialReview != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final editing = widget.initialReview;
+    if (editing != null) {
+      _score1 = editing.isScore1;
+      _score2 = editing.isScore2;
+      _score3 = editing.isScore3;
+      _score4 = editing.isScore4;
+      _weightLossKg = editing.isOutageNum ?? 0;
+      _positiveController.text = editing.isPositiveReviewText ?? '';
+      _negativeController.text = editing.isNegativeReviewText ?? '';
+      _moreController.text = editing.isMoreReviewText ?? '';
+      return;
+    }
+
+    final od = widget.orderDetail;
+    if (od == null) return;
+    final items = od.products;
+    debugPrint('📝 [리뷰 작성] odId=${od.odId} isPrescriptionOrder=${od.isPrescriptionOrder} 상품수=${items.length}');
+    for (var i = 0; i < items.length; i++) {
+      final p = items[i];
+      debugPrint('   [$i] itId=${p.itId} itName=${p.itName} itSubject=${p.itSubject} ctOption=${p.ctOption}');
+    }
+  }
 
   @override
   void dispose() {
@@ -55,60 +91,50 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          title: const Text(
-            '리뷰 작성',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        body: Form(
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
+      child: MobileAppLayoutWrapper(
+        backgroundColor: Colors.white,
+        appBar: HealthAppBar(title: _isEditMode ? '리뷰수정' : '리뷰쓰기'),
+        child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20),
             children: [
-              // 주문 상품 정보
-              _buildProductInfo(),
-              const SizedBox(height: 24),
-              
-              // 평점 섹션
-              _buildScoreSection(),
-              const SizedBox(height: 24),
-              
-              // 추천 여부
-              _buildRecommendSection(),
-              const SizedBox(height: 24),
-              
-              // 리뷰 내용 섹션
-              _buildReviewContentSection(),
-              const SizedBox(height: 24),
-              
-              // 이미지 업로드 섹션
+              const SizedBox(height: 10),
+              if (!_isEditMode) _buildProductSection() else _buildReviewProductSectionForEdit(),
+              const SizedBox(height: 20),
+              _buildWeightSection(),
+              const SizedBox(height: 20),
+              _buildSatisfactionSection(),
+              const SizedBox(height: 20),
+              _buildReviewTextSection(
+                labelPrefix: '상품 리뷰',
+                labelBold: '좋았던 점',
+                requiredField: true,
+                controller: _positiveController,
+                hint: '직접 사용(복용)해보며 느낀 점과 만족스러웠던 점 어떤 분들께 추천하고 싶은지 함께 작성해주세요. (최소 20자)',
+              ),
+              const SizedBox(height: 20),
+              _buildReviewTextSection(
+                labelPrefix: '상품 리뷰',
+                labelBold: '아쉬운 점',
+                requiredField: true,
+                controller: _negativeController,
+                hint: '사용(복용)하면서 아쉬웠던 점과 개선되었으면 하는 부분이 있다면 알려주세요. (최소 20자)',
+              ),
+              const SizedBox(height: 20),
+              _buildReviewTextSection(
+                labelPrefix: '상품 리뷰',
+                labelBold: '꿀팁',
+                requiredField: false,
+                controller: _moreController,
+                hint: '사용(복용)하시면서 알게 된 꿀팁이나 효과적으로 활용하는 방법이 있다면 공유해주세요. (최소 20자)',
+              ),
+              const SizedBox(height: 20),
               _buildImageSection(),
-              const SizedBox(height: 32),
-              
-              // 작성 완료 버튼
-              _buildSubmitButton(),
-              const SizedBox(height: 32),
-              
-              const SizedBox(height: 300),
-              
-              // Footer
-              const AppFooter(),
+              const SizedBox(height: 20),
+              _buildBottomButtons(),
             ],
           ),
         ),
@@ -116,484 +142,460 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
-  /// 주문 상품 정보
-  Widget _buildProductInfo() {
-    // 첫 번째 상품 정보 표시
-    final firstItem = widget.orderDetail.products.isNotEmpty 
-        ? widget.orderDetail.products.first 
-        : null;
-    
-    if (firstItem == null) {
-      return const SizedBox.shrink();
-    }
-    
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '구매한 상품',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              // 상품 이미지 (있을 경우)
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.shopping_bag,
-                  size: 30,
-                  color: Colors.grey[400],
-                ),
-              ),
-              const SizedBox(width: 12),
-              
-              // 상품명
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      firstItem.itName ?? '상품명 없음',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (firstItem.ctOption != null && firstItem.ctOption!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          firstItem.ctOption!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 평점 섹션
-  Widget _buildScoreSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '상품 평가',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          _buildScoreItem('효과', _score1, (value) => setState(() => _score1 = value)),
-          const SizedBox(height: 12),
-          _buildScoreItem('가성비', _score2, (value) => setState(() => _score2 = value)),
-          const SizedBox(height: 12),
-          _buildScoreItem('맛/향', _score3, (value) => setState(() => _score3 = value)),
-          const SizedBox(height: 12),
-          _buildScoreItem('편리함', _score4, (value) => setState(() => _score4 = value)),
-        ],
-      ),
-    );
-  }
-
-  /// 평점 항목
-  Widget _buildScoreItem(String label, int score, Function(int) onChanged) {
+  Widget _buildSectionTitle(String bold, String light) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          label,
+          bold,
           style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.44,
           ),
         ),
-        Row(
-          children: List.generate(5, (index) {
-            return IconButton(
-              icon: Icon(
-                index < score ? Icons.star : Icons.star_border,
-                color: const Color(0xFFFF4081),
-                size: 28,
-              ),
-              onPressed: () => onChanged(index + 1),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            );
-          }),
+        const SizedBox(width: 5),
+        Text(
+          light,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w300,
+            letterSpacing: -1.76,
+          ),
         ),
       ],
     );
   }
 
-  /// 추천 여부 섹션
-  Widget _buildRecommendSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            '이 상품을 추천하시나요?',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          Row(
-            children: [
-              _buildRecommendButton(true),
-              const SizedBox(width: 8),
-              _buildRecommendButton(false),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildProductSection() {
+    final od = widget.orderDetail;
+    if (od == null) return const SizedBox.shrink();
+    final firstItem = od.products.isNotEmpty ? od.products.first : null;
+    if (firstItem == null) return const SizedBox.shrink();
 
-  /// 추천 버튼
-  Widget _buildRecommendButton(bool value) {
-    final isSelected = _recommend == value;
-    return GestureDetector(
-      onTap: () => setState(() => _recommend = value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFF4081) : Colors.white,
-          border: Border.all(
-            color: isSelected ? const Color(0xFFFF4081) : Colors.grey[300]!,
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          value ? '네 👍' : '아니오 👎',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.white : Colors.grey[700],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 리뷰 내용 섹션
-  Widget _buildReviewContentSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '리뷰 작성',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          _buildSectionTitle('주문상품', '정보'),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+            decoration: ShapeDecoration(
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(width: 1, color: _kBorder),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAEAEA),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(Icons.image_outlined, color: _kMuted),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        firstItem.itName,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -1.26),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '수량: ${firstItem.ctQty}${firstItem.ctOption != null && firstItem.ctOption!.isNotEmpty ? ' / ${firstItem.ctOption}' : ''}',
+                        style: const TextStyle(
+                          color: Color(0xFF898383),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          
-          // 좋았던 점
-          TextFormField(
-            controller: _positiveController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: '좋았던 점',
-              hintText: '어떤 점이 좋았나요?',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewProductSectionForEdit() {
+    final review = widget.initialReview;
+    if (review == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('주문상품', '정보'),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: _kBorder),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          child: Text(
+            review.itName ?? review.itId,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -1.26),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeightSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Text(
+              '감량',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.44),
+            ),
+            SizedBox(width: 5),
+            Text(
+              '그래프',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: -1.76),
+            ),
+            SizedBox(width: 5),
+            Text(
+              '(선택)',
+              style: TextStyle(color: _kMuted, fontSize: 12, fontWeight: FontWeight.w300),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '얼마나 감량하셨나요?',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300, letterSpacing: -1.32),
+            ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  child: Text(
+                    _weightLossKg == 0 ? '-' : '$_weightLossKg',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w300),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                const Text('kg', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w300)),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: _kPink,
+            inactiveTrackColor: const Color(0xFFF6F6F6),
+            trackHeight: 8,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+          ),
+          child: Slider(
+            value: _weightLossKg.toDouble(),
+            min: 0,
+            max: 50,
+            divisions: 50,
+            onChanged: (v) => setState(() => _weightLossKg = v.round()),
+          ),
+        ),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('1kg', style: TextStyle(color: Color(0xFFA19E9E), fontSize: 10, fontWeight: FontWeight.w500)),
+            Text('10kg', style: TextStyle(color: Color(0xFFA19E9E), fontSize: 10, fontWeight: FontWeight.w500)),
+            Text('20kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
+            Text('30kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
+            Text('40kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
+            Text('50kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSatisfactionSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Text('상품', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: -1.44)),
+            SizedBox(width: 5),
+            Text('만족도', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.76)),
+            SizedBox(width: 5),
+            Text('*  필수', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w300)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _scoreRow('효과', _score1, (v) => setState(() => _score1 = v)),
+        const SizedBox(height: 8),
+        _scoreRow('가성비', _score2, (v) => setState(() => _score2 = v)),
+        const SizedBox(height: 8),
+        _scoreRow('향/맛', _score3, (v) => setState(() => _score3 = v)),
+        const SizedBox(height: 8),
+        _scoreRow('편리함', _score4, (v) => setState(() => _score4 = v)),
+      ],
+    );
+  }
+
+  Widget _scoreRow(String label, int score, ValueChanged<int> onChanged) {
+    return Container(
+      width: double.infinity,
+      height: 45,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Row(
+      children: [
+        SizedBox(
+          width: 42,
+          child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+        ),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: List.generate(5, (index) {
+              final on = index < score;
+              return IconButton(
+              icon: Icon(
+                  on ? Icons.star : Icons.star_border,
+                  color: _kPink,
+                  size: 20,
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFFF4081)),
+                onPressed: () => onChanged(index + 1),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              );
+            }),
+          ),
+        ),
+      ],
+      ),
+    );
+  }
+
+  Widget _buildReviewTextSection({
+    required String labelPrefix,
+    required String labelBold,
+    required bool requiredField,
+    required TextEditingController controller,
+    required String hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(labelPrefix, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: -1.44)),
+            const SizedBox(width: 5),
+            Text(labelBold, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.76)),
+            const SizedBox(width: 5),
+            Text(
+              requiredField ? '*  필수' : '(선택)',
+              style: TextStyle(
+                color: requiredField ? const Color(0xFFEF4444) : _kMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w300,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          height: 120,
+          padding: const EdgeInsets.all(20),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: _kBorder),
+              borderRadius: BorderRadius.circular(7),
+            ),
+          ),
+          child: TextFormField(
+            controller: controller,
+            maxLength: 3000,
+            maxLines: null,
+            decoration: const InputDecoration(
+              hintText: '',
+              border: InputBorder.none,
+              counterText: '',
+            ),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '좋았던 점을 입력해주세요';
+              final v = (value ?? '').trim();
+              if (requiredField && v.length < 20) {
+                return '최소 20자 이상 입력해 주세요.';
               }
               return null;
             },
+            onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 16),
-          
-          // 아쉬운 점
-          TextFormField(
-            controller: _negativeController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: '아쉬운 점 (선택)',
-              hintText: '아쉬운 점이 있다면 알려주세요',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFFF4081)),
-              ),
-            ),
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '${controller.text.length}/3,000자',
+            style: const TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w300),
           ),
-          const SizedBox(height: 16),
-          
-          // 꿀팁
-          TextFormField(
-            controller: _moreController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: '꿀팁 (선택)',
-              hintText: '다른 분들께 꿀팁을 공유해주세요',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFFF4081)),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// 이미지 업로드 섹션
   Widget _buildImageSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '사진 첨부 (선택)',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Text('사진업로드', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.44)),
+            SizedBox(width: 6),
+            Text('(선택)', style: TextStyle(color: _kMuted, fontSize: 12, fontWeight: FontWeight.w300)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            InkWell(
+              onTap: _pickImage,
+              child: Container(
+                width: 76,
+                height: 76,
+                decoration: ShapeDecoration(
+                  color: const Color(0x99D2D2D2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-              ),
-              Text(
-                '${_imageFiles.length}/10',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // 이미지 그리드
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // 이미지 추가 버튼
-              if (_imageFiles.length < 10)
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_photo_alternate, color: Colors.grey[600]),
-                        const SizedBox(height: 4),
-                        Text(
-                          '사진 추가',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              
-              // 선택된 이미지들
-              ..._imageFiles.asMap().entries.map((entry) {
-                final index = entry.key;
-                final file = entry.value;
-                
-                return Stack(
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: DecorationImage(
-                          image: FileImage(file),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                    Icon(Icons.add_a_photo_outlined, color: Colors.white),
+                    SizedBox(height: 4),
+                    Text(
+                      '사진추가하기',
+                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            ..._imageFiles.asMap().entries.map((e) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 5),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(e.value, width: 76, height: 76, fit: BoxFit.cover),
                     ),
                     Positioned(
-                      top: 4,
-                      right: 4,
-                      child: GestureDetector(
-                        onTap: () => _removeImage(index),
+                      right: 2,
+                      top: 2,
+                      child: InkWell(
+                        onTap: () => setState(() => _imageFiles.removeAt(e.key)),
                         child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 16,
-                          ),
+                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                          child: const Icon(Icons.close, color: Colors.white, size: 16),
                         ),
                       ),
                     ),
                   ],
-                );
-              }),
-            ],
-          ),
-        ],
-      ),
+                ),
+              );
+            }),
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          '최대 3장 / 파일당 5MB이하(GIF,JPG,PNG)',
+          style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w300),
+        ),
+      ],
     );
   }
 
-  /// 작성 완료 버튼
-  Widget _buildSubmitButton() {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : _submitReview,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFF4081),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        elevation: 0,
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
-          : const Text(
-              '리뷰 작성 완료',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+  Widget _buildBottomButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 40,
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
+            child: TextButton(
+              onPressed: _isLoading ? null : () => Navigator.pop(context),
+              child: const Text(
+                '취소',
+                style: TextStyle(color: _kMuted, fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Container(
+            height: 40,
+            decoration: ShapeDecoration(
+              color: _kPink,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: TextButton(
+              onPressed: _isLoading ? null : _submitReview,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(
+                      _isEditMode ? '수정' : '등록',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   /// 이미지 선택
   Future<void> _pickImage() async {
-    if (_imageFiles.length >= 10) {
+    if (_imageFiles.length >= 3) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('사진은 최대 10장까지 첨부할 수 있습니다.')),
+        const SnackBar(content: Text('사진은 최대 3장까지 첨부할 수 있습니다.')),
       );
       return;
     }
@@ -645,12 +647,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         return;
       }
       
-      // 첫 번째 상품 ID 가져오기
-      final firstItem = widget.orderDetail.products.isNotEmpty 
-          ? widget.orderDetail.products.first 
+      final currentOrderFirstItem = widget.orderDetail != null && widget.orderDetail!.products.isNotEmpty
+          ? widget.orderDetail!.products.first
           : null;
-      
-      if (firstItem == null) {
+      final editTarget = widget.initialReview;
+      final itId = editTarget?.itId ?? currentOrderFirstItem?.itId;
+      if (itId == null || itId.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('상품 정보를 찾을 수 없습니다.')),
@@ -658,23 +660,33 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         }
         return;
       }
-      
-      // 이미지 경로 리스트 (실제로는 서버에 업로드 후 URL을 받아와야 함)
-      // 현재는 로컬 경로를 그대로 사용 (추후 이미지 업로드 API 구현 필요)
+
+      // 이미지 경로 리스트
       List<String> imagePaths = _imageFiles.map((file) => file.path).toList();
       
-      // 리뷰 모델 생성
+      if (_positiveController.text.trim().length < 20 ||
+          _negativeController.text.trim().length < 20) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('좋았던 점/아쉬운 점은 각각 20자 이상 입력해 주세요.')),
+          );
+        }
+        return;
+      }
+
+      // 작성/수정 공용 리뷰 모델 생성
       final review = ReviewModel(
+        isId: editTarget?.isId,
         mbId: user.id,
-        odId: widget.orderDetail.odId,
-        itId: firstItem.itId ?? '',
-        isName: user.name ?? user.id,
-        isScore1: _score1,
-        isScore2: _score2,
-        isScore3: _score3,
-        isScore4: _score4,
-        isRvkind: 'general',
-        isRecommend: _recommend ? 'y' : 'n',
+        odId: editTarget?.odId ?? widget.orderDetail?.odId,
+        itId: itId,
+        isName: user.name,
+        isScore1: _score1 == 0 ? 1 : _score1,
+        isScore2: _score2 == 0 ? 1 : _score2,
+        isScore3: _score3 == 0 ? 1 : _score3,
+        isScore4: _score4 == 0 ? 1 : _score4,
+        isRvkind: editTarget?.isRvkind ?? 'prescription',
+        isRecommend: editTarget?.isRecommend ?? 'y',
         isPositiveReviewText: _positiveController.text,
         isNegativeReviewText: _negativeController.text.isNotEmpty 
             ? _negativeController.text 
@@ -684,16 +696,21 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             : null,
         images: imagePaths,
         isPayMthod: 'solo', // 내돈내산
+        isOutageNum: _weightLossKg == 0 ? null : _weightLossKg,
       );
       
       // API 호출
-      final result = await ReviewService.createReview(review);
+      final result = _isEditMode && editTarget?.isId != null
+          ? await ReviewService.updateReview(editTarget!.isId!, review)
+          : await ReviewService.createReview(review);
       
       if (mounted) {
         if (result['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? '리뷰가 성공적으로 작성되었습니다.'),
+              content: Text(
+                result['message'] ?? (_isEditMode ? '리뷰가 성공적으로 수정되었습니다.' : '리뷰가 성공적으로 작성되었습니다.'),
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -703,18 +720,18 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? '리뷰 작성에 실패했습니다.'),
+              content: Text(result['message'] ?? (_isEditMode ? '리뷰 수정에 실패했습니다.' : '리뷰 작성에 실패했습니다.')),
               backgroundColor: Colors.red,
             ),
           );
         }
       }
     } catch (e) {
-      print('리뷰 작성 오류: $e');
+      print(_isEditMode ? '리뷰 수정 오류: $e' : '리뷰 작성 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('리뷰 작성 중 오류가 발생했습니다.'),
+          SnackBar(
+            content: Text(_isEditMode ? '리뷰 수정 중 오류가 발생했습니다.' : '리뷰 작성 중 오류가 발생했습니다.'),
             backgroundColor: Colors.red,
           ),
         );
