@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_footer.dart';
+// import '../../common/widgets/app_footer.dart';
+import '../../common/widgets/app_bar.dart';
+import 'widgets/delivery_status_filter_bar.dart';
 import 'delivery_detail_screen.dart';
-import 'reservation_time_change_screen.dart';
+import 'widgets/reservation_time_change_popup.dart';
 import '../review/review_write_screen.dart';
+import '../review/review_write_general_screen.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/utils/image_url_helper.dart';
+import 'widgets/delivery_address_change_popup.dart';
+import 'widgets/order_flow_dialogs.dart';
 
 /// 주문내역 화면
 class DeliveryListScreen extends StatefulWidget {
@@ -23,19 +29,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   List<OrderListModel> _allOrders = []; // 전체 주문 데이터
   List<OrderListModel> _displayedOrders = []; // 화면에 표시할 주문 데이터
   bool _isLoading = false;
-  String? _selectedStatus; // 선택된 상태 필터 (null이면 전체)
-  
-  // 상태별 개수
-  int _orderCount = 0;      // 주문 (전체)
-  int _paymentCount = 0;    // 입금 (결제완료)
-  int _deliveryCount = 0;   // 배송 (배송중)
-  int _completeCount = 0;   // 완료 (배송완료)
-  
-  // 취소/반품/교환 개수
-  int _cancelCount = 0;
-  int _returnCount = 0;
-  int _exchangeCount = 0;
+  String _selectedStatus = 'all';
   final ScrollController _scrollController = ScrollController();
+
+  static const Color _kPink = Color(0xFFFF5A8D);
+  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kMuted = Color(0xFF898686);
+  static const Color _kMuted2 = Color(0xFF898383);
+  static const Color _kInk = Color(0xFF1A1A1A);
 
   @override
   void initState() {
@@ -96,7 +97,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         
         setState(() {
           _allOrders = allOrders;
-          _calculateStatusCounts();
           _applyFilter();
         });
       } else {
@@ -122,46 +122,32 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
   }
   
-  /// 상태별 개수 계산
-  void _calculateStatusCounts() {
-    // 주문: odStatus == '주문'
-    _orderCount = _allOrders.where((o) => o.odStatus == '주문').length;
-    // 입금: odStatus == '입금'
-    _paymentCount = _allOrders.where((o) => o.odStatus == '입금').length;
-    // 배송: odStatus == '배송' || odStatus == '준비'
-    _deliveryCount = _allOrders.where((o) => o.odStatus == '배송' || o.odStatus == '준비').length;
-    // 완료: odStatus == '완료'
-    _completeCount = _allOrders.where((o) => o.odStatus == '완료').length;
-    
-    // 취소/반품/교환 개수 (odStatus 기반으로 판단)
-    _cancelCount = _allOrders.where((o) => o.odStatus.contains('cancel') || o.odStatus.contains('취소')).length;
-    _returnCount = _allOrders.where((o) => o.odStatus.contains('return') || o.odStatus.contains('반품')).length;
-    _exchangeCount = _allOrders.where((o) => o.odStatus.contains('exchange') || o.odStatus.contains('교환')).length;
-  }
-  
   /// 필터 적용
   void _applyFilter() {
-    if (_selectedStatus == null) {
+    if (_selectedStatus == 'all') {
       // 전체 표시 (내림차순)
       _displayedOrders = List.from(_allOrders);
     } else {
-      // 선택된 상태만 필터링 (odStatus 기반)
+      // 선택된 상태만 필터링
       _displayedOrders = _allOrders.where((order) {
+        final displayStatus = order.displayStatus;
         switch (_selectedStatus) {
-          case 'order':
-            return order.odStatus == '주문';
-          case 'payment':
-            return order.odStatus == '입금';
+          case 'payment_waiting':
+            return displayStatus == '결제대기중' || order.odStatus == '주문';
+          case 'preparing':
+            return displayStatus == '배송준비중' || order.odStatus == '입금' || order.odStatus == '준비';
           case 'delivering':
-            return order.odStatus == '배송' || order.odStatus == '준비';
-          case 'finish':
-            return order.odStatus == '완료';
-          case 'cancel':
-            return order.odStatus.contains('cancel') || order.odStatus.contains('취소');
-          case 'return':
-            return order.odStatus.contains('return') || order.odStatus.contains('반품');
+            return displayStatus == '배송중' || order.odStatus == '배송';
+          case 'completed':
+            return displayStatus == '배송완료' || order.odStatus == '완료';
           case 'exchange':
-            return order.odStatus.contains('exchange') || order.odStatus.contains('교환');
+            return displayStatus.contains('교환') || order.odStatus.contains('교환');
+          case 'refund':
+            return displayStatus.contains('환불') || order.odStatus.contains('환불');
+          case 'cancelled':
+            return displayStatus.contains('취소') ||
+                order.odStatus.contains('취소') ||
+                displayStatus == '주문 취소';
           default:
             return true;
         }
@@ -170,7 +156,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
   
   /// 상태 필터 선택
-  void _selectStatus(String? status) {
+  void _selectStatus(String status) {
     setState(() {
       _selectedStatus = status;
       _applyFilter();
@@ -189,142 +175,21 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          title: GestureDetector(
-            onTap: () => _selectStatus(null),
-            child: const Text(
-              '주문내역',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-      child: Scaffold(
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
+      child: MobileAppLayoutWrapper(
         backgroundColor: Colors.grey[50],
-        body: Column(
-          children: [
-            // 상태 카드
-            _buildStatusCard(),
-            
-            // 주문 목록
-            Expanded(
-              child: _buildOrderList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 상태 카드 위젯
-  Widget _buildStatusCard() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // 주문 상태 흐름
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+        appBar: const HealthAppBar(title: '주문 내역'),
+        child: Scaffold(
+          backgroundColor: Colors.grey[50],
+          body: Column(
             children: [
-              _buildStatusItem('주문', _orderCount, 'order'),
-              const Text('>', style: TextStyle(color: Colors.grey)),
-              _buildStatusItem('입금', _paymentCount, 'payment'),
-              const Text('>', style: TextStyle(color: Colors.grey)),
-              _buildStatusItem('배송', _deliveryCount, 'delivering'),
-              const Text('>', style: TextStyle(color: Colors.grey)),
-              _buildStatusItem('완료', _completeCount, 'finish'),
+              DeliveryStatusFilterBar(
+                selectedKey: _selectedStatus,
+                onSelected: _selectStatus,
+              ),
+              Expanded(child: _buildOrderList()),
             ],
-          ),
-          const SizedBox(height: 16),
-          // 취소/반품/교환 버튼
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildActionButton('취소', _cancelCount, 'cancel'),
-              _buildActionButton('반품', _returnCount, 'return'),
-              _buildActionButton('교환', _exchangeCount, 'exchange'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// 상태 항목 위젯
-  Widget _buildStatusItem(String label, int count, String? status) {
-    final isSelected = _selectedStatus == status;
-    return GestureDetector(
-      onTap: () => _selectStatus(status),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: isSelected ? const Color(0xFFFF4081) : Colors.grey[700],
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isSelected ? const Color(0xFFFF4081) : Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  /// 액션 버튼 위젯 (취소/반품/교환)
-  Widget _buildActionButton(String label, int count, String status) {
-    final isSelected = _selectedStatus == status;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _selectStatus(status),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFF4081) : Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$label ($count)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: isSelected ? Colors.white : Colors.grey[700],
-            ),
           ),
         ),
       ),
@@ -334,9 +199,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   /// 주문 목록 위젯
   Widget _buildOrderList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(
-        color: Color(0xFFFF4081),
-      ));
+      return const Center(
+        child: CircularProgressIndicator(color: _kPink),
+      );
     }
 
     if (_displayedOrders.isEmpty) {
@@ -345,7 +210,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadOrders,
-      color: const Color(0xFFFF4081),
+      color: _kPink,
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -363,15 +228,16 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
             ),
           ),
           
-          // Footer  
-          const SliverToBoxAdapter(
-            child: Column(
-              children: [
-                SizedBox(height: 300),
-                AppFooter(),
-              ],
-            ),
-          ),
+          // Footer
+          // const SliverToBoxAdapter(
+          //   child: Column(
+          //     children: [
+          //       SizedBox(height: 300),
+          //       AppFooter(),
+          //     ],
+          //   ),
+          // ),
+          const SliverToBoxAdapter(child: SizedBox(height: 48)),
         ],
       ),
     );
@@ -379,230 +245,322 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 주문 카드 위젯
   Widget _buildOrderCard(OrderListModel order) {
+    final statusText = _getOrderStatusText(order);
+    final qty = order.firstProductQty ?? 1;
+    var qtyLine = '수량: $qty';
+    final opt = order.firstProductOption;
+    if (opt != null && opt.isNotEmpty) {
+      qtyLine += ' /$opt';
+    }
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(width: 1, color: _kBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 주문 헤더 (날짜, 주문번호)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  order.orderDate,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                Text(
-                  '주문번호: ${order.odId}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 상품 정보
-          InkWell(
-            onTap: () => _navigateToOrderDetail(order.odId),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 상품 이미지
-                  _buildProductImage(order),
-                  const SizedBox(width: 12),
-
-                  // 상품 정보
-                  Expanded(
-                    child: Column(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusText,
+                      style: const TextStyle(
+                        color: _kInk,
+                        fontSize: 14,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          order.firstProductName ?? '상품명 없음',
+                          '주문일자: ${order.orderDate}',
                           style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: _kInk,
+                            fontSize: 10,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        if (order.firstProductOption != null && order.firstProductOption!.isNotEmpty)
-                          Text(
-                            order.firstProductOption!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 5),
                         Text(
-                          '${order.firstProductQty ?? 1}개 · ${_formatPrice(order.firstProductPrice ?? 0)}원',
+                          '주문번호: ${order.odId}',
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: _kInk,
+                            fontSize: 10,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (order.odCartCount > 1)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              '외 ${order.odCartCount - 1}개 상품',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // 주문 상태 및 액션 버튼
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.grey[200]!),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // 주문 상태
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(order.displayStatus).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    order.displayStatus,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _getStatusColor(order.displayStatus),
-                    ),
-                  ),
+                  ],
                 ),
-
-                // 액션 버튼 (상태별로 다르게 표시)
-                Row(
+              ),
+              InkWell(
+                onTap: () => _navigateToOrderDetail(order.odId),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 결제완료: 예약 시간 변경 버튼 + 취소하기
-                    if (order.displayStatus == '결제완료') ...[
-                      // 모든 결제완료 주문에 시간 변경 버튼 표시
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _buildOrderActionButton(
-                          '시간 변경',
-                          color: Colors.blue,
-                          onPressed: () => _changeReservationTimeFromList(order.odId),
+                    const Text(
+                      '주문상세',
+                      style: TextStyle(
+                        color: _kInk,
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: _kInk,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(width: double.infinity, height: 1, color: _kBorder),
+          const SizedBox(height: 20),
+          InkWell(
+            onTap: () => _navigateToOrderDetail(order.odId),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildProductImage(order),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.firstProductName ?? '상품명 없음',
+                        style: const TextStyle(
+                          color: _kInk,
+                          fontSize: 14,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -1.26,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        qtyLine,
+                        style: const TextStyle(
+                          color: _kMuted2,
+                          fontSize: 10,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      _buildOrderActionButton(
-                        '취소하기',
-                        color: Colors.red,
-                        onPressed: () => _cancelOrder(order.odId),
+                      const SizedBox(height: 5),
+                      Text(
+                        '${_formatPrice(order.firstProductPrice ?? 0)}원',
+                        style: const TextStyle(
+                          color: _kInk,
+                          fontSize: 14,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
+                      if (order.odCartCount > 1)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '외 ${order.odCartCount - 1}개 상품',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: _kMuted2,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                     ],
-                    // 배송준비중: 취소하기만
-                    if (order.displayStatus == '배송준비중')
-                      _buildOrderActionButton(
-                        '취소하기',
-                        color: Colors.red,
-                        onPressed: () => _cancelOrder(order.odId),
-                      ),
-                    // 배송중: 배송조회만
-                    if (order.displayStatus == '배송중')
-                      _buildOrderActionButton(
-                        '배송조회',
-                        onPressed: () =>
-                            _trackDelivery(order.odId),
-                      ),
-                    // 배송완료: 배송확정 + 리뷰쓰기
-                    if (order.displayStatus == '배송완료') ...[
-                      _buildOrderActionButton(
-                        '배송확정',
-                        color: const Color(0xFFFF4081),
-                        onPressed: () => _confirmPurchase(order.odId),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildOrderActionButton(
-                        '리뷰쓰기',
-                        color: const Color(0xFFFF4081),
-                        onPressed: () => _writeReview(order.odId),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 20),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '총 ${_formatPrice(order.totalPrice)}원',
+                  style: const TextStyle(
+                    color: _kInk,
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...(() {
+            final actions = _buildOrderCardActions(order);
+            if (actions == null) return <Widget>[];
+            return <Widget>[
+              const SizedBox(height: 20),
+              actions,
+            ];
+          })(),
         ],
       ),
     );
   }
 
-  /// 주문 카드 액션 버튼 위젯
-  Widget _buildOrderActionButton(
-    String text, {
-    Color? color,
-    VoidCallback? onPressed,
-  }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        side: BorderSide(color: color ?? Colors.grey[400]!),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
+  /// 카드 하단 액션 (상태별 최대 3버튼, 디자인 스펙: 분홍 / 외곽분홍 / 회색)
+  Widget? _buildOrderCardActions(OrderListModel order) {
+    final isPrescription = order.isPrescriptionOrder;
+
+    List<Widget> rowChildren() {
+      final out = <Widget>[];
+      void gap() {
+        if (out.isNotEmpty) out.add(const SizedBox(width: 10));
+      }
+
+      void add(Widget w) {
+        gap();
+        out.add(w);
+      }
+
+      if (_isPaymentStage(order) || _isPreparingStage(order)) {
+        add(_cardActionPrimary(
+          '배송지변경',
+          isPrescription ? null : () => _changeDeliveryAddress(order.odId),
+        ));
+        add(_cardActionOutline(
+          '예약시간변경',
+          isPrescription ? null : () => _changeReservationTimeFromList(order.odId),
+        ));
+        add(_cardActionGray('주문취소', () => _cancelOrder(order.odId)));
+        return out;
+      }
+      if (_isDeliveringStage(order) || _isCompletedStage(order)) {
+        add(_cardActionPrimary('수령확인', () => _confirmPurchase(order.odId)));
+        add(_cardActionOutline('배송조회', () => _trackDelivery(order.odId)));
+        add(_cardActionGray('리뷰쓰기', () => _writeReview(order.odId)));
+        add(_cardActionGray('교환/환불', null));
+        return out;
+      }
+      return out;
+    }
+
+    final children = rowChildren();
+    if (children.isEmpty) return null;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: children,
+    );
+  }
+
+  Widget _cardActionPrimary(String label, VoidCallback? onTap) {
+    return Expanded(
+      child: Opacity(
+        opacity: onTap != null ? 1 : 0.45,
+        child: Material(
+          color: _kPink,
+          borderRadius: BorderRadius.circular(4),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Center(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
-        minimumSize: Size.zero,
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: color ?? Colors.grey[700],
+    );
+  }
+
+  Widget _cardActionOutline(String label, VoidCallback? onTap) {
+    return Expanded(
+      child: Opacity(
+        opacity: onTap != null ? 1 : 0.45,
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(width: 1, color: _kPink),
+              ),
+              child: Center(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: _kPink,
+                    fontSize: 12,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cardActionGray(String label, VoidCallback? onTap) {
+    return Expanded(
+      child: Material(
+        color: _kBorder,
+        borderRadius: BorderRadius.circular(4),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: _kMuted,
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -610,9 +568,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 빈 상태 위젯
   Widget _buildEmptyState() {
-    final statusText = _selectedStatus == null 
-        ? '주문' 
-        : _getStatusText(_selectedStatus!);
+    final statusText = _selectedStatus == 'all'
+        ? '주문'
+        : _getStatusText(_selectedStatus);
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -631,31 +589,61 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               color: Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 300),
-          const AppFooter(),
+          const SizedBox(height: 48),
+          // const AppFooter(),
         ],
       ),
     );
   }
-  
+
   /// 상태 텍스트 가져오기
   String _getStatusText(String status) {
     switch (status) {
-      case 'payment':
-        return '입금';
+      case 'payment_waiting':
+        return '결제대기중';
+      case 'preparing':
+        return '배송준비중';
       case 'delivering':
-        return '배송';
-      case 'finish':
-        return '완료';
-      case 'cancel':
-        return '취소';
-      case 'return':
-        return '반품';
+        return '배송중';
+      case 'completed':
+        return '배송완료';
       case 'exchange':
-        return '교환';
+        return '교환중';
+      case 'refund':
+        return '환불중';
+      case 'cancelled':
+        return '주문 취소';
       default:
         return '주문';
     }
+  }
+
+  String _getOrderStatusText(OrderListModel order) {
+    if (_isCompletedStage(order)) return '배송완료';
+    if (_isDeliveringStage(order)) return '배송중';
+    if (_isPreparingStage(order)) return '배송준비중';
+    if (_isPaymentStage(order)) return '결제대기중';
+    return order.displayStatus;
+  }
+
+  bool _isPaymentStage(OrderListModel order) {
+    return order.displayStatus == '결제완료' ||
+        order.displayStatus == '결제대기중' ||
+        order.odStatus == '주문';
+  }
+
+  bool _isPreparingStage(OrderListModel order) {
+    return order.displayStatus == '배송준비중' ||
+        order.odStatus == '입금' ||
+        order.odStatus == '준비';
+  }
+
+  bool _isDeliveringStage(OrderListModel order) {
+    return order.displayStatus == '배송중' || order.odStatus == '배송';
+  }
+
+  bool _isCompletedStage(OrderListModel order) {
+    return order.displayStatus == '배송완료' || order.odStatus == '완료';
   }
 
   /// 주문 상세 화면으로 이동
@@ -670,56 +658,33 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 주문 취소
   Future<void> _cancelOrder(String odId) async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('주문 취소'),
-        content: const Text('정말 주문을 취소하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('아니오'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              // 로그인 확인
-              final user = await AuthService.getUser();
-              if (user == null) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('로그인이 필요합니다.')),
-                  );
-                }
-                return;
-              }
-              final userId = user.id;
-              
-              // API 호출
-              final result = await OrderService.cancelOrder(
-                odId: odId,
-                mbId: userId,
-              );
-              
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(result['message'] ?? '주문이 취소되었습니다.')),
-                );
-                
-                if (result['success'] == true) {
-                  _loadOrders(); // 목록 새로고침
-                }
-              }
-            },
-            child: const Text(
-              '예',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
+    final ok = await OrderFlowDialogs.showOrderCancelConfirm(context);
+    if (ok != true) return;
+
+    final user = await AuthService.getUser();
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인이 필요합니다.')),
+        );
+      }
+      return;
+    }
+
+    final result = await OrderService.cancelOrder(
+      odId: odId,
+      mbId: user.id,
     );
+
+    if (!mounted) return;
+    if (result['success'] == true) {
+      await OrderFlowDialogs.showOrderCancelSuccess(context);
+      if (mounted) _loadOrders();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? '주문 취소에 실패했습니다.')),
+      );
+    }
   }
 
   /// 배송 조회
@@ -804,59 +769,35 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 배송확정 (구매 확정)
   Future<void> _confirmPurchase(String odId) async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('배송확정'),
-        content: const Text('배송을 확정하시겠습니까?\n확정 후에는 취소가 불가능합니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              // 로그인 확인
-              final user = await AuthService.getUser();
-              if (user == null) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('로그인이 필요합니다.')),
-                  );
-                }
-                return;
-              }
-              final userId = user.id;
-              
-              // API 호출
-              final result = await OrderService.confirmPurchase(
-                odId: odId,
-                mbId: userId,
-              );
-              
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(result['message'] ?? '배송이 확정되었습니다.'),
-                    backgroundColor: result['success'] == true ? Colors.green : Colors.red,
-                  ),
-                );
-                
-                if (result['success'] == true) {
-                  _loadOrders(); // 목록 새로고침
-                }
-              }
-            },
-            child: const Text(
-              '확정',
-              style: TextStyle(color: Color(0xFFFF4081)),
-            ),
-          ),
-        ],
+    final ok = await OrderFlowDialogs.showReceiptConfirm(context);
+    if (ok != true) return;
+
+    final user = await AuthService.getUser();
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인이 필요합니다.')),
+        );
+      }
+      return;
+    }
+
+    final result = await OrderService.confirmPurchase(
+      odId: odId,
+      mbId: user.id,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message'] ?? '수령 확인 처리되었습니다.'),
+        backgroundColor: result['success'] == true ? Colors.green : Colors.red,
       ),
     );
+
+    if (result['success'] == true) {
+      _loadOrders();
+    }
   }
 
   /// 리뷰 쓰기
@@ -893,10 +834,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       
       // 리뷰 작성 화면으로 이동
       if (mounted) {
+        final isPrescription = orderDetail.isPrescriptionOrder;
         final reviewWritten = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ReviewWriteScreen(orderDetail: orderDetail),
+            builder: (context) => isPrescription
+                ? ReviewWriteScreen(orderDetail: orderDetail)
+                : ReviewWriteGeneralScreen(orderDetail: orderDetail),
           ),
         );
         
@@ -914,21 +858,29 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
   }
 
-  /// 주문 상태별 색상
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case '결제완료':
-        return Colors.blue;
-      case '배송준비중':
-        return Colors.orange;
-      case '배송중':
-        return const Color(0xFFFF4081);
-      case '배송완료':
-        return Colors.green;
-      case '취소/반품':
-        return Colors.red;
-      default:
-        return Colors.grey;
+  Future<void> _changeDeliveryAddress(String odId) async {
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '배송지 변경',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, _, __) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+            DeliveryAddressChangePopup(orderId: odId),
+          ],
+        );
+      },
+    );
+    if (result == true && mounted) {
+      _loadOrders();
     }
   }
 
@@ -950,11 +902,11 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       height: 80,
       decoration: BoxDecoration(
         color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: normalizedUrl != null
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
               child: Image.network(
                 normalizedUrl,
                 width: 80,
@@ -976,7 +928,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                               loadingProgress.expectedTotalBytes!
                           : null,
                       strokeWidth: 2,
-                      color: const Color(0xFFFF4081),
+                      color: _kPink,
                     ),
                   );
                 },
@@ -1078,30 +1030,35 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         return;
       }
 
-      // 예약 시간 변경 화면으로 이동
-      final changeResult = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReservationTimeChangeScreen(
-            orderId: odId,
-            currentDate: orderDetail.reservationDate!,
-            currentTime: orderDetail.reservationTime!,
-          ),
-        ),
+      // 예약 시간 변경 팝업 표시
+      final changeResult = await showGeneralDialog<bool>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '예약시간 변경',
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (context, _, __) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  child: Container(color: Colors.black.withValues(alpha: 0.35)),
+                ),
+              ),
+              ReservationTimeChangePopup(
+                orderId: odId,
+                currentDate: orderDetail.reservationDate!,
+                currentTime: orderDetail.reservationTime!,
+              ),
+            ],
+          );
+        },
       );
 
-      // 예약 시간이 변경되었으면 해당 주문 상세 페이지로 이동
+      // 예약 시간이 변경되었으면 주문 목록 새로고침
       if (changeResult == true && mounted) {
-        // 주문 목록 새로고침
         _loadOrders();
-        
-        // 주문 상세 페이지로 이동 (새로고침된 데이터로)
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DeliveryDetailScreen(orderNumber: odId),
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -1117,15 +1074,29 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 예약 시간 변경 (예약 정보를 이미 알고 있는 경우)
   Future<void> _changeReservationTime(String odId, String currentDate, String currentTime) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ReservationTimeChangeScreen(
-          orderId: odId,
-          currentDate: currentDate,
-          currentTime: currentTime,
-        ),
-      ),
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '예약시간 변경',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, _, __) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+            ReservationTimeChangePopup(
+              orderId: odId,
+              currentDate: currentDate,
+              currentTime: currentTime,
+            ),
+          ],
+        );
+      },
     );
 
     // 예약 시간이 변경되었으면 주문 목록 새로고침

@@ -5,6 +5,7 @@ class OrderItem {
   final int ctId;
   final String itId;
   final String itName;
+  final String? itKind;
   final String itSubject;
   final String? ctOption;
   final int ctQty;
@@ -18,6 +19,7 @@ class OrderItem {
     required this.ctId,
     required this.itId,
     required this.itName,
+    this.itKind,
     required this.itSubject,
     this.ctOption,
     required this.ctQty,
@@ -31,17 +33,21 @@ class OrderItem {
   factory OrderItem.fromJson(Map<dynamic, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     return OrderItem(
-      ctId: NodeValueParser.asInt(normalized['ctId']) ?? 0,
-      itId: NodeValueParser.asString(normalized['itId']) ?? '',
-      itName: NodeValueParser.asString(normalized['itName']) ?? '',
-      itSubject: NodeValueParser.asString(normalized['itSubject']) ?? '',
-      ctOption: NodeValueParser.asString(normalized['ctOption']),
-      ctQty: NodeValueParser.asInt(normalized['ctQty']) ?? 0,
-      ctPrice: NodeValueParser.asInt(normalized['ctPrice']) ?? 0,
-      ioPrice: NodeValueParser.asInt(normalized['ioPrice']) ?? 0,
-      totalPrice: NodeValueParser.asInt(normalized['totalPrice']) ?? 0,
-      ctStatus: NodeValueParser.asString(normalized['ctStatus']),
-      imageUrl: NodeValueParser.asString(normalized['imageUrl']),
+      ctId: NodeValueParser.asInt(normalized['ctId'] ?? normalized['ct_id']) ?? 0,
+      itId: NodeValueParser.asString(normalized['itId'] ?? normalized['it_id']) ?? '',
+      itName: NodeValueParser.asString(
+            normalized['itName'] ?? normalized['it_name'] ?? normalized['itSubject'] ?? normalized['it_subject'],
+          ) ??
+          '',
+      itKind: NodeValueParser.asString(normalized['itKind'] ?? normalized['it_kind']),
+      itSubject: NodeValueParser.asString(normalized['itSubject'] ?? normalized['it_subject']) ?? '',
+      ctOption: NodeValueParser.asString(normalized['ctOption'] ?? normalized['ct_option']),
+      ctQty: NodeValueParser.asInt(normalized['ctQty'] ?? normalized['ct_qty']) ?? 0,
+      ctPrice: NodeValueParser.asInt(normalized['ctPrice'] ?? normalized['ct_price']) ?? 0,
+      ioPrice: NodeValueParser.asInt(normalized['ioPrice'] ?? normalized['io_price']) ?? 0,
+      totalPrice: NodeValueParser.asInt(normalized['totalPrice'] ?? normalized['total_price']) ?? 0,
+      ctStatus: NodeValueParser.asString(normalized['ctStatus'] ?? normalized['ct_status']),
+      imageUrl: NodeValueParser.asString(normalized['imageUrl'] ?? normalized['image_url']),
     );
   }
 
@@ -50,6 +56,7 @@ class OrderItem {
       'ctId': ctId,
       'itId': itId,
       'itName': itName,
+      'itKind': itKind,
       'itSubject': itSubject,
       'ctOption': ctOption,
       'ctQty': ctQty,
@@ -71,6 +78,7 @@ class OrderListModel {
   final String odStatus;
   final int totalPrice;
   final int odCartCount;
+  final bool isPrescriptionOrder;
   final List<OrderItem> items;
   final String? firstProductName;
   final String? firstProductOption;
@@ -85,6 +93,7 @@ class OrderListModel {
     required this.odStatus,
     required this.totalPrice,
     required this.odCartCount,
+    this.isPrescriptionOrder = false,
     required this.items,
     this.firstProductName,
     this.firstProductOption,
@@ -110,6 +119,8 @@ class OrderListModel {
       odStatus: NodeValueParser.asString(normalized['odStatus']) ?? '',
       totalPrice: NodeValueParser.asInt(normalized['totalPrice']) ?? 0,
       odCartCount: NodeValueParser.asInt(normalized['odCartCount']) ?? 0,
+      isPrescriptionOrder: (NodeValueParser.asInt(normalized['isPrescriptionOrder']) ?? 0) == 1 ||
+          (NodeValueParser.asString(normalized['isPrescriptionOrder']) ?? '').toLowerCase() == 'true',
       items: itemList,
       firstProductName: NodeValueParser.asString(normalized['firstProductName']),
       firstProductOption: NodeValueParser.asString(normalized['firstProductOption']),
@@ -127,6 +138,7 @@ class OrderListModel {
       'odStatus': odStatus,
       'totalPrice': totalPrice,
       'odCartCount': odCartCount,
+      'isPrescriptionOrder': isPrescriptionOrder,
       'items': items.map((item) => item.toJson()).toList(),
       'firstProductName': firstProductName,
       'firstProductOption': firstProductOption,
@@ -154,6 +166,7 @@ class OrderDetailModel {
   final int deliveryFee;
   final int discountAmount;
   final int totalPrice;
+  final bool isPrescriptionOrder;
   final String paymentMethod;
   final String? paymentMethodDetail;
   final String ordererName;
@@ -181,6 +194,7 @@ class OrderDetailModel {
     required this.deliveryFee,
     required this.discountAmount,
     required this.totalPrice,
+    this.isPrescriptionOrder = false,
     required this.paymentMethod,
     this.paymentMethodDetail,
     required this.ordererName,
@@ -205,6 +219,12 @@ class OrderDetailModel {
     // odId를 안전하게 String으로 변환 (큰 숫자 정밀도 손실 방지)
     final odIdString = NodeValueParser.asString(normalized['odId']) ?? '0';
 
+    final topLevelPrescription = (NodeValueParser.asInt(normalized['isPrescriptionOrder']) ?? 0) == 1 ||
+        (NodeValueParser.asString(normalized['isPrescriptionOrder']) ?? '').toLowerCase() == 'true';
+    final inferredPrescription = productList.any(
+      (p) => (p.itKind ?? '').toLowerCase() == 'prescription',
+    );
+
     return OrderDetailModel(
       odId: odIdString,
       orderDate: NodeValueParser.asString(normalized['orderDate']) ?? '',
@@ -222,6 +242,7 @@ class OrderDetailModel {
       deliveryFee: NodeValueParser.asInt(normalized['deliveryFee']) ?? 0,
       discountAmount: NodeValueParser.asInt(normalized['discountAmount']) ?? 0,
       totalPrice: NodeValueParser.asInt(normalized['totalPrice']) ?? 0,
+      isPrescriptionOrder: topLevelPrescription || inferredPrescription,
       paymentMethod: NodeValueParser.asString(normalized['paymentMethod']) ?? '',
       paymentMethodDetail: NodeValueParser.asString(normalized['paymentMethodDetail']),
       ordererName: NodeValueParser.asString(normalized['ordererName']) ?? '',
@@ -252,6 +273,7 @@ class OrderDetailModel {
       'deliveryFee': deliveryFee,
       'discountAmount': discountAmount,
       'totalPrice': totalPrice,
+      'isPrescriptionOrder': isPrescriptionOrder,
       'paymentMethod': paymentMethod,
       'paymentMethodDetail': paymentMethodDetail,
       'ordererName': ordererName,

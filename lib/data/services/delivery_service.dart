@@ -104,9 +104,36 @@ class OrderService {
             'message': '주문 상세 응답 형식이 올바르지 않습니다.',
           };
         }
+        final rawMap = Map<String, dynamic>.from(data);
+        final rawProducts = rawMap['products'];
+        if (rawProducts is List) {
+          print('📦 [주문 상세 조회] 상품 raw 로그 (${rawProducts.length}개)');
+          for (var i = 0; i < rawProducts.length; i++) {
+            final item = rawProducts[i];
+            if (item is Map) {
+              final m = Map<String, dynamic>.from(item);
+              print(
+                '  - [$i] it_id=${m['it_id'] ?? m['itId']} '
+                'it_name=${m['it_name'] ?? m['itName']} '
+                'it_kind=${m['it_kind'] ?? m['itKind']}',
+              );
+            } else {
+              print('  - [$i] $item');
+            }
+          }
+        }
         final order = OrderDetailModel.fromJson(Map<String, dynamic>.from(data));
         
         print('✅ [주문 상세 조회] 성공');
+        for (var i = 0; i < order.products.length; i++) {
+          final p = order.products[i];
+          print('  - [parsed:$i] it_id=${p.itId} it_name=${p.itName} it_kind=${p.itKind}');
+        }
+        print(
+          '📦 [주문 상세 조회] 파싱 결과: '
+          'odId=${order.odId}, isPrescriptionOrder=${order.isPrescriptionOrder}, '
+          'productCount=${order.products.length}',
+        );
         
         return {
           'success': true,
@@ -267,6 +294,63 @@ class OrderService {
       }
     } catch (e) {
       print('❌ [예약 시간 변경] 에러: $e');
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
+  }
+
+  /// 배송지 변경
+  ///
+  /// [odId] 주문 ID
+  /// [mbId] 회원 ID
+  /// [addressId] 선택한 배송지 ID
+  static Future<Map<String, dynamic>> changeDeliveryAddress({
+    required String odId,
+    required String mbId,
+    required int addressId,
+  }) async {
+    try {
+      print('📦 [배송지 변경] 요청');
+      print('  - odId: $odId');
+      print('  - mbId: $mbId');
+      print('  - addressId: $addressId');
+
+      final payload = {
+        'mbId': mbId,
+        'addressId': addressId,
+        'adId': addressId, // 서버 키 호환
+      };
+
+      http.Response response = await ApiClient.put('/api/orders/$odId/address', payload);
+      if (response.statusCode == 404) {
+        response = await ApiClient.put('/api/orders/$odId/delivery-address', payload);
+      }
+      if (response.statusCode == 404) {
+        response = await ApiClient.put('/api/user/orders/$odId/address', payload);
+      }
+      if (response.statusCode == 404) {
+        response = await ApiClient.put('/api/user/orders/$odId/delivery-address', payload);
+      }
+
+      print('📡 [배송지 변경] 응답 상태: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = _decodeBody(response);
+        return {
+          'success': true,
+          'message': data['message'] ?? '배송지가 변경되었습니다.',
+        };
+      }
+
+      final errorData = _decodeBody(response);
+      return {
+        'success': false,
+        'message': errorData['error'] ?? errorData['message'] ?? '배송지 변경에 실패했습니다.',
+      };
+    } catch (e) {
+      print('❌ [배송지 변경] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',

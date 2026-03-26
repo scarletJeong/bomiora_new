@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter/services.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_footer.dart';
+import '../../common/widgets/app_bar.dart';
+import 'widgets/order_flow_dialogs.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/utils/image_url_helper.dart';
-import 'reservation_time_change_screen.dart';
+import 'widgets/reservation_time_change_popup.dart';
+import '../review/review_write_screen.dart';
+import '../review/review_write_general_screen.dart';
+import 'widgets/delivery_address_change_popup.dart';
+
+enum _DetailOrderActionStyle { filledPink, outlinedPink, mutedGray }
 
 /// 주문 상세 화면
 class DeliveryDetailScreen extends StatefulWidget {
@@ -25,6 +32,13 @@ class DeliveryDetailScreen extends StatefulWidget {
 class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   OrderDetailModel? _orderDetail;
   bool _isLoading = true;
+
+  static const Color _kPink = Color(0xFFFF5A8D);
+  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kMuted = Color(0xFF898686);
+  static const Color _kMutedLabel = Color(0xFF898383);
+  static const Color _kInk = Color(0xFF1A1A1A);
+  static const Color _kBarBorder = Color(0xFFF1F5F9);
 
   @override
   void initState() {
@@ -87,32 +101,19 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          title: const Text(
-            '주문 상세',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-      child: Scaffold(
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
+      child: MobileAppLayoutWrapper(
         backgroundColor: Colors.grey[50],
-        body: _isLoading
+        appBar: const HealthAppBar(title: '주문 상세'),
+        child: Scaffold(
+          backgroundColor: Colors.grey[50],
+          body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _orderDetail == null
                 ? _buildErrorState()
                 : _buildOrderDetail(),
+        ),
       ),
     );
   }
@@ -148,45 +149,701 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   /// 주문 상세 내용
   Widget _buildOrderDetail() {
+    final order = _orderDetail!;
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20),
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 10),
+            _buildDetailShoppingHeader(),
+            const SizedBox(height: 20),
+            _buildDetailProgressCard(order),
+            const SizedBox(height: 20),
+            _buildDetailOrderProductSection(order),
+            const SizedBox(height: 10),
+            _buildDetailSectionTitleRow('결제', '정보'),
+            const SizedBox(height: 10),
+            _buildDetailPaymentCard(order),
+            const SizedBox(height: 10),
+            _buildDetailSectionTitleRow('할인', '정보'),
+            const SizedBox(height: 10),
+            _buildDetailDiscountCard(order),
+            const SizedBox(height: 10),
+            _buildDetailSectionTitleRow('예약', '정보'),
+            const SizedBox(height: 10),
+            _buildDetailReservationCard(order),
+            const SizedBox(height: 10),
+            _buildDetailSectionTitleRow('배송', '정보'),
+            const SizedBox(height: 10),
+            _buildDetailDeliveryCard(order),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailShoppingHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
         children: [
-          // 주문 상태
-          _buildOrderStatus(),
-          const SizedBox(height: 8),
-
-          // 취소 정보 (취소/반품인 경우만)
-          if (_orderDetail!.displayStatus == '취소/반품')
-            ...[
-              _buildCancelInfo(),
-              const SizedBox(height: 8),
-            ],
-
-          // 배송 정보
-          _buildDeliveryInfo(),
-          const SizedBox(height: 8),
-
-          // 주문 상품 정보 (예약 정보 포함)
-          _buildProductInfo(),
-          const SizedBox(height: 8),
-
-          // 결제 정보
-          _buildPaymentInfo(),
-          const SizedBox(height: 8),
-
-          // 주문자 정보
-          _buildOrdererInfo(),
-          const SizedBox(height: 80), // 하단 버튼 공간
-          
-          const SizedBox(height: 300),
-          
-          // Footer  
-          const AppFooter(),
+          Icon(Icons.shopping_bag_outlined, size: 16, color: _kInk.withValues(alpha: 0.8)),
+          const SizedBox(width: 8),
+          const Text(
+            '나의 쇼핑',
+            style: TextStyle(
+              color: _kInk,
+              fontSize: 16,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  int _detailProgressStep(OrderDetailModel order) {
+    if (_isCompletedStageDetail(order)) return 3;
+    if (_isDeliveringStageDetail(order)) return 2;
+    if (_isPreparingStageDetail(order)) return 1;
+    // 결제 완료 후에는 단계바 상 '배송준비중' 구간으로 진행
+    if (order.displayStatus == '결제완료') return 1;
+    if (_isPaymentStageDetail(order)) return 0;
+    return 0;
+  }
+
+  Widget _buildDetailProgressCard(OrderDetailModel order) {
+    const labels = ['결제대기중', '배송준비중', '배송중', '배송완료'];
+    final step = _detailProgressStep(order).clamp(0, 3);
+    final statusTitle = labels[step];
+    final fill = (step + 1) / 4.0;
+
+    return Container(
+      height: 146,
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBarBorder),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(21, 18, 21, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              statusTitle,
+              style: const TextStyle(
+                color: _kPink,
+                fontSize: 14,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w700,
+                height: 1.43,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '주문일자: ${order.orderDate}',
+              style: const TextStyle(
+                color: _kInk,
+                fontSize: 10,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '주문번호: ${order.odId}',
+              style: const TextStyle(
+                color: _kInk,
+                fontSize: 10,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(9999),
+              child: Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 8,
+                    color: const Color(0xFFF6F6F6),
+                  ),
+                  FractionallySizedBox(
+                    widthFactor: fill,
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _kPink,
+                        borderRadius: BorderRadius.circular(9999),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(4, (i) {
+                final active = i == step;
+                return Expanded(
+                  child: Opacity(
+                    opacity: active ? 1.0 : 0.8,
+                    child: Text(
+                      labels[i],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: active ? _kPink : _kMuted,
+                        fontSize: 10,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        height: 1.6,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSectionTitleRow(String bold, String light) {
+    return Row(
+      children: [
+        Text(
+          bold,
+          style: const TextStyle(
+            color: _kInk,
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.44,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          light,
+          style: const TextStyle(
+            color: _kInk,
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+            letterSpacing: -1.76,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailOrderProductSection(OrderDetailModel order) {
+    final first = order.products.isNotEmpty ? order.products.first : null;
+    final statusActions = _buildStatusActionButtons(order);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildDetailSectionTitleRow('주문상품', '정보'),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: _kBorder),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (first != null) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailProductThumb(first),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            first.itName,
+                            style: const TextStyle(
+                              color: _kInk,
+                              fontSize: 14,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -1.26,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '수량: ${first.ctQty}${first.ctOption != null && first.ctOption!.isNotEmpty ? ' /${first.ctOption}' : ''}${order.products.length > 1 ? ' (외 ${order.products.length - 1}개)' : ''}',
+                            style: const TextStyle(
+                              color: Color(0xFF898383),
+                              fontSize: 10,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '${_formatPrice(first.totalPrice)}원',
+                            style: const TextStyle(
+                              color: _kInk,
+                              fontSize: 14,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+              Align(
+                alignment: Alignment.centerRight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '총 ${_formatPrice(order.totalPrice)}원',
+                      style: const TextStyle(
+                        color: _kInk,
+                        fontSize: 16,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '(배송비: ${_formatPrice(order.deliveryFee)}원)',
+                      style: const TextStyle(
+                        color: _kMuted,
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (statusActions != null) ...[
+                const SizedBox(height: 20),
+                statusActions,
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailProductThumb(OrderItem product) {
+    final normalizedUrl = product.imageUrl != null && product.imageUrl!.isNotEmpty
+        ? ImageUrlHelper.normalizeThumbnailUrl(product.imageUrl, product.itId)
+        : null;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: SizedBox(
+        width: 80,
+        height: 80,
+        child: normalizedUrl != null
+            ? Image.network(
+                normalizedUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey[200],
+                  alignment: Alignment.center,
+                  child: Icon(Icons.image_outlined, color: Colors.grey[400]),
+                ),
+              )
+            : Container(
+                color: Colors.grey[200],
+                alignment: Alignment.center,
+                child: Icon(Icons.image_outlined, color: Colors.grey[400]),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildDetailPaymentCard(OrderDetailModel order) {
+    final detail = order.paymentMethodDetail ?? '';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorder),
+          borderRadius: BorderRadius.circular(7),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            order.paymentMethod.isEmpty ? '결제수단' : order.paymentMethod,
+            style: const TextStyle(
+              color: Color(0xFF898383),
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.6,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _detailKvLine('결제카드 :', detail.isEmpty ? '-' : detail),
+          const SizedBox(height: 10),
+          _detailKvLine('결제일 :', order.orderDate),
+          const SizedBox(height: 10),
+          _detailKvLine('총 결제 금액 :', '${_formatPrice(order.totalPrice)}원'),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailKvLine(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: _kMuted,
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.6,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: _kInk,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              letterSpacing: -0.6,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailDiscountCard(OrderDetailModel order) {
+    final d = order.discountAmount;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorder),
+          borderRadius: BorderRadius.circular(7),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _detailKvLine('쿠폰할인 :', d > 0 ? '${_formatPrice(d)}원' : '0원'),
+          const SizedBox(height: 10),
+          _detailKvLine('포인트할인 :', '0원'),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Text(
+                '총 할인 금액 :',
+                style: TextStyle(
+                  color: _kInk,
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.6,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '${_formatPrice(d)}원',
+                style: const TextStyle(
+                  color: _kInk,
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatReservationDateWithWeekday(String? raw) {
+    if (raw == null || raw.isEmpty || raw == '-') return '-';
+    try {
+      DateTime d;
+      if (raw.contains('T')) {
+        d = DateTime.parse(raw);
+      } else if (raw.contains('-')) {
+        d = DateTime.parse(raw);
+      } else {
+        return raw;
+      }
+      const w = ['월', '화', '수', '목', '금', '토', '일'];
+      final wd = w[d.weekday - 1];
+      return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')} ${wd}요일';
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Widget _buildDetailReservationCard(OrderDetailModel order) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorder),
+          borderRadius: BorderRadius.circular(7),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _detailKvLine('담당 한의사 :', '-'),
+          const SizedBox(height: 10),
+          _detailKvLine(
+            '예약 일자 :',
+            _formatReservationDateWithWeekday(order.reservationDate),
+          ),
+          const SizedBox(height: 10),
+          _detailKvLine('예약 시간 :', order.reservationTime ?? '-'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailDeliveryCard(OrderDetailModel order) {
+    final addr = '${order.recipientAddress} ${order.recipientAddressDetail}'.trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorder),
+          borderRadius: BorderRadius.circular(7),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _detailKvLine('이름 :', order.recipientName),
+          const SizedBox(height: 10),
+          _detailKvLine('연락처 :', order.recipientPhone),
+          const SizedBox(height: 10),
+          _detailKvLine('주소 :', addr.isEmpty ? '-' : addr),
+          const SizedBox(height: 10),
+          const Text(
+            '배송 요청사항 :',
+            style: TextStyle(
+              color: _kMutedLabel,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.6,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            order.deliveryMessage?.isNotEmpty == true ? order.deliveryMessage! : '-',
+            style: const TextStyle(
+              color: _kInk,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              letterSpacing: -0.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget? _buildStatusActionButtons(OrderDetailModel order) {
+    final locked = order.isPrescriptionOrder;
+
+    if (_isPaymentStageDetail(order) || _isPreparingStageDetail(order)) {
+      return Row(
+        children: [
+          Expanded(
+            child: _detailOrderActionChip(
+              label: '배송지변경',
+              style: _DetailOrderActionStyle.filledPink,
+              onTap: locked ? null : _changeDeliveryAddress,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _detailOrderActionChip(
+              label: '예약시간변경',
+              style: _DetailOrderActionStyle.outlinedPink,
+              onTap: locked ? null : _showReservationTimeChangeDialog,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _detailOrderActionChip(
+              label: '주문취소',
+              style: _DetailOrderActionStyle.mutedGray,
+              onTap: _cancelOrder,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_isDeliveringStageDetail(order) || _isCompletedStageDetail(order)) {
+      return Row(
+        children: [
+          Expanded(
+            child: _detailOrderActionChip(
+              label: '수령확인',
+              style: _DetailOrderActionStyle.filledPink,
+              onTap: _confirmPurchase,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _detailOrderActionChip(
+              label: '배송조회',
+              style: _DetailOrderActionStyle.outlinedPink,
+              onTap: _trackDelivery,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _detailOrderActionChip(
+              label: '리뷰쓰기',
+              style: _DetailOrderActionStyle.mutedGray,
+              onTap: _writeReviewFromDetail,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _detailOrderActionChip(
+              label: '교환/환불',
+              style: _DetailOrderActionStyle.mutedGray,
+              onTap: null,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return null;
+  }
+
+  Widget _detailOrderActionChip({
+    required String label,
+    required _DetailOrderActionStyle style,
+    VoidCallback? onTap,
+  }) {
+    final enabled = onTap != null;
+    final child = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Center(
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            color: switch (style) {
+              _DetailOrderActionStyle.filledPink => Colors.white,
+              _DetailOrderActionStyle.outlinedPink =>
+                enabled ? _kPink : _kPink.withValues(alpha: 0.45),
+              _DetailOrderActionStyle.mutedGray => _kMuted,
+            },
+          ),
+        ),
+      ),
+    );
+
+    return Material(
+      color: switch (style) {
+        _DetailOrderActionStyle.filledPink => enabled ? _kPink : _kPink.withValues(alpha: 0.45),
+        _DetailOrderActionStyle.outlinedPink => Colors.white,
+        _DetailOrderActionStyle.mutedGray => const Color(0x7FD2D2D2),
+      },
+      borderRadius: BorderRadius.circular(4),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(4),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            border: style == _DetailOrderActionStyle.outlinedPink
+                ? Border.all(
+                    width: 1,
+                    color: enabled ? _kPink : _kPink.withValues(alpha: 0.35),
+                  )
+                : null,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  bool _isPaymentStageDetail(OrderDetailModel order) {
+    return order.displayStatus == '결제완료' ||
+        order.displayStatus == '결제대기중' ||
+        order.odStatus == '주문';
+  }
+
+  bool _isPreparingStageDetail(OrderDetailModel order) {
+    return order.displayStatus == '배송준비중' ||
+        order.odStatus == '입금' ||
+        order.odStatus == '준비';
+  }
+
+  bool _isDeliveringStageDetail(OrderDetailModel order) {
+    return order.displayStatus == '배송중' || order.odStatus == '배송';
+  }
+
+  bool _isCompletedStageDetail(OrderDetailModel order) {
+    return order.displayStatus == '배송완료' || order.odStatus == '완료';
   }
 
   /// 주문 상태 섹션
@@ -600,15 +1257,29 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     print('  - orderId (최종 사용): $orderIdToUse');
     
     // 예약 시간 변경 화면으로 이동
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ReservationTimeChangeScreen(
-          orderId: orderIdToUse,
-          currentDate: _orderDetail!.reservationDate!,
-          currentTime: _orderDetail!.reservationTime!,
-        ),
-      ),
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '예약시간 변경',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, _, __) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+            ReservationTimeChangePopup(
+              orderId: orderIdToUse,
+              currentDate: _orderDetail!.reservationDate!,
+              currentTime: _orderDetail!.reservationTime!,
+            ),
+          ],
+        );
+      },
     );
 
     print('📅 [예약 시간 변경] 결과: $result');
@@ -907,6 +1578,93 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _cancelOrder() async {
+    if (_orderDetail == null) return;
+    final confirmed = await OrderFlowDialogs.showOrderCancelConfirm(context);
+    if (confirmed != true) return;
+
+    final user = await AuthService.getUser();
+    if (user == null) return;
+
+    final result = await OrderService.cancelOrder(
+      odId: _orderDetail!.odId,
+      mbId: user.id,
+    );
+    if (!mounted) return;
+    if (result['success'] == true) {
+      await OrderFlowDialogs.showOrderCancelSuccess(context);
+      if (mounted) _loadOrderDetail();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? '주문 취소에 실패했습니다.')),
+      );
+    }
+  }
+
+  Future<void> _confirmPurchase() async {
+    if (_orderDetail == null) return;
+    final confirmed = await OrderFlowDialogs.showReceiptConfirm(context);
+    if (confirmed != true) return;
+
+    final user = await AuthService.getUser();
+    if (user == null) return;
+
+    final result = await OrderService.confirmPurchase(
+      odId: _orderDetail!.odId,
+      mbId: user.id,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['message'] ?? '수령확인이 완료되었습니다.')),
+    );
+    if (result['success'] == true) {
+      _loadOrderDetail();
+    }
+  }
+
+  Future<void> _changeDeliveryAddress() async {
+    if (_orderDetail == null) return;
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '배송지 변경',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, _, __) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+            DeliveryAddressChangePopup(orderId: _orderDetail!.odId),
+          ],
+        );
+      },
+    );
+    if (result == true && mounted) {
+      _loadOrderDetail();
+    }
+  }
+
+  Future<void> _writeReviewFromDetail() async {
+    if (_orderDetail == null) return;
+    final isPrescription = _orderDetail!.isPrescriptionOrder;
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => isPrescription
+            ? ReviewWriteScreen(orderDetail: _orderDetail!)
+            : ReviewWriteGeneralScreen(orderDetail: _orderDetail!),
+      ),
+    );
+    if (result == true && mounted) {
+      _loadOrderDetail();
+    }
   }
 
   /// 배송 조회
