@@ -1,6 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import '../models/user/user_model.dart';
 import '../../core/network/api_client.dart';
@@ -154,42 +153,38 @@ class AuthService {
     }
   }
 
-  /// 프로필 이미지 업로드
-  static Future<Map<String, dynamic>> uploadProfileImage({
+  /// 비밀번호 확인(재인증) - 개인정보 수정 진입용
+  ///
+  /// 백엔드에 비밀번호 검증 엔드포인트가 있어야 동작합니다.
+  /// 성공 시 true, 불일치/실패 시 false를 반환합니다.
+  static Future<bool> verifyPassword({
     required String mbId,
-    required XFile imageFile,
+    required String password,
   }) async {
     try {
-      final response = await ApiClient.uploadFile(
-        '/api/user/profile/image?mbId=$mbId',
-        imageFile,
+      final response = await http.post(
+        Uri.parse('${ApiClient.baseUrl}/api/user/verify-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'mbId': mbId,
+          // 로그인과 동일하게 "평문 비밀번호"를 그대로 전송
+          // (백엔드에서 PBKDF2 / MySQL PASSWORD() 규칙에 따라 검증)
+          'password': password,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true) {
-          if (data['user'] != null) {
-            final updatedUser = UserModel.fromJson(data['user']);
-            await updateUser(updatedUser);
-          }
-          return {
-            'success': true,
-            'message': data['message'] ?? '프로필 이미지가 업로드되었습니다.',
-          };
-        }
+        return data['success'] == true;
       }
 
-      final errorData = json.decode(response.body);
-      return {
-        'success': false,
-        'message': errorData['message'] ?? '프로필 이미지 업로드에 실패했습니다.',
-      };
+      return false;
     } catch (e) {
-      print('❌ [프로필 이미지 업로드] 에러: $e');
-      return {
-        'success': false,
-        'message': '네트워크 오류가 발생했습니다.',
-      };
+      print('❌ [비밀번호 확인] 에러: $e');
+      return false;
     }
   }
 }

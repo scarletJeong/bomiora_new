@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_assets.dart';
 
 class PopularProducts extends StatefulWidget {
   const PopularProducts({
@@ -123,7 +124,7 @@ class _PopularProductsState extends State<PopularProducts> {
                     top: Radius.circular(12),
                   ),
                   image: DecorationImage(
-                    image: const NetworkImage('https://via.placeholder.com/150'),
+                    image: AssetImage(AppAssets.bomioraLogo),
                     fit: BoxFit.cover,
                   ),
                 ),

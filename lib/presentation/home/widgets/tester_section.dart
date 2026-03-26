@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_assets.dart';
 
 class TesterSection extends StatefulWidget {
   const TesterSection({super.key});
@@ -27,7 +28,7 @@ class _TesterSectionState extends State<TesterSection> {
             'id': 1,
             'title': '체험단 모집 1',
             'description': '새로운 상품 체험단을 모집합니다.',
-            'imageUrl': 'https://via.placeholder.com/300x200',
+            'imageUrl': '',
             'deadline': DateTime.now().add(const Duration(days: 7)),
             'applicantCount': 25,
             'maxApplicants': 50,
@@ -36,7 +37,7 @@ class _TesterSectionState extends State<TesterSection> {
             'id': 2,
             'title': '체험단 모집 2',
             'description': '특별한 혜택이 있는 체험단입니다.',
-            'imageUrl': 'https://via.placeholder.com/300x200',
+            'imageUrl': '',
             'deadline': DateTime.now().add(const Duration(days: 14)),
             'applicantCount': 15,
             'maxApplicants': 30,
@@ -130,6 +131,40 @@ class _TesterSectionState extends State<TesterSection> {
     );
   }
 
+  Widget _testerImage(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) {
+      return ColoredBox(
+        color: Colors.grey[200]!,
+        child: Center(
+          child: Image.asset(AppAssets.bomioraLogo, height: 56, fit: BoxFit.contain),
+        ),
+      );
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return Image.network(
+        trimmed,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => ColoredBox(
+          color: Colors.grey[200]!,
+          child: Center(
+            child: Image.asset(AppAssets.bomioraLogo, height: 56, fit: BoxFit.contain),
+          ),
+        ),
+      );
+    }
+    return Image.asset(
+      trimmed,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => ColoredBox(
+        color: Colors.grey[200]!,
+        child: Center(
+          child: Image.asset(AppAssets.bomioraLogo, height: 56, fit: BoxFit.contain),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTesterCard(Map<String, dynamic> item) {
     final bool isApplicable = item['applicable'] ?? true;
     
@@ -149,17 +184,16 @@ class _TesterSectionState extends State<TesterSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 상품 이미지
-          Container(
-            height: 150,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-              ),
-              image: DecorationImage(
-                image: NetworkImage(item['img'] ?? ''),
-                fit: BoxFit.cover,
+          // 상품 이미지 (더미는 로컬 에셋, URL이 있으면 네트워크)
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(12),
+            ),
+            child: SizedBox(
+              height: 150,
+              width: double.infinity,
+              child: _testerImage(
+                item['imageUrl'] as String? ?? item['img'] as String? ?? '',
               ),
             ),
           ),

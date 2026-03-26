@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_assets.dart';
 import 'package:intl/intl.dart';
 
 class StatsSection extends StatefulWidget {
@@ -87,7 +88,7 @@ class _StatsSectionState extends State<StatsSection>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/images/bomiora-logo.png',
+                AppAssets.bomioraLogo,
                 height: 24,
               ),
               const SizedBox(width: 8),

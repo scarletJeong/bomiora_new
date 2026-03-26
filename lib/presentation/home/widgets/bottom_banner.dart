@@ -1,15 +1,32 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_assets.dart';
 
 class BottomBanner extends StatelessWidget {
   const BottomBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      child: Image.asset(
-        'assets/images/bottom_banner_m1.jpg',
-        fit: BoxFit.cover,
+      height: 100,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Color(0xFFFDF1F7),
+              Color(0xFFFFE8F0),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Image.asset(
+            AppAssets.bomioraLogo,
+            height: 44,
+            fit: BoxFit.contain,
+          ),
+        ),
       ),
     );
   }
