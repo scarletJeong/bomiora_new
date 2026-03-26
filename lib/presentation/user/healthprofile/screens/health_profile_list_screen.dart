@@ -5,7 +5,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_footer.dart';
+import '../../../common/widgets/app_bar.dart';
 
 class HealthProfileListScreen extends StatefulWidget {
   const HealthProfileListScreen({super.key});
@@ -15,6 +15,20 @@ class HealthProfileListScreen extends StatefulWidget {
 }
 
 class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
+  static const Color _kAccentBar = Color(0xFFFF5A8D);
+  static const Color _kCardBg = Color(0xFFF8F9FA);
+  static const Color _kInkTitle = Color(0xFF191C1D);
+  static const Color _kLabelBrown = Color(0xFF584045);
+  static const Color _kBorderLight = Color(0xFFF1F5F9);
+  static const Color _kSegmentTrack = Color(0x7FE2E8F0);
+
+  static const TextStyle _listSubsectionStyle = TextStyle(
+    color: _kLabelBrown,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    height: 1.5,
+  );
+
   UserModel? _currentUser;
   HealthProfileModel? _healthProfile;
   bool _isLoading = true;
@@ -46,7 +60,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             content: Text('데이터 로드 중 오류가 발생했습니다: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            width: 568, // 600px - 32px (양쪽 16px 여백)
             duration: const Duration(seconds: 3),
           ),
         );
@@ -70,19 +83,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text('건강프로필'),
-        elevation: 0,
-        scrolledUnderElevation: 0, // 스크롤 시 AppBar 색상 변경 방지
-        surfaceTintColor: Colors.transparent, // Material 3의 tint 효과 제거
-        foregroundColor: Colors.black,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
-      ),
+      appBar: const HealthAppBar(title: '건강프로필'),
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _currentUser == null
@@ -190,7 +191,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
           ),
           const SizedBox(height: 300),
-          const AppFooter(),
+          // const AppFooter(),
         ],
       ),
     );
@@ -198,226 +199,993 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   Widget _buildProfileCard() {
     final profile = _healthProfile!;
-    
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 컨텐츠에 padding 적용
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-          // 기본 정보 카드
-          _buildInfoCard(
-            title: '기본 정보',
-            icon: Icons.person,
-            sectionIndex: 0,
-            children: [
-              _buildInfoRow('생년월일', _formatBirthDate(profile.answer1)),
-              _buildInfoRow('성별', _formatGender(profile.answer2)),
-              _buildInfoRow('키', '${profile.answer4}cm'),
-              _buildInfoRow('현재 몸무게', '${profile.answer5}kg'),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // 다이어트 목표 카드
-          _buildInfoCard(
-            title: '다이어트 목표',
-            icon: Icons.flag,
-            sectionIndex: 1,
-            children: [
-              _buildInfoRow('목표 감량 체중', '${profile.answer3}kg'),
-              _buildInfoRow('예상 기간', profile.answer6),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // 식습관 카드
-          _buildInfoCard(
-            title: '식습관',
-            icon: Icons.restaurant,
-            sectionIndex: 2,
-            children: [
-              _buildInfoRow('하루 끼니', profile.answer7),
-              _buildInfoRow('식사 시간', _formatMealTime(profile.answer71)),
-              _buildInfoRow('식습관', profile.answer8),
-              _buildInfoRow('자주 먹는 음식', profile.answer9),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // 운동 및 건강 카드
-          _buildInfoCard(
-            title: '운동 및 건강',
-            icon: Icons.fitness_center,
-            sectionIndex: 3,
-            children: [
-              _buildInfoRow('운동 습관', profile.answer10),
-              _buildInfoRow('질병', profile.answer11.isEmpty ? '없음' : profile.answer11),
-              _buildInfoRow('복용 중인 약', profile.answer12.isEmpty ? '없음' : profile.answer12),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // 다이어트 경험 카드
-          if (profile.answer13.isNotEmpty) ...[
-            _buildInfoCard(
-              title: '다이어트 경험',
-              icon: Icons.history,
-              sectionIndex: 4,
-              children: [
-                _buildInfoRow('기존 다이어트약 복용', _formatDietExperience(profile.answer13)),
-                if (profile.answer13Medicine.isNotEmpty)
-                  _buildInfoRow('복용한 다이어트약명', profile.answer13Medicine),
-                if (profile.answer13Period.isNotEmpty)
-                  _buildInfoRow('복용 기간', profile.answer13Period),
-                if (profile.answer13Dosage.isNotEmpty)
-                  _buildInfoRow('복용 횟수', profile.answer13Dosage),
-                if (profile.answer13Sideeffect.isNotEmpty)
-                  _buildInfoRow('부작용', profile.answer13Sideeffect),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-          
-          // 작성/수정 정보
-          _buildInfoCard(
-            title: '건강프로필 정보',
-            icon: Icons.info,
-            children: [
-              _buildInfoRow('작성일', _formatDate(profile.pfWdatetime)),
-              _buildInfoRow('수정일', _formatDate(profile.pfMdatetime)),
-            ],
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // 수정 버튼
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _navigateToEditForm,
-              icon: const Icon(Icons.edit),
-              label: const Text('건강프로필 수정하기'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF3787),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-          ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 100),
-          
-          // Footer  
-          const AppFooter(),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildInfoCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-    int? sectionIndex, // 섹션 인덱스 (null이면 수정 불가능한 카드)
-  }) {
-    return Card(
-      color: const Color(0xFFFFF5F5), // 연한 핑크색 배경 건강프로필 카드 색상
-      elevation: 2,
-      surfaceTintColor: Colors.transparent, // Material 3의 tint 효과 제거
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    return DefaultTextStyle.merge(
+      style: const TextStyle(
+        fontFamily: 'Gmarket Sans TTF',
+        color: _kInkTitle,
       ),
-      child: InkWell(
-        onTap: sectionIndex != null 
-            ? () => _navigateToEditSection(sectionIndex)
-            : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    icon,
-                    color: Colors.blue,
-                    size: 24,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 672),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 20, left: 16, right: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildFigmaSection(
+                  title: '기본 정보',
+                  onEdit: () => _openSectionForEdit([0], screenTitle: '기본 정보'),
+                  innerPadding: const EdgeInsets.all(12),
+                  child: _buildBasicInfoBody(profile),
+                ),
+                const SizedBox(height: 24),
+                _buildFigmaSection(
+                  title: '식습관 및 운동',
+                  onEdit: () => _openSectionForEdit(
+                    [1, 2],
+                    screenTitle: '식습관 및 운동',
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  innerPadding: const EdgeInsets.all(16),
+                  child: _buildDietAndExerciseBody(profile),
+                ),
+                const SizedBox(height: 24),
+                _buildFigmaSection(
+                  title: '건강 상태',
+                  onEdit: () => _openSectionForEdit([3], screenTitle: '건강 상태'),
+                  innerPadding: const EdgeInsets.all(16),
+                  child: _buildHealthBody(profile),
+                ),
+                const SizedBox(height: 24),
+                _buildDietExperienceSection(profile),
+                const SizedBox(height: 24),
+                _buildMetaCard(profile),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _navigateToEditForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF3787),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
                     ),
-                  ),
-                  if (sectionIndex != null) ...[
-                    const Icon(
-                      Icons.edit,
-                      size: 20,
-                      color: Color(0xFFFF3787),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '수정',
+                    child: const Text(
+                      '건강프로필 전체 수정',
                       style: TextStyle(
-                        fontSize: 13,
-                        color: const Color(0xFFFF3787),
-                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 16),
-              ...children,
-            ],
+                  ),
+                ),
+                const SizedBox(height: 100),
+                // const AppFooter(),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+  Widget _buildFigmaSection({
+    required String title,
+    required VoidCallback onEdit,
+    required Widget child,
+    EdgeInsetsGeometry innerPadding = const EdgeInsets.all(16),
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 4,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: _kAccentBar,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: _kInkTitle,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.43,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onEdit,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                  child: Text(
+                    '수정',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _kAccentBar,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: innerPadding,
+          decoration: BoxDecoration(
+            color: _kCardBg,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDietExperienceSection(HealthProfileModel profile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 4,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: _kAccentBar,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '다이어트 경험',
+                    style: TextStyle(
+                      color: _kInkTitle,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.43,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _openSectionForEdit(
+                  [4],
+                  screenTitle: '다이어트 경험',
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                  child: Text(
+                    '수정',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _kAccentBar,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _kBorderLight),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0C000000),
+                blurRadius: 2,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: _buildDietDrugBody(profile),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetaCard(HealthProfileModel profile) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorderLight),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            '건강프로필 정보',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _kInkTitle,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _metaRow('작성일', _formatDate(profile.pfWdatetime)),
+          _metaRow('수정일', _formatDate(profile.pfMdatetime)),
+        ],
+      ),
+    );
+  }
+
+  Widget _metaRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
           SizedBox(
-            width: 100,
+            width: 56,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+              style: const TextStyle(
+                fontSize: 11,
+                color: _kLabelBrown,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 16),
           Expanded(
             child: Text(
-              value.isEmpty ? '-' : value,
+              value,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
+                color: _kInkTitle,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _pipeParts(String s) {
+    if (s.isEmpty) return [];
+    return s
+        .split('|')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  String _birthDots(String raw) {
+    if (raw.isEmpty) return '-';
+    if (raw.length == 8) {
+      return '${raw.substring(0, 4)}.${raw.substring(4, 6)}.${raw.substring(6, 8)}';
+    }
+    return _formatBirthDate(raw).replaceAll('-', '.');
+  }
+
+  static const TextStyle _listLabelStyle = TextStyle(
+    color: _kLabelBrown,
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    height: 1.5,
+  );
+
+  Widget _whiteReadBox(Widget child) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildBasicInfoBody(HealthProfileModel profile) {
+    final g = profile.answer2;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('생년월일', style: _listLabelStyle),
+                  const SizedBox(height: 6),
+                  _whiteReadBox(
+                    Text(
+                      _birthDots(profile.answer1),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        height: 1.33,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('성별', style: _listLabelStyle),
+                  const SizedBox(height: 6),
+                  _genderReadSegment(g == 'M', g == 'F'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _metricCompactColumn(
+                label: '키',
+                value: profile.answer4,
+                unit: 'cm',
+                emphasize: false,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _metricCompactColumn(
+                label: '체중',
+                value: profile.answer5,
+                unit: 'kg',
+                emphasize: false,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _metricCompactColumn(
+                label: '목표',
+                value: profile.answer3,
+                unit: 'kg',
+                emphasize: true,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _metricCompactColumn({
+    required String label,
+    required String value,
+    required String unit,
+    required bool emphasize,
+  }) {
+    final v = value.trim().isEmpty ? '-' : value.trim();
+    final labelColor = emphasize ? _kAccentBar : _kLabelBrown;
+    final valueColor = emphasize ? _kAccentBar : _kInkTitle;
+    final borderColor =
+        emphasize ? const Color(0x33FF5A8D) : _kBorderLight;
+
+    return Container(
+      width: double.infinity,
+      height: 30.5,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: 1, color: borderColor),
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: labelColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              height: 1.5,
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            Text(
+              v,
+              style: TextStyle(
+                color: valueColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                height: 1.5,
+              ),
+            ),
+              if (v != '-') ...[
+                const SizedBox(width: 2),
+                Text(
+                  unit,
+                  style: TextStyle(
+                    color: valueColor,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w300,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _genderReadSegment(bool male, bool female) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: _kSegmentTrack,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _genderReadSide('남성', male)),
+          Expanded(child: _genderReadSide('여성', female)),
+        ],
+      ),
+    );
+  }
+
+  Widget _genderReadSide(String label, bool selected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      decoration: BoxDecoration(
+        color: selected ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: selected
+            ? const [
+                BoxShadow(
+                  color: Color(0x0C000000),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
+                ),
+              ]
+            : null,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          height: 1.5,
+          color: selected ? _kAccentBar : _kLabelBrown.withValues(alpha: 0.5),
+        ),
+      ),
+    );
+  }
+
+  /// 식습관·음식 등: 흰 배경 + 흰 테두리(카드 위에서 은은히 구분), 글자 검정
+  Widget _chipWhitePlain(String text, {FontWeight fontWeight = FontWeight.w400}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 11,
+          fontWeight: fontWeight,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+
+  /// 운동 빈도(일주일 …)만 연한 테두리
+  Widget _chipLightBorder(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kBorderLight),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 11,
+          fontWeight: FontWeight.w400,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _wrapChipsWhite(List<String> items) {
+    if (items.isEmpty) {
+      return const Text(
+        '-',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w400,
+          color: Colors.black54,
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: items.map((t) => _chipWhitePlain(t)).toList(),
+    );
+  }
+
+  Widget _buildDietAndExerciseBody(HealthProfileModel profile) {
+    final mealParts = _pipeParts(profile.answer7);
+    final mealItems = mealParts.isEmpty && profile.answer7.trim().isNotEmpty
+        ? [profile.answer7.trim()]
+        : mealParts;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('평균 식사 횟수 및 빈도', style: _listSubsectionStyle),
+        ),
+        const SizedBox(height: 8),
+        _wrapChipsWhite(mealItems),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('식사 시간', style: _listSubsectionStyle),
+        ),
+        const SizedBox(height: 8),
+        _buildMealTimeRowFigma(profile.answer71),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('식습관 정보', style: _listSubsectionStyle),
+        ),
+        const SizedBox(height: 8),
+        _wrapChipsWhite(_listItemsFromPipe(profile.answer8)),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('자주 먹는 음식', style: _listSubsectionStyle),
+        ),
+        const SizedBox(height: 8),
+        _wrapChipsWhite(_listItemsFromPipe(profile.answer9)),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('운동 습관', style: _listSubsectionStyle),
+        ),
+        const SizedBox(height: 8),
+        _buildExerciseHabitChips(profile.answer10),
+      ],
+    );
+  }
+
+  List<String> _listItemsFromPipe(String raw) {
+    final p = _pipeParts(raw);
+    if (p.isNotEmpty) return p;
+    final t = raw.trim();
+    return t.isEmpty ? [] : [t];
+  }
+
+  Widget _buildExerciseHabitChips(String answer10) {
+    if (answer10.trim().isEmpty) {
+      return const Text(
+        '-',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: Colors.black54,
+        ),
+      );
+    }
+    if (!answer10.contains('###')) {
+      final t = answer10.trim();
+      final looksLikeWeeklyFreq = t.contains('일주') ||
+          t.contains('매일') ||
+          RegExp(r'주\s*\d').hasMatch(t);
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          looksLikeWeeklyFreq ? _chipLightBorder(t) : _chipWhitePlain(t),
+        ],
+      );
+    }
+    final p = answer10.split('###');
+    final freq = p[0].trim();
+    final types = p.length > 1 ? p[1].trim() : '';
+    final typeList = types.isEmpty
+        ? <String>[]
+        : types
+            .split(RegExp(r'\s*[,|]\s*'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        if (freq.isNotEmpty) _chipLightBorder(freq),
+        ...typeList.map((t) => _chipWhitePlain(t)),
+      ],
+    );
+  }
+
+  Widget _buildMealTimeRowFigma(String answer71) {
+    final parts = answer71.split('|');
+    String at(int i) =>
+        parts.length > i && parts[i].trim().isNotEmpty ? parts[i].trim() : '-';
+
+    Widget slot(String tag, String time) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tag,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w400,
+                  color: _kLabelBrown,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                time,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        slot('1st 식사', at(0)),
+        const SizedBox(width: 6),
+        slot('2nd 식사', at(1)),
+        const SizedBox(width: 6),
+        slot('3rd 식사', at(2)),
+        const SizedBox(width: 6),
+        slot('기타', at(3)),
+      ],
+    );
+  }
+
+  Widget _buildHealthBody(HealthProfileModel profile) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text('현재 질환', style: _listSubsectionStyle),
+              ),
+              const SizedBox(height: 8),
+              _healthDataChipsPipe(profile.answer11),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text('복용 약물', style: _listSubsectionStyle),
+              ),
+              const SizedBox(height: 8),
+              _healthDataChipsPipe(profile.answer12),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 질환·복용약 동일: `|` 분리 시 칩 여러 개, 없음/빈 값은 `없음` 한 칩
+  Widget _healthDataChipsPipe(String raw) {
+    final t = raw.trim();
+    final isNone = t.isEmpty ||
+        t == '없음' ||
+        t == '해당 없음' ||
+        t == '해당없음';
+    if (isNone) {
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: [_healthDataChip('없음')],
+      );
+    }
+    final parts = _pipeParts(t);
+    final items = parts.isEmpty ? [t] : parts;
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: items.map(_healthDataChip).toList(),
+    );
+  }
+
+  Widget _healthDataChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w400,
+          color: Colors.black,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _dietYesNoCell({
+    required String label,
+    required bool selected,
+    bool compact = false,
+  }) {
+    return Container(
+      alignment: Alignment.center,
+      padding: EdgeInsets.symmetric(
+        vertical: compact ? 5 : 10,
+        horizontal: compact ? 4 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: selected ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: selected
+            ? const [
+                BoxShadow(
+                  color: Color(0x0C000000),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
+                ),
+              ]
+            : null,
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: compact ? 10 : 12,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          color: selected ? Colors.black : _kLabelBrown.withValues(alpha: 0.55),
+          height: 1.33,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDietDrugBody(HealthProfileModel profile) {
+    final a13 = profile.answer13.trim();
+    // API: 1/없음=아니오, 2/있음=예 — 그 외는 아니오 쪽으로 표시
+    final isYes = a13 == '2' || a13 == '있음';
+    final isNo = !isYes;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                '최근 1년 내 다이어트 약 복용',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _kInkTitle,
+                  height: 1.33,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 128, minWidth: 100),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: _kBorderLight,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _dietYesNoCell(
+                        label: '예',
+                        selected: isYes,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: _dietYesNoCell(
+                        label: '아니오',
+                        selected: isNo,
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (isYes) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.only(top: 8),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: _kBorderLight)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _dietDetailField(
+                        '복용 약명',
+                        profile.answer13Medicine,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _dietDetailField(
+                        '복용 기간',
+                        profile.answer13Period,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _dietDetailField(
+                        '복용 횟수',
+                        profile.answer13Dosage,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _dietDetailField(
+                        '부작용 여부',
+                        profile.answer13Sideeffect,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Figma: 높이 53, 라벨 absolute top, 값 박스 top 21 · #F8FAFC · 12px/400
+  Widget _dietDetailField(String label, String value) {
+    final display = value.trim().isEmpty ? '-' : value.trim();
+
+    return SizedBox(
+      height: 53,
+      width: double.infinity,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 4,
+            top: 0,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _kLabelBrown,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                height: 1.5, // line ~15px
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 21,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                display,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _kInkTitle,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  height: 16 / 12,
+                ),
               ),
             ),
           ),
@@ -438,42 +1206,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       return '${birthDate.substring(0, 4)}-${birthDate.substring(4, 6)}-${birthDate.substring(6, 8)}';
     }
     return birthDate;
-  }
-
-  /// 성별 포맷팅 (M -> 남성, F -> 여성)
-  String _formatGender(String gender) {
-    if (gender.isEmpty) return '-';
-    if (gender == 'M') return '남성';
-    if (gender == 'F') return '여성';
-    return gender;
-  }
-
-  /// 식사시간 포맷팅 (| 기준으로 파싱하여 표시)
-  String _formatMealTime(String mealTime) {
-    if (mealTime.isEmpty) return '-';
-    
-    final parts = mealTime.split('|');
-    final meal1 = parts.length > 0 && parts[0].isNotEmpty ? parts[0] : null;
-    final meal2 = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
-    final meal3 = parts.length > 2 && parts[2].isNotEmpty ? parts[2] : null;
-    final mealOther = parts.length > 3 && parts[3].isNotEmpty ? parts[3] : null;
-    
-    final List<String> displayParts = [];
-    if (meal1 != null) displayParts.add('1식: $meal1');
-    if (meal2 != null) displayParts.add('2식: $meal2');
-    if (meal3 != null) displayParts.add('3식: $meal3');
-    if (mealOther != null) displayParts.add('기타: $mealOther');
-    
-    if (displayParts.isEmpty) return '-';
-    return displayParts.join(', ');
-  }
-
-  /// 다이어트 경험 포맷팅 (1 -> 없음, 2 -> 있음)
-  String _formatDietExperience(String experience) {
-    if (experience.isEmpty) return '-';
-    if (experience == '1') return '없음';
-    if (experience == '2') return '있음';
-    return experience;
   }
 
   void _navigateToForm() async {
@@ -498,23 +1230,26 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         ),
       ),
     );
-    
+
     if (result == true) {
       _loadData();
     }
   }
 
-  void _navigateToEditSection(int sectionIndex) async {
+  /// 카드별 수정: 이전/다음 없이 `수정하기`만. 식습관+운동은 [1,2]로 스와이프만 가능.
+  void _openSectionForEdit(List<int> sectionIndices, {String? screenTitle}) async {
+    if (sectionIndices.isEmpty) return;
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => HealthProfileFormScreen(
           existingProfile: _healthProfile,
-          initialSectionIndex: sectionIndex,
+          initialSectionIndices: sectionIndices,
+          editScreenTitle: screenTitle,
         ),
       ),
     );
-    
+
     if (result == true) {
       _loadData();
     }
