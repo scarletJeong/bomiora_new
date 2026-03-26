@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_footer.dart';
+import '../../../common/widgets/app_bar.dart';
+import '../../../common/widgets/confirm_dialog.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -20,6 +21,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   // 배송지 목록
   List<Map<String, dynamic>> _addresses = [];
   bool _isLoadingAddresses = false;
+  int? _selectedAddressId;
 
   @override
   void initState() {
@@ -66,331 +68,450 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     }
   }
 
-  Future<void> _deleteAddress(int id) async {
-    if (_currentUser == null) return;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('배송지 삭제'),
-        content: const Text('이 배송지를 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              try {
-                final result = await AddressService.deleteAddress(
-                  id,
-                  _currentUser!.id,
-                );
-                
-                if (!mounted) return;
-                
-                if (result['success'] == true) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result['message'] ?? '배송지가 삭제되었습니다.'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                  // 배송지 목록 새로고침
-                  _loadAddresses();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result['message'] ?? '배송지 삭제에 실패했습니다.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              } catch (e) {
-                print('❌ 배송지 삭제 에러: $e');
-              }
-            },
-            child: const Text(
-              '삭제',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
+  Map<String, dynamic> _buildUpdatePayload(Map<String, dynamic> address, {required int isDefault}) {
+    return {
+      'mbId': _currentUser?.id ?? '',
+      'adSubject': address['adSubject'] ?? '',
+      'adDefault': isDefault,
+      'adName': address['adName'] ?? '',
+      'adTel': address['adTel'] ?? address['adHp'] ?? '',
+      'adHp': address['adHp'] ?? '',
+      'adZip1': address['adZip1'] ?? '',
+      'adZip2': address['adZip2'] ?? '',
+      'adAddr1': address['adAddr1'] ?? '',
+      'adAddr2': address['adAddr2'] ?? '',
+      'adAddr3': address['adAddr3'] ?? '',
+      'adJibeon': '',
+      'adMemo': address['adMemo'] ?? '',
+    };
   }
 
-  Future<void> _setDefaultAddress(int id) async {
-    if (_currentUser == null) return;
+  void _toggleSelection(int id) {
+    setState(() {
+      _selectedAddressId = _selectedAddressId == id ? null : id;
+    });
+  }
 
-    final result = await AddressService.setDefaultAddress(id, _currentUser!.id);
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? '기본 배송지로 설정되었습니다.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+  Future<void> _goToRegister() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AddressFormScreen(),
+      ),
+    );
+    if (result == true) {
       _loadAddresses();
-    } else {
+    }
+  }
+
+  Future<void> _goToEditSelected() async {
+    final selectedId = _selectedAddressId;
+    if (selectedId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? '기본 배송지 설정에 실패했습니다.'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('수정할 배송지를 선택해주세요.')),
       );
+      return;
+    }
+    final selected = _addresses.firstWhere(
+      (a) => a['adId'] == selectedId,
+      orElse: () => {},
+    );
+    if (selected.isEmpty) return;
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddressFormScreen(address: selected),
+      ),
+    );
+    if (result == true) {
+      setState(() {
+        _selectedAddressId = null;
+      });
+      _loadAddresses();
+    }
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_currentUser == null) return;
+    final id = _selectedAddressId;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('삭제할 배송지를 선택해주세요.')),
+      );
+      return;
+    }
+
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '배송지 삭제',
+      message: '선택한 주소를 삭제하시겠습니까?',
+    );
+    if (!confirmed) return;
+
+    await AddressService.deleteAddress(id, _currentUser!.id);
+
+    if (!mounted) return;
+    setState(() {
+      _selectedAddressId = null;
+    });
+    _loadAddresses();
+  }
+
+  Future<void> _setDefaultAddress(Map<String, dynamic> address) async {
+    if (_currentUser == null) return;
+    final adId = address['adId'] as int?;
+    if (adId == null) return;
+    final isDefault = address['adDefault'] == 1;
+    if (isDefault) return;
+
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '기본 주소 설정',
+      message: '해당 주소로 기본 주소가 변경됩니다.',
+      width: 272,
+      showDivider: false,
+    );
+    if (!confirmed || !mounted) return;
+
+    // UI 즉시 반영 (기존 기본 배송지 해제 + 선택 배송지 기본으로)
+    final prevAddresses = List<Map<String, dynamic>>.from(_addresses);
+    setState(() {
+      _addresses = _addresses
+          .map((a) => {
+                ...a,
+                'adDefault': (a['adId'] == adId) ? 1 : 0,
+              })
+          .toList();
+    });
+
+    await AddressService.updateAddress(
+      adId,
+      _buildUpdatePayload(address, isDefault: 1),
+    );
+
+    // 서버가 기본 배송지 해제까지 처리하지 않는 경우를 대비해 목록 새로고침
+    try {
+      await _loadAddresses();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _addresses = prevAddresses);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text('배송지 관리'),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-      ),
-      child: _isLoadingAddresses
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFFF3787),
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const SizedBox(), // 왼쪽 공간 확보용
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () async {
-                          // 배송지 추가 화면으로 이동
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AddressFormScreen(),
+      appBar: const HealthAppBar(title: '배송지 관리'),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+        child: _isLoadingAddresses
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFF3787),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Text(
+                          '나의',
+                          style: TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: -1.44,
+                          ),
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          '배송지',
+                          style: TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -1.76,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '고객님께서 주문시 사용하셨던 배송지 목록입니다.',
+                      style: TextStyle(
+                        color: Color(0xFF898686),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    if (_addresses.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Center(
+                          child: Text(
+                            '등록된 배송지가 없습니다',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
                             ),
-                          );
-                          
-                          // 배송지가 추가되면 목록 새로고침
-                          if (result == true) {
-                            _loadAddresses();
-                          }
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('추가'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFFF4081),
+                          ),
+                        ),
+                      )
+                    else
+                      ..._addresses.map(
+                        (address) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _buildAddressCard(address),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
 
-                  // 배송지 목록 (실제 데이터)
-                  if (_addresses.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 60),
-                        child: Column(
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            Icon(
-                              Icons.location_off_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
+                            _SmallActionButton(
+                              label: '수정',
+                              variant: _SmallActionButtonVariant.outlinedPink,
+                              enabled: _selectedAddressId != null,
+                              onTap: _goToEditSelected,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '등록된 배송지가 없습니다',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
+                            const SizedBox(width: 10),
+                            _SmallActionButton(
+                              label: '삭제',
+                              variant: _SmallActionButtonVariant.disabledGray,
+                              enabled: _selectedAddressId != null,
+                              onTap: _deleteSelected,
                             ),
                           ],
                         ),
-                      ),
-                    )
-                  else
-                    ...(_addresses.map((address) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildAddressCard(
-                        id: address['adId'],
-                        name: address['adSubject'] ?? '',
-                        recipient: address['adName'] ?? '',
-                        phone: address['adHp'] ?? '',
-                        address: address['adAddr1'] ?? '',
-                        addressDetail: '${address['adAddr2'] ?? ''} ${address['adAddr3'] ?? ''}'.trim(),
-                        isDefault: address['adDefault'] == 1,
-                      ),
-                    ))),
-                  
-                  const SizedBox(height: 300),
-                  const AppFooter(),
-                ],
+                        _SmallActionButton(
+                          label: '등록',
+                          variant: _SmallActionButtonVariant.filledPink,
+                          enabled: true,
+                          onTap: _goToRegister,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 
   /// 배송지 카드 위젯
-  Widget _buildAddressCard({
-    int? id,
-    required String name,
-    required String recipient,
-    required String phone,
-    required String address,
-    required String addressDetail,
-    bool isDefault = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDefault ? const Color(0xFFFF4081) : Colors.grey[300]!,
-          width: isDefault ? 2 : 1,
+  Widget _buildAddressCard(Map<String, dynamic> address) {
+    final int? id = address['adId'];
+    final String name = address['adSubject'] ?? '';
+    final String recipient = address['adName'] ?? '';
+    final String phone = address['adHp'] ?? '';
+    final String address1 = address['adAddr1'] ?? '';
+    final String address2 = address['adAddr2'] ?? '';
+    final String address3 = address['adAddr3'] ?? '';
+    final String detail = '$address2 $address3'.trim();
+    final bool isDefault = address['adDefault'] == 1;
+    final bool isSelected = id != null && _selectedAddressId == id;
+
+    // 카드 강조 스타일은 "기본 배송지"가 아니라 "선택(체크)" 상태에 따라 적용
+    final bgColor = isSelected ? const Color(0x0CFF5C8F) : Colors.white;
+    final borderColor = isSelected ? const Color(0xFFFF5C8F) : const Color(0xFFD2D2D2);
+
+    return InkWell(
+      onTap: id == null ? null : () => _toggleSelection(id),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        decoration: ShapeDecoration(
+          color: bgColor,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: 1, color: borderColor),
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SelectDot(selected: isSelected),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isDefault)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF4081),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '기본',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  if (isDefault) const SizedBox(width: 8),
                   Text(
-                    name,
+                    name.isEmpty ? '배송지' : name,
                     style: const TextStyle(
+                      color: Colors.black,
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '$recipient $phone'.trim(),
+                    style: const TextStyle(
+                      color: Color(0xFF898383),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    detail.isEmpty ? address1 : '$address1 $detail',
+                    style: const TextStyle(
+                      color: Color(0xFF898383),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    color: Colors.grey[600],
-                    onPressed: () async {
-                      // 배송지 수정 화면으로 이동
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddressFormScreen(
-                            address: {
-                              'adId': id,
-                              'adSubject': name,
-                              'adName': recipient,
-                              'adHp': phone,
-                              'adAddr1': address,
-                              'adAddr2': addressDetail,
-                              'adDefault': isDefault ? 1 : 0,
-                            },
-                          ),
-                        ),
-                      );
-                      
-                      // 배송지가 수정되면 목록 새로고침
-                      if (result == true) {
-                        _loadAddresses();
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 20),
-                    color: Colors.red,
-                    onPressed: () => _deleteAddress(id!),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            recipient,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            phone,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            address,
-            style: const TextStyle(
-              fontSize: 13,
-            ),
-          ),
-          if (addressDetail.isNotEmpty)
-            Text(
-              addressDetail,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[600],
-              ),
-            ),
-          if (!isDefault && id != null) ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => _setDefaultAddress(id),
-                child: const Text('기본배송지로 설정'),
+            const SizedBox(width: 10),
+            InkWell(
+              onTap: () => _setDefaultAddress(address),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  isDefault ? Icons.star : Icons.star_border,
+                  size: 20,
+                  color: isDefault ? Colors.amber : Colors.grey[500],
+                ),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
+
+class _SelectDot extends StatelessWidget {
+  const _SelectDot({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selected) {
+      return Container(
+        width: 16,
+        height: 16,
+        decoration: ShapeDecoration(
+          color: const Color(0xFFFF5C8F),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(width: 1.33, color: Color(0xFFFF5C8F)),
+            borderRadius: BorderRadius.circular(6666),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Container(
+          width: 5.33,
+          height: 5.33,
+          decoration: const ShapeDecoration(
+            color: Colors.white,
+            shape: OvalBorder(),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1.5, color: Color(0xFFD2D2D2)),
+          borderRadius: BorderRadius.circular(9999),
+        ),
+      ),
+    );
+  }
+}
+
+enum _SmallActionButtonVariant { outlinedPink, filledPink, disabledGray }
+
+class _SmallActionButton extends StatelessWidget {
+  const _SmallActionButton({
+    required this.label,
+    required this.variant,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final _SmallActionButtonVariant variant;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDisabled = !enabled;
+
+    Color bg;
+    Color fg;
+    BorderSide? side;
+
+    switch (variant) {
+      case _SmallActionButtonVariant.outlinedPink:
+        bg = Colors.white;
+        fg = const Color(0xFFFF5A8D);
+        side = const BorderSide(width: 1, color: Color(0xFFFF5A8D));
+        break;
+      case _SmallActionButtonVariant.filledPink:
+        bg = const Color(0xFFFF5A8D);
+        fg = Colors.white;
+        side = null;
+        break;
+      case _SmallActionButtonVariant.disabledGray:
+        bg = const Color(0x7FD2D2D2);
+        fg = const Color(0xFF898686);
+        side = null;
+        break;
+    }
+
+    // '수정' 버튼은 디자인 고정(비활성화여도 테두리/색 유지) - 탭만 막음
+    if (isDisabled && variant == _SmallActionButtonVariant.filledPink) {
+      bg = const Color(0x7FD2D2D2);
+      fg = const Color(0xFF898686);
+      side = null;
+    }
+
+    return InkWell(
+      onTap: isDisabled ? null : onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: ShapeDecoration(
+          color: bg,
+          shape: RoundedRectangleBorder(
+            side: side ?? BorderSide.none,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: fg,
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+

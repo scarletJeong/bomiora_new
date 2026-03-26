@@ -3,17 +3,13 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_footer.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
-import '../../../../data/services/coupon_service.dart';
-import '../../../../data/services/point_service.dart';
-import '../../../../data/services/review_service.dart';
-import '../../../../data/services/contact_service.dart';
-import '../../../../data/services/order_service.dart';
-import '../../../../core/network/api_client.dart';
-import '../../../health/dashboard/screens/health_dashboard_screen.dart';
-import '../../../settings/settings_screen.dart';
 import 'profile_settings_screen.dart';
-import '../../../customer_service/screens/customer_service_screen.dart';
+import '../../../customer_service/screens/contact_list_screen.dart';
 import 'address_management_screen.dart';
+import '../../../shopping/wish/screens/wish_list_screen.dart';
+import 'refund_account_screen.dart';
+import 'cancel_member_screen.dart';
+import '../../healthprofile/screens/health_profile_list_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -24,13 +20,230 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   UserModel? _currentUser;
-  
-  // 마이페이지 통계 데이터
-  int _orderCount = 0;
-  int _reviewCount = 0;
-  int _contactCount = 0;
-  int _couponCount = 0;
-  int? _userPoint;
+
+  Future<void> _showPasswordConfirmDialog() async {
+    if (_currentUser == null) return;
+
+    final controller = TextEditingController();
+    bool mismatch = false;
+    bool submitting = false;
+
+    Future<void> submit(StateSetter setLocalState) async {
+      final pw = controller.text;
+      if (pw.isEmpty) {
+        setLocalState(() => mismatch = true);
+        return;
+      }
+
+      setLocalState(() {
+        submitting = true;
+        mismatch = false;
+      });
+
+      final ok = await AuthService.verifyPassword(
+        mbId: _currentUser!.id,
+        password: pw,
+      );
+
+      if (!mounted) return;
+
+      if (!ok) {
+        setLocalState(() {
+          submitting = false;
+          mismatch = true;
+        });
+        return;
+      }
+
+      Navigator.of(context).pop(); // close dialog
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ProfileSettingsScreen(),
+        ),
+      ).then((_) => _loadCurrentUser());
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                width: 272,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x19000000),
+                      blurRadius: 8.14,
+                      offset: Offset(0, 0),
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                      child: DefaultTextStyle.merge(
+                        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              '비밀번호 확인',
+                              style: TextStyle(
+                                color: Color(0xFF1A1A1A),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              '***',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Color(0xFFD2D2D2),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: 1.57,
+                                letterSpacing: 4.90,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              '안전한 정보 변경을 위해,\n비밀번호를 한 번 더 입력해 주세요.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Color(0xFF898686),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: 1.57,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  decoration: ShapeDecoration(
+                                    shape: RoundedRectangleBorder(
+                                      side: BorderSide(
+                                        width: 1,
+                                        color: mismatch ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  child: TextField(
+                                    controller: controller,
+                                    obscureText: true,
+                                    onChanged: (_) {
+                                      if (mismatch) setLocalState(() => mismatch = false);
+                                    },
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      isCollapsed: true,
+                                      hintText: '비밀번호를 입력해 주세요',
+                                      hintStyle: TextStyle(
+                                        color: Color(0xFF898686),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    style: const TextStyle(
+                                      color: Color(0xFF1A1A1A),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                if (mismatch) ...[
+                                  const SizedBox(height: 5),
+                                  const Text(
+                                    '비밀번호가 일치하지 않습니다.',
+                                    style: TextStyle(
+                                      color: Color(0xFFEF4444),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 50,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: Material(
+                              color: const Color(0xFFF7F7F7),
+                              child: InkWell(
+                                onTap: submitting ? null : () => Navigator.of(context).pop(),
+                                child: const Center(
+                                  child: Text(
+                                    '취소',
+                                    style: TextStyle(
+                                      color: Color(0xFF898686),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Material(
+                              color: const Color(0xFFFF5A8D),
+                              child: InkWell(
+                                onTap: submitting ? null : () => submit(setLocalState),
+                                child: Center(
+                                  child: Text(
+                                    submitting ? '확인 중...' : '확인',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -45,128 +258,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     setState(() {
       _currentUser = user;
     });
-    
-    // 사용자 정보 로드 후 통계 데이터 로드
-    if (user != null) {
-      _loadMyPageStats(user.id);
-    }
-  }
-  
-  Future<void> _loadMyPageStats(String userId) async {
-    // 쿠폰 개수 (사용가능한 쿠폰만)
-    try {
-      final coupons = await CouponService.getAvailableCoupons(userId);
-      if (!mounted) return;
-      
-      setState(() {
-        _couponCount = coupons.length;
-      });
-    } catch (e) {
-      print('쿠폰 개수 조회 오류: $e');
-    }
-    
-    // 포인트
-    try {
-      final point = await PointService.getUserPoint(userId);
-      if (!mounted) return;
-      
-      setState(() {
-        _userPoint = point;
-      });
-    } catch (e) {
-      print('포인트 조회 오류: $e');
-    }
-    
-    // 리뷰 개수
-    try {
-      final result = await ReviewService.getMemberReviews(
-        mbId: userId,
-        page: 0,
-        size: 1,
-      );
-      if (!mounted) return;
-      
-      if (result['success'] == true) {
-        setState(() {
-          _reviewCount = result['totalElements'] ?? 0;
-        });
-      }
-    } catch (e) {
-      print('리뷰 개수 조회 오류: $e');
-    }
-    
-    // 문의 개수
-    try {
-      final contacts = await ContactService.getMyContacts();
-      if (!mounted) return;
-      
-      setState(() {
-        _contactCount = contacts.length;
-      });
-    } catch (e) {
-      print('문의 개수 조회 오류: $e');
-    }
-    
-    // 주문·배송 개수 (결제완료~배송중 상태만 카운트)
-    try {
-      int totalOrderCount = 0;
-      
-      // 결제완료 상태 조회
-      final paymentResult = await OrderService.getOrderList(
-        mbId: userId,
-        status: 'payment',
-        page: 0,
-        size: 1,
-      );
-      if (paymentResult['success'] == true) {
-        totalOrderCount += (paymentResult['totalElements'] ?? 0) as int;
-      }
-      
-      // 배송준비중 상태 조회
-      final preparingResult = await OrderService.getOrderList(
-        mbId: userId,
-        status: 'preparing',
-        page: 0,
-        size: 1,
-      );
-      if (preparingResult['success'] == true) {
-        totalOrderCount += (preparingResult['totalElements'] ?? 0) as int;
-      }
-      
-      // 배송중 상태 조회
-      final deliveringResult = await OrderService.getOrderList(
-        mbId: userId,
-        status: 'delivering',
-        page: 0,
-        size: 1,
-      );
-      if (deliveringResult['success'] == true) {
-        totalOrderCount += (deliveringResult['totalElements'] ?? 0) as int;
-      }
-      
-      if (!mounted) return;
-      
-      setState(() {
-        _orderCount = totalOrderCount;
-      });
-    } catch (e) {
-      print('주문 개수 조회 오류: $e');
-    }
-  }
-  
-  String _formatPoint(int point) {
-    return point.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
-  }
-
-  String? _resolveProfileImageUrl(String? path) {
-    if (path == null || path.trim().isEmpty) return null;
-    final trimmed = path.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    if (trimmed.startsWith('/')) return '${ApiClient.baseUrl}$trimmed';
-    return '${ApiClient.baseUrl}/$trimmed';
   }
 
   @override
@@ -178,6 +269,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           '마이페이지',
           style: TextStyle(
             fontSize: 20,
+            fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
@@ -187,231 +279,111 @@ class _MyPageScreenState extends State<MyPageScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
             // 컨텐츠에 padding 적용
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-            // 회원 정보 섹션 (클릭 가능)
-            GestureDetector(
-              onTap: () {
-                if (_currentUser != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileSettingsScreen(),
+            // 회원 정보 섹션
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 34,
+                    backgroundColor: const Color(0xFFFF3787).withOpacity(0.1),
+                    child: const Icon(
+                      Icons.person,
+                      size: 34,
+                      color: Color(0xFFFF3787),
                     ),
-                  ).then((value) {
-                    // 설정 화면에서 돌아왔을 때 사용자 정보 새로고침
-                    _loadCurrentUser();
-                  });
-                }
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Stack(
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: const Color(0xFFFF3787).withOpacity(0.1),
-                          backgroundImage: _resolveProfileImageUrl(_currentUser?.profileImage) != null
-                              ? NetworkImage(_resolveProfileImageUrl(_currentUser?.profileImage)!)
-                              : null,
-                          child: _resolveProfileImageUrl(_currentUser?.profileImage) == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: Color(0xFFFF3787),
-                                )
-                              : null,
+                        Text(
+                          _currentUser?.name ?? '로그인이 필요합니다',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        if (_currentUser != null)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF3787),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: const Icon(
-                                Icons.edit,
-                                size: 14,
-                                color: Colors.white,
-                              ),
+                        if (_currentUser != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            _currentUser!.email,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _currentUser?.name ?? '로그인이 필요합니다',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (_currentUser != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _currentUser!.email,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      if (_currentUser!.phone != null && _currentUser!.phone!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          _currentUser!.phone!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: () {
+                              _showPasswordConfirmDialog();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFFF3787),
+                              side: const BorderSide(color: Color(0xFFFF3787)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              '개인정보 수정',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ],
-                ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
             
-            // 통계 카드 (주문·예약, 리뷰, 문의, 쿠폰, 포인트)
             if (_currentUser != null) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatCard(
-                      icon: Icons.receipt_long,
-                      iconColor: Colors.blue,
-                      label: '주문·배송',
-                      value: '$_orderCount',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/order').then((value) {
-                          // 주문 화면에서 돌아왔을 때 통계 새로고침
-                          if (_currentUser != null) {
-                            _loadMyPageStats(_currentUser!.id);
-                          }
-                        });
-                      },
-                    ),
-                    _buildStatCard(
-                      icon: Icons.rate_review,
-                      iconColor: const Color(0xFFFF4081),
-                      label: '리뷰',
-                      value: '$_reviewCount',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/my_reviews').then((value) {
-                          // 리뷰 화면에서 돌아왔을 때 통계 새로고침
-                          if (_currentUser != null) {
-                            _loadMyPageStats(_currentUser!.id);
-                          }
-                        });
-                      },
-                    ),
-                    _buildStatCard(
-                      icon: Icons.help_outline,
-                      iconColor: Colors.purple,
-                      label: '문의',
-                      value: '$_contactCount',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/qna');
-                      },
-                    ),
-                    _buildStatCard(
-                      icon: Icons.local_offer,
-                      iconColor: Colors.red,
-                      label: '쿠폰',
-                      value: '$_couponCount장',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/coupon').then((value) {
-                          // 쿠폰 화면에서 돌아왔을 때 통계 새로고침
-                          if (_currentUser != null) {
-                            _loadMyPageStats(_currentUser!.id);
-                          }
-                        });
-                      },
-                    ),
-                    _buildStatCard(
-                      icon: Icons.stars,
-                      iconColor: Colors.orange,
-                      label: '포인트',
-                      value: _userPoint != null ? '${_formatPoint(_userPoint!)}원' : '0원',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/point').then((value) {
-                          // 포인트 화면에서 돌아왔을 때 통계 새로고침
-                          if (_currentUser != null) {
-                            _loadMyPageStats(_currentUser!.id);
-                          }
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              
               // 메뉴 리스트
               _buildMenuItem(
-                icon: Icons.assignment,
-                title: '건강프로필',
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile');
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildMenuItem(
-                icon: Icons.dashboard_outlined,
-                title: '건강대시보드',
+                title: '찜목록',
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const HealthDashboardScreen(),
+                      builder: (context) => const WishListScreen(),
                     ),
                   );
                 },
               ),
               const SizedBox(height: 8),
               _buildMenuItem(
-                icon: Icons.location_on,
                 title: '배송지 관리',
                 onTap: () {
                   Navigator.push(
@@ -424,16 +396,83 @@ class _MyPageScreenState extends State<MyPageScreen> {
               ),
               const SizedBox(height: 8),
               _buildMenuItem(
-                icon: Icons.settings,
-                title: '설정',
+                title: '환불계좌 등록',
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
+                      builder: (context) => const RefundAccountScreen(),
                     ),
                   );
                 },
+              ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
+                title: '내 리뷰 활동',
+                onTap: () {
+                  Navigator.pushNamed(context, '/my_reviews');
+                },
+              ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
+                title: '1:1 문의',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ContactListScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
+                title: '건강 프로필 관리',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HealthProfileListScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CancelMemberScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '회원탈퇴',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: Colors.grey[500],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ] else ...[
               // 로그인 안 된 경우
@@ -470,64 +509,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
             // Footer  
             const AppFooter(),
           ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildStatCard({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildMenuItem({
-    required IconData icon,
     required String title,
     required VoidCallback onTap,
   }) {
@@ -543,12 +531,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: const Color(0xFFFF3787),
-              size: 24,
-            ),
-            const SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
@@ -568,4 +550,3 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 }
-

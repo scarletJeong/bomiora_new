@@ -1,12 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_bar.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
-import '../../../../core/network/api_client.dart';
-import '../../../../core/utils/image_picker_utils.dart';
 
 /// 프로필 설정 화면 (개인정보 수정, 비밀번호 변경)
 class ProfileSettingsScreen extends StatefulWidget {
@@ -18,12 +16,21 @@ class ProfileSettingsScreen extends StatefulWidget {
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   UserModel? _currentUser;
-  XFile? _selectedProfileImage;
   
   // 회원정보 입력 컨트롤러
-  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _phone1Controller = TextEditingController();
+  final TextEditingController _phone2Controller = TextEditingController();
+  final TextEditingController _phone3Controller = TextEditingController();
+  final TextEditingController _verificationController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  Timer? _verifyTimer;
+  int _secondsLeft = 0;
+  String? _sentVerificationCode;
+  bool _verificationMismatch = false;
+  bool _passwordMismatch = false;
 
   @override
   void initState() {
@@ -33,9 +40,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _nicknameController.dispose();
-    _phoneController.dispose();
+    _phone1Controller.dispose();
+    _phone2Controller.dispose();
+    _phone3Controller.dispose();
+    _verificationController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    _verifyTimer?.cancel();
     super.dispose();
   }
 
@@ -53,22 +65,96 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     setState(() {
       _currentUser = user;
-      // 컨트롤러에 초기값 설정
-      _nameController.text = user?.name ?? '';
       _nicknameController.text = user?.nickname ?? '';
-      _phoneController.text = user?.phone ?? '';
+
+      final phone = (user?.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+      if (phone.length >= 10) {
+        _phone1Controller.text = phone.substring(0, 3);
+        _phone2Controller.text = phone.substring(3, phone.length - 4);
+        _phone3Controller.text = phone.substring(phone.length - 4);
+      } else {
+        _phone1Controller.text = '';
+        _phone2Controller.text = '';
+        _phone3Controller.text = '';
+      }
     });
   }
   
+  String _formatTime(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  void _startVerificationTimer() {
+    _verifyTimer?.cancel();
+    setState(() => _secondsLeft = 180);
+    _verifyTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_secondsLeft <= 1) {
+        timer.cancel();
+        setState(() => _secondsLeft = 0);
+        return;
+      }
+      setState(() => _secondsLeft -= 1);
+    });
+  }
+
+  void _sendVerificationCode() {
+    final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
+    setState(() {
+      _sentVerificationCode = code;
+      _verificationController.text = '';
+      _verificationMismatch = false;
+    });
+    _startVerificationTimer();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('인증번호가 발송되었습니다.')),
+    );
+  }
+
+  void _recomputeVerificationMismatch() {
+    final typed = _verificationController.text.trim();
+    final sent = _sentVerificationCode;
+    final mismatch = sent != null && typed.isNotEmpty && typed.length >= 4 && typed != sent;
+    if (mismatch != _verificationMismatch) {
+      setState(() => _verificationMismatch = mismatch);
+    }
+  }
+
+  void _recomputePasswordMismatch() {
+    final pw = _newPasswordController.text;
+    final confirm = _confirmPasswordController.text;
+    final mismatch = confirm.isNotEmpty && pw != confirm;
+    if (mismatch != _passwordMismatch) {
+      setState(() => _passwordMismatch = mismatch);
+    }
+  }
+
   Future<void> _saveProfile() async {
     if (_currentUser == null) return;
+
+    if (_verificationMismatch) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('인증번호가 일치하지 않습니다.')),
+      );
+      return;
+    }
+    if (_passwordMismatch) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
+      );
+      return;
+    }
     
     try {
+      final phone = '${_phone1Controller.text.trim()}${_phone2Controller.text.trim()}${_phone3Controller.text.trim()}';
       final result = await AuthService.updateProfile(
         mbId: _currentUser!.id,
-        name: _nameController.text.trim(),
+        name: _currentUser!.name,
         nickname: _nicknameController.text.trim(),
-        phone: _phoneController.text.trim(),
+        phone: phone,
       );
       
       if (!mounted) return;
@@ -104,74 +190,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
-  String? _resolveProfileImageUrl(String? path) {
-    if (path == null || path.trim().isEmpty) return null;
-    final trimmed = path.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:')) {
-      return trimmed;
-    }
-    if (trimmed.startsWith('/')) return '${ApiClient.baseUrl}$trimmed';
-    return '${ApiClient.baseUrl}/$trimmed';
-  }
-
-  Future<void> _pickAndUploadProfileImage() async {
-    if (_currentUser == null) return;
-
-    await ImagePickerUtils.showImageSourceDialog(context, (picked) async {
-      if (picked == null) return;
-      if (!mounted) return;
-      setState(() {
-        _selectedProfileImage = picked;
-      });
-
-      final result = await AuthService.uploadProfileImage(
-        mbId: _currentUser!.id,
-        imageFile: picked,
-      );
-      if (!mounted) return;
-
-      if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '프로필 이미지가 변경되었습니다.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        await _loadCurrentUser();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '프로필 이미지 변경에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text(
-          '프로필 설정',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
+      appBar: const HealthAppBar(title: '개인정보수정'),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+        child: _buildPersonalInfoBody(),
       ),
-      child: _buildPersonalInfoTab(),
     );
   }
 
-  /// 회원정보 탭
-  Widget _buildPersonalInfoTab() {
+  Widget _buildPersonalInfoBody() {
     // 사용자 정보가 로드되지 않았으면 로딩 표시
     if (_currentUser == null) {
       return const Center(
@@ -182,488 +212,458 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 24),
+          _ProfileHeader(
+            name: '${_currentUser!.name} 님',
+            email: _currentUser!.email,
+            onAddPhoto: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('프로필 사진 변경 기능은 추후 구현 예정입니다')),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
 
-          // 프로필 사진
-          Center(
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundColor: const Color(0xFFFF3787).withOpacity(0.1),
-                  backgroundImage: _selectedProfileImage != null
-                      ? (kIsWeb
-                          ? NetworkImage(_selectedProfileImage!.path)
-                          : FileImage(File(_selectedProfileImage!.path)) as ImageProvider)
-                      : (_resolveProfileImageUrl(_currentUser?.profileImage) != null
-                          ? NetworkImage(_resolveProfileImageUrl(_currentUser?.profileImage)!)
-                          : null),
-                  child: (_selectedProfileImage == null &&
-                          _resolveProfileImageUrl(_currentUser?.profileImage) == null)
-                      ? const Icon(
-                          Icons.person,
-                          size: 50,
-                          color: Color(0xFFFF3787),
-                        )
-                      : null,
+          const Text(
+            '닉네임',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _InputBox(
+            child: TextField(
+              controller: _nicknameController,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                hintText: '닉네임을 입력해 주세요',
+                hintStyle: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF3787),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+              ),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            '연락처',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _InputBox(
+                        child: TextField(
+                          controller: _phone1Controller,
+                          keyboardType: TextInputType.number,
+                          maxLength: 3,
+                          textAlign: TextAlign.center,
+                          decoration: const InputDecoration(
+                            counterText: '',
+                            border: InputBorder.none,
+                            isCollapsed: true,
+                          ),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 20,
+                    const SizedBox(width: 5),
+                    const _Hyphen(),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: _InputBox(
+                        child: TextField(
+                          controller: _phone2Controller,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          textAlign: TextAlign.center,
+                          decoration: const InputDecoration(
+                            counterText: '',
+                            border: InputBorder.none,
+                            isCollapsed: true,
+                          ),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const _Hyphen(),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: _InputBox(
+                        child: TextField(
+                          controller: _phone3Controller,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          textAlign: TextAlign.center,
+                          decoration: const InputDecoration(
+                            counterText: '',
+                            border: InputBorder.none,
+                            isCollapsed: true,
+                          ),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: _sendVerificationCode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5A8D),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  ),
+                  child: const Text(
+                    '변경하기',
+                    style: TextStyle(
                       color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _InputBox(
+                  borderColor: _verificationMismatch ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
+                  child: TextField(
+                    controller: _verificationController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _recomputeVerificationMismatch(),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      hintText: '인증번호를 입력해 주세요',
+                      hintStyle: TextStyle(
+                        color: Color(0xFF898686),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _secondsLeft > 0 ? _formatTime(_secondsLeft) : '03:00',
+                style: const TextStyle(
+                  color: Color(0xFFFF5A8D),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: _sendVerificationCode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5A8D),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  ),
+                  child: const Text(
+                    '발송',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_verificationMismatch) ...[
+            const SizedBox(height: 6),
+            const Text(
+              '인증번호가 일치하지 않습니다',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+
+          const Text(
+            '비밀번호 설정',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              onPressed: () {
-                _pickAndUploadProfileImage();
-              },
-              child: const Text('프로필 사진 변경'),
+          const SizedBox(height: 10),
+          _InputBox(
+            child: TextField(
+              controller: _newPasswordController,
+              obscureText: true,
+              onChanged: (_) => _recomputePasswordMismatch(),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                hintText: '새 비밀번호를 입력해 주세요.',
+                hintStyle: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-          const SizedBox(height: 32),
-
-          // 이메일 (수정 불가)
-          _buildTextField(
-            label: '이메일',
-            initialValue: _currentUser!.email,
-            hint: '이메일',
-            icon: Icons.email_outlined,
-            enabled: false,
+          const SizedBox(height: 2),
+          const Text(
+            '*8~16자/문자,숫자,특수문자 모두 혼용',
+            style: TextStyle(
+              color: Color(0xFF898686),
+              fontSize: 10,
+              fontWeight: FontWeight.w300,
+            ),
           ),
-          const SizedBox(height: 16),
-
-          // 이름
-          _buildTextFieldWithController(
-            label: '이름',
-            controller: _nameController,
-            hint: '이름을 입력하세요',
-            icon: Icons.person_outline,
+          const SizedBox(height: 10),
+          _InputBox(
+            borderColor: _passwordMismatch ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
+            child: TextField(
+              controller: _confirmPasswordController,
+              obscureText: true,
+              onChanged: (_) => _recomputePasswordMismatch(),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                hintText: '다시 한번 입력해 주세요.',
+                hintStyle: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
-
-          // 닉네임
-          _buildTextFieldWithController(
-            label: '닉네임',
-            controller: _nicknameController,
-            hint: '닉네임을 입력하세요',
-            icon: Icons.badge_outlined,
-          ),
-          const SizedBox(height: 16),
-
-          // 비밀번호
-          _buildPasswordField(
-            label: '비밀번호',
-            hint: '비밀번호 변경',
-            icon: Icons.lock_outline,
-          ),
-          const SizedBox(height: 16),
-
-          // 휴대폰번호
-          _buildTextFieldWithController(
-            label: '휴대폰번호',
-            controller: _phoneController,
-            hint: '휴대폰번호를 입력하세요',
-            icon: Icons.phone_outlined,
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 16),
-
-          // 환불계좌
-          _buildTextField(
-            label: '환불계좌',
-            initialValue: '',
-            hint: '환불받을 계좌번호를 입력하세요',
-            icon: Icons.account_balance_outlined,
-          ),
-          const SizedBox(height: 32),
-
-          // 저장 버튼
+          if (_passwordMismatch) ...[
+            const SizedBox(height: 6),
+            const Text(
+              '비밀번호가 일치하지 않습니다',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
+            height: 40,
             child: ElevatedButton(
               onPressed: _saveProfile,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF3787),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                backgroundColor: const Color(0xFFFF5A8D),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               child: const Text(
-                '수정',
+                '저장',
                 style: TextStyle(
+                  color: Colors.white,
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 80),
-
-          // 회원탈퇴 버튼 (오른쪽 정렬)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                // 회원탈퇴 화면으로 이동
-                Navigator.pushNamed(context, '/cancel-member');
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.grey[600],
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              child: Text(
-                '회원탈퇴',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
-
-
-  /// 텍스트 필드 위젯
-  Widget _buildTextField({
-    required String label,
-    required String initialValue,
-    required String hint,
-    required IconData icon,
-    bool enabled = true,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextFormField(
-      initialValue: initialValue,
-      enabled: enabled,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFFF4081)),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        filled: !enabled,
-        fillColor: enabled ? null : Colors.grey[100],
-      ),
-    );
-  }
-
-  /// Controller를 사용하는 텍스트 필드 위젯
-  Widget _buildTextFieldWithController({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    bool enabled = true,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFFF4081)),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        filled: !enabled,
-        fillColor: enabled ? null : Colors.grey[100],
-      ),
-    );
-  }
-
-  /// 비밀번호 필드 위젯 (클릭하면 비밀번호 변경 화면으로)
-  Widget _buildPasswordField({
-    required String label,
-    required String hint,
-    required IconData icon,
-  }) {
-    return InkWell(
-      onTap: () {
-        // 비밀번호 변경 화면으로 이동
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => _PasswordChangeScreen(),
-          ),
-        );
-      },
-      child: IgnorePointer(
-        child: TextFormField(
-          initialValue: '••••••••',
-          decoration: InputDecoration(
-            labelText: label,
-            hintText: hint,
-            prefixIcon: Icon(icon),
-            suffixIcon: const Icon(Icons.arrow_forward_ios, size: 16),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFFF4081)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
 }
 
-/// 비밀번호 변경 화면
-class _PasswordChangeScreen extends StatefulWidget {
-  const _PasswordChangeScreen();
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({
+    required this.name,
+    required this.email,
+    required this.onAddPhoto,
+  });
 
-  @override
-  State<_PasswordChangeScreen> createState() => _PasswordChangeScreenState();
-}
-
-class _PasswordChangeScreenState extends State<_PasswordChangeScreen> {
-  final currentPasswordController = TextEditingController();
-  final newPasswordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
-  bool obscureCurrentPassword = true;
-  bool obscureNewPassword = true;
-  bool obscureConfirmPassword = true;
-
-  @override
-  void dispose() {
-    currentPasswordController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
-    super.dispose();
-  }
+  final String name;
+  final String email;
+  final VoidCallback onAddPhoto;
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text(
-          '비밀번호 변경',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Row(
           children: [
-            const Text(
-              '비밀번호 변경',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // 현재 비밀번호
-            TextFormField(
-              controller: currentPasswordController,
-              obscureText: obscureCurrentPassword,
-              decoration: InputDecoration(
-                labelText: '현재 비밀번호',
-                hintText: '현재 비밀번호를 입력하세요',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscureCurrentPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      obscureCurrentPassword = !obscureCurrentPassword;
-                    });
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 새 비밀번호
-            TextFormField(
-              controller: newPasswordController,
-              obscureText: obscureNewPassword,
-              decoration: InputDecoration(
-                labelText: '새 비밀번호',
-                hintText: '새 비밀번호를 입력하세요',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscureNewPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      obscureNewPassword = !obscureNewPassword;
-                    });
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 새 비밀번호 확인
-            TextFormField(
-              controller: confirmPasswordController,
-              obscureText: obscureConfirmPassword,
-              decoration: InputDecoration(
-                labelText: '새 비밀번호 확인',
-                hintText: '새 비밀번호를 다시 입력하세요',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscureConfirmPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      obscureConfirmPassword = !obscureConfirmPassword;
-                    });
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // 비밀번호 안내 텍스트
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
+              padding: const EdgeInsets.all(3),
+              decoration: ShapeDecoration(
+                color: const Color(0xFFFF5A8D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(45),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '비밀번호 규칙',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
+              child: Container(
+                width: 77,
+                height: 77,
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(45),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '• 8자 이상 입력하세요\n• 영문, 숫자, 특수문자를 포함하세요',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.person, color: Color(0xFFFF5A8D), size: 34),
               ),
             ),
-            const SizedBox(height: 32),
-
-            // 변경 버튼
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // TODO: 비밀번호 변경 API 호출
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('비밀번호 변경 기능은 추후 구현 예정입니다')),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF3787),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  '비밀번호 변경',
-                  style: TextStyle(
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.black,
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
+                const SizedBox(height: 5),
+                Text(
+                  email,
+                  style: const TextStyle(
+                    color: Color(0xFF898686),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+        Positioned(
+          left: 63,
+          top: 62.7,
+          child: InkWell(
+            onTap: onAddPhoto,
+            borderRadius: BorderRadius.circular(25),
+            child: Container(
+              width: 18,
+              height: 18,
+              decoration: ShapeDecoration(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+              ),
+              child: const Center(
+                child: Icon(Icons.add, size: 14, color: Color(0xFFFF5A8D)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Hyphen extends StatelessWidget {
+  const _Hyphen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 10, height: 1, color: const Color(0xFFD9D9D9));
+  }
+}
+
+class _InputBox extends StatelessWidget {
+  const _InputBox({
+    required this.child,
+    this.borderColor = const Color(0xFFD2D2D2),
+  });
+
+  final Widget child;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.all(10),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: 1, color: borderColor),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: child,
       ),
     );
   }

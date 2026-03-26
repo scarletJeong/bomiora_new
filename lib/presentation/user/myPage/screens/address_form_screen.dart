@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_bar.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
 
@@ -18,6 +19,9 @@ class AddressFormScreen extends StatefulWidget {
 
 class _AddressFormScreenState extends State<AddressFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormFieldState<String>> _zipFormFieldKey = GlobalKey<FormFieldState<String>>();
+
+  static const double _addressSearchRowHeight = 40;
   
   // 입력 컨트롤러
   final TextEditingController _subjectController = TextEditingController();
@@ -26,14 +30,17 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   final TextEditingController _zipController = TextEditingController();
   final TextEditingController _address1Controller = TextEditingController();
   final TextEditingController _address2Controller = TextEditingController();
-  
-  bool _isDefault = false;
+  final TextEditingController _requestMemoController = TextEditingController();
+
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _zipFormFieldKey.currentState?.didChange(_zipController.text);
+    });
   }
 
   @override
@@ -44,6 +51,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     _zipController.dispose();
     _address1Controller.dispose();
     _address2Controller.dispose();
+    _requestMemoController.dispose();
     super.dispose();
   }
 
@@ -53,10 +61,10 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       _subjectController.text = widget.address!['adSubject'] ?? '';
       _nameController.text = widget.address!['adName'] ?? '';
       _phoneController.text = widget.address!['adHp'] ?? '';
-      _zipController.text = '${widget.address!['adZip1'] ?? ''}-${widget.address!['adZip2'] ?? ''}';
+      _zipController.text = widget.address!['adZip1'] ?? '';
       _address1Controller.text = widget.address!['adAddr1'] ?? '';
       _address2Controller.text = '${widget.address!['adAddr2'] ?? ''} ${widget.address!['adAddr3'] ?? ''}'.trim();
-      _isDefault = widget.address!['adDefault'] == 1;
+      _requestMemoController.text = widget.address!['adMemo'] ?? '';
     }
   }
 
@@ -79,24 +87,20 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         return;
       }
 
-      // 우편번호 파싱
-      final zipParts = _zipController.text.split('-');
-      final zip1 = zipParts.isNotEmpty ? zipParts[0] : '';
-      final zip2 = zipParts.length > 1 ? zipParts[1] : '';
-
       final addressData = {
         'mbId': user.id,
         'adSubject': _subjectController.text.trim(),
-        'adDefault': _isDefault ? 1 : 0,
+        'adDefault': widget.address?['adDefault'] ?? 0,
         'adName': _nameController.text.trim(),
         'adTel': _phoneController.text.trim(),
         'adHp': _phoneController.text.trim(),
-        'adZip1': zip1,
-        'adZip2': zip2,
+        'adZip1': _zipController.text.trim(),
+        'adZip2': widget.address?['adZip2'] ?? '',
         'adAddr1': _address1Controller.text.trim(),
         'adAddr2': _address2Controller.text.trim(),
         'adAddr3': '',
         'adJibeon': '',
+        'adMemo': _requestMemoController.text.trim(),
       };
 
       Map<String, dynamic> result;
@@ -149,254 +153,314 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.address != null;
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: Text(
-          widget.address != null ? '배송지 수정' : '배송지 추가',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            // 배송지 이름
-            TextFormField(
-              controller: _subjectController,
-              decoration: InputDecoration(
-                labelText: '배송지 이름',
-                hintText: '예) 집, 회사',
-                prefixIcon: const Icon(Icons.label_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
+      appBar: HealthAppBar(title: isEdit ? '배송지 수정' : '배송지 등록'),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
+            children: [
+              const Text(
+                '배송지 이름',
+                style: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.57,
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '배송지 이름을 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 5),
+              _BoxField(
+                controller: _subjectController,
+                hintText: '집',
+                validator: (v) => (v == null || v.trim().isEmpty) ? '배송지 이름을 입력해주세요' : null,
+              ),
+              const SizedBox(height: 10),
 
-            // 수령인 이름
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: '수령인',
-                hintText: '이름을 입력하세요',
-                prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
+              const Text(
+                '받으시는 분',
+                style: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.57,
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '수령인을 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 5),
+              _BoxField(
+                controller: _nameController,
+                hintText: '고명진',
+                validator: (v) => (v == null || v.trim().isEmpty) ? '받으시는 분을 입력해주세요' : null,
+              ),
+              const SizedBox(height: 10),
 
-            // 연락처
-            TextFormField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: '연락처',
-                hintText: '010-1234-5678',
-                prefixIcon: const Icon(Icons.phone_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
+              const Text(
+                '연락처',
+                style: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.57,
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '연락처를 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 5),
+              _BoxField(
+                controller: _phoneController,
+                hintText: '010-8878-8617',
+                keyboardType: TextInputType.phone,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '연락처를 입력해주세요' : null,
+              ),
+              const SizedBox(height: 10),
 
-            // 우편번호
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _zipController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: '우편번호',
-                      hintText: '우편번호',
-                      prefixIcon: const Icon(Icons.mail_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFFF4081)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    // TODO: Daum 우편번호 API 연동
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('우편번호 검색 기능은 추후 구현 예정입니다')),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF3787),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('검색'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // 기본 주소
-            TextFormField(
-              controller: _address1Controller,
-              decoration: InputDecoration(
-                labelText: '주소',
-                hintText: '기본 주소',
-                prefixIcon: const Icon(Icons.home_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
+              const Text(
+                '배송지 주소',
+                style: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.57,
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '주소를 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // 상세 주소
-            TextFormField(
-              controller: _address2Controller,
-              decoration: InputDecoration(
-                labelText: '상세 주소',
-                hintText: '동/호수 입력',
-                prefixIcon: const Icon(Icons.apartment_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFFF4081)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // 기본 배송지 설정
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Row(
+              const SizedBox(height: 5),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      '기본 배송지로 설정',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey[800],
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: FormField<String>(
+                      key: _zipFormFieldKey,
+                      validator: (_) {
+                        final t = _zipController.text.trim();
+                        return t.isEmpty ? '우편번호를 입력해주세요' : null;
+                      },
+                      builder: (state) {
+                        final hasErr = state.hasError;
+                        final errColor = Theme.of(context).colorScheme.error;
+                        final borderColor = hasErr ? errColor : const Color(0xFFD2D2D2);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              height: _addressSearchRowHeight,
+                              child: TextField(
+                                controller: _zipController,
+                                enabled: false,
+                                onChanged: (_) => state.didChange(_zipController.text),
+                                style: const TextStyle(
+                                  color: Color(0xFF1A1A1A),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  hintText: '우편번호',
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF898686),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.83,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(width: 1, color: borderColor),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(width: 1, color: borderColor),
+                                  ),
+                                  disabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(width: 1, color: borderColor),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      width: 1,
+                                      color: hasErr ? errColor : const Color(0xFFFF5A8D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (state.hasError)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4, left: 4),
+                                child: Text(
+                                  state.errorText!,
+                                  style: TextStyle(
+                                    color: errColor,
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                  Switch(
-                    value: _isDefault,
-                    activeColor: const Color(0xFFFF3787),
-                    onChanged: (value) {
-                      setState(() {
-                        _isDefault = value;
-                      });
-                    },
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: SizedBox(
+                      height: _addressSearchRowHeight,
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('주소 검색 기능은 추후 구현 예정입니다.')),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF5A8D),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: const Size.fromHeight(_addressSearchRowHeight),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          '주소 검색',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 32),
-
-            // 저장 버튼
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveAddress,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF3787),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  disabledBackgroundColor: Colors.grey[300],
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        widget.address != null ? '수정' : '저장',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+              const SizedBox(height: 5),
+              _BoxField(
+                controller: _address1Controller,
+                hintText: '‘주소 검색’을 통해 입력됩니다,',
+                validator: (v) => (v == null || v.trim().isEmpty) ? '주소를 입력해주세요' : null,
               ),
-            ),
-          ],
+              const SizedBox(height: 5),
+              _BoxField(
+                controller: _address2Controller,
+                hintText: '상세 주소를 입력해 주세요.',
+              ),
+              const SizedBox(height: 10),
+
+              const Text(
+                '배송 요청사항',
+                style: TextStyle(
+                  color: Color(0xFF898686),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.57,
+                ),
+              ),
+              const SizedBox(height: 5),
+              _BoxField(
+                controller: _requestMemoController,
+                hintText: '요청사항이 있으시면 입력해주세요.',
+              ),
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveAddress,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5A8D),
+                    disabledBackgroundColor: const Color(0x7FD2D2D2),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          '저장',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+class _BoxField extends StatelessWidget {
+  const _BoxField({
+    required this.controller,
+    required this.hintText,
+    this.keyboardType,
+    this.validator,
+    this.enabled = true,
+  });
+
+  final TextEditingController controller;
+  final String hintText;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      enabled: enabled,
+      keyboardType: keyboardType,
+      minLines: 1,
+      maxLines: 1,
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        hintText: hintText,
+        hintStyle: const TextStyle(
+          color: Color(0xFF898686),
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          height: 1.83,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
+        ),
+      ),
+      style: const TextStyle(
+        color: Color(0xFF1A1A1A),
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+      validator: validator,
+    );
+  }
+}
+
 
