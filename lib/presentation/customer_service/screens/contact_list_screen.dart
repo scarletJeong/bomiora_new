@@ -1,29 +1,35 @@
 import 'package:flutter/material.dart';
+import '../widget/contact_inquiry_type_filters.dart';
+import 'contact_form_screen.dart';
+import 'contact_detail_screen.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_bar.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
-import '../../common/widgets/app_footer.dart';
-import 'contact_detail_screen.dart';
 
+/// 1:1 문의 **화면(페이지)** — 앱바, 총 문의수, 문의유형 필터, 목록.
 class ContactListScreen extends StatefulWidget {
   const ContactListScreen({super.key});
 
   @override
-  State<ContactListScreen> createState() => ContactListScreenState();
+  State<ContactListScreen> createState() => _ContactListScreenState();
 }
 
-class ContactListScreenState extends State<ContactListScreen> {
+class _ContactListScreenState extends State<ContactListScreen> {
   List<Contact> _contacts = [];
   bool _isLoading = true;
   String? _errorMessage;
+  int _contactCount = 0;
+
+  static const Color _kBorder = Color(0x7FD2D2D2);
+  static const Color _kMuted = Color(0xFF898686);
+  static const Color _kPink = Color(0xFFFF5A8D);
+  static const Color _kCardBorder = Color(0x7FD2D2D2);
+  static const Color _kDateColor = Color(0xFF584045);
 
   @override
   void initState() {
     super.initState();
-    _loadContacts();
-  }
-
-  // 외부에서 호출 가능한 새로고침 메서드
-  void refresh() {
     _loadContacts();
   }
 
@@ -35,49 +41,203 @@ class ContactListScreenState extends State<ContactListScreen> {
 
     try {
       final contacts = await ContactService.getMyContacts();
+      if (!mounted) return;
       setState(() {
         _contacts = contacts;
+        _contactCount = contacts.length;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = '문의내역을 불러오는데 실패했습니다: $e';
         _isLoading = false;
+        _contactCount = 0;
       });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Future<void> _openContactForm() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ContactFormScreen(),
+      ),
+    );
+    if (result == true) _loadContacts();
+  }
+
+  String _statusLabel(Contact contact) {
+    return contact.hasReply ? '답변완료' : '접수완료';
+  }
+
+  String _formatDate(String datetime) {
+    try {
+      final date = DateTime.parse(datetime);
+      return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return datetime;
+    }
+  }
+
+  Widget _buildCountRow() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          height: 1,
+          color: _kBorder,
+        ),
+        const SizedBox(height: 5),
+        Text.rich(
+          TextSpan(
+            children: [
+              const TextSpan(
+                text: '총 문의수 ',
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              TextSpan(
+                text: '$_contactCount',
+                style: const TextStyle(
+                  color: _kPink,
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 5),
+        Container(
+          width: double.infinity,
+          height: 1,
+          color: _kBorder,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactItem(BuildContext context, Contact contact) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ContactDetailScreen(wrId: contact.wrId),
+            ),
+          ).then((_) => _loadContacts());
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: _kCardBorder),
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatDate(contact.wrDatetime),
+                      style: const TextStyle(
+                        color: _kDateColor,
+                        fontSize: 10,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      contact.wrSubject.isEmpty ? '(제목 없음)' : contact.wrSubject,
+                      style: const TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 16,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -1.44,
+                        height: 1.25,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _statusLabel(contact),
+                      style: const TextStyle(
+                        color: _kMuted,
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -1.08,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: _kMuted, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFF3787)),
+      );
     }
 
     if (_errorMessage != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadContacts,
-              child: const Text('다시 시도'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 27),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontFamily: 'Gmarket Sans TTF',
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadContacts,
+                child: const Text('다시 시도'),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     if (_contacts.isEmpty) {
       return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 100),
+            const SizedBox(height: 48),
             Icon(
               Icons.inbox_outlined,
               size: 64,
@@ -89,152 +249,72 @@ class ContactListScreenState extends State<ContactListScreen> {
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
+                fontFamily: 'Gmarket Sans TTF',
               ),
             ),
-            const SizedBox(height: 300),
-            const AppFooter(),
           ],
         ),
       );
     }
 
-    return CustomScrollView(
-      slivers: [
-        // 문의 리스트 (padding 적용)
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final contact = _contacts[index];
-                return _buildContactItem(context, contact);
-              },
-              childCount: _contacts.length,
-            ),
-          ),
-        ),
-        
-        // Footer 
-        const SliverToBoxAdapter(
-          child: Column(
-            children: [
-              SizedBox(height: 300),
-              AppFooter(),
-            ],
-          ),
-        ),
-      ],
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+      itemCount: _contacts.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        return _buildContactItem(context, _contacts[index]);
+      },
     );
   }
 
-  Widget _buildContactItem(BuildContext context, Contact contact) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      color: Colors.white, // 흰색
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[200]!),
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTextStyle.merge(
+      style: const TextStyle(
+        fontFamily: 'Gmarket Sans TTF',
+        color: Color(0xFF1A1A1A),
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ContactDetailScreen(wrId: contact.wrId),
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: '1:1 문의',
+          actions: [
+            TextButton(
+              onPressed: _openContactForm,
+              child: const Text(
+                '문의하기',
+                style: TextStyle(
+                  color: Color(0xFFFF3787),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontFamily: 'Gmarket Sans TTF',
+                ),
+              ),
             ),
-          ).then((_) {
-            // 상세 페이지에서 돌아오면 목록 새로고침
-            _loadContacts();
-          });
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+          ],
+        ),
+        child: ColoredBox(
+          color: Colors.white,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 제목
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      contact.wrSubject,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildStatusBadge(contact),
-                ],
+              Padding(
+                padding: const EdgeInsets.only(left: 27, right: 27),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 20),
+                    _buildCountRow(),
+                    const SizedBox(height: 20),
+                    const ContactInquiryTypeFilters(),
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              
-              // 작성일, 조회수
-              Row(
-                children: [
-                  Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatDate(contact.wrDatetime),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Icon(Icons.visibility_outlined, size: 14, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${contact.wrHit}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
+              Expanded(child: _buildListBody()),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildStatusBadge(Contact contact) {
-    final isAnswered = contact.hasReply;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isAnswered ? Colors.green[50] : Colors.orange[50],
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isAnswered ? Colors.green[200]! : Colors.orange[200]!,
-        ),
-      ),
-      child: Text(
-        isAnswered ? '답변완료' : '답변대기',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: isAnswered ? Colors.green[700] : Colors.orange[700],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(String datetime) {
-    try {
-      final date = DateTime.parse(datetime);
-      return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return datetime;
-    }
   }
 }
-
