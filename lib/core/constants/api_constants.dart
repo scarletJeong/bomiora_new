@@ -35,8 +35,8 @@ class ApiConstants {
   static const String userCoupons = '/coupons/user';
   
   // 포인트 관련
-  static const String mileage = '/mileage';
-  static const String mileageHistory = '/mileage/history';
+  static const String point = '/point';
+  static const String pointHistory = '/point/history';
   
   // 리뷰 관련
   static const String reviews = '/reviews';
