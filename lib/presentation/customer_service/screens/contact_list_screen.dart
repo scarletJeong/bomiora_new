@@ -20,6 +20,8 @@ class _ContactListScreenState extends State<ContactListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   int _contactCount = 0;
+  /// 목록에 표시할 최대 개수(더보기/8개 단위 확장).
+  int _visibleCount = 8;
 
   static const Color _kBorder = Color(0x7FD2D2D2);
   static const Color _kMuted = Color(0xFF898686);
@@ -45,6 +47,7 @@ class _ContactListScreenState extends State<ContactListScreen> {
       setState(() {
         _contacts = contacts;
         _contactCount = contacts.length;
+        _visibleCount = contacts.length < 8 ? contacts.length : 8;
         _isLoading = false;
       });
     } catch (e) {
@@ -234,7 +237,7 @@ class _ContactListScreenState extends State<ContactListScreen> {
 
     if (_contacts.isEmpty) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+        padding: const EdgeInsets.fromLTRB(27, 0, 27, 100),
         child: Column(
           children: [
             const SizedBox(height: 48),
@@ -257,11 +260,38 @@ class _ContactListScreenState extends State<ContactListScreen> {
       );
     }
 
+    final total = _contacts.length;
+    final shown = _visibleCount > total ? total : _visibleCount;
+    final hasMore = shown < total;
+
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
-      itemCount: _contacts.length,
+      padding: const EdgeInsets.fromLTRB(27, 0, 27, 100),
+      itemCount: shown + (hasMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
+        if (index == shown && hasMore) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Center(
+              child: TextButton(
+                onPressed: () {
+                  setState(() {
+                    _visibleCount = (_visibleCount + 8 > total) ? total : _visibleCount + 8;
+                  });
+                },
+                child: const Text(
+                  '더보기',
+                  style: TextStyle(
+                    color: _kPink,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
         return _buildContactItem(context, _contacts[index]);
       },
     );
@@ -275,22 +305,8 @@ class _ContactListScreenState extends State<ContactListScreen> {
         color: Color(0xFF1A1A1A),
       ),
       child: MobileAppLayoutWrapper(
-        appBar: HealthAppBar(
+        appBar: const HealthAppBar(
           title: '1:1 문의',
-          actions: [
-            TextButton(
-              onPressed: _openContactForm,
-              child: const Text(
-                '문의하기',
-                style: TextStyle(
-                  color: Color(0xFFFF3787),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  fontFamily: 'Gmarket Sans TTF',
-                ),
-              ),
-            ),
-          ],
         ),
         child: ColoredBox(
           color: Colors.white,
@@ -311,6 +327,41 @@ class _ContactListScreenState extends State<ContactListScreen> {
                 ),
               ),
               Expanded(child: _buildListBody()),
+              SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(27, 8, 27, 12),
+                child: GestureDetector(
+                  onTap: _openContactForm,
+                  child: Container(
+                    width: double.infinity,
+                    height: 40,
+                    padding: const EdgeInsets.all(10),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      color: const Color(0xFFFF5A8D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '1:1 문의하기',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

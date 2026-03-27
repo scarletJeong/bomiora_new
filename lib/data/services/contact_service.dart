@@ -1,11 +1,88 @@
 import 'dart:convert';
-import '../models/contact/contact_model.dart';
+
+import 'package:flutter/foundation.dart';
+
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
+import '../models/contact/contact_model.dart';
 import '../services/auth_service.dart';
 
+/// 문의 상세 API 응답: 본문 + 상세 JSON에 포함된 답변 목록(있는 경우)
+class ContactDetailPayload {
+  const ContactDetailPayload({
+    required this.contact,
+    this.nestedReplies = const [],
+    this.fallbackReplyText = '',
+    this.fallbackReplyDatetime = '',
+  });
+
+  final Contact contact;
+  final List<Contact> nestedReplies;
+  final String fallbackReplyText;
+  final String fallbackReplyDatetime;
+}
+
 class ContactService {
+  static List<Contact> _mapJsonToContacts(List<dynamic> list) {
+    return list
+        .whereType<Map>()
+        .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
+        .toList();
+  }
+
+  /// 상세 `data` 맵 안에 포함된 답변 배열 추출 (백엔드 스키마 차이 대응)
+  static List<Contact> _repliesFromDetailData(Map<String, dynamic> map) {
+    for (final key in ['replies', 'reply_list', 'comments', 'answer_list', 'rows', 'list', 'items']) {
+      final raw = map[key];
+      if (raw is List && raw.isNotEmpty) {
+        return _mapJsonToContacts(raw);
+      }
+    }
+    return [];
+  }
+
+  static String _extractReplyText(Map<String, dynamic> map) {
+    for (final key in [
+      'wr_7',
+      'wr_reply',
+      'reply',
+      'reply_text',
+      'reply_content',
+      'answer',
+      'answer_text',
+      'answer_content',
+      'admin_reply',
+      'comment',
+      're_content',
+      'content_reply',
+    ]) {
+      final value = NodeValueParser.asString(map[key])?.trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  static String _extractReplyDatetime(Map<String, dynamic> map) {
+    for (final key in ['reply_datetime', 'answer_datetime', 're_datetime', 'wr_last', 'updated_at']) {
+      final value = NodeValueParser.asString(map[key])?.trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  /// `data`가 리스트가 아닐 때, 맵 안의 리스트 필드에서 답변 추출
+  static List<Contact> _repliesFromListApiData(dynamic data) {
+    if (data is List) {
+      return _mapJsonToContacts(data);
+    }
+    if (data is Map) {
+      final m = Map<String, dynamic>.from(data);
+      return _repliesFromDetailData(m);
+    }
+    return [];
+  }
+
   /// 내 문의내역 조회
   static Future<List<Contact>> getMyContacts() async {
     try {
@@ -34,8 +111,8 @@ class ContactService {
     }
   }
 
-  /// 문의 상세 조회
-  static Future<Contact?> getContactDetail(int wrId) async {
+  /// 문의 상세 조회 (`data`에 답변 배열이 같이 올 수 있음)
+  static Future<ContactDetailPayload?> getContactDetail(int wrId) async {
     try {
       final response = await ApiClient.get(
         '${ApiEndpoints.getContactDetail}/$wrId',
@@ -46,7 +123,19 @@ class ContactService {
       if (responseData['success'] == true && responseData['data'] != null) {
         final data = responseData['data'];
         if (data is Map) {
-          return Contact.fromJson(Map<String, dynamic>.from(data));
+          final map = Map<String, dynamic>.from(data);
+          if (kDebugMode) {
+            final wr7 = map['wr_7'];
+            final wrReply = map['wr_reply'];
+            debugPrint('[ContactDetail] wr_id=$wrId wr_7=$wr7 (type=${wr7.runtimeType}) wr_reply=$wrReply');
+          }
+          final nested = _repliesFromDetailData(map);
+          return ContactDetailPayload(
+            contact: Contact.fromJson(map),
+            nestedReplies: nested,
+            fallbackReplyText: _extractReplyText(map),
+            fallbackReplyDatetime: _extractReplyDatetime(map),
+          );
         }
       }
 
@@ -63,14 +152,23 @@ class ContactService {
         '${ApiEndpoints.getContactReplies}/$wrId/replies',
       );
 
-      final responseData = json.decode(response.body);
+      final decoded = json.decode(response.body);
+      if (decoded is! Map) return [];
+
+      final responseData = NodeValueParser.normalizeMap(
+        Map<String, dynamic>.from(decoded),
+      );
 
       if (responseData['success'] == true && responseData['data'] != null) {
-        final List<dynamic> dataList = responseData['data'];
-        return dataList
-            .whereType<Map>()
-            .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
-            .toList();
+        final data = responseData['data'];
+        // 작동하던 앱과 동일: data가 리스트면 그대로 파싱 (맵 래핑 형태는 별도 처리)
+        if (data is List) {
+          return data
+              .whereType<Map>()
+              .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
+        }
+        return _repliesFromListApiData(data);
       }
 
       return [];
@@ -166,6 +264,29 @@ class ContactService {
       };
     } catch (e) {
       throw Exception('문의 수정 실패: $e');
+    }
+  }
+
+  /// 문의 삭제 (본인 글만)
+  static Future<Map<String, dynamic>> deleteContact(int wrId) async {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) {
+        throw Exception('로그인이 필요합니다.');
+      }
+      final response = await ApiClient.delete(
+        '${ApiEndpoints.deleteContact(wrId)}?mb_id=${Uri.encodeComponent(user.id)}',
+      );
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return NodeValueParser.normalizeMap(decoded);
+      }
+      if (decoded is Map) {
+        return NodeValueParser.normalizeMap(Map<String, dynamic>.from(decoded));
+      }
+      return {'success': false, 'message': '응답 형식이 올바르지 않습니다.'};
+    } catch (e) {
+      throw Exception('문의 삭제 실패: $e');
     }
   }
 }

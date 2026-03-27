@@ -44,6 +44,10 @@ class Contact {
   factory Contact.fromJson(Map<dynamic, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
 
+    final wrReplyRaw = NodeValueParser.asString(normalized['wr_reply'])?.trim() ?? '';
+    final wr7Raw = NodeValueParser.asString(normalized['wr_7'])?.trim() ?? '';
+    final mergedReply = wrReplyRaw.isNotEmpty ? wrReplyRaw : wr7Raw;
+
     return Contact(
       wrId: NodeValueParser.asInt(normalized['wr_id']) ?? 0,
       wrSubject: NodeValueParser.asString(normalized['wr_subject']) ?? '',
@@ -54,7 +58,7 @@ class Contact {
       wrDatetime: NodeValueParser.asString(normalized['wr_datetime']) ?? '',
       wrLast: NodeValueParser.asString(normalized['wr_last']) ?? '',
       wrComment: NodeValueParser.asInt(normalized['wr_comment']) ?? 0,
-      wrReply: NodeValueParser.asString(normalized['wr_reply']) ?? '',
+      wrReply: mergedReply,
       wrParent: NodeValueParser.asInt(normalized['wr_parent']) ?? 0,
       caName: NodeValueParser.asString(normalized['ca_name']),
       wrHit: NodeValueParser.asInt(normalized['wr_hit']) ?? 0,
@@ -83,24 +87,32 @@ class Contact {
     };
   }
   
-  /// HTML 태그 제거하여 순수 텍스트만 반환
+  /// 질문 글 본문: `wr_content`만 사용(답변 필드 `wr_reply`/`wr_7`과 섞지 않음)
+  String get plainQuestionBody {
+    return _toPlainText(wrContent);
+  }
+
+  /// 일반 본문(답변 행 등): 본문 우선, 없으면 답변 필드
   String getPlainTextContent() {
-    if (!isHtml) {
-      return wrContent;
-    }
-    
-    // HTML 태그 제거
-    String plainText = wrContent
-        .replaceAll(RegExp(r'<[^>]*>'), '') // 모든 HTML 태그 제거
-        .replaceAll(RegExp(r'&nbsp;'), ' ') // &nbsp; → 공백
+    final primary = wrContent.trim().isNotEmpty ? wrContent : wrReply;
+    return _toPlainText(primary);
+  }
+
+  String _toPlainText(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    final looksHtml = isHtml || t.contains(RegExp(r'<[^>]+>'));
+    if (!looksHtml) return t;
+
+    return t
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll(RegExp(r'&nbsp;'), ' ')
         .replaceAll(RegExp(r'&lt;'), '<')
         .replaceAll(RegExp(r'&gt;'), '>')
         .replaceAll(RegExp(r'&amp;'), '&')
         .replaceAll(RegExp(r'&quot;'), '"')
         .replaceAll(RegExp(r'&#39;'), "'")
         .trim();
-    
-    return plainText;
   }
 }
 

@@ -4,6 +4,7 @@ import '../../../data/services/contact_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
+import '../../common/widgets/confirm_dialog.dart';
 import 'contact_form_screen.dart';
 
 class ContactDetailScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool? _canEditContact;
+  bool? _canDeleteContact;
 
   static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kPinkSoft = Color(0xFFFE98B0);
@@ -45,10 +47,10 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     });
 
     try {
-      final contact = await ContactService.getContactDetail(widget.wrId);
-      if (contact != null) {
+      final payload = await ContactService.getContactDetail(widget.wrId);
+      if (payload != null) {
         setState(() {
-          _contact = contact;
+          _contact = payload.contact;
           _isLoading = false;
         });
 
@@ -88,34 +90,56 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
       if (mounted) {
         setState(() {
           _canEditContact = false;
-        });
-      }
-      return;
-    }
-
-    if (_replies.isNotEmpty || _contact!.hasReply) {
-      if (mounted) {
-        setState(() {
-          _canEditContact = false;
+          _canDeleteContact = false;
         });
       }
       return;
     }
 
     final user = await AuthService.getUser();
-    if (user == null) {
-      if (mounted) {
-        setState(() {
-          _canEditContact = false;
-        });
-      }
-      return;
-    }
+    if (!mounted) return;
+    final owner = user != null && user.id == _contact!.mbId;
+    final answered = _replies.isNotEmpty || _contact!.hasReply;
 
-    if (mounted) {
-      setState(() {
-        _canEditContact = user.id == _contact!.mbId;
-      });
+    setState(() {
+      _canEditContact = owner && !answered;
+      _canDeleteContact = owner;
+    });
+  }
+
+  Future<void> _confirmAndDeleteContact() async {
+    if (_contact == null || _canDeleteContact != true) return;
+
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '문의 삭제',
+      message: '이 문의를 삭제하시겠습니까?',
+      cancelText: '취소',
+      confirmText: '삭제',
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      final result = await ContactService.deleteContact(widget.wrId);
+      if (!mounted) return;
+      if (result['success'] == true) {
+        Navigator.of(context).pop(true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']?.toString() ?? '삭제에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('삭제 중 오류가 발생했습니다: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -152,26 +176,32 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     final c = _contact!;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(color: _kPink, width: 4),
-          top: BorderSide(color: Color(0x7FD2D2D2), width: 1),
-          right: BorderSide(color: Color(0x7FD2D2D2), width: 1),
-          bottom: BorderSide(color: Color(0x7FD2D2D2), width: 1),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0AB41D56),
-            blurRadius: 32,
-            offset: Offset(0, 12),
-            spreadRadius: 0,
-          ),
-        ],
+        border: Border.all(color: _kBorderMuted, width: 1),
       ),
-      child: Column(
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 4,
+              decoration: const BoxDecoration(
+                color: _kPink,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -231,35 +261,74 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                   ],
                 ),
               ),
-              if (_canEditContact == true)
-                TextButton(
-                  onPressed: _navigateToEdit,
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFFF3787),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    '수정',
-                    style: TextStyle(
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
+              if (_canEditContact == true || _canDeleteContact == true)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_canEditContact == true) ...[
+                      TextButton(
+                        onPressed: _navigateToEdit,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF898383),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          '수정',
+                          style: TextStyle(
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                            fontSize: 11,
+                            color: Color(0xFF898383),
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        '|',
+                        style: TextStyle(
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          fontSize: 11,
+                          color: Color(0xFF898383),
+                        ),
+                      ),
+                    ],
+                    if (_canDeleteContact == true)
+                      TextButton(
+                        onPressed: _confirmAndDeleteContact,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF898383),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          '삭제',
+                          style: TextStyle(
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                            fontSize: 11,
+                            color: Color(0xFF898383),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
             ],
           ),
           const SizedBox(height: 15),
           Text(
-            c.getPlainTextContent(),
+            c.plainQuestionBody,
             style: const TextStyle(
               color: Color(0xFF1A1A1A),
               fontSize: 14,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
               height: 1.63,
+            ),
+          ),
+        ],
             ),
           ),
         ],
@@ -359,7 +428,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
               ),
             ),
             const Positioned(
-              left: -7,
+              left: -33,
               top: -1,
               child: SizedBox(
                 width: 16,

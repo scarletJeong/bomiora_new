@@ -8,6 +8,7 @@ import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../widget/contact_inquiry_type_filters.dart';
 
 class ContactFormScreen extends StatefulWidget {
   final VoidCallback? onSuccess;
@@ -35,12 +36,9 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   final _contentController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  final Map<String, List<String>> _detailTypeMap = const {
-    '회원/가입': ['탈퇴', '회원정보', '로그인'],
-    '주문/결제': ['상품', '결제', '구매내역'],
-  };
-  String _selectedType = '회원/가입';
-  String _selectedDetailType = '탈퇴';
+  String _selectedType = contactInquiryPrimaryTypes.first;
+  String _selectedDetailType =
+      contactInquiryDetailMap[contactInquiryPrimaryTypes.first]!.first;
   final List<XFile> _images = [];
   bool _isSubmitting = false;
 
@@ -50,23 +48,39 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   void initState() {
     super.initState();
     if (!_isEditMode) return;
-    final c = widget.contact!;
+    _applyContactToForm(widget.contact!);
+  }
+
+  /// 저장 형식: `유형 - 상세 | 사용자제목` 또는 `유형 - 상세`(제목 생략)
+  void _applyContactToForm(Contact c) {
     _contentController.text = c.getPlainTextContent();
 
-    final subject = c.wrSubject;
-    if (subject.contains(' - ')) {
-      final parts = subject.split(' - ');
-      if (parts.length == 2 && _detailTypeMap.containsKey(parts[0])) {
-        _selectedType = parts[0];
-        _selectedDetailType = _detailTypeMap[_selectedType]!.contains(parts[1])
-            ? parts[1]
-            : _detailTypeMap[_selectedType]!.first;
-      } else {
-        _titleController.text = subject;
-      }
-    } else {
-      _titleController.text = subject;
+    var subject = c.wrSubject;
+    String customTitle = '';
+
+    final pipeIdx = subject.indexOf(' | ');
+    if (pipeIdx != -1) {
+      customTitle = subject.substring(pipeIdx + 3).trim();
+      subject = subject.substring(0, pipeIdx).trim();
     }
+
+    if (subject.contains(' - ')) {
+      final dashIdx = subject.indexOf(' - ');
+      final typePart =
+          normalizeContactInquiryPrimaryLabel(subject.substring(0, dashIdx).trim());
+      final detailPart = subject.substring(dashIdx + 3).trim();
+      if (contactInquiryDetailMap.containsKey(typePart)) {
+        _selectedType = typePart;
+        final details = contactInquiryDetailMap[_selectedType]!;
+        _selectedDetailType =
+            details.contains(detailPart) ? detailPart : details.first;
+        _titleController.text = customTitle;
+        return;
+      }
+    }
+
+    _titleController.text =
+        customTitle.isNotEmpty ? customTitle : subject.trim();
   }
 
   @override
@@ -145,19 +159,11 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           child: ListView(
             padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20),
             children: [
-              const SizedBox(height: 8),
-              Row(
-                children: const [
-                  Icon(Icons.support_agent, size: 16),
-                  SizedBox(width: 6),
-                  Text('1:1 문의', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildTitleField(),
               const SizedBox(height: 20),
               _buildTypeSelectors(),
               const SizedBox(height: 20),
+              _buildTitleField(),
+              const SizedBox(height: 10),
               _buildContentBox(),
               const SizedBox(height: 20),
               _buildImageBox(),
@@ -176,7 +182,6 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('제목', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -202,79 +207,15 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   }
 
   Widget _buildTypeSelectors() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: ShapeDecoration(
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _kBorder),
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: _selectedType,
-                items: _detailTypeMap.keys
-                    .map((type) => DropdownMenuItem<String>(
-                          value: type,
-                          child: const Text(
-                            '문의 유형 선택',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-                          ),
-                        ))
-                    .toList(),
-                selectedItemBuilder: (context) => _detailTypeMap.keys
-                    .map((type) => Text(type, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _selectedType = value;
-                    _selectedDetailType = _detailTypeMap[value]!.first;
-                  });
-                },
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: ShapeDecoration(
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _kBorder),
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: _selectedDetailType,
-                items: (_detailTypeMap[_selectedType] ?? [])
-                    .map((detail) => DropdownMenuItem<String>(
-                          value: detail,
-                          child: const Text(
-                            '상세 유형 선택',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-                          ),
-                        ))
-                    .toList(),
-                selectedItemBuilder: (context) => (_detailTypeMap[_selectedType] ?? [])
-                    .map((detail) => Text(detail, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _selectedDetailType = value);
-                },
-              ),
-            ),
-          ),
-        ),
-      ],
+    return ContactInquiryTypeSelectorRow(
+      primaryType: _selectedType,
+      detailType: _selectedDetailType,
+      onChanged: (primary, detail) {
+        setState(() {
+          _selectedType = primary;
+          _selectedDetailType = detail;
+        });
+      },
     );
   }
 
