@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
+import '../../common/widgets/confirm_dialog.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
@@ -96,10 +97,20 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       _activeReview = visible.first;
       return;
     }
-    final ok = visible.any((r) => r.isId == _activeReview!.isId);
-    if (!ok) {
+    final activeId = _activeReview!.isId;
+    ReviewModel? fresh;
+    for (final r in visible) {
+      if (r.isId == activeId) {
+        fresh = r;
+        break;
+      }
+    }
+    if (fresh == null) {
       _activeReview = visible.first;
       _historyHeadId = null;
+    } else {
+      // 새로고침 후 동일 리뷰면 펼침 카드가 예전 객체를 물고 있지 않도록 최신 인스턴스로 교체
+      _activeReview = fresh;
     }
   }
 
@@ -136,7 +147,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Future<void> _loadReviews({bool refresh = false}) async {
-    if (_isLoading) return;
+    if (_isLoading && !refresh) return;
     if (!refresh && !_hasMore) return;
 
     setState(() {
@@ -733,32 +744,25 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   Future<void> _editReview(ReviewModel review) async {
     if (review.isId == null) return;
-    final result = await Navigator.push(
+    final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => ReviewWriteScreen.edit(review: review),
       ),
     );
-    if (result == true) _loadReviews(refresh: true);
+    if (!mounted) return;
+    if (result == true) await _loadReviews(refresh: true);
   }
 
   Future<void> _deleteReview(ReviewModel review) async {
     if (review.isId == null) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('리뷰 삭제'),
-        content: const Text('정말 이 리뷰를 삭제하시겠습니까?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '리뷰 삭제',
+      message: '정말 이 리뷰를 삭제하시겠습니까?',
+      confirmText: '삭제',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       final user = await AuthService.getUser();
       if (user == null) return;

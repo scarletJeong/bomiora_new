@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
@@ -38,12 +39,13 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   static const Color _kInk = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kBorder = Color(0x7FD2D2D2);
+  static const String _kFont = 'Gmarket Sans TTF';
 
   int _score1 = 0;
   int _score2 = 0;
   int _score3 = 0;
   int _score4 = 0;
-  int _weightLossKg = 0;
+  int _weightLossKg = 1;
 
   final _positiveController = TextEditingController();
   final _negativeController = TextEditingController();
@@ -64,7 +66,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       _score2 = editing.isScore2;
       _score3 = editing.isScore3;
       _score4 = editing.isScore4;
-      _weightLossKg = editing.isOutageNum ?? 0;
+      final w = editing.isOutageNum ?? 0;
+      _weightLossKg = w < 1 ? 1 : (w > 50 ? 50 : w);
       _positiveController.text = editing.isPositiveReviewText ?? '';
       _negativeController.text = editing.isNegativeReviewText ?? '';
       _moreController.text = editing.isMoreReviewText ?? '';
@@ -72,7 +75,10 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     }
 
     final od = widget.orderDetail;
-    if (od == null) return;
+    if (od == null) {
+      return;
+    }
+    _weightLossKg = 1;
     final items = od.products;
     debugPrint('📝 [리뷰 작성] odId=${od.odId} isPrescriptionOrder=${od.isPrescriptionOrder} 상품수=${items.length}');
     for (var i = 0; i < items.length; i++) {
@@ -89,10 +95,100 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     super.dispose();
   }
 
+  Widget _orderProductThumb(String? rawUrl) {
+    final url = ImageUrlHelper.getImageUrl(rawUrl);
+    Widget fallback() => Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAEAEA),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: const Icon(Icons.image_outlined, color: _kMuted),
+        );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.network(
+        url,
+        width: 80,
+        height: 80,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback(),
+      ),
+    );
+  }
+
+  Widget _editReviewProductThumb(ReviewModel review) {
+    Widget fallback() => Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAEAEA),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: const Icon(Icons.image_outlined, color: _kMuted),
+        );
+    if (review.images.isEmpty) return fallback();
+    final u = ImageUrlHelper.getReviewImageUrl(review.images.first);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.network(
+        u,
+        width: 80,
+        height: 80,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback(),
+      ),
+    );
+  }
+
+  /// 섹션 제목 앞 세로 막대(| 느낌, 두께 2)
+  Widget _barSectionTitle(
+    String title, {
+    String? trailing,
+    Color? trailingColor,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 2,
+          height: 16,
+          decoration: BoxDecoration(
+            color: _kPink,
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: _kFont,
+              fontSize: 16,
+              fontWeight: FontWeight.w300,
+              letterSpacing: -1.2,
+            ),
+          ),
+        ),
+        if (trailing != null && trailing.isNotEmpty)
+          Text(
+            trailing,
+            style: TextStyle(
+              fontFamily: _kFont,
+              fontSize: 12,
+              fontWeight: FontWeight.w300,
+              color: trailingColor ?? _kMuted,
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTextStyle.merge(
-      style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
+      style: const TextStyle(fontFamily: _kFont, color: _kInk),
       child: MobileAppLayoutWrapper(
         backgroundColor: Colors.white,
         appBar: HealthAppBar(title: _isEditMode ? '리뷰수정' : '리뷰쓰기'),
@@ -109,24 +205,21 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               _buildSatisfactionSection(),
               const SizedBox(height: 20),
               _buildReviewTextSection(
-                labelPrefix: '상품 리뷰',
-                labelBold: '좋았던 점',
+                barTitle: '좋았던 점',
                 requiredField: true,
                 controller: _positiveController,
                 hint: '직접 사용(복용)해보며 느낀 점과 만족스러웠던 점 어떤 분들께 추천하고 싶은지 함께 작성해주세요. (최소 20자)',
               ),
               const SizedBox(height: 20),
               _buildReviewTextSection(
-                labelPrefix: '상품 리뷰',
-                labelBold: '아쉬운 점',
+                barTitle: '아쉬운 점',
                 requiredField: true,
                 controller: _negativeController,
                 hint: '사용(복용)하면서 아쉬웠던 점과 개선되었으면 하는 부분이 있다면 알려주세요. (최소 20자)',
               ),
               const SizedBox(height: 20),
               _buildReviewTextSection(
-                labelPrefix: '상품 리뷰',
-                labelBold: '꿀팁',
+                barTitle: '꿀팁',
                 requiredField: false,
                 controller: _moreController,
                 hint: '사용(복용)하시면서 알게 된 꿀팁이나 효과적으로 활용하는 방법이 있다면 공유해주세요. (최소 20자)',
@@ -142,30 +235,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String bold, String light) {
-    return Row(
-      children: [
-        Text(
-          bold,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -1.44,
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          light,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w300,
-            letterSpacing: -1.76,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildProductSection() {
     final od = widget.orderDetail;
     if (od == null) return const SizedBox.shrink();
@@ -176,7 +245,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('주문상품', '정보'),
+          _barSectionTitle('주문 상품 정보'),
           const SizedBox(height: 10),
           Container(
             width: double.infinity,
@@ -189,15 +258,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAEAEA),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(Icons.image_outlined, color: _kMuted),
-                ),
+                _orderProductThumb(firstItem.imageUrl),
                 const SizedBox(width: 20),
                 Expanded(
                   child: Column(
@@ -205,15 +266,21 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                     children: [
                       Text(
                         firstItem.itName,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -1.26),
+                        style: const TextStyle(
+                          fontFamily: _kFont,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: -1.26,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Text(
                         '수량: ${firstItem.ctQty}${firstItem.ctOption != null && firstItem.ctOption!.isNotEmpty ? ' / ${firstItem.ctOption}' : ''}',
                         style: const TextStyle(
+                          fontFamily: _kFont,
                           color: Color(0xFF898383),
                           fontSize: 10,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w300,
                         ),
                       ),
                     ],
@@ -233,20 +300,33 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('주문상품', '정보'),
+        _barSectionTitle('주문 상품 정보'),
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
               side: const BorderSide(width: 1, color: _kBorder),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
-          child: Text(
-            review.itName ?? review.itId,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -1.26),
+          child: Row(
+            children: [
+              _editReviewProductThumb(review),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  review.itName ?? review.itId,
+                  style: const TextStyle(
+                    fontFamily: _kFont,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: -1.26,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -257,31 +337,19 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: const [
-            Text(
-              '감량',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.44),
-            ),
-            SizedBox(width: 5),
-            Text(
-              '그래프',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: -1.76),
-            ),
-            SizedBox(width: 5),
-            Text(
-              '(선택)',
-              style: TextStyle(color: _kMuted, fontSize: 12, fontWeight: FontWeight.w300),
-            ),
-          ],
-        ),
+        _barSectionTitle('감량 그래프', trailing: '(선택)', trailingColor: _kMuted),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
               '얼마나 감량하셨나요?',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300, letterSpacing: -1.32),
+              style: TextStyle(
+                fontFamily: _kFont,
+                fontSize: 12,
+                fontWeight: FontWeight.w300,
+                letterSpacing: -1.32,
+              ),
             ),
             Row(
               children: [
@@ -294,12 +362,23 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                     ),
                   ),
                   child: Text(
-                    _weightLossKg == 0 ? '-' : '$_weightLossKg',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w300),
+                    '$_weightLossKg',
+                    style: const TextStyle(
+                      fontFamily: _kFont,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 5),
-                const Text('kg', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w300)),
+                const Text(
+                  'kg',
+                  style: TextStyle(
+                    fontFamily: _kFont,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
               ],
             ),
           ],
@@ -311,24 +390,74 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             inactiveTrackColor: const Color(0xFFF6F6F6),
             trackHeight: 8,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            trackShape: const RoundedRectSliderTrackShape(),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
           ),
           child: Slider(
-            value: _weightLossKg.toDouble(),
-            min: 0,
+            value: _weightLossKg.clamp(1, 50).toDouble(),
+            min: 1,
             max: 50,
-            divisions: 50,
-            onChanged: (v) => setState(() => _weightLossKg = v.round()),
+            divisions: 49,
+            onChanged: (v) => setState(() => _weightLossKg = v.round().clamp(1, 50)),
           ),
         ),
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('1kg', style: TextStyle(color: Color(0xFFA19E9E), fontSize: 10, fontWeight: FontWeight.w500)),
-            Text('10kg', style: TextStyle(color: Color(0xFFA19E9E), fontSize: 10, fontWeight: FontWeight.w500)),
-            Text('20kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
-            Text('30kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
-            Text('40kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
-            Text('50kg', style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w500)),
+            Text(
+              '1kg',
+              style: TextStyle(
+                fontFamily: _kFont,
+                color: Color(0xFFA19E9E),
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            Text(
+              '10kg',
+              style: TextStyle(
+                fontFamily: _kFont,
+                color: Color(0xFFA19E9E),
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            Text(
+              '20kg',
+              style: TextStyle(
+                fontFamily: _kFont,
+                color: _kMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            Text(
+              '30kg',
+              style: TextStyle(
+                fontFamily: _kFont,
+                color: _kMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            Text(
+              '40kg',
+              style: TextStyle(
+                fontFamily: _kFont,
+                color: _kMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            Text(
+              '50kg',
+              style: TextStyle(
+                fontFamily: _kFont,
+                color: _kMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
           ],
         ),
       ],
@@ -339,14 +468,10 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: const [
-            Text('상품', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: -1.44)),
-            SizedBox(width: 5),
-            Text('만족도', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.76)),
-            SizedBox(width: 5),
-            Text('*  필수', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w300)),
-          ],
+        _barSectionTitle(
+          '상품 만족도',
+          trailing: '*  필수',
+          trailingColor: const Color(0xFFEF4444),
         ),
         const SizedBox(height: 10),
         _scoreRow('효과', _score1, (v) => setState(() => _score1 = v)),
@@ -375,7 +500,14 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       children: [
         SizedBox(
           width: 42,
-          child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: _kFont,
+              fontSize: 12,
+              fontWeight: FontWeight.w300,
+            ),
+          ),
         ),
         Expanded(
           child: Row(
@@ -401,8 +533,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   }
 
   Widget _buildReviewTextSection({
-    required String labelPrefix,
-    required String labelBold,
+    required String barTitle,
     required bool requiredField,
     required TextEditingController controller,
     required String hint,
@@ -410,21 +541,10 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(labelPrefix, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: -1.44)),
-            const SizedBox(width: 5),
-            Text(labelBold, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.76)),
-            const SizedBox(width: 5),
-            Text(
-              requiredField ? '*  필수' : '(선택)',
-              style: TextStyle(
-                color: requiredField ? const Color(0xFFEF4444) : _kMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ],
+        _barSectionTitle(
+          barTitle,
+          trailing: requiredField ? '*  필수' : '(선택)',
+          trailingColor: requiredField ? const Color(0xFFEF4444) : _kMuted,
         ),
         const SizedBox(height: 10),
         Container(
@@ -441,6 +561,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             controller: controller,
             maxLength: 3000,
             maxLines: null,
+            style: const TextStyle(
+              fontFamily: _kFont,
+              fontSize: 14,
+              fontWeight: FontWeight.w300,
+              color: _kInk,
+            ),
             decoration: const InputDecoration(
               hintText: '',
               border: InputBorder.none,
@@ -461,7 +587,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           alignment: Alignment.centerRight,
           child: Text(
             '${controller.text.length}/3,000자',
-            style: const TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w300),
+            style: const TextStyle(
+              fontFamily: _kFont,
+              color: _kMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w300,
+            ),
           ),
         ),
       ],
@@ -472,13 +603,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: const [
-            Text('사진업로드', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -1.44)),
-            SizedBox(width: 6),
-            Text('(선택)', style: TextStyle(color: _kMuted, fontSize: 12, fontWeight: FontWeight.w300)),
-          ],
-        ),
+        _barSectionTitle('사진 업로드', trailing: '(선택)', trailingColor: _kMuted),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -498,7 +623,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                     SizedBox(height: 4),
                     Text(
                       '사진추가하기',
-                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                        fontFamily: _kFont,
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w300,
+                      ),
                     ),
                   ],
                 ),
@@ -534,7 +664,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         const SizedBox(height: 10),
         const Text(
           '최대 3장 / 파일당 5MB이하(GIF,JPG,PNG)',
-          style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w300),
+          style: TextStyle(
+            fontFamily: _kFont,
+            color: _kMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w300,
+          ),
         ),
       ],
     );
@@ -557,7 +692,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               onPressed: _isLoading ? null : () => Navigator.pop(context),
               child: const Text(
                 '취소',
-                style: TextStyle(color: _kMuted, fontSize: 16, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontFamily: _kFont,
+                  color: _kMuted,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
@@ -582,7 +722,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                     )
                   : Text(
                       _isEditMode ? '수정' : '등록',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        fontFamily: _kFont,
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
             ),
           ),
@@ -616,13 +761,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         );
       }
     }
-  }
-
-  /// 이미지 제거
-  void _removeImage(int index) {
-    setState(() {
-      _imageFiles.removeAt(index);
-    });
   }
 
   /// 리뷰 제출
@@ -696,7 +834,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             : null,
         images: imagePaths,
         isPayMthod: 'solo', // 내돈내산
-        isOutageNum: _weightLossKg == 0 ? null : _weightLossKg,
+        isOutageNum: _weightLossKg,
       );
       
       // API 호출
