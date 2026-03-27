@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_footer.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'profile_settings_screen.dart';
@@ -281,268 +282,406 @@ class _MyPageScreenState extends State<MyPageScreen> {
       ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-            // 컨텐츠에 padding 적용
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-            // 회원 정보 섹션
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: const Color(0xFFFF3787).withOpacity(0.1),
-                    child: const Icon(
-                      Icons.person,
-                      size: 34,
-                      color: Color(0xFFFF3787),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _currentUser?.name ?? '로그인이 필요합니다',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+        child: ColoredBox(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
+            child: _currentUser == null
+                ? SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pushNamed(context, '/login'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF3787),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        if (_currentUser != null) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            _currentUser!.email,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          OutlinedButton(
-                            onPressed: () {
-                              _showPasswordConfirmDialog();
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFFF3787),
-                              side: const BorderSide(color: Color(0xFFFF3787)),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              '개인정보 수정',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            if (_currentUser != null) ...[
-              // 메뉴 리스트
-              _buildMenuItem(
-                title: '찜목록',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const WishListScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildMenuItem(
-                title: '배송지 관리',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AddressManagementScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildMenuItem(
-                title: '환불계좌 등록',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RefundAccountScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildMenuItem(
-                title: '내 리뷰 활동',
-                onTap: () {
-                  Navigator.pushNamed(context, '/my_reviews');
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildMenuItem(
-                title: '1:1 문의',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ContactListScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              _buildMenuItem(
-                title: '건강 프로필 관리',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HealthProfileListScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CancelMemberScreen(),
                       ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '회원탈퇴',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                      child: const Text(
+                        '로그인',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildProfileHeader(),
+                      const SizedBox(height: 25),
+                      _buildStatsRow(),
+                      const SizedBox(height: 25),
+                      _buildLineMenuItem(
+                        title: '찜 목록',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const WishListScreen()),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildLineMenuItem(
+                        title: '배송지 관리',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AddressManagementScreen()),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildLineMenuItem(
+                        title: '환불 계좌 등록',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const RefundAccountScreen()),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildLineMenuItem(
+                        title: '내 리뷰 활동',
+                        onTap: () => Navigator.pushNamed(context, '/my_reviews'),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildLineMenuItem(
+                        title: '1:1 문의',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ContactListScreen()),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildLineMenuItem(
+                        title: '건강프로필 관리',
+                        isLast: true,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const HealthProfileListScreen()),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: InkWell(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const CancelMemberScreen()),
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '회원탈퇴',
+                                  style: TextStyle(
+                                    color: Color(0xFF898686),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(width: 2),
+                                Icon(
+                                  Icons.chevron_right,
+                                  size: 18,
+                                  color: Color(0xFF898686),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 2),
-                        Icon(
-                          Icons.chevron_right,
-                          size: 18,
-                          color: Colors.grey[500],
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Footer 숨김
+                      // const AppFooter(),
+                    ],
                   ),
-                ),
-              ),
-            ] else ...[
-              // 로그인 안 된 경우
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/login');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF3787),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    '로그인',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 300),
-            
-            // Footer  
-            const AppFooter(),
-          ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMenuItem({
+  Widget _buildProfileHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: ShapeDecoration(
+                color: const Color(0xFFFF5A8D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(45),
+                ),
+              ),
+              child: Container(
+                width: 77,
+                height: 77,
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(45),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 44,
+                  color: Color(0xFFD2D2D2),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_currentUser?.name ?? ''} 님',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  _currentUser?.email ?? '',
+                  style: const TextStyle(
+                    color: Color(0xFF898686),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        InkWell(
+          onTap: _showPasswordConfirmDialog,
+          borderRadius: BorderRadius.circular(8),
+          child: const Column(
+            children: [
+              Icon(Icons.settings_outlined, color: Color(0xFFD2D2D2), size: 30),
+              Text(
+                '개인정보수정',
+                style: TextStyle(
+                  color: Color(0xFFD2D2D2),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsRow() {
+    Widget statCard({
+      required String icon,
+      required String value,
+      required String unit,
+      required String label,
+    }) {
+      return Expanded(
+        child: AspectRatio(
+          aspectRatio: 1.1,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // 카드 너비에 맞춰 아이콘/높이를 함께 유동 스케일
+              final iconSize = (constraints.maxWidth * 0.27).clamp(20.0, 34.0);
+              final cardHeight = constraints.maxHeight;
+              final iconTop = (cardHeight * -0.10).clamp(-12.0, -6.0);
+              final contentTop = (iconSize * 0.95).clamp(18.0, 30.0);
+              final contentBottom = (cardHeight * 0.10).clamp(6.0, 14.0);
+              return Stack(
+                fit: StackFit.expand,
+                clipBehavior: Clip.none,
+                children: [
+                  SvgPicture.asset(
+                    AppAssets.mypageMenuBorder,
+                    fit: BoxFit.fill,
+                  ),
+                  Positioned(
+                    top: iconTop,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: SvgPicture.asset(
+                        icon,
+                        width: iconSize,
+                        height: iconSize,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(10, contentTop, 10, contentBottom),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              value,
+                              style: const TextStyle(
+                                color: Color(0xFFFF5A8D),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              unit,
+                              style: const TextStyle(
+                                color: Color(0xFF898686),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w300,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        statCard(
+          icon: AppAssets.deliveryMain,
+          value: '8',
+          unit: '건',
+          label: '주문/배송내역',
+        ),
+        const SizedBox(width: 20),
+        statCard(
+          icon: AppAssets.couponMain,
+          value: '2',
+          unit: '장',
+          label: '내쿠폰',
+        ),
+        const SizedBox(width: 20),
+        statCard(
+          icon: AppAssets.pointMain,
+          value: '2,000',
+          unit: 'P',
+          label: '포인트',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLineMenuItem({
+    required String title,
+    required VoidCallback onTap,
+    bool isLast = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              width: isLast ? 1 : 0.5,
+              color: const Color(0xFF1A1A1A),
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 1,
+                  height: 16,
+                  color: const Color(0xFF1A1A1A),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF1A1A1A),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: -1.44,
+                  ),
+                ),
+              ],
+            ),
+            const Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: Color(0xFF1A1A1A),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegacyMenuItem({
     required String title,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(4),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[200]!),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              width: 0.5,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+                letterSpacing: -1.44,
               ),
             ),
-            Icon(
+            const Icon(
               Icons.chevron_right,
-              color: Colors.grey[400],
+              size: 16,
+              color: Color(0xFF1A1A1A),
             ),
           ],
         ),
