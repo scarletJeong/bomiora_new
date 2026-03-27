@@ -1117,11 +1117,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       '10주 이내',
       '10주 이상',
     ];
-    final current = _formData['answer_6']?.toString() ?? '';
+    final current = _formData['answer_6']?.toString().trim() ?? '';
+    final selected = current.isEmpty || !options.contains(current) ? null : current;
     return FormField<String>(
-      initialValue: current.isEmpty ? null : current,
+      initialValue: selected,
       validator: (v) {
-        final val = v ?? _formData['answer_6']?.toString() ?? '';
+        final val = (v ?? _formData['answer_6']?.toString() ?? '').trim();
         if (val.isEmpty) return '기간을 선택해주세요';
         return null;
       },
@@ -1129,56 +1130,86 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            GestureDetector(
-              onTap: () async {
-                final picked = await showModalBottomSheet<String>(
-                  context: context,
-                  builder: (ctx) => ListView(
-                    shrinkWrap: true,
-                    physics: const ClampingScrollPhysics(),
-                    children: options
-                        .map(
-                          (e) => ListTile(
-                            title: Text(e),
-                            onTap: () => Navigator.pop(ctx, e),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _formData['answer_6'] = picked;
-                    state.didChange(picked);
-                  });
-                }
-              },
-              child: Container(
-                height: 50,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: ShapeDecoration(
-                  shape: RoundedRectangleBorder(
-                    side: const BorderSide(color: _pfBorder),
-                    borderRadius: BorderRadius.circular(7),
-                  ),
+            Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: ShapeDecoration(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: _pfBorder),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      (_formData['answer_6'] ?? '').toString().isEmpty
-                          ? '선택'
-                          : _formData['answer_6'].toString(),
-                      style: TextStyle(
-                        color: (_formData['answer_6'] ?? '').toString().isEmpty
-                            ? const Color(0xFF898383)
-                            : const Color(0xFF1A1A1A),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+                shadows: const [
+                  BoxShadow(
+                    color: Color(0x19000000),
+                    blurRadius: 4,
+                    offset: Offset(0, 0),
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: selected,
+                  menuMaxHeight: 5 * kMinInteractiveDimension,
+                  dropdownColor: Colors.white,
+                  hint: const Text(
+                    '선택',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF898383),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
-                    const Icon(Icons.keyboard_arrow_down, color: Color(0xFF898383)),
-                  ],
+                  ),
+                  icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF898383)),
+                  borderRadius: BorderRadius.circular(10),
+                  items: options
+                      .map(
+                        (e) => DropdownMenuItem<String>(
+                          value: e,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: Center(
+                              child: Text(
+                                e,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  selectedItemBuilder: (context) => options
+                      .map(
+                        (e) => Center(
+                          child: Text(
+                            e,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF1A1A1A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() {
+                      _formData['answer_6'] = v;
+                      state.didChange(v);
+                    });
+                  },
                 ),
               ),
             ),
@@ -1678,14 +1709,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               style: _figmaBlockTitleStyle,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            section.description,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
+          if (section.description.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              section.description,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 24),
           
            ...section.questions.where((question) => _shouldShowQuestion(question)).map((question) => _buildQuestionWidget(question)),
@@ -1712,48 +1745,51 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   }
 
   Widget _buildQuestionWidget(HealthProfileQuestion question) {
+    final showBlockTitle = question.type != 'wizard_basic';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  question.question,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (question.allowMultiple == true)
-                Padding(
-                  padding: const EdgeInsets.only(left: 4),
+          if (showBlockTitle) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
                   child: Text(
-                    '*중복 선택 가능',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[400],
+                    question.question,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-            ],
-          ),
-          if (question.hint != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              question.hint!,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+                if (question.allowMultiple == true)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Text(
+                      '*중복 선택 가능',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                  ),
+              ],
             ),
+            if (question.hint != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                question.hint!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
           ],
-          const SizedBox(height: 12),
-          
           _buildInputWidget(question),
         ],
       ),
