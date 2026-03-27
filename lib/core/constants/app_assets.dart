@@ -11,6 +11,12 @@ abstract final class AppAssets {
   /// 쿠폰 화면 등에서 사용하는 쿠폰 아이콘 (SVG)
   static const String couponIcon = '${_img}coupon_icon.svg';
 
+  /// 마이페이지 상단 통계 카드 아이콘/테두리 (SVG)
+  static const String deliveryMain = '${_img}deliveryMain.svg';
+  static const String couponMain = '${_img}couponMain.svg';
+  static const String pointMain = '${_img}pointMain.svg';
+  static const String mypageMenuBorder = '${_img}mypage_menu_border.svg';
+
 
   /// 앱 로고 (PNG)
   static const String bomioraLogo = '${_img}bomiora-logo.png';
