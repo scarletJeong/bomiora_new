@@ -107,14 +107,8 @@ class _PointScreenState extends State<PointScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: HealthAppBar(
+      appBar: const HealthAppBar(
         title: '포인트',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black),
-            onPressed: _loadData,
-          ),
-        ],
       ),
       child: _isLoading
           ? const Center(

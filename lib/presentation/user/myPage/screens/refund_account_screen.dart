@@ -45,8 +45,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
           child: ListView(
             padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
             children: [
-              _SectionTitle(title: '환불계좌관리'),
-              const SizedBox(height: 20),
               const _FieldLabel('은행 선택'),
               const SizedBox(height: 5),
               _BoxDropdown<String>(
@@ -77,7 +75,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               const _FieldLabel('계좌번호'),
               const SizedBox(height: 5),
               _BoxField(
@@ -86,7 +84,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                 keyboardType: TextInputType.number,
                 validator: (v) => (v == null || v.trim().isEmpty) ? '계좌번호를 입력해주세요' : null,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               const _FieldLabel('예금주명'),
               const SizedBox(height: 5),
               _BoxField(
@@ -94,7 +92,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                 hintText: '예금주 이름을 입력해주세요.',
                 validator: (v) => (v == null || v.trim().isEmpty) ? '예금주명을 입력해주세요' : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
                 height: 40,
@@ -181,41 +179,84 @@ class _BoxField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
 
+  static const double _fieldH = 40;
+  static const double _errorReserveH = 22;
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.all(10),
-          hintText: hintText,
-          hintStyle: const TextStyle(
-            color: Color(0xFF898686),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
-          ),
-        ),
-        style: const TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-        validator: validator,
-      ),
+    final errorColor = Theme.of(context).colorScheme.error;
+
+    return FormField<String>(
+      initialValue: controller.text,
+      validator: (v) => validator?.call(controller.text),
+      builder: (state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: _fieldH,
+              child: TextField(
+                controller: controller,
+                keyboardType: keyboardType,
+                onChanged: (_) {
+                  state.didChange(controller.text);
+                  if (state.hasError) state.validate();
+                },
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.all(10),
+                  hintText: hintText,
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF898686),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      width: 1,
+                      color: state.hasError ? errorColor : const Color(0xFFD2D2D2),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      width: 1,
+                      color: state.hasError ? errorColor : const Color(0xFFD2D2D2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
+                  ),
+                ),
+                style: const TextStyle(
+                  color: Color(0xFF1A1A1A),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: _errorReserveH,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  state.errorText ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: errorColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
