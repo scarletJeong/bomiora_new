@@ -149,13 +149,26 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     );
     if (!confirmed) return;
 
-    await AddressService.deleteAddress(id, _currentUser!.id);
+    final deleteResult = await AddressService.deleteAddress(id, _currentUser!.id);
 
     if (!mounted) return;
     setState(() {
       _selectedAddressId = null;
     });
-    _loadAddresses();
+    await _loadAddresses();
+    if (!mounted) return;
+    if (deleteResult['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('삭제되었습니다.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(deleteResult['message'] ?? '삭제에 실패했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _setDefaultAddress(Map<String, dynamic> address) async {

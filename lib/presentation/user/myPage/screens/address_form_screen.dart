@@ -55,17 +55,68 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     super.dispose();
   }
 
+  static String _str(Map<String, dynamic> m, List<String> keys) {
+    for (final k in keys) {
+      final v = m[k];
+      if (v == null) continue;
+      if (v is String) {
+        final t = v.trim();
+        if (t.isNotEmpty) return t;
+      } else {
+        final t = v.toString().trim();
+        if (t.isNotEmpty && t != 'null') return t;
+      }
+    }
+    return '';
+  }
+
+  /// 우편번호: API는 ad_zip1·ad_zip2 분리, UI는 한 칸에 `123-45` 형태로 표시
+  static String _zipLine(Map<String, dynamic> m) {
+    final z1 = _str(m, ['adZip1', 'ad_zip1']);
+    final z2 = _str(m, ['adZip2', 'ad_zip2']);
+    if (z1.isNotEmpty && z2.isNotEmpty) return '$z1-$z2';
+    if (z1.isNotEmpty) return z1;
+    return z2;
+  }
+
+  static Map<String, String> _splitZipForApi(String raw) {
+    var t = raw.replaceAll(RegExp(r'\s'), '');
+    if (t.isEmpty) return {'zip1': '', 'zip2': ''};
+    if (t.contains('-')) {
+      final i = t.indexOf('-');
+      return {'zip1': t.substring(0, i), 'zip2': t.substring(i + 1)};
+    }
+    if (t.length == 5) {
+      return {'zip1': t.substring(0, 3), 'zip2': t.substring(3)};
+    }
+    return {'zip1': t, 'zip2': ''};
+  }
+
   /// 기존 데이터 로드 (수정 모드인 경우)
   void _loadData() {
-    if (widget.address != null) {
-      _subjectController.text = widget.address!['adSubject'] ?? '';
-      _nameController.text = widget.address!['adName'] ?? '';
-      _phoneController.text = widget.address!['adHp'] ?? '';
-      _zipController.text = widget.address!['adZip1'] ?? '';
-      _address1Controller.text = widget.address!['adAddr1'] ?? '';
-      _address2Controller.text = '${widget.address!['adAddr2'] ?? ''} ${widget.address!['adAddr3'] ?? ''}'.trim();
-      _requestMemoController.text = widget.address!['adMemo'] ?? '';
-    }
+    final m = widget.address;
+    if (m == null) return;
+
+    final z1 = _str(m, ['adZip1', 'ad_zip1']);
+    final z2 = _str(m, ['adZip2', 'ad_zip2']);
+    final zipLine = _zipLine(m);
+    debugPrint(
+      '📮 [배송지][우편번호] AddressFormScreen._loadData adId=${m['adId'] ?? m['ad_id']}',
+    );
+    debugPrint('📮 [배송지][우편번호] 전달된 맵 키: ${m.keys.toList()}');
+    debugPrint(
+      '📮 [배송지][우편번호] 필드값 adZip1/ad_zip1="$z1" adZip2/ad_zip2="$z2" → _zipController에 넣을 값="$zipLine"',
+    );
+
+    _subjectController.text = _str(m, ['adSubject', 'ad_subject']);
+    _nameController.text = _str(m, ['adName', 'ad_name']);
+    _phoneController.text = _str(m, ['adHp', 'ad_hp', 'adTel', 'ad_tel']);
+    _zipController.text = zipLine;
+    _address1Controller.text = _str(m, ['adAddr1', 'ad_addr1']);
+    final a2 = _str(m, ['adAddr2', 'ad_addr2']);
+    final a3 = _str(m, ['adAddr3', 'ad_addr3']);
+    _address2Controller.text = '$a2 $a3'.trim();
+    _requestMemoController.text = _str(m, ['adMemo', 'ad_memo']);
   }
 
   /// 배송지 저장
@@ -87,6 +138,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         return;
       }
 
+      final zipParts = _splitZipForApi(_zipController.text.trim());
       final addressData = {
         'mbId': user.id,
         'adSubject': _subjectController.text.trim(),
@@ -94,8 +146,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         'adName': _nameController.text.trim(),
         'adTel': _phoneController.text.trim(),
         'adHp': _phoneController.text.trim(),
-        'adZip1': _zipController.text.trim(),
-        'adZip2': widget.address?['adZip2'] ?? '',
+        'adZip1': zipParts['zip1'] ?? '',
+        'adZip2': zipParts['zip2'] ?? '',
         'adAddr1': _address1Controller.text.trim(),
         'adAddr2': _address2Controller.text.trim(),
         'adAddr3': '',
