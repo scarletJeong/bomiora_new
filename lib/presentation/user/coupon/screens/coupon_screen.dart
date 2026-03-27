@@ -133,18 +133,19 @@ class _CouponScreenState extends State<CouponScreen> {
         _couponCodeController.text.trim(),
       );
 
-      if (mounted) {
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        _couponCodeController.clear();
+        await _loadCoupons();
+        if (mounted) await _showCouponRegisteredDialog();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? ''),
-            backgroundColor: result['success'] == true ? Colors.green : Colors.red,
+            content: Text(result['message']?.toString() ?? '등록에 실패했습니다.'),
+            backgroundColor: Colors.red,
           ),
         );
-
-        if (result['success'] == true) {
-          _couponCodeController.clear();
-          await _loadCoupons();
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -387,98 +388,174 @@ class _CouponScreenState extends State<CouponScreen> {
     );
   }
 
-  Widget _buildCouponRegistration() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _border),
-          borderRadius: BorderRadius.circular(7),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '쿠폰등록하기',
-            style: TextStyle(
-              color: _textMain,
-              fontSize: 12,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+  Future<void> _showCouponRegisteredDialog() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            width: 272,
+            padding: const EdgeInsets.all(20),
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 8.14,
+                  offset: Offset(0, 0),
+                  spreadRadius: 0,
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            height: 1,
-            color: _border,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _couponCodeController,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                    color: _textMain,
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    '쿠폰 등록',
+                    style: TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 20,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: '쿠폰 코드를 입력해주세요',
-                    hintStyle: const TextStyle(
-                      color: _textMuted,
-                      fontSize: 10,
+                  const SizedBox(height: 20),
+                  const Text(
+                    '쿠폰이 성공적으로 등록되었습니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF898686),
+                      fontSize: 14,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4),
-                      borderSide: const BorderSide(width: 1, color: _border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4),
-                      borderSide: const BorderSide(width: 1, color: _border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4),
-                      borderSide: const BorderSide(width: 1, color: _border),
+                      height: 1.57,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Material(
-                color: const Color(0xFFD2D2D2),
-                borderRadius: BorderRadius.circular(7),
-                child: InkWell(
-                  onTap: _registerCoupon,
-                  borderRadius: BorderRadius.circular(7),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Text(
-                      '등록',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
+                  const SizedBox(height: 20),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.of(ctx).pop(),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: double.infinity,
+                        height: 40,
+                        padding: const EdgeInsets.all(10),
+                        clipBehavior: Clip.antiAlias,
+                        decoration: ShapeDecoration(
+                          color: _pink,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              '확인',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCouponRegistration() {
+    const underlineBorder = UnderlineInputBorder(
+      borderSide: BorderSide(width: 1, color: _border),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '쿠폰등록하기',
+          style: TextStyle(
+            color: _textMain,
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _couponCodeController,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  color: _textMain,
+                ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: '쿠폰 코드를 입력해주세요',
+                  hintStyle: const TextStyle(
+                    color: _textMuted,
+                    fontSize: 10,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                  contentPadding: const EdgeInsets.only(bottom: 8, top: 4),
+                  border: underlineBorder,
+                  enabledBorder: underlineBorder,
+                  focusedBorder: underlineBorder,
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+            const SizedBox(width: 10),
+            Material(
+              color: const Color(0xFFD2D2D2),
+              borderRadius: BorderRadius.circular(7),
+              child: InkWell(
+                onTap: _registerCoupon,
+                borderRadius: BorderRadius.circular(7),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Text(
+                    '등록',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
