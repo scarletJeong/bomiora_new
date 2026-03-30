@@ -56,7 +56,9 @@ class OrderService {
           'orders': orders,
           'currentPage': data is Map ? (data['currentPage'] ?? 0) : 0,
           'totalPages': data is Map ? (data['totalPages'] ?? 0) : 0,
-          'totalItems': data is Map ? (data['totalItems'] ?? 0) : 0,
+          'totalItems': data is Map
+              ? (data['totalItems'] ?? data['totalElements'] ?? 0)
+              : 0,
           'hasNext': data is Map ? (data['hasNext'] ?? false) : false,
         };
       } else {

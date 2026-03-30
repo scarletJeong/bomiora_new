@@ -13,6 +13,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/price_formatter.dart';
 import 'widgets/delivery_address_change_popup.dart';
 import 'widgets/order_flow_dialogs.dart';
 
@@ -99,6 +100,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           _allOrders = allOrders;
           _applyFilter();
         });
+
+        // 목록 응답에 배송비가 없거나 0인 경우, 상세 API 기준 배송비로 보정
+        _syncDeliveryFeesFromDetail(userId);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -120,6 +124,61 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         });
       }
     }
+  }
+
+  Future<void> _syncDeliveryFeesFromDetail(String userId) async {
+    if (_allOrders.isEmpty) return;
+
+    bool changed = false;
+    final updated = <OrderListModel>[];
+
+    for (final order in _allOrders) {
+      if (order.deliveryFee > 0) {
+        updated.add(order);
+        continue;
+      }
+
+      try {
+        final detailResult = await OrderService.getOrderDetail(
+          odId: order.odId,
+          mbId: userId,
+        );
+
+        if (detailResult['success'] == true && detailResult['order'] is OrderDetailModel) {
+          final detail = detailResult['order'] as OrderDetailModel;
+          if (detail.deliveryFee > 0) {
+            changed = true;
+            updated.add(
+              OrderListModel(
+                odId: order.odId,
+                orderDate: order.orderDate,
+                orderDateTime: order.orderDateTime,
+                displayStatus: order.displayStatus,
+                odStatus: order.odStatus,
+                totalPrice: order.totalPrice,
+                deliveryFee: detail.deliveryFee,
+                odCartCount: order.odCartCount,
+                isPrescriptionOrder: order.isPrescriptionOrder,
+                items: order.items,
+                firstProductName: order.firstProductName,
+                firstProductOption: order.firstProductOption,
+                firstProductQty: order.firstProductQty,
+                firstProductPrice: order.firstProductPrice,
+              ),
+            );
+            continue;
+          }
+        }
+      } catch (_) {}
+
+      updated.add(order);
+    }
+
+    if (!changed || !mounted) return;
+    setState(() {
+      _allOrders = updated;
+      _applyFilter();
+    });
   }
   
   /// 필터 적용
@@ -178,10 +237,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
       child: MobileAppLayoutWrapper(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: Colors.white,
         appBar: const HealthAppBar(title: '주문 내역'),
         child: Scaffold(
-          backgroundColor: Colors.grey[50],
+          backgroundColor: Colors.white,
           body: Column(
             children: [
               DeliveryStatusFilterBar(
@@ -246,12 +305,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   /// 주문 카드 위젯
   Widget _buildOrderCard(OrderListModel order) {
     final statusText = _getOrderStatusText(order);
-    final qty = order.firstProductQty ?? 1;
-    var qtyLine = '수량: $qty';
-    final opt = order.firstProductOption;
-    if (opt != null && opt.isNotEmpty) {
-      qtyLine += ' /$opt';
-    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -337,76 +390,27 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           const SizedBox(height: 20),
           Container(width: double.infinity, height: 1, color: _kBorder),
           const SizedBox(height: 20),
-          InkWell(
-            onTap: () => _navigateToOrderDetail(order.odId),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildProductImage(order),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.firstProductName ?? '상품명 없음',
-                        style: const TextStyle(
-                          color: _kInk,
-                          fontSize: 14,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1.26,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        qtyLine,
-                        style: const TextStyle(
-                          color: _kMuted2,
-                          fontSize: 10,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        '${_formatPrice(order.firstProductPrice ?? 0)}원',
-                        style: const TextStyle(
-                          color: _kInk,
-                          fontSize: 14,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (order.odCartCount > 1)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            '외 ${order.odCartCount - 1}개 상품',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: _kMuted2,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ..._buildOrderProductBlocks(order),
           const SizedBox(height: 20),
           Align(
             alignment: Alignment.centerRight,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                if (order.deliveryFee > 0) ...[
+                  Text(
+                    '(배송비: ${PriceFormatter.format(order.deliveryFee)}원)',
+                    style: const TextStyle(
+                      color: _kMuted,
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                ],
                 Text(
-                  '총 ${_formatPrice(order.totalPrice)}원',
+                  '총 ${PriceFormatter.format(order.totalPrice)}원',
                   style: const TextStyle(
                     color: _kInk,
                     fontSize: 16,
@@ -427,6 +431,189 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           })(),
         ],
       ),
+    );
+  }
+
+  /// 한 주문의 상품 행들 (`items` 전부, 없으면 `firstProduct*` 요약 1행)
+  List<Widget> _buildOrderProductBlocks(OrderListModel order) {
+    if (order.items.isNotEmpty) {
+      final widgets = <Widget>[];
+      for (var i = 0; i < order.items.length; i++) {
+        if (i > 0) widgets.add(const SizedBox(height: 16));
+        final item = order.items[i];
+        final showMoreHint =
+            order.items.length == 1 && order.odCartCount > 1;
+        widgets.add(
+          _buildOrderProductLineInk(
+            order.odId,
+            image: _buildProductImageFromItem(item),
+            title: _displayProductTitle(item),
+            qtyLine: _qtyLineForItem(item),
+            priceText: '${PriceFormatter.format(item.totalPrice)}원',
+            moreHint: showMoreHint ? '외 ${order.odCartCount - 1}개 상품' : null,
+          ),
+        );
+      }
+      return widgets;
+    }
+
+    final qty = order.firstProductQty ?? 1;
+    var qtyLine = '수량: $qty';
+    final opt = order.firstProductOption;
+    if (opt != null && opt.isNotEmpty) {
+      qtyLine += ' /$opt';
+    }
+
+    return [
+      _buildOrderProductLineInk(
+        order.odId,
+        image: _buildProductImage(order),
+        title: order.firstProductName ?? '상품명 없음',
+        qtyLine: qtyLine,
+        priceText: '${PriceFormatter.format(order.firstProductPrice ?? 0)}원',
+        moreHint:
+            order.odCartCount > 1 ? '외 ${order.odCartCount - 1}개 상품' : null,
+      ),
+    ];
+  }
+
+  String _displayProductTitle(OrderItem item) {
+    final n = item.itName.trim();
+    if (n.isNotEmpty) return n;
+    final s = item.itSubject.trim();
+    if (s.isNotEmpty) return s;
+    return '상품명 없음';
+  }
+
+  String _qtyLineForItem(OrderItem item) {
+    final parts = <String>['수량: ${item.ctQty}'];
+    final opt = item.ctOption;
+    if (opt != null && opt.trim().isNotEmpty) {
+      parts.add(opt.trim());
+    }
+    return parts.join(' / ');
+  }
+
+  Widget _buildOrderProductLineInk(
+    String odId, {
+    required Widget image,
+    required String title,
+    required String qtyLine,
+    required String priceText,
+    String? moreHint,
+  }) {
+    return InkWell(
+      onTap: () => _navigateToOrderDetail(odId),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          image,
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _kInk,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1.26,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  qtyLine,
+                  style: const TextStyle(
+                    color: _kMuted2,
+                    fontSize: 10,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  priceText,
+                  style: const TextStyle(
+                    color: _kInk,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (moreHint != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      moreHint,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: _kMuted2,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductImageFromItem(OrderItem item) {
+    final imageUrl = item.imageUrl;
+    final normalizedUrl = imageUrl != null && imageUrl.isNotEmpty
+        ? ImageUrlHelper.normalizeThumbnailUrl(imageUrl, item.itId)
+        : null;
+
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: normalizedUrl != null
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.network(
+                normalizedUrl,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.image,
+                    size: 40,
+                    color: Colors.grey[400],
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                      strokeWidth: 2,
+                      color: _kPink,
+                    ),
+                  );
+                },
+              ),
+            )
+          : Icon(
+              Icons.image,
+              size: 40,
+              color: Colors.grey[400],
+            ),
     );
   }
 
@@ -457,8 +644,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         add(_cardActionGray('주문취소', () => _cancelOrder(order.odId)));
         return out;
       }
-      if (_isDeliveringStage(order) || _isCompletedStage(order)) {
+      if (_isDeliveringStage(order)) {
         add(_cardActionPrimary('수령확인', () => _confirmPurchase(order.odId)));
+        add(_cardActionOutline('배송조회', () => _trackDelivery(order.odId)));
+        add(_cardActionGray('리뷰쓰기', () => _writeReview(order.odId)));
+        add(_cardActionGray('교환/환불', null));
+        return out;
+      }
+      if (_isCompletedStage(order)) {
         add(_cardActionOutline('배송조회', () => _trackDelivery(order.odId)));
         add(_cardActionGray('리뷰쓰기', () => _writeReview(order.odId)));
         add(_cardActionGray('교환/환불', null));
@@ -940,14 +1133,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               color: Colors.grey[400],
             ),
     );
-  }
-
-  /// 가격 포맷팅
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        );
   }
 
   /// 예약 정보 확인 (주문 상세 조회)

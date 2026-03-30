@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/price_formatter.dart';
 import '../../../core/network/api_client.dart';
 import 'checkout_webview_screen.dart';
 
@@ -294,12 +295,6 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return '';
-    final weekday = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-    return '${DateFormat('yyyy.MM.dd').format(date)} ${weekday[date.weekday - 1]}';
-  }
-
   // 선택된 아이템들의 총구매금액 계산
   int get selectedTotalPrice {
     int sum = 0;
@@ -328,13 +323,6 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   int get finalPrice => selectedTotalPrice + selectedShippingCost;
-
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
-  }
 
   Future<String?> _buildCheckoutUrl() async {
     final user = await AuthService.getUser();
@@ -684,11 +672,11 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                           child: Column(
                             children: [
-                              _buildSummaryRow('총구매금액', _formatPrice(selectedTotalPrice), isTotal: false),
+                              _buildSummaryRow('총구매금액', PriceFormatter.format(selectedTotalPrice), isTotal: false),
                               const SizedBox(height: 8),
-                              _buildSummaryRow('배송비', _formatPrice(selectedShippingCost), isTotal: false),
+                              _buildSummaryRow('배송비', PriceFormatter.format(selectedShippingCost), isTotal: false),
                               const Divider(height: 24),
-                              _buildSummaryRow('총 결제금액', _formatPrice(finalPrice), isTotal: true),
+                              _buildSummaryRow('총 결제금액', PriceFormatter.format(finalPrice), isTotal: true),
                               const SizedBox(height: 16),
                               SizedBox(
                                 width: double.infinity,
@@ -924,7 +912,7 @@ class _CartScreenState extends State<CartScreen> {
                         if (item.reservationDate != null) ...[
                           const SizedBox(height: 4),
                           Text(
-                            '예약일자: ${_formatDate(item.reservationDate)}',
+                            '예약일자: ${DateDisplayFormatter.formatYmdWeekdayLong(item.reservationDate)}',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFFFF3787),

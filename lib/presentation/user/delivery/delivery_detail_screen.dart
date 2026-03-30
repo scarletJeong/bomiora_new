@@ -9,6 +9,8 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/price_formatter.dart';
 import 'widgets/reservation_time_change_popup.dart';
 import '../review/review_write_screen.dart';
 import '../review/review_write_general_screen.dart';
@@ -159,8 +161,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 10),
-            _buildDetailShoppingHeader(),
-            const SizedBox(height: 20),
             _buildDetailProgressCard(order),
             const SizedBox(height: 20),
             _buildDetailOrderProductSection(order),
@@ -183,27 +183,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             const SizedBox(height: 24),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailShoppingHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Icon(Icons.shopping_bag_outlined, size: 16, color: _kInk.withValues(alpha: 0.8)),
-          const SizedBox(width: 8),
-          const Text(
-            '나의 쇼핑',
-            style: TextStyle(
-              color: _kInk,
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -331,13 +310,19 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   Widget _buildDetailSectionTitleRow(String bold, String light) {
     return Row(
       children: [
+        Container(
+          width: 1,
+          height: 16,
+          color: _kInk,
+        ),
+        const SizedBox(width: 8),
         Text(
           bold,
           style: const TextStyle(
             color: _kInk,
             fontSize: 16,
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             letterSpacing: -1.44,
           ),
         ),
@@ -357,7 +342,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Widget _buildDetailOrderProductSection(OrderDetailModel order) {
-    final first = order.products.isNotEmpty ? order.products.first : null;
     final statusActions = _buildStatusActionButtons(order);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,77 +360,88 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (first != null) ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailProductThumb(first),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            first.itName,
-                            style: const TextStyle(
-                              color: _kInk,
-                              fontSize: 14,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1.26,
+              ...order.products.asMap().entries.expand((entry) {
+                final index = entry.key;
+                final product = entry.value;
+                final optionText = product.ctOption != null && product.ctOption!.isNotEmpty
+                    ? ' /${product.ctOption}'
+                    : '';
+
+                return <Widget>[
+                  if (index > 0) const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailProductThumb(product),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.itName,
+                              style: const TextStyle(
+                                color: _kInk,
+                                fontSize: 14,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -1.26,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            '수량: ${first.ctQty}${first.ctOption != null && first.ctOption!.isNotEmpty ? ' /${first.ctOption}' : ''}${order.products.length > 1 ? ' (외 ${order.products.length - 1}개)' : ''}',
-                            style: const TextStyle(
-                              color: Color(0xFF898383),
-                              fontSize: 10,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
+                            const SizedBox(height: 5),
+                            Text(
+                              '수량: ${product.ctQty}$optionText',
+                              style: const TextStyle(
+                                color: Color(0xFF898383),
+                                fontSize: 10,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            '${_formatPrice(first.totalPrice)}원',
-                            style: const TextStyle(
-                              color: _kInk,
-                              fontSize: 14,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
+                            const SizedBox(height: 5),
+                            Text(
+                              '${PriceFormatter.format(product.totalPrice)}원',
+                              style: const TextStyle(
+                                color: _kInk,
+                                fontSize: 14,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-              ],
+                    ],
+                  ),
+                ];
+              }),
+              if (order.products.isNotEmpty) const SizedBox(height: 20),
               Align(
                 alignment: Alignment.centerRight,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    if (order.deliveryFee > 0) ...[
+                      Text(
+                        '(배송비: ${PriceFormatter.format(order.deliveryFee)}원)',
+                        style: const TextStyle(
+                          color: _kMuted,
+                          fontSize: 12,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                    ],
                     Text(
-                      '총 ${_formatPrice(order.totalPrice)}원',
+                      '총 ${PriceFormatter.format(order.totalPrice)}원',
                       style: const TextStyle(
                         color: _kInk,
                         fontSize: 16,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '(배송비: ${_formatPrice(order.deliveryFee)}원)',
-                      style: const TextStyle(
-                        color: _kMuted,
-                        fontSize: 12,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -521,7 +516,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           const SizedBox(height: 10),
           _detailKvLine('결제일 :', order.orderDate),
           const SizedBox(height: 10),
-          _detailKvLine('총 결제 금액 :', '${_formatPrice(order.totalPrice)}원'),
+          _detailKvLine('총 결제 금액 :', '${PriceFormatter.format(order.totalPrice)}원'),
         ],
       ),
     );
@@ -573,7 +568,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _detailKvLine('쿠폰할인 :', d > 0 ? '${_formatPrice(d)}원' : '0원'),
+          _detailKvLine('쿠폰할인 :', d > 0 ? '${PriceFormatter.format(d)}원' : '0원'),
           const SizedBox(height: 10),
           _detailKvLine('포인트할인 :', '0원'),
           const SizedBox(height: 10),
@@ -591,7 +586,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               ),
               const SizedBox(width: 5),
               Text(
-                '${_formatPrice(d)}원',
+                '${PriceFormatter.format(d)}원',
                 style: const TextStyle(
                   color: _kInk,
                   fontSize: 12,
@@ -604,25 +599,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         ],
       ),
     );
-  }
-
-  String _formatReservationDateWithWeekday(String? raw) {
-    if (raw == null || raw.isEmpty || raw == '-') return '-';
-    try {
-      DateTime d;
-      if (raw.contains('T')) {
-        d = DateTime.parse(raw);
-      } else if (raw.contains('-')) {
-        d = DateTime.parse(raw);
-      } else {
-        return raw;
-      }
-      const w = ['월', '화', '수', '목', '금', '토', '일'];
-      final wd = w[d.weekday - 1];
-      return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')} ${wd}요일';
-    } catch (_) {
-      return raw;
-    }
   }
 
   Widget _buildDetailReservationCard(OrderDetailModel order) {
@@ -639,11 +615,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _detailKvLine('담당 한의사 :', '-'),
+          _detailKvLine('담당 한의사 :', '정대진 원장'),
           const SizedBox(height: 10),
           _detailKvLine(
             '예약 일자 :',
-            _formatReservationDateWithWeekday(order.reservationDate),
+            DateDisplayFormatter.formatReservationDateWithWeekday(order.reservationDate),
           ),
           const SizedBox(height: 10),
           _detailKvLine('예약 시간 :', order.reservationTime ?? '-'),
@@ -1142,7 +1118,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         const SizedBox(height: 12),
         _buildInfoRow(
           '예약 날짜',
-          _formatReservationDate(_orderDetail!.reservationDate!),
+          DateDisplayFormatter.formatKoreanDateFromString(_orderDetail!.reservationDate!),
         ),
         const SizedBox(height: 8),
         // 예약 시간 행 (텍스트 아래 버튼 가운데 정렬)
@@ -1209,26 +1185,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         ),
       ),
     );
-  }
-
-  /// 예약 날짜 포맷팅
-  String _formatReservationDate(String dateStr) {
-    try {
-      // ISO 8601 형식 또는 다른 형식 파싱
-      DateTime date;
-      if (dateStr.contains('T')) {
-        date = DateTime.parse(dateStr);
-      } else if (dateStr.contains('-')) {
-        date = DateTime.parse(dateStr);
-      } else {
-        // 다른 형식 처리
-        return dateStr;
-      }
-      
-      return '${date.year}년 ${date.month}월 ${date.day}일';
-    } catch (e) {
-      return dateStr;
-    }
   }
 
   /// 예약 시간 변경 다이얼로그 표시
@@ -1441,7 +1397,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   ),
                 const SizedBox(height: 8),
                 Text(
-                  '${product.ctQty}개 · ${_formatPrice(product.totalPrice)}원',
+                  '${product.ctQty}개 · ${PriceFormatter.format(product.totalPrice)}원',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -1475,17 +1431,17 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           const SizedBox(height: 16),
           _buildInfoRow(
             '상품금액',
-            '${_formatPrice(_orderDetail!.productPrice)}원',
+            '${PriceFormatter.format(_orderDetail!.productPrice)}원',
           ),
           const SizedBox(height: 12),
           _buildInfoRow(
             '배송비',
-            '${_formatPrice(_orderDetail!.deliveryFee)}원',
+            '${PriceFormatter.format(_orderDetail!.deliveryFee)}원',
           ),
           const SizedBox(height: 12),
           _buildInfoRow(
             '할인금액',
-            '-${_formatPrice(_orderDetail!.discountAmount)}원',
+            '-${PriceFormatter.format(_orderDetail!.discountAmount)}원',
             valueColor: Colors.red,
           ),
           const Divider(height: 32),
@@ -1501,7 +1457,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 ),
               ),
               Text(
-                '${_formatPrice(_orderDetail!.totalPrice)}원',
+                '${PriceFormatter.format(_orderDetail!.totalPrice)}원',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1777,12 +1733,5 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     );
   }
 
-  /// 가격 포맷팅
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        );
-  }
 }
 

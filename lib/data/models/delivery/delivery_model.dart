@@ -77,6 +77,7 @@ class OrderListModel {
   final String displayStatus;
   final String odStatus;
   final int totalPrice;
+  final int deliveryFee;
   final int odCartCount;
   final bool isPrescriptionOrder;
   final List<OrderItem> items;
@@ -92,6 +93,7 @@ class OrderListModel {
     required this.displayStatus,
     required this.odStatus,
     required this.totalPrice,
+    this.deliveryFee = 0,
     required this.odCartCount,
     this.isPrescriptionOrder = false,
     required this.items,
@@ -104,12 +106,44 @@ class OrderListModel {
   factory OrderListModel.fromJson(Map<dynamic, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     List<OrderItem> itemList = [];
-    if (normalized['items'] != null) {
-      itemList = (normalized['items'] as List)
+
+    List<OrderItem> parseItemArray(dynamic raw) {
+      if (raw is! List) return [];
+      return raw
           .whereType<Map>()
           .map((item) => OrderItem.fromJson(Map<String, dynamic>.from(item)))
           .toList();
     }
+
+    if (normalized['items'] != null) {
+      itemList = parseItemArray(normalized['items']);
+    }
+    if (itemList.isEmpty && normalized['products'] != null) {
+      itemList = parseItemArray(normalized['products']);
+    }
+    if (itemList.isEmpty && normalized['cart'] != null) {
+      itemList = parseItemArray(normalized['cart']);
+    }
+    if (itemList.isEmpty && normalized['orderItems'] != null) {
+      itemList = parseItemArray(normalized['orderItems']);
+    }
+
+    final parsedTotalPrice =
+        NodeValueParser.asInt(normalized['totalPrice']) ??
+        NodeValueParser.asInt(normalized['total_price']) ??
+        NodeValueParser.asInt(normalized['odReceiptPrice']) ??
+        NodeValueParser.asInt(normalized['od_receipt_price']) ??
+        0;
+    final parsedDeliveryFee =
+        NodeValueParser.asInt(normalized['deliveryFee']) ??
+        NodeValueParser.asInt(normalized['delivery_fee']) ??
+        NodeValueParser.asInt(normalized['odSendCost']) ??
+        NodeValueParser.asInt(normalized['od_send_cost']) ??
+        0;
+    final itemsTotalPrice = itemList.fold<int>(0, (sum, item) => sum + item.totalPrice);
+    final resolvedTotalPrice = parsedTotalPrice > 0
+        ? parsedTotalPrice
+        : (itemsTotalPrice > 0 ? itemsTotalPrice : 0);
 
     return OrderListModel(
       odId: NodeValueParser.asString(normalized['odId']) ?? '0', // String으로 변환 (int도 처리)
@@ -117,7 +151,8 @@ class OrderListModel {
       orderDateTime: NodeValueParser.asString(normalized['orderDateTime']) ?? '',
       displayStatus: NodeValueParser.asString(normalized['displayStatus']) ?? '',
       odStatus: NodeValueParser.asString(normalized['odStatus']) ?? '',
-      totalPrice: NodeValueParser.asInt(normalized['totalPrice']) ?? 0,
+      totalPrice: resolvedTotalPrice,
+      deliveryFee: parsedDeliveryFee,
       odCartCount: NodeValueParser.asInt(normalized['odCartCount']) ?? 0,
       isPrescriptionOrder: (NodeValueParser.asInt(normalized['isPrescriptionOrder']) ?? 0) == 1 ||
           (NodeValueParser.asString(normalized['isPrescriptionOrder']) ?? '').toLowerCase() == 'true',
@@ -137,6 +172,7 @@ class OrderListModel {
       'displayStatus': displayStatus,
       'odStatus': odStatus,
       'totalPrice': totalPrice,
+      'deliveryFee': deliveryFee,
       'odCartCount': odCartCount,
       'isPrescriptionOrder': isPrescriptionOrder,
       'items': items.map((item) => item.toJson()).toList(),
