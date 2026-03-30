@@ -143,7 +143,6 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('리뷰 로드 오류: $e');
       setState(() => _isLoading = false);
     }
   }

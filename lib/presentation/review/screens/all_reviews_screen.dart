@@ -199,7 +199,6 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
         });
       }
     } catch (e) {
-      print('리뷰 로드 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('리뷰를 불러오는데 실패했습니다.')),
@@ -596,15 +595,10 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
                           builder: (context) {
                             final originalUrl = review.images.first;
                             final convertedUrl = ImageUrlHelper.getReviewImageUrl(originalUrl);
-                            print('🖼️ [리뷰 이미지]');
-                            print('  원본: $originalUrl');
-                            print('  변환: $convertedUrl');
                             return Image.network(
                               convertedUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                print('❌ [리뷰 이미지 로드 실패] $convertedUrl');
-                                print('  에러: $error');
                                 return Center(
                                   child: Icon(
                                     Icons.rate_review,

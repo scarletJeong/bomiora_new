@@ -71,9 +71,7 @@ class _PointScreenState extends State<PointScreen> {
       setState(() {
         _currentPoint = point;
       });
-    } catch (e) {
-      print('포인트 조회 오류: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadPointHistory() async {
@@ -86,9 +84,7 @@ class _PointScreenState extends State<PointScreen> {
         _displayCount = 10; // 새로 로드할 때 초기화
         _updateDisplayedHistory();
       });
-    } catch (e) {
-      print('포인트 내역 조회 오류: $e');
-    }
+    } catch (e) {}
   }
 
   void _updateDisplayedHistory() {

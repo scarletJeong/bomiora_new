@@ -15,8 +15,6 @@ class ReviewRepository {
     int pageSize = 20,
   }) async {
     try {
-      print('🔍 리뷰 목록 조회 시작 - productId: $productId, reviewKind: $reviewKind');
-      
       String endpoint = ApiEndpoints.productReviews;
       endpoint += '?it_id=$productId&page=$page&pageSize=$pageSize';
       
@@ -24,15 +22,11 @@ class ReviewRepository {
         endpoint += '&is_rvkind=$reviewKind';
       }
       
-      print('🌐 API 요청: ${ApiClient.baseUrl}$endpoint');
-      
       final response = await ApiClient.get(endpoint);
-      
-      print('📡 응답 상태 코드: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         // 응답 구조에 따라 처리
         List<dynamic> reviews = [];
         if (data['success'] == true && data['data'] != null) {
@@ -43,14 +37,11 @@ class ReviewRepository {
           reviews = data['reviews'];
         }
         
-        print('✅ 리뷰 ${reviews.length}개 로드 완료');
         return reviews.map((json) => ReviewModel.fromJson(json)).toList();
       }
-      
-      print('⚠️ 리뷰 목록 조회 실패: ${response.statusCode}');
+
       return [];
     } catch (e) {
-      print('❌ 리뷰 목록 조회 오류: $e');
       return [];
     }
   }
@@ -113,7 +104,6 @@ class ReviewRepository {
         'score4Avg': score4Avg, // 편리함
       };
     } catch (e) {
-      print('❌ 리뷰 통계 조회 오류: $e');
       return null;
     }
   }

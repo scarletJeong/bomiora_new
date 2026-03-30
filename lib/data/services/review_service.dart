@@ -2,6 +2,9 @@ import 'dart:convert';
 import '../models/review/review_model.dart';
 import '../../core/network/api_client.dart';
 
+// 리뷰 서비스 내부 디버그 콘솔 출력 비활성화
+void print(Object? object) {}
+
 /// 리뷰 서비스
 class ReviewService {
   /// 리뷰 작성

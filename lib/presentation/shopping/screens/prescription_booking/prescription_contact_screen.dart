@@ -67,9 +67,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       print('기본 정보:');
       print('  - 생년월일: ${widget.formData['birthDate']}');
       print('  - 성별: ${widget.formData['gender']}');
-      print('  - 목표 체중: ${widget.formData['targetWeight']}kg');
       print('  - 키: ${widget.formData['height']}cm');
-      print('  - 현재 체중: ${widget.formData['currentWeight']}kg');
       print('  - 다이어트 기간: ${widget.formData['dietPeriod']}');
       print('');
       print('식습관:');

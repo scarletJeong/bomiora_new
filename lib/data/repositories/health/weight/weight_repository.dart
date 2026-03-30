@@ -8,14 +8,8 @@ class WeightRepository {
   // 이미지 파일 업로드 (새로 추가)
   static Future<String?> uploadImage(dynamic imageFile) async {
     try {
-      print('🔍 [DEBUG] 이미지 업로드 시작');
-      print('📁 [DEBUG] 파일 타입: ${imageFile.runtimeType}');
-      
       final response = await ApiClient.uploadFile('/api/health/weight/upload-image', imageFile);
-      
-      print('📡 [DEBUG] 응답 상태: ${response.statusCode}');
-      print('📄 [DEBUG] 응답 본문: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
@@ -23,16 +17,11 @@ class WeightRepository {
           String relativeUrl = data['url'];
           String baseUrl = ApiClient.baseUrl;
           String fullUrl = '$baseUrl$relativeUrl';
-          print('✅ [DEBUG] 업로드 성공: $fullUrl');
           return fullUrl; // 완전한 서버 URL 반환
         }
       }
-      
-      print('❌ [DEBUG] 이미지 업로드 실패: ${response.statusCode}');
-      print('📄 [DEBUG] 오류 응답: ${response.body}');
       return null;
     } catch (e) {
-      print('💥 [DEBUG] 이미지 업로드 오류: $e');
       return null;
     }
   }
@@ -40,27 +29,17 @@ class WeightRepository {
   // 체중 기록 추가
   static Future<bool> addWeightRecord(WeightRecord record) async {
     try {
-      print('🔍 [DEBUG] 체중 기록 추가 시작');
-      print('📤 [DEBUG] 요청 데이터: ${record.toJson()}');
-      
       final response = await ApiClient.post(
         ApiEndpoints.weightRecords,
         record.toJson(),
       );
-      
-      print('📡 [DEBUG] 응답 상태: ${response.statusCode}');
-      print('📦 [DEBUG] 응답 본문: ${response.body}');
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        print('✅ [DEBUG] 성공 여부: ${data['success']}');
         return data['success'] == true;
       }
-      
-      print('체중 기록 추가 실패: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('체중 기록 추가 오류: $e');
       return false;
     }
   }
@@ -81,11 +60,9 @@ class WeightRepository {
         final data = json.decode(response.body);
         return data['success'] == true;
       }
-      
-      print('체중 기록 수정 실패: ${response.statusCode}');
+
       return false;
     } catch (e) {
-      print('체중 기록 수정 오류: $e');
       return false;
     }
   }
@@ -93,40 +70,18 @@ class WeightRepository {
   // 체중 기록 목록 조회 (최적화: 한 번에 모든 데이터 로드)
   static Future<List<WeightRecord>> getWeightRecords(String mbId) async {
     try {
-      print('🔍 체중 기록 조회 시작 - mbId: $mbId');
-      
       final response = await ApiClient.get('${ApiEndpoints.weightRecords}?mb_id=$mbId');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final List<dynamic> records = data['data'];
-          print('📥 [DEBUG] 체중 기록 원본 데이터:');
-          for (int i = 0; i < records.length; i++) {
-            print('  - [$i] ${records[i]}');
-          }
-
-          final parsedRecords =
-              records.map((json) => WeightRecord.fromJson(json)).toList();
-          print('📊 [DEBUG] 파싱된 체중 기록:');
-          for (int i = 0; i < parsedRecords.length; i++) {
-            final record = parsedRecords[i];
-            print(
-              '  - [$i] id=${record.id}, mbId=${record.mbId}, '
-              'measuredAt=${record.measuredAt.toIso8601String()}, '
-              'weight=${record.weight}, height=${record.height}, bmi=${record.bmi}',
-            );
-          }
-
-          print('✅ 체중 기록 ${records.length}개 로드 완료');
-          return parsedRecords;
+          return records.map((json) => WeightRecord.fromJson(json)).toList();
         }
       }
-      
-      print('❌ 체중 기록 조회 실패: ${response.statusCode}');
+
       return [];
     } catch (e) {
-      print('❌ 체중 기록 조회 오류: $e');
       return [];
     }
   }
@@ -140,11 +95,9 @@ class WeightRepository {
         final data = json.decode(response.body);
         return data['success'] == true;
       }
-      
-      print('체중 기록 삭제 실패: ${response.statusCode}');
+
       return false;
     } catch (e) {
-      print('체중 기록 삭제 오류: $e');
       return false;
     }
   }
@@ -160,11 +113,9 @@ class WeightRepository {
           return WeightRecord.fromJson(data['data']);
         }
       }
-      
-      print('최신 체중 기록 조회 실패: ${response.statusCode}');
+
       return null;
     } catch (e) {
-      print('최신 체중 기록 조회 오류: $e');
       return null;
     }
   }
