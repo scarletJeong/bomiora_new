@@ -3,6 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../data/services/delivery_service.dart';
+import '../../../../data/services/coupon_service.dart';
+import '../../../../data/services/point_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'profile_settings_screen.dart';
 import '../../../customer_service/screens/contact_list_screen.dart';
@@ -21,6 +24,65 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   UserModel? _currentUser;
+  bool _statsLoading = false;
+  int _orderCount = 0;
+  int _couponCount = 0;
+  int _pointBalance = 0;
+
+  static int _orderCountFromResult(Map<String, dynamic> result) {
+    if (result['success'] != true) return 0;
+    final total = result['totalItems'];
+    if (total is int && total > 0) return total;
+    if (total is num && total > 0) return total.toInt();
+    final orders = result['orders'];
+    if (orders is List) return orders.length;
+    return 0;
+  }
+
+  Future<void> _loadMyPageStats() async {
+    final u = _currentUser;
+    if (u == null) {
+      if (mounted) {
+        setState(() => _statsLoading = false);
+      }
+      return;
+    }
+
+    try {
+      final results = await Future.wait([
+        OrderService.getOrderList(
+          mbId: u.id,
+          period: 0,
+          status: 'all',
+          page: 0,
+          size: 1,
+        ),
+        CouponService.getAvailableCoupons(u.id),
+        PointService.getUserPoint(u.id),
+      ]);
+
+      if (!mounted) return;
+
+      final orderResult = results[0] as Map<String, dynamic>;
+      final coupons = results[1] as List<dynamic>;
+      final point = results[2] as int?;
+
+      setState(() {
+        _orderCount = _orderCountFromResult(orderResult);
+        _couponCount = coupons.length;
+        _pointBalance = point ?? 0;
+        _statsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _orderCount = 0;
+        _couponCount = 0;
+        _pointBalance = 0;
+        _statsLoading = false;
+      });
+    }
+  }
 
   Future<void> _showPasswordConfirmDialog() async {
     if (_currentUser == null) return;
@@ -255,10 +317,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _loadCurrentUser() async {
     final user = await AuthService.getUser();
     if (!mounted) return;
-    
+
+    if (user == null) {
+      setState(() {
+        _currentUser = null;
+        _statsLoading = false;
+      });
+      return;
+    }
+
     setState(() {
       _currentUser = user;
+      _statsLoading = true;
     });
+    await _loadMyPageStats();
   }
 
   @override
@@ -481,89 +553,98 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildStatsRow() {
+    final orderVal = _statsLoading ? '…' : '$_orderCount';
+    final couponVal = _statsLoading ? '…' : '$_couponCount';
+    final pointVal = _statsLoading ? '…' : PointService.formatPoint(_pointBalance);
+
     Widget statCard({
       required String icon,
       required String value,
       required String unit,
       required String label,
+      required VoidCallback onTap,
     }) {
       return Expanded(
-        child: AspectRatio(
-          aspectRatio: 1.1,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // 카드 너비에 맞춰 아이콘/높이를 함께 유동 스케일
-              final iconSize = (constraints.maxWidth * 0.27).clamp(20.0, 34.0);
-              final cardHeight = constraints.maxHeight;
-              final iconTop = (cardHeight * -0.10).clamp(-12.0, -6.0);
-              final contentTop = (iconSize * 0.95).clamp(18.0, 30.0);
-              final contentBottom = (cardHeight * 0.10).clamp(6.0, 14.0);
-              return Stack(
-                fit: StackFit.expand,
-                clipBehavior: Clip.none,
-                children: [
-                  SvgPicture.asset(
-                    AppAssets.mypageMenuBorder,
-                    fit: BoxFit.fill,
-                  ),
-                  Positioned(
-                    top: iconTop,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: SvgPicture.asset(
-                        icon,
-                        width: iconSize,
-                        height: iconSize,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: AspectRatio(
+            aspectRatio: 1.1,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 카드 너비에 맞춰 아이콘/높이를 함께 유동 스케일
+                final iconSize = (constraints.maxWidth * 0.27).clamp(20.0, 34.0);
+                final cardHeight = constraints.maxHeight;
+                final iconTop = (cardHeight * -0.10).clamp(-12.0, -6.0);
+                final contentTop = (iconSize * 0.95).clamp(18.0, 30.0);
+                final contentBottom = (cardHeight * 0.10).clamp(6.0, 14.0);
+                return Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.none,
+                  children: [
+                    SvgPicture.asset(
+                      AppAssets.mypageMenuBorder,
+                      fit: BoxFit.fill,
+                    ),
+                    Positioned(
+                      top: iconTop,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          icon,
+                          width: iconSize,
+                          height: iconSize,
+                        ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(10, contentTop, 10, contentBottom),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              value,
-                              style: const TextStyle(
-                                color: Color(0xFFFF5A8D),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                height: 1,
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(10, contentTop, 10, contentBottom),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                value,
+                                style: const TextStyle(
+                                  color: Color(0xFFFF5A8D),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              unit,
-                              style: const TextStyle(
-                                color: Color(0xFF898686),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w300,
-                                height: 1,
+                              const SizedBox(width: 2),
+                              Text(
+                                unit,
+                                style: const TextStyle(
+                                  color: Color(0xFF898686),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w300,
+                                  height: 1,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       );
@@ -574,23 +655,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
       children: [
         statCard(
           icon: AppAssets.deliveryMain,
-          value: '8',
+          value: orderVal,
           unit: '건',
           label: '주문/배송내역',
+          onTap: () => Navigator.pushNamed(context, '/order'),
         ),
         const SizedBox(width: 20),
         statCard(
           icon: AppAssets.couponMain,
-          value: '2',
+          value: couponVal,
           unit: '장',
           label: '내쿠폰',
+          onTap: () => Navigator.pushNamed(context, '/coupon'),
         ),
         const SizedBox(width: 20),
         statCard(
           icon: AppAssets.pointMain,
-          value: '2,000',
+          value: pointVal,
           unit: 'P',
           label: '포인트',
+          onTap: () => Navigator.pushNamed(context, '/point'),
         ),
       ],
     );
