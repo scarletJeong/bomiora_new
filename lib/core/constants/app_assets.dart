@@ -17,6 +17,8 @@ abstract final class AppAssets {
   static const String pointMain = '${_img}pointMain.svg';
   static const String mypageMenuBorder = '${_img}mypage_menu_border.svg';
 
+  /// 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 `assets/img/review_card_overlay.png`
+  static const String reviewCardOverlay = '${_img}review_card_overlay.png';
 
   /// 앱 로고 (PNG)
   static const String bomioraLogo = '${_img}bomiora-logo.png';
