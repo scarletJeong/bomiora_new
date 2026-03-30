@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/utils/price_formatter.dart';
 
 class PopularProducts extends StatefulWidget {
   const PopularProducts({
@@ -206,7 +207,7 @@ class _PopularProductsState extends State<PopularProducts> {
                         ],
                         Expanded(
                           child: Text(
-                            '${(rank * 10000).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원',
+                            '${PriceFormatter.format(rank * 10000)}원',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,

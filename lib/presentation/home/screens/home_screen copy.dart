@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import '../widgets/main_banner_slider.dart';
+import '../widgets/stats_section.dart';
+import '../widgets/popular_products.dart';
 import '../widgets/review_section.dart';
+import '../widgets/tester_section.dart';
 import '../widgets/bottom_banner.dart';
-import '../widgets/new_product.dart';
-import '../widgets/wellness_section.dart';
-import '../widgets/category_section.dart';
-import '../widgets/guidebook_section.dart';
-import '../widgets/home_quick_tab_section.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
@@ -15,8 +13,6 @@ import '../../user/myPage/screens/my_page_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/app_footer.dart';
-import '../widgets/notice_section.dart';
-import '../widgets/event_section.dart';
 
 class HomeScreen extends StatefulWidget {
   final int initialIndex;
@@ -98,9 +94,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return MobileAppLayoutWrapper(
       child: Scaffold(
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -159,8 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomePage() {
-    const sectionGap = SizedBox(height: 24);
-
     return isLoading
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
@@ -168,39 +161,27 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // 메인 배너 슬라이더
                 const MainBannerSlider(),
-                const HomeQuickTabSection(),
-                sectionGap,
-
-                // 웰니스 섹션  - 임시
-                const WellnessSection(),
-                sectionGap,
-
-                // 신상품 섹션 - 임시
-                const NewProductSection(),
-                sectionGap,
                 
-                // 카테고리 섹션 - 임시
-                const CategorySection(),
-                sectionGap,
+                // 통계 섹션
+                const StatsSection(),
                 
-                // 가이드북 섹션 - 임시
-                const GuidebookSection(),
-                sectionGap,
-
-                // 리뷰 섹션 - 임시
+                
+                // 인기상품 섹션
+                const PopularProducts(),
+                
+                // 리뷰 섹션
                 const ReviewSection(),
-                sectionGap,
+                
+                // 체험단 섹션
+                const TesterSection(),
+                
+                // 하단 배너
+                const BottomBanner(),
+                
 
-                // 공지사항 섹션 - 임시
-                const NoticeSection(),
-                sectionGap,
-
-                // 이벤트 섹션 - 임시
-                const EventSection(),
-                sectionGap,
-    
+                const SizedBox(height: 300),
                 // Footer
-                // const AppFooter(),
+                const AppFooter(),
               ],
             ),
           );

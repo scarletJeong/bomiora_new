@@ -5,17 +5,18 @@ import '../widgets/popular_products.dart';
 import '../widgets/review_section.dart';
 import '../widgets/tester_section.dart';
 import '../widgets/bottom_banner.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../shopping/screens/cart_screen.dart';
 import '../../shopping/screens/product_list_screen.dart';
 import '../../shopping/showcase/screens/showcase_screen.dart';
 import '../../health/dashboard/screens/health_dashboard_screen.dart';
-import '../../health/telemedicine/screens/telemedicine_webview_screen.dart';
+import '../../health/telemedicine/screens/telemedicine_list_screen.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 import '../../user/coupon/screens/coupon_screen.dart';
-import '../../user/mileage/screens/mileage_screen.dart';
-import '../../customer_service/screens/customer_service_screen.dart';
+import '../../user/point/screens/point_screen.dart';
+import '../../customer_service/screens/contact_list_screen.dart';
 import '../../shopping/wish/screens/wish_list_screen.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
 import '../../event/screens/event_list_screen.dart';
@@ -112,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         title: Image.asset(
-          'assets/images/bomiora-logo.png',
+          AppAssets.bomioraLogo,
           height: 40,
         ),
         centerTitle: true,
@@ -144,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Image.asset(
-                    'assets/images/bomiora-logo.png',
+                    AppAssets.bomioraLogo,
                     height: 40,
                     color: Colors.white,
                   ),
@@ -241,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const MileageScreen(),
+                          builder: (context) => const PointScreen(),
                         ),
                       );
                     },
@@ -265,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const CustomerServiceScreen(initialTabIndex: 0),
+                          builder: (context) => const ContactListScreen(),
                         ),
                       );
                     },
@@ -403,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const CustomerServiceScreen(initialTabIndex: 1),
+                    builder: (context) => const ContactListScreen(),
                   ),
                 );
               },

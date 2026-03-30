@@ -66,7 +66,16 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 300,
+      height: 600,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xFFFF5A8D),
+            width: 1,
+          ),
+        ),
+      ),
       child: Stack(
         children: [
           PageView.builder(
@@ -90,7 +99,7 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
                   } 
                 },
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(0),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
