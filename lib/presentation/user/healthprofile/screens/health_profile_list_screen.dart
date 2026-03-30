@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../models/health_profile_model.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -439,8 +440,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          _metaRow('작성일', _formatDate(profile.pfWdatetime)),
-          _metaRow('수정일', _formatDate(profile.pfMdatetime)),
+          _metaRow('작성일', DateDisplayFormatter.formatYmdDash(profile.pfWdatetime)),
+          _metaRow('수정일', DateDisplayFormatter.formatYmdDash(profile.pfMdatetime)),
         ],
       ),
     );
@@ -1192,10 +1193,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         ],
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   /// 생년월일 포맷팅 (YYYYMMDD -> YYYY-MM-DD)
