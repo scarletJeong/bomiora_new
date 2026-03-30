@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 // import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
@@ -22,8 +21,8 @@ import 'presentation/shopping/screens/cart_screen.dart';
 import 'presentation/shopping/showcase/screens/showcase_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
-import 'presentation/customer_service/screens/customer_service_screen.dart';
-import 'presentation/user/mileage/screens/mileage_screen.dart';
+import 'presentation/customer_service/screens/contact_list_screen.dart';
+import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/coupon/screens/coupon_screen.dart';
 import 'presentation/review/screens/all_reviews_screen.dart';
@@ -92,31 +91,19 @@ class BomioraApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
-        '/category': (context) => const MobileLayoutWrapper(initialIndex: 1),
-        '/favorite': (context) => const MobileLayoutWrapper(initialIndex: 2),
-        '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 3),
-        '/cart': (context) {
-          final args =
-              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-          final dynamic initialTabArg =
-              args == null ? null : args['initialTabIndex'];
-          final int initialTabIndex = initialTabArg is int
-              ? initialTabArg
-              : int.tryParse(initialTabArg?.toString() ?? '') ?? 0;
-          return CartScreen(
-            backToProductId: args?['backToProductId']?.toString(),
-            initialTabIndex: initialTabIndex,
-          );
-        },
+        '/category': (context) => const ShowcaseScreen(),
+        '/favorite': (context) => const WishListScreen(),
+        '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 1),
+        '/cart': (context) => const CartScreen(),
         '/coupon': (context) => const CouponScreen(),
         '/review': (context) => const AllReviewsScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
         '/profile': (context) => const HealthProfileListScreen(),
-        '/qna': (context) => const CustomerServiceScreen(initialTabIndex: 1),
+        '/qna': (context) => const ContactListScreen(),
         '/cancel-member': (context) => const CancelMemberScreen(),
-        '/customer-service': (context) => const CustomerServiceScreen(),
+        '/customer-service': (context) => const ContactListScreen(),
         '/kcp-cert': (context) => const KcpCertWebViewScreen(),
-        '/point': (context) => const MileageScreen(),
+        '/point': (context) => const PointScreen(),
         '/order': (context) => const DeliveryListScreen(),
         '/signup': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -177,61 +164,71 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkLoginStatus() async {
-    final results = await Future.wait<dynamic>([
-      AuthService.isLoggedIn(),
-      Future.delayed(const Duration(milliseconds: 2500)),
-    ]);
-    final isLoggedIn = results[0] as bool;
-    if (!mounted) return;
-    setState(() {
-      _isLoggedIn = isLoggedIn;
-      _isLoading = false;
-    });
+    bool isLoggedIn = await AuthService.isLoggedIn();
+
+    // 로컬 디버그 모드: 로그인되어 있지 않으면 test 계정으로 자동 로그인 시도
+    if (kDebugMode && !isLoggedIn) {
+      isLoggedIn = await _tryDebugAutoLogin();
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = isLoggedIn;
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// 디버그 모드 전용: test@naver.com / testtest 로 자동 로그인
+  static const String _debugEmail = 'test@naver.com';
+  static const String _debugPassword = 'testtest';
+
+  Future<bool> _tryDebugAutoLogin() async {
+    try {
+      final result = await AuthRepository.login(
+        email: _debugEmail,
+        password: _debugPassword,
+      );
+      if (result['success'] != true) return false;
+
+      final resultData = result['data'];
+      if (resultData is! Map) return false;
+
+      final userData = NodeValueParser.normalizeMap(
+        Map<String, dynamic>.from(resultData as Map),
+      );
+      final userRaw = userData['user'];
+      final userJson = NodeValueParser.normalizeMap(
+        userRaw is Map
+            ? Map<String, dynamic>.from(userRaw)
+            : Map<String, dynamic>.from(userData),
+      );
+      final userId = NodeValueParser.asString(userJson['mb_id']) ??
+          NodeValueParser.asString(userJson['id']) ??
+          '';
+      userJson['id'] = userId;
+      userJson['password'] = _debugPassword;
+      final user = UserModel.fromJson(userJson);
+      final token = NodeValueParser.asString(userData['token']);
+      await AuthService.saveLoginData(user: user, token: token);
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ [DEBUG AUTO LOGIN] 실패: $e');
+      return false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        body: DecoratedBox(
-          decoration: BoxDecoration(color: Color(0xFFF7F7F7)),
-          child: SizedBox.expand(
-            child: _SplashImage(),
-          ),
+        body: Center(
+          child: CircularProgressIndicator(),
         ),
       );
     }
 
     return _isLoggedIn ? const MobileLayoutWrapper() : const LoginScreen();
-  }
-}
-
-class _SplashImage extends StatelessWidget {
-  const _SplashImage();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = kIsWeb
-            ? (constraints.maxWidth > 600 ? 600.0 : constraints.maxWidth)
-            : constraints.maxWidth;
-
-        return Center(
-          child: SizedBox(
-            width: width,
-            height: constraints.maxHeight,
-            child: Image.asset(
-              'assets/img/splashScreen.png',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Center(
-                child: Text('스플래시 이미지 로드 실패'),
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 

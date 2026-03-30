@@ -42,6 +42,8 @@ class MobileLayoutWrapper extends StatelessWidget {
 class MobileAppLayoutWrapper extends StatelessWidget {
   final Widget child;
   final PreferredSizeWidget? appBar;
+  final Widget? drawer;
+  final Widget? endDrawer;
   final bool showShadow;
   final Color? backgroundColor;
 
@@ -49,6 +51,8 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     super.key,
     required this.child,
     this.appBar,
+    this.drawer,
+    this.endDrawer,
     this.showShadow = true,
     this.backgroundColor,
   });
@@ -109,6 +113,8 @@ class MobileAppLayoutWrapper extends StatelessWidget {
           child: Scaffold(
             backgroundColor: backgroundColor ?? Colors.white, // 기본값: 하얀색
             appBar: wrappedAppBar ?? appBar,
+            drawer: drawer,
+            endDrawer: endDrawer,
             body: child,
           ),
         ),
