@@ -80,11 +80,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     }
     _weightLossKg = 1;
     final items = od.products;
-    debugPrint('📝 [리뷰 작성] odId=${od.odId} isPrescriptionOrder=${od.isPrescriptionOrder} 상품수=${items.length}');
-    for (var i = 0; i < items.length; i++) {
-      final p = items[i];
-      debugPrint('   [$i] itId=${p.itId} itName=${p.itName} itSubject=${p.itSubject} ctOption=${p.ctOption}');
-    }
   }
 
   @override
@@ -865,7 +860,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         }
       }
     } catch (e) {
-      print(_isEditMode ? '리뷰 수정 오류: $e' : '리뷰 작성 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -5,6 +5,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -34,6 +35,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   static const Color _kBorderStrong = Color(0xFFD2D2D2);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kMuted2 = Color(0xFF898383);
+  static const Color _kHeaderAction = Color(0xFF898383);
   static const Color _kInk = Color(0xFF1A1A1A);
   static const Color _kDateBrown = Color(0xFF584045);
   static const Color _kGrayBox = Color(0xCCF6F6F6);
@@ -176,16 +178,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         page: _currentPage,
         size: 20,
       );
-      print('[MyReviews] fetch request => mbId=${user.id}, page=$_currentPage, size=20, refresh=$refresh');
 
       if (result['success'] == true) {
         final newReviews = result['reviews'] as List<ReviewModel>;
-        print('[MyReviews] fetch success => count=${newReviews.length}, hasNext=${result['hasNext']}, totalLoaded(before)=${_reviews.length}');
-        for (final r in newReviews) {
-          print(
-            '[MyReviews] item => isId=${r.isId}, odId=${r.odId}, itId=${r.itId}, itName=${r.itName}, itKind=${r.itKind}, score=${r.averageScore ?? '-'}, created=${r.isTime}',
-          );
-        }
 
         setState(() {
           if (refresh) {
@@ -198,12 +193,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           final vis = _visibleReviews();
           _ensureActiveInVisible(vis);
         });
-        print('[MyReviews] state updated => totalLoaded(after)=${_reviews.length}, visible=${_visibleReviews().length}, activeReview=${_activeReview?.isId}');
-      } else {
-        print('[MyReviews] fetch failed => message=${result['message']}');
       }
     } catch (e) {
-      print('[MyReviews] fetch exception => $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('리뷰를 불러오는데 실패했습니다.')),
@@ -216,13 +207,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     }
   }
 
-  String _formatDateDot(DateTime? d) {
-    if (d == null) return '-';
-    return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
-  }
-
   String _writtenLine(ReviewModel r) {
-    return '${_formatDateDot(r.isTime)} 작성';
+    return '${r.isTime == null ? '-' : DateDisplayFormatter.formatYmd(r.isTime!)} 작성';
   }
 
   Widget _starsRow(int score, {double size = 14}) {
@@ -362,14 +348,22 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _kBrandFallback,
-                style: const TextStyle(
-                  color: _kInk,
-                  fontSize: 10,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      _kBrandFallback,
+                      style: const TextStyle(
+                        color: _kInk,
+                        fontSize: 10,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  _headerActionsInline(r),
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -396,6 +390,51 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _headerActionsInline(ReviewModel r) {
+    final enabled = r.isId != null;
+    final actionColor = enabled ? _kHeaderAction : _kHeaderAction.withValues(alpha: 0.5);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: enabled ? () => _editReview(r) : null,
+          child: Text(
+            '수정',
+            style: TextStyle(
+              color: actionColor,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          '|',
+          style: TextStyle(
+            color: _kHeaderAction,
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 6),
+        GestureDetector(
+          onTap: enabled ? () => _deleteReview(r) : null,
+          child: Text(
+            '삭제',
+            style: TextStyle(
+              color: actionColor,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -499,9 +538,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
     children
       ..add(const SizedBox(height: 10))
-      ..add(_couponBanner(r))
-      ..add(const SizedBox(height: 10))
-      ..add(_reviewActions(r));
+      ..add(_couponBanner(r));
 
     return Container(
       width: double.infinity,
@@ -586,40 +623,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          _reviewActions(r),
         ],
       ),
-    );
-  }
-
-  Widget _reviewActions(ReviewModel r) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        TextButton(
-          onPressed: r.isId == null ? null : () => _editReview(r),
-          child: const Text(
-            '수정',
-            style: TextStyle(
-              color: _kPink,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        TextButton(
-          onPressed: r.isId == null ? null : () => _deleteReview(r),
-          child: Text(
-            '삭제',
-            style: TextStyle(
-              color: Colors.grey[700],
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -667,7 +672,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _formatDateDot(r.isTime),
+                      r.isTime == null ? '-' : DateDisplayFormatter.formatYmd(r.isTime!),
                       style: const TextStyle(
                         color: _kDateBrown,
                         fontSize: 10,

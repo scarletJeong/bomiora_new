@@ -636,7 +636,6 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
         }
       }
     } catch (e) {
-      print('리뷰 수정 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
