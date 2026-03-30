@@ -65,8 +65,8 @@ class Coupon {
           NodeValueParser.asString(normalized['userId']) ??
           '',
       zoneId: NodeValueParser.asInt(normalized['cz_id'] ?? normalized['zoneId']) ?? 0,
-      startDate: _parseDate(normalized['cp_start'] ?? normalized['startDate']),
-      endDate: _parseDate(normalized['cp_end'] ?? normalized['endDate']),
+      startDate: _parseDate(normalized['cp_start'] ?? normalized['startDate']) ?? DateTime.now(),
+      endDate: _parseDate(normalized['cp_end'] ?? normalized['endDate']) ?? DateTime.now(),
       price: NodeValueParser.asInt(normalized['cp_price'] ?? normalized['price']) ?? 0,
       type: NodeValueParser.asInt(normalized['cp_type'] ?? normalized['type']) ?? 0,
       trunc: NodeValueParser.asInt(normalized['cp_trunc'] ?? normalized['trunc']) ?? 0,
@@ -80,18 +80,16 @@ class Coupon {
     );
   }
 
-  static DateTime _parseDate(dynamic dateValue) {
+  static DateTime? _parseDate(dynamic dateValue) {
     try {
-      if (dateValue == null) {
-        return DateTime.now();
-      }
+      if (dateValue == null) return null;
       
       String dateStr = dateValue.toString();
       
       if (dateStr.contains('0000-00-00') || 
           dateStr.contains('1900-01-01') ||
           dateStr.isEmpty) {
-        return DateTime.now();
+        return null;
       }
       
       // 날짜만 있는 경우 (시간 없음)
@@ -100,28 +98,26 @@ class Coupon {
       }
       
       return DateTime.parse(dateStr);
-    } catch (e) {
-      return DateTime.now();
+    } catch (_) {
+      return null;
     }
   }
 
-  static DateTime _parseDateTime(dynamic dateValue) {
+  static DateTime? _parseDateTime(dynamic dateValue) {
     try {
-      if (dateValue == null) {
-        return DateTime.now();
-      }
+      if (dateValue == null) return null;
       
       String dateStr = dateValue.toString();
       
       if (dateStr.contains('0000-00-00') || 
           dateStr.contains('1900-01-01') ||
           dateStr.isEmpty) {
-        return DateTime.now();
+        return null;
       }
       
       return DateTime.parse(dateStr);
-    } catch (e) {
-      return DateTime.now();
+    } catch (_) {
+      return null;
     }
   }
 

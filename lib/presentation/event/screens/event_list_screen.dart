@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/event/event_model.dart';
 import '../../../data/services/event_service.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import 'event_detail_screen.dart';
 
@@ -234,7 +235,7 @@ class _ActiveEventsTabState extends State<ActiveEventsTab> {
                       Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
                       Text(
-                        _formatDateRange(event.wr1, event.wr2),
+                        DateDisplayFormatter.formatYmdRange(event.wr1, event.wr2),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -251,18 +252,6 @@ class _ActiveEventsTabState extends State<ActiveEventsTab> {
     );
   }
 
-  String _formatDateRange(String? wr1, String? wr2) {
-    try {
-      if (wr1 != null && wr2 != null) {
-        final begin = DateTime.parse(wr1);
-        final end = DateTime.parse(wr2);
-        return '${begin.year}.${begin.month.toString().padLeft(2, '0')}.${begin.day.toString().padLeft(2, '0')} ~ ${end.year}.${end.month.toString().padLeft(2, '0')}.${end.day.toString().padLeft(2, '0')}';
-      }
-      return '';
-    } catch (e) {
-      return '';
-    }
-  }
 }
 
 // 종료된 이벤트 탭
@@ -453,7 +442,7 @@ class _EndedEventsTabState extends State<EndedEventsTab> {
                                 size: 14, color: Colors.grey[500]),
                             const SizedBox(width: 4),
                             Text(
-                              _formatDate(event.wrDatetime),
+                              DateDisplayFormatter.formatYmdFromString(event.wrDatetime),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -492,12 +481,4 @@ class _EndedEventsTabState extends State<EndedEventsTab> {
     );
   }
 
-  String _formatDate(String dateStr) {
-    try {
-      final date = DateTime.parse(dateStr);
-      return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return dateStr;
-    }
-  }
 }

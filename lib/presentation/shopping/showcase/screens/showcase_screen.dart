@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/product/product_model.dart';
 import '../../../../data/repositories/product/product_repository.dart';
+import '../../../../core/utils/price_formatter.dart';
 import '../../screens/product_detail_screen.dart';
 import '../../../common/widgets/app_footer.dart';
 
@@ -316,7 +317,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                         ],
                         Expanded(
                           child: Text(
-                            '${_formatPrice(product.price)}원',
+                            '${PriceFormatter.format(product.price)}원',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -332,7 +333,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     if ((product.discountRate ?? 0) > 0 && product.originalPrice != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        '${_formatPrice(product.originalPrice!)}원',
+                        '${PriceFormatter.format(product.originalPrice!)}원',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[500],
@@ -350,11 +351,5 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
-  }
 }
 

@@ -6,6 +6,7 @@ import '../../../../data/models/health/steps/steps_record_model.dart';
 import '../../../../data/repositories/health/steps/steps_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
+import '../../../../core/utils/price_formatter.dart';
 import '../widgets/hourly_steps_chart.dart';
 
 class StepsTodayScreen extends StatefulWidget {
@@ -200,7 +201,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                '${totalSteps.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} 걸음',
+                '${PriceFormatter.format(totalSteps)} 걸음',
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -227,7 +228,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                       ),
                       const SizedBox(width: 2),
                       Text(
-                        '전날 대비 ${stepsDiff.abs().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} ${isIncrease ? '↑' : '↓'}',
+                        '전날 대비 ${PriceFormatter.format(stepsDiff.abs())} ${isIncrease ? '↑' : '↓'}',
                         style: TextStyle(
                           fontSize: 12,
                           color: isIncrease ? Colors.red : Colors.blue,

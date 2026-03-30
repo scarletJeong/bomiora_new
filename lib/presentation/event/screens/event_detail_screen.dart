@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/event/event_model.dart';
 import '../../../data/services/event_service.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 
 class EventDetailScreen extends StatefulWidget {
@@ -134,7 +135,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
                     const SizedBox(width: 4),
                     Text(
-                      _formatDate(_event!.wrDatetime),
+                      DateDisplayFormatter.formatYmdFromString(_event!.wrDatetime),
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey[600],
@@ -207,13 +208,5 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  String _formatDate(String dateStr) {
-    try {
-      final date = DateTime.parse(dateStr);
-      return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return dateStr;
-    }
-  }
 }
 

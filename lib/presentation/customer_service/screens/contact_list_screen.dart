@@ -6,6 +6,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
+import '../../../core/utils/date_formatter.dart';
 
 /// 1:1 문의 **화면(페이지)** — 앱바, 총 문의수, 문의유형 필터, 목록.
 class ContactListScreen extends StatefulWidget {
@@ -72,15 +73,6 @@ class _ContactListScreenState extends State<ContactListScreen> {
 
   String _statusLabel(Contact contact) {
     return contact.hasReply ? '답변완료' : '접수완료';
-  }
-
-  String _formatDate(String datetime) {
-    try {
-      final date = DateTime.parse(datetime);
-      return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return datetime;
-    }
   }
 
   Widget _buildCountRow() {
@@ -158,7 +150,7 @@ class _ContactListScreenState extends State<ContactListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _formatDate(contact.wrDatetime),
+                      DateDisplayFormatter.formatYmdFromString(contact.wrDatetime),
                       style: const TextStyle(
                         color: _kDateColor,
                         fontSize: 10,

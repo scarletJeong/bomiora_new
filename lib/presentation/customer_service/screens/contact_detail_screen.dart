@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
@@ -163,15 +164,6 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     }
   }
 
-  String _formatDateShort(String datetime) {
-    try {
-      final date = DateTime.parse(datetime);
-      return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return datetime;
-    }
-  }
-
   Widget _buildQuestionCard() {
     final c = _contact!;
     return Container(
@@ -246,7 +238,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                             ),
                           ),
                           Text(
-                            _formatDateShort(c.wrDatetime),
+                            DateDisplayFormatter.formatYmdFromString(c.wrDatetime),
                             style: const TextStyle(
                               color: Color(0xFF1A1A1A),
                               fontSize: 10,
@@ -399,7 +391,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                               ),
                             ),
                             Text(
-                              _formatDateShort(reply.wrDatetime),
+                              DateDisplayFormatter.formatYmdFromString(reply.wrDatetime),
                               style: const TextStyle(
                                 color: Color(0xFF1A1A1A),
                                 fontSize: 10,
@@ -515,7 +507,11 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                   ),
                                 ),
                                 Text(
-                                  _formatDateShort(_contact!.wrLast.isNotEmpty ? _contact!.wrLast : _contact!.wrDatetime),
+                                  DateDisplayFormatter.formatYmdFromString(
+                                    _contact!.wrLast.isNotEmpty
+                                        ? _contact!.wrLast
+                                        : _contact!.wrDatetime,
+                                  ),
                                   style: const TextStyle(
                                     color: Color(0xFF1A1A1A),
                                     fontSize: 10,

@@ -447,7 +447,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
         });
       }
     } catch (e) {
-      print('체중 기록 로드 오류: $e');
       setState(() {
         isLoading = false;
       });

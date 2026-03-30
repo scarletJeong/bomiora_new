@@ -121,7 +121,7 @@ class MenstrualCycleRecord {
       id: _parseInt(json['id']),
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
       lastPeriodStart:
-          _parseDateTime(json['last_period_start'] ?? json['lastPeriodStart']),
+          _parseDateTime(json['last_period_start'] ?? json['lastPeriodStart']) ?? DateTime.now(),
       cycleLength: _parseInt(json['cycle_length'] ?? json['cycleLength']) ?? 28,
       periodLength:
           _parseInt(json['period_length'] ?? json['periodLength']) ?? 5,
@@ -135,22 +135,26 @@ class MenstrualCycleRecord {
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
-    final parsed = DateTime.parse(value.toString());
-    if (parsed.isUtc) {
-      return DateTime(
-        parsed.year,
-        parsed.month,
-        parsed.day,
-        parsed.hour,
-        parsed.minute,
-        parsed.second,
-        parsed.millisecond,
-        parsed.microsecond,
-      );
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    try {
+      final parsed = DateTime.parse(value.toString());
+      if (parsed.isUtc) {
+        return DateTime(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+          parsed.hour,
+          parsed.minute,
+          parsed.second,
+          parsed.millisecond,
+          parsed.microsecond,
+        );
+      }
+      return parsed;
+    } catch (_) {
+      return null;
     }
-    return parsed;
   }
 
   static String? _parseString(dynamic value) {

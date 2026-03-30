@@ -86,7 +86,7 @@ class BloodPressureRecord {
     return BloodPressureRecord(
       id: _parseInt(json['id']),
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
-      measuredAt: _parseDateTime(json['measured_at']),
+      measuredAt: _parseDateTime(json['measured_at']) ?? DateTime.now(),
       systolic: _parseInt(json['systolic']) ?? 0,
       diastolic: _parseInt(json['diastolic']) ?? 0,
       pulse: _parseInt(json['pulse']) ?? 0,
@@ -94,12 +94,16 @@ class BloodPressureRecord {
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
-    final parsed = DateTime.parse(value.toString());
-    // API가 UTC(Z)로 내려주면 로컬 시간대로 변환해
-    // 입력/DB 표시와 그래프 시간이 동일하게 보이도록 맞춘다.
-    return parsed.isUtc ? parsed.toLocal() : parsed;
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    try {
+      final parsed = DateTime.parse(value.toString());
+      // API가 UTC(Z)로 내려주면 로컬 시간대로 변환해
+      // 입력/DB 표시와 그래프 시간이 동일하게 보이도록 맞춘다.
+      return parsed.isUtc ? parsed.toLocal() : parsed;
+    } catch (_) {
+      return null;
+    }
   }
 
   static String? _parseString(dynamic value) {

@@ -36,7 +36,7 @@ class HeartRateRecord {
       id: _parseInt(json['id']),
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
       heartRate: _parseInt(json['heart_rate'] ?? json['heartRate']) ?? 0,
-      measuredAt: _parseDateTime(json['measured_at'] ?? json['measuredAt']),
+      measuredAt: _parseDateTime(json['measured_at'] ?? json['measuredAt']) ?? DateTime.now(),
       status: _parseString(json['status']) ?? '일상',
       sourceType:
           _parseString(json['source_type'] ?? json['sourceType']) ??
@@ -48,10 +48,14 @@ class HeartRateRecord {
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
-    final parsed = DateTime.parse(value.toString());
-    return parsed.isUtc ? parsed.toLocal() : parsed;
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    try {
+      final parsed = DateTime.parse(value.toString());
+      return parsed.isUtc ? parsed.toLocal() : parsed;
+    } catch (_) {
+      return null;
+    }
   }
 
   static String? _parseString(dynamic value) {

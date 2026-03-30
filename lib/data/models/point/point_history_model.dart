@@ -39,7 +39,7 @@ class PointHistory {
           NodeValueParser.asString(normalized['mb_id']) ??
           NodeValueParser.asString(normalized['userId']) ??
           '',
-      dateTime: _parseDateTime(normalized['po_datetime'] ?? normalized['dateTime']),
+      dateTime: _parseDateTime(normalized['po_datetime'] ?? normalized['dateTime']) ?? DateTime.now(),
       content:
           NodeValueParser.asString(normalized['po_content']) ??
           NodeValueParser.asString(normalized['content']) ??
@@ -49,7 +49,9 @@ class PointHistory {
           NodeValueParser.asInt(normalized['po_use_point'] ?? normalized['usePoint']) ??
           0,
       expired: NodeValueParser.asInt(normalized['po_expired'] ?? normalized['expired']) ?? 0,
-      expireDate: _parseDateTime(normalized['po_expire_date'] ?? normalized['expireDate']),
+      expireDate:
+          _parseDateTime(normalized['po_expire_date'] ?? normalized['expireDate']) ??
+          DateTime.now(),
       useDate: normalized['po_use_date'] != null || normalized['useDate'] != null
           ? _parseDateTime(normalized['po_use_date'] ?? normalized['useDate'])
           : null,
@@ -68,11 +70,9 @@ class PointHistory {
     );
   }
 
-  static DateTime _parseDateTime(dynamic dateValue) {
+  static DateTime? _parseDateTime(dynamic dateValue) {
     try {
-      if (dateValue == null) {
-        return DateTime.now();
-      }
+      if (dateValue == null) return null;
       
       String dateStr = dateValue.toString();
       
@@ -80,12 +80,12 @@ class PointHistory {
           dateStr.contains('1900-01-01') ||
           dateStr.contains('9999-12-31') ||
           dateStr.isEmpty) {
-        return DateTime.now().add(const Duration(days: 365)); // 기본값: 1년 후
+        return null;
       }
       
       return DateTime.parse(dateStr);
-    } catch (e) {
-      return DateTime.now().add(const Duration(days: 365));
+    } catch (_) {
+      return null;
     }
   }
 

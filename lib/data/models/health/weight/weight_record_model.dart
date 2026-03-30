@@ -56,7 +56,7 @@ class WeightRecord {
     return WeightRecord(
       id: json['recordId'] ?? json['record_id'] ?? json['id'],
       mbId: _parseString(json['mbId'] ?? json['mb_id']) ?? '',
-      measuredAt: _parseDateTime(json['measuredAt'] ?? json['measured_at']),
+      measuredAt: _parseDateTime(json['measuredAt'] ?? json['measured_at']) ?? DateTime.now(),
       weight: (json['weight'] as num).toDouble(),
       height:
           json['height'] != null ? (json['height'] as num).toDouble() : null,
@@ -78,11 +78,9 @@ class WeightRecord {
   }
 
   // 안전한 날짜 파싱 함수
-  static DateTime _parseDateTime(dynamic dateValue) {
+  static DateTime? _parseDateTime(dynamic dateValue) {
     try {
-      if (dateValue == null) {
-        return DateTime.now(); // null이면 현재 시간 반환
-      }
+      if (dateValue == null) return null;
 
       String dateStr = dateValue.toString();
 
@@ -90,16 +88,14 @@ class WeightRecord {
       if (dateStr.contains('0000-00-00') ||
           dateStr.contains('1900-01-01') ||
           dateStr.isEmpty) {
-        print('⚠️ 잘못된 날짜 형식 감지: $dateStr, 현재 시간으로 대체');
-        return DateTime.now();
+        return null;
       }
 
       final parsed = DateTime.parse(dateStr);
       // 서버가 UTC(Z)로 내려주면 로컬 시간(KST)으로 변환해서 화면 표시 일관성 유지
       return parsed.isUtc ? parsed.toLocal() : parsed;
     } catch (e) {
-      print('❌ 날짜 파싱 오류: $dateValue, 현재 시간으로 대체');
-      return DateTime.now();
+      return null;
     }
   }
 

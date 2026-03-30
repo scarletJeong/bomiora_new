@@ -9,6 +9,7 @@ import '../../../data/services/review_service.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/html_parser.dart' as custom_html_parser;
 import '../../../core/utils/point_helper.dart';
+import '../../../core/utils/price_formatter.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -175,7 +176,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             NodeValueParser.asString(_product!.additionalInfo!['itOrgId']);
         if (itOrgId != null && itOrgId.isNotEmpty) {
           reviewProductId = itOrgId;
-          print('📦 [리뷰 조회] it_org_id 사용: $reviewProductId (원본: ${widget.productId})');
         }
       }
       
@@ -267,7 +267,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         });
       }
     } catch (e) {
-      print('리뷰 로드 오류: $e');
       setState(() {
         _isLoadingReviews = false;
       });
@@ -2056,13 +2055,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
-  }
-
   Widget _buildBottomActionBar() {
     final isGeneralProduct = _product?.ctKind == 'general';
     return Container(
@@ -2354,7 +2346,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '총 ${_formatPrice(totalPrice)}원',
+                      '총 ${PriceFormatter.format(totalPrice)}원',
                       textAlign: TextAlign.right,
                       style: const TextStyle(
                         fontSize: 16,
