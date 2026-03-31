@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/appbar_menutap.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
@@ -217,6 +219,36 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
+      // 홈 화면과 동일한 구조: 왼쪽 햄버거 메뉴 아이콘 + Drawer
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
+        title: Image.asset(
+          AppAssets.bomioraLogo,
+          height: 40,
+        ),
+        backgroundColor: const Color(0xFFFFACC6),
+        foregroundColor: Colors.black,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      drawer: AppBarMenuTapDrawer(
+        onHealthDashboardTap: () {
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HealthDashboardScreen(),
+            ),
+          );
+        },
+      ),
       backgroundColor: Colors.white,
       child: isLoading
           ? const Center(
@@ -229,51 +261,46 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ],
               ),
             )
-          : RefreshIndicator(
-              color: const Color(0xFFFF5A8D),
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    _buildHeaderSection(),
-                    Transform.translate(
-                      offset: const Offset(0, -36),
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 0),
-                        padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.all(Radius.circular(44)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            HealthDateSelector(
-                              selectedDate: selectedDate,
-                              onDateChanged: (newDate) {
-                                setState(() {
-                                  selectedDate = newDate;
-                                });
-                                _loadData();
-                              },
-                              monthTextColor: const Color(0xFF898686),
-                              selectedTextColor: const Color(0xFFFF5A8D),
-                              unselectedTextColor: const Color(0xFFB7B7B7),
-                              iconColor: const Color(0xFF898686),
-                            ),
-                            const SizedBox(height: 18),
-                            _buildBodyMetricsSection(),
-                            const SizedBox(height: 24),
-                            _buildMealSection(),
-                            const SizedBox(height: 24),
-                            _buildHealthMetricsSection(),
-                          ],
-                        ),
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildHeaderSection(),
+                  Transform.translate(
+                    offset: const Offset(0, -36),
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 0),
+                      padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.all(Radius.circular(44)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          HealthDateSelector(
+                            selectedDate: selectedDate,
+                            onDateChanged: (newDate) {
+                              setState(() {
+                                selectedDate = newDate;
+                              });
+                              _loadData();
+                            },
+                            monthTextColor: const Color(0xFF898686),
+                            selectedTextColor: const Color(0xFFFF5A8D),
+                            unselectedTextColor: const Color(0xFFB7B7B7),
+                            iconColor: const Color(0xFF898686),
+                          ),
+                          const SizedBox(height: 18),
+                          _buildBodyMetricsSection(),
+                          const SizedBox(height: 24),
+                          _buildMealSection(),
+                          const SizedBox(height: 24),
+                          _buildHealthMetricsSection(),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
     );
@@ -345,6 +372,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   ],
                 ),
               ),
+              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 16),
@@ -407,7 +435,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     );
   }
 
-  /// 목표 체중까지의 진행률(0~1). 왼쪽=현재·오른쪽=목표로 향함. 목표 이력의 등록 시 현재체중을 앵커로 사용.
+  /// 목표 체중까지의 진행률(0~1). 실제 측정 체중(cur)이 목표(tgt) 쪽으로 얼마나 왔는지. 앵커는 목표설정 시 저장 체중.
   double _weightTowardGoalRatio(double cur, double tgt, double? goalAnchor) {
     if (tgt <= 0 || cur <= 0) return 0.0;
     if ((cur - tgt).abs() < 0.05) return 1.0;
@@ -430,26 +458,25 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return 1.0;
   }
 
-  // 목표 체중 진행 바 (좌: 현재 체중, 우: 목표 체중, 채움은 목표 방향 진행)
+  // 목표 체중 진행 바 (좌: 목표설정 시점에 저장된 체중, 우: 목표 체중, 채움은 실제 현재 체중 기준 진행)
   Widget _buildWeightProgressBar() {
     final double? goalTgt = latestHealthGoal?.targetWeight;
     final double? anchor = latestHealthGoal?.currentWeight;
+    final double leftLabelWeight = (goalTgt != null &&
+            anchor != null &&
+            anchor > 0)
+        ? anchor
+        : currentWeight;
     final double ratio = goalTgt != null
         ? _weightTowardGoalRatio(currentWeight, goalTgt, anchor)
         : 0.0;
-    // 말풍선: 목표 대비가 아니라 "목표설정 시점(anchor) 대비 현재 변화"를 표시
-    final int diffFromAnchor = (anchor != null && currentWeight > 0)
-        ? (currentWeight - anchor).round()
+    final int diff = goalTgt != null
+        ? (currentWeight - goalTgt).round()
         : 0;
     final String rightLabel = goalTgt != null
         ? (goalTgt == goalTgt.roundToDouble()
             ? '${goalTgt.toInt()}kg'
             : '${goalTgt.toStringAsFixed(1)}kg')
-        : '-';
-    final String leftLabel = anchor != null
-        ? (anchor == anchor.roundToDouble()
-            ? '${anchor.toInt()}kg'
-            : '${anchor.toStringAsFixed(1)}kg')
         : '-';
 
     return LayoutBuilder(
@@ -457,6 +484,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         final double barHeight = 14;
         final double arrowTipWidth = 10;
         const double bubbleWidth = 40;
+        const double bubbleTopSpace = 28;
         final double markerX = constraints.maxWidth * ratio;
         final double bubbleLeft = (markerX - bubbleWidth / 2).clamp(
           0.0,
@@ -470,72 +498,92 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // 배경 트랙 (흰색)
-                Container(
-                  width: double.infinity,
-                  height: barHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                // 화살표 모양 채우기 (왼쪽 둥글게, 오른쪽 뾰족하게)
-                if (goalTgt != null && currentWeight > 0)
-                  SizedBox(
-                    width: fillWidth,
-                    height: barHeight,
-                    child: CustomPaint(
-                      painter: _WeightBarArrowPainter(
-                        color: const Color(0xFFFF5A8D),
-                        barHeight: barHeight,
-                        arrowTipWidth: arrowTipWidth,
-                      ),
-                      size: Size(fillWidth, barHeight),
-                    ),
-                  ),
-                // 체중 바 말풍선
-                if (goalTgt != null && currentWeight > 0)
+            SizedBox(
+              height: bubbleTopSpace + barHeight,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
                   Positioned(
-                    left: bubbleLeft,
-                    top: -21,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(999),
+                    top: bubbleTopSpace,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      width: double.infinity,
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (goalTgt != null && currentWeight > 0)
+                    Positioned(
+                      top: bubbleTopSpace,
+                      left: 0,
+                      child: SizedBox(
+                        width: fillWidth,
+                        height: barHeight,
+                        child: CustomPaint(
+                          painter: _WeightBarArrowPainter(
+                            color: const Color(0xFFFF5A8D),
+                            barHeight: barHeight,
+                            arrowTipWidth: arrowTipWidth,
                           ),
-                          child: Text(
-                            diffFromAnchor > 0
-                                ? '+${diffFromAnchor}kg'
-                                : '${diffFromAnchor}kg',
-                            style: const TextStyle(
-                              color: Color(0xFFFF5A8D),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
+                          size: Size(fillWidth, barHeight),
+                        ),
+                      ),
+                    ),
+                  if (goalTgt != null && currentWeight > 0)
+                    Positioned(
+                      left: bubbleLeft,
+                      top: 3,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              diff <= 0 ? '${diff}kg' : '-${diff}kg',
+                              style: const TextStyle(
+                                color: Color(0xFFFF5A8D),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                        CustomPaint(
-                          size: const Size(10, 4),
-                          painter: _BubbleTailPainter(color: Colors.white),
-                        ),
-                      ],
+                          Transform.translate(
+                            offset: const Offset(0, -2),
+                            child: CustomPaint(
+                              size: const Size(12, 6),
+                              painter: _BubbleDownTailPainter(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 8),
             // 체중 프로그레스 바 체중 표시 텍스트
@@ -545,7 +593,11 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    leftLabel,
+                    leftLabelWeight > 0
+                        ? (leftLabelWeight == leftLabelWeight.roundToDouble()
+                            ? '${leftLabelWeight.toInt()}kg'
+                            : '${leftLabelWeight.toStringAsFixed(1)}kg')
+                        : '-',
                     style: const TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
@@ -1196,7 +1248,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           StepsTodayScreen(initialDate: selectedDate),
                     ),
                   );
-                }, minHeight: 24, verticalPadding: 6, horizontalPadding: 10),
+                }, minHeight: 30, verticalPadding: 8),
               ),
             ],
           ),
@@ -1204,10 +1256,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       );
     }
 
-    final int? stepGoal = latestHealthGoal?.dailyStepGoal;
-    final double ratio = (steps <= 0 || stepGoal == null || stepGoal <= 0)
-        ? 0.0
-        : (steps / stepGoal).clamp(0.0, 1.0);
+    final double ratio = (steps / 8000).clamp(0.0, 1.0);
 
     return GestureDetector(
       onTap: () {
@@ -1228,66 +1277,56 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         child: Column(
           children: [
             const Align(
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.center,
               child: Text('걸음수',
                   style: TextStyle(fontSize: 16, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w700)),
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: 100,
-              height: 100,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const CircularProgressIndicator(
-                    value: 1,
-                    strokeWidth: 9,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Color(0xFFF3F4F6)),
-                  ),
-                  CircularProgressIndicator(
-                    value: ratio,
-                    strokeWidth: 9,
-                    color: const Color(0xFFFF5A8D),
-                    backgroundColor: Colors.transparent,
-                  ),
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (steps <= 0 && (stepGoal == null || stepGoal <= 0))
-                          const Text(
-                            '-',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFFFF5A8D),
-                            ),
-                          )
-                        else ...[
-                          Text(
-                            '$steps',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFFFF5A8D),
-                            ),
-                          ),
-                          if (stepGoal != null && stepGoal > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 84,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    alignment: Alignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        value: 1,
+                        strokeWidth: 8,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Color(0xFFF3F4F6)),
+                      ),
+                      CircularProgressIndicator(
+                        value: ratio,
+                        strokeWidth: 8,
+                        color: const Color(0xFFFF5A8D),
+                        backgroundColor: Colors.transparent,
+                      ),
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              '/$stepGoal',
+                              '$steps',
                               style: const TextStyle(
-                                fontSize: 10,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                                color: Color(0xFFD1D5DB),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFFFF5A8D),
                               ),
                             ),
-                        ],
-                      ],
-                    ),
+                            const Text('/8000',
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w300,
+                                    color: Color(0xFFD1D5DB))),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
             const Spacer(),
@@ -1300,7 +1339,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       builder: (context) =>
                           StepsTodayScreen(initialDate: selectedDate)),
                 );
-              }, minHeight: 24, verticalPadding: 6, horizontalPadding: 10),
+              }, minHeight: 34, verticalPadding: 8),
             ),
           ],
         ),
@@ -1360,26 +1399,26 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   // more 버튼튼
   Widget _buildMoreButton(
     VoidCallback onPressed, {
-    double minHeight = 0,
-    double verticalPadding = 6,
-    double horizontalPadding = 6,
+    double minHeight = 20,
+    double verticalPadding = 20,
   }) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFF5A8D),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(
-          horizontal: horizontalPadding,
-          vertical: verticalPadding,
+    return Transform.translate(
+      offset: const Offset(0, -4),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF5A8D),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: 7, vertical: verticalPadding),
+          minimumSize: minHeight > 0 ? Size(0, minHeight) : Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: const VisualDensity(horizontal: -3, vertical: -4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         ),
-        minimumSize: minHeight > 0 ? Size(0, minHeight) : Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        child: const Text('+ More',
+            style: TextStyle(fontSize: 8, height: 1.0, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300)),
       ),
-      child: const Text('+ More',
-          style: TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300)),
     );
   }
 
@@ -1439,6 +1478,28 @@ class _LegendDot extends StatelessWidget {
             style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300)),
       ],
     );
+  }
+}
+
+/// 체중 차이 말풍선: 아래로 향하는 뾰족한 꼬리
+class _BubbleDownTailPainter extends CustomPainter {
+  final Color color;
+
+  _BubbleDownTailPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BubbleDownTailPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 
@@ -1505,25 +1566,4 @@ class _WeightBarArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _BubbleTailPainter extends CustomPainter {
-  final Color color;
-
-  const _BubbleTailPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..lineTo(size.width, 0)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _BubbleTailPainter oldDelegate) =>
-      oldDelegate.color != color;
 }
