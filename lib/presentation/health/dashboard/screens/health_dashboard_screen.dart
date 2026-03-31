@@ -60,6 +60,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   num totalCarbs = 0;
   num totalProtein = 0;
   num totalFat = 0;
+  num totalOther = 0;
 
   int steps = 6320;
   int heartRate = 96;
@@ -168,6 +169,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         totalProtein =
             foodRecords.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
         totalFat = foodRecords.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
+        totalOther =
+            foodRecords.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
         mealCalories['Breakfast'] = _recordForMeal(foodRecords, '아침')?.calories ?? 0;
         mealCalories['Lunch'] = _recordForMeal(foodRecords, '점심')?.calories ?? 0;
         mealCalories['Dinner'] = _recordForMeal(foodRecords, '저녁')?.calories ?? 0;
@@ -342,10 +345,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: isLoading ? null : _loadData,
-                icon: const Icon(Icons.refresh, color: Colors.white),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -438,13 +437,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     final double ratio = goalTgt != null
         ? _weightTowardGoalRatio(currentWeight, goalTgt, anchor)
         : 0.0;
-    final int diff = goalTgt != null
-        ? (currentWeight - goalTgt).round()
+    // 말풍선: 목표 대비가 아니라 "목표설정 시점(anchor) 대비 현재 변화"를 표시
+    final int diffFromAnchor = (anchor != null && currentWeight > 0)
+        ? (currentWeight - anchor).round()
         : 0;
     final String rightLabel = goalTgt != null
         ? (goalTgt == goalTgt.roundToDouble()
             ? '${goalTgt.toInt()}kg'
             : '${goalTgt.toStringAsFixed(1)}kg')
+        : '-';
+    final String leftLabel = anchor != null
+        ? (anchor == anchor.roundToDouble()
+            ? '${anchor.toInt()}kg'
+            : '${anchor.toStringAsFixed(1)}kg')
         : '-';
 
     return LayoutBuilder(
@@ -500,23 +505,34 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 if (goalTgt != null && currentWeight > 0)
                   Positioned(
                     left: bubbleLeft,
-                    top: -28,
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        diff <= 0 ? '${diff}kg' : '-${diff}kg',
-                        style: const TextStyle(
-                          color: Color(0xFFFF5A8D),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
+                    top: -21,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            diffFromAnchor > 0
+                                ? '+${diffFromAnchor}kg'
+                                : '${diffFromAnchor}kg',
+                            style: const TextStyle(
+                              color: Color(0xFFFF5A8D),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                      ),
+                        CustomPaint(
+                          size: const Size(10, 4),
+                          painter: _BubbleTailPainter(color: Colors.white),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -529,11 +545,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    currentWeight > 0
-                        ? (currentWeight == currentWeight.roundToDouble()
-                            ? '${currentWeight.toInt()}kg'
-                            : '${currentWeight.toStringAsFixed(1)}kg')
-                        : '-',
+                    leftLabel,
                     style: const TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
@@ -740,7 +752,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 SizedBox(width: 12),
                 _LegendDot('지방', Color(0xFFFCF4C1)),
                 SizedBox(width: 12),
-                _LegendDot('기타', Color(0xFFE2E2E2)),
+                _LegendDot('기타', Color(0xFFD6DEE8)),
               ],
             ),
             const SizedBox(height: 16),
@@ -782,14 +794,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     final carbsKcal = (totalCarbs * 4).toDouble();
     final proteinKcal = (totalProtein * 4).toDouble();
     final fatKcal = (totalFat * 9).toDouble();
-    final totalKcalFromMacros = carbsKcal + proteinKcal + fatKcal;
-    int carbsFlex = 1, proteinFlex = 1, fatFlex = 1;
+    // 기타(g)는 바 비율용으로 탄·단과 동일 4kcal/g 가정
+    final otherKcal = (totalOther * 4).toDouble();
+    final totalKcalFromMacros =
+        carbsKcal + proteinKcal + fatKcal + otherKcal;
+    int carbsFlex = 1, proteinFlex = 1, fatFlex = 1, otherFlex = 1;
     if (totalKcalFromMacros > 0) {
       carbsFlex =
           (carbsKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
       proteinFlex =
           (proteinKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
       fatFlex = (fatKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
+      otherFlex =
+          (otherKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
     }
     final filledFlex = (fillRatio * 100).round().clamp(0, 100);
     final emptyFlex = (100 - filledFlex).clamp(1, 100);
@@ -814,12 +831,16 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     Expanded(
                         flex: fatFlex,
                         child: Container(color: const Color(0xFFFCF4C1))),
+                    Expanded(
+                        flex: otherFlex,
+                        child:
+                            Container(color: const Color(0xFFD6DEE8))),
                   ],
                 ),
               ),
             Expanded(
               flex: emptyFlex,
-              child: Container(color: const Color(0xFFE2E2E2)),
+              child: Container(color: const Color(0xFFF3F5F7)),
             ),
           ],
         ),
@@ -1175,7 +1196,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           StepsTodayScreen(initialDate: selectedDate),
                     ),
                   );
-                }, minHeight: 30, verticalPadding: 8),
+                }, minHeight: 24, verticalPadding: 6, horizontalPadding: 10),
               ),
             ],
           ),
@@ -1183,7 +1204,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       );
     }
 
-    final double ratio = (steps / 8000).clamp(0.0, 1.0);
+    final int? stepGoal = latestHealthGoal?.dailyStepGoal;
+    final double ratio = (steps <= 0 || stepGoal == null || stepGoal <= 0)
+        ? 0.0
+        : (steps / stepGoal).clamp(0.0, 1.0);
 
     return GestureDetector(
       onTap: () {
@@ -1231,17 +1255,35 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          '$steps',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFFFF5A8D),
-                          ),
-                        ),
-                        const Text('/8000',
+                        if (steps <= 0 && (stepGoal == null || stepGoal <= 0))
+                          const Text(
+                            '-',
                             style: TextStyle(
-                                fontSize: 10, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300, color: Color(0xFFD1D5DB))),
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFFF5A8D),
+                            ),
+                          )
+                        else ...[
+                          Text(
+                            '$steps',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFFF5A8D),
+                            ),
+                          ),
+                          if (stepGoal != null && stepGoal > 0)
+                            Text(
+                              '/$stepGoal',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                                color: Color(0xFFD1D5DB),
+                              ),
+                            ),
+                        ],
                       ],
                     ),
                   ),
@@ -1258,7 +1300,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       builder: (context) =>
                           StepsTodayScreen(initialDate: selectedDate)),
                 );
-              }, minHeight: 34, verticalPadding: 8),
+              }, minHeight: 24, verticalPadding: 6, horizontalPadding: 10),
             ),
           ],
         ),
@@ -1320,6 +1362,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     VoidCallback onPressed, {
     double minHeight = 0,
     double verticalPadding = 6,
+    double horizontalPadding = 6,
   }) {
     return ElevatedButton(
       onPressed: onPressed,
@@ -1327,7 +1370,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         backgroundColor: const Color(0xFFFF5A8D),
         foregroundColor: Colors.white,
         elevation: 0,
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: verticalPadding),
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: verticalPadding,
+        ),
         minimumSize: minHeight > 0 ? Size(0, minHeight) : Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
@@ -1459,4 +1505,25 @@ class _WeightBarArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _BubbleTailPainter extends CustomPainter {
+  final Color color;
+
+  const _BubbleTailPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..lineTo(size.width, 0)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BubbleTailPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
