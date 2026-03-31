@@ -148,6 +148,102 @@ class AuthRepository {
     }
   }
 
+  // 아이디/비밀번호호 찾기 API 호출
+  static Future<Map<String, dynamic>> findId({
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      final response = await ApiClient.post(ApiEndpoints.findId, {
+        'name': name,
+        'phone': phone,
+      });
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
+        final success = data['success'] ?? true;
+        return {
+          'success': success,
+          'data': data,
+          'accounts': data['accounts'],
+          'error': success ? null : _asErrorMessage(data['message'], fallback: '아이디 찾기에 실패했습니다'),
+        };
+      }
+
+      String errorMessage = '서버 오류: ${response.statusCode}';
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = _asErrorMessage(
+            errorData['message'] ?? errorData['error'],
+            fallback: errorMessage,
+          );
+        }
+      } catch (_) {}
+
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '아이디 찾기 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      final response = await ApiClient.post(ApiEndpoints.forgotPassword, {
+        'email': email,
+        'name': name,
+        'phone': phone,
+      });
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
+        final success = data['success'] ?? true;
+        return {
+          'success': success,
+          'data': data,
+          'error': success ? null : _asErrorMessage(data['message'], fallback: '비밀번호 찾기에 실패했습니다'),
+        };
+      }
+
+      String errorMessage = '서버 오류: ${response.statusCode}';
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = _asErrorMessage(
+            errorData['message'] ?? errorData['error'],
+            fallback: errorMessage,
+          );
+        }
+      } catch (_) {}
+
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '비밀번호 찾기 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
   // 회원가입 API 호출 (Spring Boot 서버)
   static Future<Map<String, dynamic>> register({
     required String email,

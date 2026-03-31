@@ -22,6 +22,7 @@ abstract final class AppAssets {
 
   /// 앱 로고 (PNG)
   static const String bomioraLogo = '${_img}bomiora-logo.png';
+  static const String bomioraLogoPink = '${_img}bomiora-logo-pink.png';
 
   /// 건강프로필 문진표 단계 아이콘 (SVG)
   static const String profile1 = '${_img}profile_1.svg';
@@ -29,4 +30,13 @@ abstract final class AppAssets {
   static const String profile3 = '${_img}profile_3.svg';
   static const String profile4 = '${_img}profile_4.svg';
   static const String profile5 = '${_img}profile_5.svg';
+
+  // 간편로그인 아이콘
+  static const String loginNaver = '${_img}login_naver.png';
+  static const String loginKakao = '${_img}login_kakao.png';
+  static const String loginGoogle = '${_img}login_google.png';
+  static const String loginApple = '${_img}login_apple.png'; 
+
+  // 아이디/비밀번호 찾기 실패 아이콘
+  static const String loginFail = '${_img}login_fail.png';
 }

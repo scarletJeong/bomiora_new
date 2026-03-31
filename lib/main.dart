@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 // import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
 import 'presentation/auth/screens/login_screen.dart';
+import 'presentation/auth/screens/find_account_screen.dart';
 import 'presentation/auth/screens/kcp_cert_webview_screen.dart';
 import 'presentation/auth/screens/signup_screen.dart';
 import 'data/services/auth_service.dart';
@@ -90,6 +91,7 @@ class BomioraApp extends StatelessWidget {
       home: const AuthWrapper(),
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/find-account': (context) => const FindAccountScreen(),
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
         '/category': (context) => const ShowcaseScreen(),
         '/favorite': (context) => const WishListScreen(),
