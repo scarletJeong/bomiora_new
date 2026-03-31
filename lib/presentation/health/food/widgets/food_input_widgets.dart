@@ -63,7 +63,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   Future<void> _addToMealRecord(FoodSearchItem item) async {
     if (_isAdding) return;
     if (kDebugMode) {
-      debugPrint('[+] 선택한 음식: "${item.foodName}" | food_code: ${item.foodCode} | kcal: ${item.kcal} | 식사: ${widget.mealKey}');
+      debugPrint('[+] 선택한 음식: "${item.foodName}" | food_code: ${item.foodCode} | energy: ${item.energy} | 식사: ${widget.mealKey}');
     }
     setState(() => _isAdding = true);
     try {
@@ -293,7 +293,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                 final item = _results[i];
                 return SearchResultRow(
                   name: item.foodName,
-                  kcal: item.kcal?.toInt() ?? 0,
+                  kcal: item.energy?.toInt() ?? 0,
                   desc: item.desc,
                   onSelect: _isAdding ? null : () => _addToMealRecord(item),
                 );

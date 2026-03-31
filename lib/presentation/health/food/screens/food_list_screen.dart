@@ -30,6 +30,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
   num totalCarbs = 0;
   num totalProtein = 0;
   num totalFat = 0;
+  num totalOther = 0;
   static const int _maxCalories = 2000;
   List<FoodRecordSummary> _dayRecords = [];
 
@@ -57,12 +58,14 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     final carbs = list.fold<num>(0, (sum, r) => sum + (r.carbs ?? 0));
     final protein = list.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
     final fat = list.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
+    final other = list.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
     setState(() {
       _dayRecords = list;
       totalCalories = calories;
       totalCarbs = carbs;
       totalProtein = protein;
       totalFat = fat;
+      totalOther = other;
     });
   }
 
@@ -155,6 +158,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     carb: _recordFor('아침')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('아침')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('아침')?.fat?.toStringAsFixed(1) ?? '-',
+                    other: _recordFor('아침')?.other?.toStringAsFixed(1) ?? '-',
                     mealRecord: _recordFor('아침'),
                     onTap: () => _toggleFoodSearchFor('아침'),
                   ),
@@ -176,6 +180,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     carb: _recordFor('점심')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('점심')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('점심')?.fat?.toStringAsFixed(1) ?? '-',
+                    other: _recordFor('점심')?.other?.toStringAsFixed(1) ?? '-',
                     mealRecord: _recordFor('점심'),
                     onTap: () => _toggleFoodSearchFor('점심'),
                   ),
@@ -197,6 +202,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     carb: _recordFor('저녁')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('저녁')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('저녁')?.fat?.toStringAsFixed(1) ?? '-',
+                    other: _recordFor('저녁')?.other?.toStringAsFixed(1) ?? '-',
                     mealRecord: _recordFor('저녁'),
                     onTap: () => _toggleFoodSearchFor('저녁'),
                   ),
@@ -218,6 +224,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     carb: _recordFor('간식')?.carbs?.toStringAsFixed(1) ?? '-',
                     protein: _recordFor('간식')?.protein?.toStringAsFixed(1) ?? '-',
                     fat: _recordFor('간식')?.fat?.toStringAsFixed(1) ?? '-',
+                    other: _recordFor('간식')?.other?.toStringAsFixed(1) ?? '-',
                     mealRecord: _recordFor('간식'),
                     onTap: () => _toggleFoodSearchFor('간식'),
                   ),
@@ -249,12 +256,15 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     final carbsKcal = (totalCarbs * 4).toDouble();
     final proteinKcal = (totalProtein * 4).toDouble();
     final fatKcal = (totalFat * 9).toDouble();
-    final totalKcalFromMacros = carbsKcal + proteinKcal + fatKcal;
-    int cF = 1, pF = 1, fF = 1;
+    final otherKcal = (totalOther * 4).toDouble();
+    final totalKcalFromMacros =
+        carbsKcal + proteinKcal + fatKcal + otherKcal;
+    int cF = 1, pF = 1, fF = 1, oF = 1;
     if (totalKcalFromMacros > 0) {
       cF = (carbsKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
       pF = (proteinKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
       fF = (fatKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
+      oF = (otherKcal / totalKcalFromMacros * 100).round().clamp(1, 100);
     }
     final filledFlex = (fillRatio * 100).round().clamp(0, 100);
     final emptyFlex = (100 - filledFlex).clamp(1, 100);
@@ -272,12 +282,13 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     Expanded(flex: cF, child: Container(color: const Color(0xFFFFDFC3))),
                     Expanded(flex: pF, child: Container(color: const Color(0xFFFEA38E))),
                     Expanded(flex: fF, child: Container(color: const Color(0xFFFCF4C1))),
+                    Expanded(flex: oF, child: Container(color: const Color(0xFFD6DEE8))),
                   ],
                 ),
               ),
             Expanded(
               flex: emptyFlex,
-              child: Container(color: const Color(0xFFE2E2E2)),
+              child: Container(color: const Color(0xFFF3F5F7)),
             ),
           ],
         ),
@@ -296,7 +307,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
         SizedBox(width: 24),
         MacroLegend(color: Color(0xFFFCF4C1), label: '지방'),
         SizedBox(width: 24),
-        MacroLegend(color: Color(0xFFE2E2E2), label: '기타'),
+        MacroLegend(color: Color(0xFFD6DEE8), label: '기타'),
       ],
     );
   }
@@ -307,6 +318,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     required String carb,
     required String protein,
     required String fat,
+    required String other,
     FoodRecordSummary? mealRecord,
     VoidCallback? onTap,
   }) {
@@ -391,6 +403,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                         _buildNutrientText('탄수화물', carb),
                         _buildNutrientText('단백질', protein),
                         _buildNutrientText('지방', fat),
+                        _buildNutrientText('기타', other),
                       ],
                     ),
                   ],

@@ -56,7 +56,7 @@ class FoodRecord {
       id: json['id'] ?? json['food_record_id'] ?? json['record_id'],
       mbId: (json['mbId'] ?? json['mb_id'] ?? '').toString(),
       mealType: (json['mealType'] ?? json['meal_type'] ?? '').toString(),
-      recordedAt: _parseDateTime(json['recordedAt'] ?? json['recorded_at']) ?? DateTime.now(),
+      recordedAt: _parseDateTime(json['recordedAt'] ?? json['recorded_at']),
       foods: foodsList,
       totalCalories: json['totalCalories'] != null || json['total_calories'] != null
           ? ((json['totalCalories'] ?? json['total_calories']) as num).toDouble()
@@ -73,16 +73,19 @@ class FoodRecord {
   }
 
   // 안전한 날짜 파싱 함수
-  static DateTime? _parseDateTime(dynamic dateValue) {
+  static DateTime _parseDateTime(dynamic dateValue) {
     try {
-      if (dateValue == null) return null;
+      if (dateValue == null) {
+        return DateTime.now();
+      }
       
       String dateStr = dateValue.toString();
       
       if (dateStr.contains('0000-00-00') || 
           dateStr.contains('1900-01-01') ||
           dateStr.isEmpty) {
-        return null;
+        print('⚠️ 잘못된 날짜 형식 감지: $dateStr, 현재 시간으로 대체');
+        return DateTime.now();
       }
       
       final parsed = DateTime.parse(dateStr);
@@ -100,7 +103,8 @@ class FoodRecord {
       }
       return parsed;
     } catch (e) {
-      return null;
+      print('❌ 날짜 파싱 오류: $dateValue, 현재 시간으로 대체');
+      return DateTime.now();
     }
   }
 

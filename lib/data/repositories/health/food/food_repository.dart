@@ -42,20 +42,23 @@ dynamic _decodeResponseBody(String rawBody) {
 class FoodSearchItem {
   final String foodCode;
   final String foodName;
-  final num? kcal;
-  final num? carbohydrate;
+  final num? energy;
+  final num? carbohydrates;
   final num? protein;
   final num? fat;
+  /// 탄·단·지 제외, DB에 있는 g 단위 성분 합(수분·회분·지방산(g)·당(g)等). kcal/mg/μg 미포함.
+  final num? otherGrams;
   final String? representativeFoodName;
   final String? nutrientBaseQuantity;
 
   FoodSearchItem({
     required this.foodCode,
     required this.foodName,
-    this.kcal,
-    this.carbohydrate,
+    this.energy,
+    this.carbohydrates,
     this.protein,
     this.fat,
+    this.otherGrams,
     this.representativeFoodName,
     this.nutrientBaseQuantity,
   });
@@ -64,11 +67,14 @@ class FoodSearchItem {
     return FoodSearchItem(
       foodCode: _bufferFieldToString(json['food_code']),
       foodName: _bufferFieldToString(json['food_name']),
-      kcal: json['kcal'] != null ? num.tryParse(json['kcal'].toString()) : null,
-      carbohydrate:
-          json['carbohydrate'] != null ? num.tryParse(json['carbohydrate'].toString()) : null,
+      energy: json['energy'] != null ? num.tryParse(json['energy'].toString()) : null,
+      carbohydrates: json['carbohydrates'] != null
+          ? num.tryParse(json['carbohydrates'].toString())
+          : null,
       protein: json['protein'] != null ? num.tryParse(json['protein'].toString()) : null,
       fat: json['fat'] != null ? num.tryParse(json['fat'].toString()) : null,
+      otherGrams:
+          json['other_grams'] != null ? num.tryParse(json['other_grams'].toString()) : null,
       representativeFoodName: _bufferFieldToString(json['representative_food_name']).isNotEmpty
           ? _bufferFieldToString(json['representative_food_name'])
           : null,
@@ -80,9 +86,12 @@ class FoodSearchItem {
 
   String get desc {
     final parts = <String>[];
-    if (carbohydrate != null) parts.add('탄수화물 ${carbohydrate!.toStringAsFixed(1)}g');
+    if (carbohydrates != null) parts.add('탄수화물 ${carbohydrates!.toStringAsFixed(1)}g');
     if (protein != null) parts.add('단백질 ${protein!.toStringAsFixed(1)}g');
     if (fat != null) parts.add('지방 ${fat!.toStringAsFixed(1)}g');
+    if (otherGrams != null && otherGrams != 0) {
+      parts.add('기타 ${otherGrams!.toStringAsFixed(1)}g');
+    }
     return parts.isEmpty ? '' : '(${parts.join(', ')})';
   }
 }
@@ -95,6 +104,7 @@ class FoodRecordItemSummary {
   final num? carbohydrate;
   final num? protein;
   final num? fat;
+  final num? other;
 
   FoodRecordItemSummary({
     required this.itemId,
@@ -103,6 +113,7 @@ class FoodRecordItemSummary {
     this.carbohydrate,
     this.protein,
     this.fat,
+    this.other,
   });
 
   factory FoodRecordItemSummary.fromJson(Map<String, dynamic> json) {
@@ -113,6 +124,7 @@ class FoodRecordItemSummary {
       carbohydrate: json['carbohydrate'] != null ? num.tryParse(json['carbohydrate'].toString()) : null,
       protein: json['protein'] != null ? num.tryParse(json['protein'].toString()) : null,
       fat: json['fat'] != null ? num.tryParse(json['fat'].toString()) : null,
+      other: json['other'] != null ? num.tryParse(json['other'].toString()) : null,
     );
   }
 
@@ -121,6 +133,7 @@ class FoodRecordItemSummary {
     if (carbohydrate != null) parts.add('탄수화물 ${carbohydrate!.toStringAsFixed(1)}g');
     if (protein != null) parts.add('단백질 ${protein!.toStringAsFixed(1)}g');
     if (fat != null) parts.add('지방 ${fat!.toStringAsFixed(1)}g');
+    if (other != null) parts.add('기타 ${other!.toStringAsFixed(1)}g');
     return parts.isEmpty ? '' : '(${parts.join(', ')})';
   }
 }
@@ -134,6 +147,7 @@ class FoodRecordSummary {
   final num? protein;
   final num? carbs;
   final num? fat;
+  final num? other;
   final List<FoodRecordItemSummary> items;
 
   FoodRecordSummary({
@@ -144,6 +158,7 @@ class FoodRecordSummary {
     this.protein,
     this.carbs,
     this.fat,
+    this.other,
     this.items = const [],
   });
 
@@ -166,6 +181,7 @@ class FoodRecordSummary {
       protein: json['protein'] != null ? num.tryParse(json['protein'].toString()) : null,
       carbs: json['carbs'] != null ? num.tryParse(json['carbs'].toString()) : null,
       fat: json['fat'] != null ? num.tryParse(json['fat'].toString()) : null,
+      other: json['other'] != null ? num.tryParse(json['other'].toString()) : null,
       items: items,
     );
   }
@@ -211,7 +227,7 @@ class FoodRepository {
           debugPrint('[칼로리 검색] 결과 수: ${items.length}');
           for (var i = 0; i < items.length; i++) {
             final it = items[i];
-            debugPrint('  ${i + 1}. ${it.foodName} | food_code: ${it.foodCode} | ${it.kcal ?? 0}kcal');
+            debugPrint('  ${i + 1}. ${it.foodName} | food_code: ${it.foodCode} | ${it.energy ?? 0}kcal');
           }
         }
         return items;
@@ -291,10 +307,11 @@ class FoodRepository {
         'food_code': item.foodCode,
         'food_name': item.foodName,
         'serving_quantity': 1.0,
-        'kcal': item.kcal?.toDouble() ?? 0.0,
-        'carbohydrate': item.carbohydrate?.toDouble() ?? 0.0,
+        'energy': item.energy?.toDouble() ?? 0.0,
+        'carbohydrates': item.carbohydrates?.toDouble() ?? 0.0,
         'protein': item.protein?.toDouble() ?? 0.0,
         'fat': item.fat?.toDouble() ?? 0.0,
+        'other': item.otherGrams?.toDouble() ?? 0.0,
       };
       if (kDebugMode) {
         debugPrint('[식사 기록 추가] POST $uri');
