@@ -10,7 +10,7 @@ class ApiClient {
   // 개발: localhost (웹) 또는 PC IP (모바일), 배포: AWS EC2 서버 URL
   
   // 개발 서버 설정
-  // 옵션 1: 도메인 사용 (HTTPS, Nginx /api 프록시 사용)
+  // 옵션 1: 도메인 사용 (HTTPS)
   static const String _devServerUrl = 'https://bomiora.net';
   // 옵션 2: IP 주소 사용 (HTTP) - IP로 접근 시 HTTP가 되는 경우
   // static const String _devServerUrl = 'http://3.128.180.207:9000';
