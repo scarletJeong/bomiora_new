@@ -93,10 +93,12 @@ class BomioraApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/find-account': (context) => const FindAccountScreen(),
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
-        '/category': (context) => const ShowcaseScreen(),
+        // (임시) 카테고리 페이지 접근 차단
+        '/category': (context) => const _TemporaryBlockedScreen(featureLabel: '카테고리'),
         '/favorite': (context) => const WishListScreen(),
         '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 1),
-        '/cart': (context) => const CartScreen(),
+        // (임시) 장바구니 페이지 접근 차단
+        '/cart': (context) => const _TemporaryBlockedScreen(featureLabel: '장바구니'),
         '/coupon': (context) => const CouponScreen(),
         '/review': (context) => const AllReviewsScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
@@ -119,9 +121,9 @@ class BomioraApp extends StatelessWidget {
         
         // 제품 목록 페이지: /product-list 여리
         if (uri.pathSegments.length == 1 && uri.pathSegments[0] == 'product-list') {
-          final arguments = settings.arguments as Map<String, dynamic>? ?? {};
+          // (임시) 상품 목록 페이지 접근 차단
           return MaterialPageRoute(
-            builder: (context) => ProductListScreen.fromArguments(arguments),
+            builder: (context) => const _TemporaryBlockedScreen(featureLabel: '카테고리/상품목록'),
             settings: RouteSettings(
               name: routeName,
               arguments: settings.arguments,
@@ -131,9 +133,9 @@ class BomioraApp extends StatelessWidget {
         
         // 제품 상세 페이지: /product/:it_id
         if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'product') {
-          final productId = uri.pathSegments[1];
+          // (임시) 상품 상세 페이지 접근 차단
           return MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(productId: productId),
+            builder: (context) => const _TemporaryBlockedScreen(featureLabel: '상품 페이지'),
             settings: RouteSettings(
               name: routeName, // URL 업데이트를 위해 route name 설정 (예: /product/1691479590)
               arguments: settings.arguments,
@@ -157,7 +159,6 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
-  bool _isLoggedIn = false;
 
   @override
   void initState() {
@@ -166,16 +167,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkLoginStatus() async {
-    bool isLoggedIn = await AuthService.isLoggedIn();
-
-    // 로컬 디버그 모드: 로그인되어 있지 않으면 test 계정으로 자동 로그인 시도
-    if (kDebugMode && !isLoggedIn) {
-      isLoggedIn = await _tryDebugAutoLogin();
-    }
+    await AuthService.isLoggedIn();
 
     if (mounted) {
       setState(() {
-        _isLoggedIn = isLoggedIn;
         _isLoading = false;
       });
     }
@@ -230,7 +225,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    return _isLoggedIn ? const MobileLayoutWrapper() : const LoginScreen();
+    return const MobileLayoutWrapper();
   }
 }
 
@@ -247,6 +242,51 @@ class MobileLayoutWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       child: HomeScreen(initialIndex: initialIndex),
+    );
+  }
+}
+
+class _TemporaryBlockedScreen extends StatelessWidget {
+  const _TemporaryBlockedScreen({required this.featureLabel});
+
+  final String featureLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+        title: Text(featureLabel),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.block_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '$featureLabel 화면 없음.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
