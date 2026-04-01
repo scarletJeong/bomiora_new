@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../data/services/auth_service.dart';
+import '../../../../data/services/coupon_service.dart';
+import '../../../../data/services/point_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 import 'cancel_2_member_screen.dart';
@@ -13,6 +16,53 @@ class CancelMemberScreen extends StatefulWidget {
 
 class _CancelMemberScreenState extends State<CancelMemberScreen> {
   bool _agreed = false;
+  bool _isLoadingStats = true;
+  int _pointBalance = 0;
+  int _couponCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _agreed = false;
+    _loadWithdrawStats();
+  }
+
+  Future<void> _loadWithdrawStats() async {
+    try {
+      final user = await AuthService.getUser();
+      if (!mounted) return;
+
+      if (user == null) {
+        setState(() {
+          _pointBalance = 0;
+          _couponCount = 0;
+          _isLoadingStats = false;
+        });
+        return;
+      }
+
+      final results = await Future.wait([
+        PointService.getUserPoint(user.id),
+        CouponService.getAvailableCoupons(user.id),
+      ]);
+
+      if (!mounted) return;
+      final point = results[0] as int?;
+      final coupons = results[1] as List<dynamic>;
+      setState(() {
+        _pointBalance = point ?? 0;
+        _couponCount = coupons.length;
+        _isLoadingStats = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pointBalance = 0;
+        _couponCount = 0;
+        _isLoadingStats = false;
+      });
+    }
+  }
 
   void _onNextStep() {
     if (!_agreed) return;
@@ -83,19 +133,19 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                 ),
                 const SizedBox(height: 18),
                 Row(
-                  children: const [
+                  children: [
                     Expanded(
                       child: _MetricCard(
                         title: 'MY POINTS',
-                        valueText: '2,000',
+                        valueText: _isLoadingStats ? '...' : PointService.formatPoint(_pointBalance),
                         unitText: 'P',
                       ),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _MetricCard(
                         title: 'COUPONS',
-                        valueText: '2',
+                        valueText: _isLoadingStats ? '...' : '$_couponCount',
                         unitText: '장',
                       ),
                     ),

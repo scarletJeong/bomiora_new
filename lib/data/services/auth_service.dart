@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/user/user_model.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -185,6 +186,40 @@ class AuthService {
     } catch (e) {
       print('❌ [비밀번호 확인] 에러: $e');
       return false;
+    }
+  }
+
+  /// 회원 탈퇴(Soft Delete)
+  static Future<Map<String, dynamic>> withdrawMember({
+    required String mbId,
+    String? reason,
+  }) async {
+    try {
+      final response = await ApiClient.post(
+        ApiEndpoints.withdraw,
+        {
+          'mbId': mbId,
+          'reason': (reason ?? '').trim(),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': data['success'] == true,
+          'message': data['message']?.toString() ?? '',
+        };
+      }
+
+      return {
+        'success': false,
+        'message': '회원 탈퇴 처리에 실패했습니다.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '회원 탈퇴 중 오류가 발생했습니다.',
+      };
     }
   }
 }

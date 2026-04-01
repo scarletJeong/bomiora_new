@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
+import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
 
@@ -19,10 +20,11 @@ class AddressFormScreen extends StatefulWidget {
 
 class _AddressFormScreenState extends State<AddressFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final GlobalKey<FormFieldState<String>> _zipFormFieldKey = GlobalKey<FormFieldState<String>>();
+  final GlobalKey<FormFieldState<String>> _zipFormFieldKey =
+      GlobalKey<FormFieldState<String>>();
 
   static const double _addressSearchRowHeight = 40;
-  
+
   // 입력 컨트롤러
   final TextEditingController _subjectController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
@@ -30,7 +32,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   final TextEditingController _zipController = TextEditingController();
   final TextEditingController _address1Controller = TextEditingController();
   final TextEditingController _address2Controller = TextEditingController();
-  final TextEditingController _requestMemoController = TextEditingController();
 
   bool _isLoading = false;
 
@@ -51,7 +52,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     _zipController.dispose();
     _address1Controller.dispose();
     _address2Controller.dispose();
-    _requestMemoController.dispose();
     super.dispose();
   }
 
@@ -92,6 +92,14 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     return {'zip1': t, 'zip2': ''};
   }
 
+  static String _formatPostalCodeDisplay(String postalCode) {
+    final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
+    if (t.length == 5) {
+      return '${t.substring(0, 3)}-${t.substring(3)}';
+    }
+    return postalCode.trim();
+  }
+
   /// 기존 데이터 로드 (수정 모드인 경우)
   void _loadData() {
     final m = widget.address;
@@ -116,7 +124,30 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     final a2 = _str(m, ['adAddr2', 'ad_addr2']);
     final a3 = _str(m, ['adAddr3', 'ad_addr3']);
     _address2Controller.text = '$a2 $a3'.trim();
-    _requestMemoController.text = _str(m, ['adMemo', 'ad_memo']);
+  }
+
+  Future<void> _openAddressSearch() async {
+    final selected = await showDaumPostcodeSearchDialog(context);
+
+    if (!mounted || selected == null) return;
+
+    final postalCode = (selected['postalCode'] ?? '').toString().trim();
+    final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
+    final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
+    final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
+
+    final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
+    final displayZip = _formatPostalCodeDisplay(postalCode);
+
+    setState(() {
+      _zipController.text = displayZip;
+      _address1Controller.text = baseAddress;
+      if (_address2Controller.text.trim().isEmpty && extraAddress.isNotEmpty) {
+        _address2Controller.text = extraAddress;
+      }
+    });
+
+    _zipFormFieldKey.currentState?.didChange(_zipController.text);
   }
 
   /// 배송지 저장
@@ -152,11 +183,10 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         'adAddr2': _address2Controller.text.trim(),
         'adAddr3': '',
         'adJibeon': '',
-        'adMemo': _requestMemoController.text.trim(),
       };
 
       Map<String, dynamic> result;
-      
+
       if (widget.address != null) {
         // 수정
         result = await AddressService.updateAddress(
@@ -213,7 +243,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
+            padding:
+                const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
             children: [
               const Text(
                 '배송지 이름',
@@ -227,11 +258,10 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               const SizedBox(height: 5),
               _BoxField(
                 controller: _subjectController,
-                hintText: '집',
-                validator: (v) => (v == null || v.trim().isEmpty) ? '배송지 이름을 입력해주세요' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? '배송지 이름을 입력해주세요' : null,
               ),
               const SizedBox(height: 10),
-
               const Text(
                 '받으시는 분',
                 style: TextStyle(
@@ -244,11 +274,10 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               const SizedBox(height: 5),
               _BoxField(
                 controller: _nameController,
-                hintText: '고명진',
-                validator: (v) => (v == null || v.trim().isEmpty) ? '받으시는 분을 입력해주세요' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? '받으시는 분을 입력해주세요' : null,
               ),
               const SizedBox(height: 10),
-
               const Text(
                 '연락처',
                 style: TextStyle(
@@ -261,12 +290,11 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               const SizedBox(height: 5),
               _BoxField(
                 controller: _phoneController,
-                hintText: '010-8878-8617',
                 keyboardType: TextInputType.phone,
-                validator: (v) => (v == null || v.trim().isEmpty) ? '연락처를 입력해주세요' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? '연락처를 입력해주세요' : null,
               ),
               const SizedBox(height: 10),
-
               const Text(
                 '배송지 주소',
                 style: TextStyle(
@@ -290,7 +318,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                       builder: (state) {
                         final hasErr = state.hasError;
                         final errColor = Theme.of(context).colorScheme.error;
-                        final borderColor = hasErr ? errColor : const Color(0xFFD2D2D2);
+                        final borderColor =
+                            hasErr ? errColor : const Color(0xFFD2D2D2);
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           mainAxisSize: MainAxisSize.min,
@@ -300,7 +329,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                               child: TextField(
                                 controller: _zipController,
                                 enabled: false,
-                                onChanged: (_) => state.didChange(_zipController.text),
+                                onChanged: (_) =>
+                                    state.didChange(_zipController.text),
                                 style: const TextStyle(
                                   color: Color(0xFF1A1A1A),
                                   fontSize: 12,
@@ -308,7 +338,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                                 ),
                                 decoration: InputDecoration(
                                   isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
                                   hintText: '우편번호',
                                   hintStyle: const TextStyle(
                                     color: Color(0xFF898686),
@@ -318,21 +349,26 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(width: 1, color: borderColor),
+                                    borderSide: BorderSide(
+                                        width: 1, color: borderColor),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(width: 1, color: borderColor),
+                                    borderSide: BorderSide(
+                                        width: 1, color: borderColor),
                                   ),
                                   disabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide(width: 1, color: borderColor),
+                                    borderSide: BorderSide(
+                                        width: 1, color: borderColor),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     borderSide: BorderSide(
                                       width: 1,
-                                      color: hasErr ? errColor : const Color(0xFFFF5A8D),
+                                      color: hasErr
+                                          ? errColor
+                                          : const Color(0xFFFF5A8D),
                                     ),
                                   ),
                                 ),
@@ -361,17 +397,15 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                       height: _addressSearchRowHeight,
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('주소 검색 기능은 추후 구현 예정입니다.')),
-                          );
-                        },
+                        onPressed: _openAddressSearch,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5A8D),
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(horizontal: 10),
-                          minimumSize: const Size.fromHeight(_addressSearchRowHeight),
+                          minimumSize:
+                              const Size.fromHeight(_addressSearchRowHeight),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: const Text(
@@ -390,32 +424,14 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               const SizedBox(height: 5),
               _BoxField(
                 controller: _address1Controller,
-                hintText: '‘주소 검색’을 통해 입력됩니다,',
-                validator: (v) => (v == null || v.trim().isEmpty) ? '주소를 입력해주세요' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? '주소를 입력해주세요' : null,
               ),
               const SizedBox(height: 5),
               _BoxField(
                 controller: _address2Controller,
-                hintText: '상세 주소를 입력해 주세요.',
-              ),
-              const SizedBox(height: 10),
-
-              const Text(
-                '배송 요청사항',
-                style: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.57,
-                ),
-              ),
-              const SizedBox(height: 5),
-              _BoxField(
-                controller: _requestMemoController,
-                hintText: '요청사항이 있으시면 입력해주세요.',
               ),
               const SizedBox(height: 20),
-
               SizedBox(
                 width: double.infinity,
                 height: 40,
@@ -425,7 +441,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                     backgroundColor: const Color(0xFFFF5A8D),
                     disabledBackgroundColor: const Color(0x7FD2D2D2),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -433,7 +450,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text(
@@ -458,14 +476,12 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
 class _BoxField extends StatelessWidget {
   const _BoxField({
     required this.controller,
-    required this.hintText,
     this.keyboardType,
     this.validator,
     this.enabled = true,
   });
 
   final TextEditingController controller;
-  final String hintText;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final bool enabled;
@@ -480,8 +496,8 @@ class _BoxField extends StatelessWidget {
       maxLines: 1,
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        hintText: hintText,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         hintStyle: const TextStyle(
           color: Color(0xFF898686),
           fontSize: 12,
@@ -514,5 +530,3 @@ class _BoxField extends StatelessWidget {
     );
   }
 }
-
-

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 
@@ -12,6 +13,7 @@ class Cancel2MemberScreen extends StatefulWidget {
 class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
   final TextEditingController _etcController = TextEditingController();
   int? _selectedIndex;
+  bool _isSubmitting = false;
 
   final List<String> _reasons = const [
     '서비스 이용이 불편해요',
@@ -29,8 +31,8 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
 
   bool get _isEtcSelected => _selectedIndex == _reasons.length - 1;
 
-  void _onWithdraw() {
-    if (_selectedIndex == null) return;
+  Future<void> _onWithdraw() async {
+    if (_selectedIndex == null || _isSubmitting) return;
     if (_isEtcSelected && _etcController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('탈퇴 사유를 입력해 주세요.')),
@@ -38,6 +40,40 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
       return;
     }
 
+    final user = await AuthService.getUser();
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인해 주세요.')),
+      );
+      return;
+    }
+
+    final reason = _reasons[_selectedIndex!];
+    final fullReason = _isEtcSelected
+        ? '기타:${_etcController.text.trim()}'
+        : reason;
+
+    setState(() => _isSubmitting = true);
+    final result = await AuthService.withdrawMember(
+      mbId: user.id,
+      reason: fullReason,
+    );
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']?.toString() ?? '회원 탈퇴 처리에 실패했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    await AuthService.logout();
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -160,16 +196,16 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                     child: SizedBox(
                       height: 40,
                       child: ElevatedButton(
-                        onPressed: _selectedIndex == null ? null : _onWithdraw,
+                        onPressed: (_selectedIndex == null || _isSubmitting) ? null : _onWithdraw,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5A8D),
                           disabledBackgroundColor: const Color(0xFFFF5A8D).withOpacity(0.4),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          '탈퇴하기',
-                          style: TextStyle(
+                        child: Text(
+                          _isSubmitting ? '처리중...' : '탈퇴하기',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontFamily: 'Gmarket Sans TTF',

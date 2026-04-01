@@ -229,51 +229,64 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: const [
-                        Text(
-                          '나의',
-                          style: TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: -1.44,
+                    if (_addresses.isNotEmpty) ...[
+                      Row(
+                        children: const [
+                          Text(
+                            '나의',
+                            style: TextStyle(
+                              color: Color(0xFF1A1A1A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w300,
+                              letterSpacing: -1.44,
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          '배송지',
-                          style: TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -1.76,
+                          SizedBox(width: 5),
+                          Text(
+                            '배송지',
+                            style: TextStyle(
+                              color: Color(0xFF1A1A1A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -1.76,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '고객님께서 주문시 사용하셨던 배송지 목록입니다.',
-                      style: TextStyle(
-                        color: Color(0xFF898686),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 10),
+                      const Text(
+                        '고객님께서 주문시 사용하셨던 배송지 목록입니다.',
+                        style: TextStyle(
+                          color: Color(0xFF898686),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
                     if (_addresses.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 60),
                         child: Center(
-                          child: Text(
-                            '등록된 배송지가 없습니다',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.location_off_outlined,
+                                size: 56,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                '등록된 배송지가 없습니다',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       )
@@ -286,34 +299,44 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                       ),
 
                     const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            _SmallActionButton(
-                              label: '수정',
-                              variant: _SmallActionButtonVariant.outlinedPink,
-                              enabled: _selectedAddressId != null,
-                              onTap: _goToEditSelected,
-                            ),
-                            const SizedBox(width: 10),
-                            _SmallActionButton(
-                              label: '삭제',
-                              variant: _SmallActionButtonVariant.disabledGray,
-                              enabled: _selectedAddressId != null,
-                              onTap: _deleteSelected,
-                            ),
-                          ],
-                        ),
-                        _SmallActionButton(
+                    if (_addresses.isNotEmpty)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              _SmallActionButton(
+                                label: '수정',
+                                variant: _SmallActionButtonVariant.outlinedPink,
+                                enabled: _selectedAddressId != null,
+                                onTap: _goToEditSelected,
+                              ),
+                              const SizedBox(width: 10),
+                              _SmallActionButton(
+                                label: '삭제',
+                                variant: _SmallActionButtonVariant.disabledGray,
+                                enabled: _selectedAddressId != null,
+                                onTap: _deleteSelected,
+                              ),
+                            ],
+                          ),
+                          _SmallActionButton(
+                            label: '등록',
+                            variant: _SmallActionButtonVariant.filledPink,
+                            enabled: true,
+                            onTap: _goToRegister,
+                          ),
+                        ],
+                      )
+                    else
+                      Center(
+                        child: _SmallActionButton(
                           label: '등록',
                           variant: _SmallActionButtonVariant.filledPink,
                           enabled: true,
                           onTap: _goToRegister,
                         ),
-                      ],
-                    ),
+                      ),
                   ],
                 ),
               ),
