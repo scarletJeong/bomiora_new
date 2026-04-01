@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
@@ -13,10 +14,12 @@ class DeliveryAddressChangePopup extends StatefulWidget {
   });
 
   @override
-  State<DeliveryAddressChangePopup> createState() => _DeliveryAddressChangePopupState();
+  State<DeliveryAddressChangePopup> createState() =>
+      _DeliveryAddressChangePopupState();
 }
 
-class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup> {
+class _DeliveryAddressChangePopupState
+    extends State<DeliveryAddressChangePopup> {
   static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kInk = Color(0xFF1A1A1A);
   static const Color _kMuted = Color(0xFF898686);
@@ -134,7 +137,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                         child: InkWell(
                           onTap: _openAddressRegister,
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 2, vertical: 2),
                             child: Text(
                               '+ 새 배송지 등록',
                               style: TextStyle(
@@ -170,9 +174,15 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Text('주문일자: $_orderDateText', style: const TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF')),
+                            Text('주문일자: $_orderDateText',
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    fontFamily: 'Gmarket Sans TTF')),
                             const SizedBox(height: 4),
-                            Text('주문번호: $_orderNumberText', style: const TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF')),
+                            Text('주문번호: $_orderNumberText',
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    fontFamily: 'Gmarket Sans TTF')),
                           ],
                         ),
                       ),
@@ -198,15 +208,20 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                           child: ListView.separated(
                             shrinkWrap: true,
                             itemCount: _addresses.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 6),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 6),
                             itemBuilder: (context, index) {
                               final a = _addresses[index];
                               final adId = a['adId'] as int?;
                               final selected = _selectedAddressId == adId;
                               final line =
-                                  '${a['adAddr1'] ?? ''} ${a['adAddr2'] ?? ''} ${a['adAddr3'] ?? ''}'.trim();
+                                  '${a['adAddr1'] ?? ''} ${a['adAddr2'] ?? ''} ${a['adAddr3'] ?? ''}'
+                                      .trim();
                               return InkWell(
-                                onTap: adId == null ? null : () => setState(() => _selectedAddressId = adId),
+                                onTap: adId == null
+                                    ? null
+                                    : () => setState(
+                                        () => _selectedAddressId = adId),
                                 borderRadius: BorderRadius.circular(10),
                                 child: Container(
                                   padding: const EdgeInsets.all(10),
@@ -219,21 +234,31 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         a['adSubject']?.toString() ?? '',
-                                        style: const TextStyle(fontSize: 13, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w700),
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            fontFamily: 'Gmarket Sans TTF',
+                                            fontWeight: FontWeight.w700),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         '${a['adName'] ?? ''} ${a['adHp'] ?? ''}',
-                                        style: const TextStyle(fontSize: 11, fontFamily: 'Gmarket Sans TTF', color: _kMuted),
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            fontFamily: 'Gmarket Sans TTF',
+                                            color: _kMuted),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         line,
-                                        style: const TextStyle(fontSize: 11, fontFamily: 'Gmarket Sans TTF', color: _kInk),
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            fontFamily: 'Gmarket Sans TTF',
+                                            color: _kInk),
                                       ),
                                     ],
                                   ),
@@ -279,7 +304,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
                                     )
                                   : const Text(
                                       '확인',
@@ -329,6 +355,34 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
   final _addr2 = TextEditingController();
   final _memo = TextEditingController();
   bool _saving = false;
+
+  static String _formatPostalCodeDisplay(String postalCode) {
+    final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
+    if (t.length == 5) {
+      return '${t.substring(0, 3)}-${t.substring(3)}';
+    }
+    return postalCode.trim();
+  }
+
+  Future<void> _openAddressSearch() async {
+    final selected = await showDaumPostcodeSearchDialog(context);
+    if (!mounted || selected == null) return;
+
+    final postalCode = (selected['postalCode'] ?? '').toString().trim();
+    final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
+    final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
+    final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
+
+    final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
+
+    setState(() {
+      _zip.text = _formatPostalCodeDisplay(postalCode);
+      _addr1.text = baseAddress;
+      if (_addr2.text.trim().isEmpty && extraAddress.isNotEmpty) {
+        _addr2.text = extraAddress;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -441,6 +495,30 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
                       const SizedBox(height: 8),
                       _field('연락처', _phone, '010-0000-0000'),
                       const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: _openAddressSearch,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kPink,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            '주소 검색',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       _field('우편번호', _zip, '우편번호'),
                       const SizedBox(height: 8),
                       _field('주소', _addr1, '기본 주소'),
@@ -457,7 +535,9 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
                     children: [
                       Expanded(
                         child: InkWell(
-                          onTap: _saving ? null : () => Navigator.pop(context, false),
+                          onTap: _saving
+                              ? null
+                              : () => Navigator.pop(context, false),
                           child: const ColoredBox(
                             color: Color(0xFFF7F7F7),
                             child: Center(
@@ -486,7 +566,9 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
                                       height: 18,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
                                       ),
                                     )
                                   : const Text(
@@ -541,7 +623,8 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
           },
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             hintText: hint,
             hintStyle: const TextStyle(
               color: _kMuted,
