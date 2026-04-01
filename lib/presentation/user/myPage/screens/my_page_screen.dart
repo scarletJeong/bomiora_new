@@ -366,79 +366,51 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text(
-          '마이페이지',
-          style: TextStyle(
-            fontSize: 20,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: ColoredBox(
           color: Colors.white,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
-            child: _currentUser == null
-                ? SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pushNamed(context, '/login'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF3787),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        '로그인',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  )
-                : Column(
+            child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const SizedBox(height: 70),
+                      if (_currentUser == null)
+                        _buildGuestHeader()
+                      else
                       _buildProfileHeader(),
                       const SizedBox(height: 25),
                       _buildStatsRow(),
                       const SizedBox(height: 25),
                       _buildLineMenuItem(
                         title: '찜 목록',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const WishListScreen()),
-                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const WishListScreen()),
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
                       _buildLineMenuItem(
                         title: '배송지 관리',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AddressManagementScreen()),
-                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AddressManagementScreen()),
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
                       _buildLineMenuItem(
                         title: '환불 계좌 등록',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const RefundAccountScreen()),
-                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RefundAccountScreen()),
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
                       _buildLineMenuItem(
@@ -448,10 +420,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       const SizedBox(height: 10),
                       _buildLineMenuItem(
                         title: '1:1 문의',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ContactListScreen()),
-                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ContactListScreen()),
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
                       _buildLineMenuItem(
@@ -607,6 +581,84 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGuestHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: ShapeDecoration(
+                color: const Color(0xFFFF5A8D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(45),
+                ),
+              ),
+              child: Container(
+                width: 77,
+                height: 77,
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(45),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  size: 44,
+                  color: Color(0xFFD2D2D2),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '로그인이 필요해요',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  '로그인 후 마이페이지 기능을 이용해보세요',
+                  style: TextStyle(
+                    color: Color(0xFF898686),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pushNamed(context, '/login'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF3787),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            elevation: 0,
+          ),
+          child: const Text(
+            '로그인',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ),
       ],

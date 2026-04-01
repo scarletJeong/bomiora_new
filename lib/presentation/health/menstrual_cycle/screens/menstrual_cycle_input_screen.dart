@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
@@ -653,7 +654,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
-        throw Exception('로그인이 필요합니다');
+        await showLoginRequiredDialog(
+          context,
+          message: '건강 기록 입력은 로그인 후 이용할 수 있습니다.',
+        );
+        return;
       }
 
       // 생리 기간 길이 계산

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/login_required_dialog.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
@@ -62,6 +63,16 @@ class _CartScreenState extends State<CartScreen> {
     _loadCart();
   }
 
+  Future<bool> _ensureLoggedIn({
+    String message = '로그인 후 이용할 수 있습니다.',
+  }) async {
+    final user = await AuthService.getUser();
+    if (user != null && user.id.isNotEmpty) return true;
+    if (!mounted) return false;
+    await showLoginRequiredDialog(context, message: message);
+    return false;
+  }
+
   Future<void> _loadCart({bool showCachedData = false}) async {
     // 캐시된 데이터를 먼저 표시하고 백그라운드에서 갱신하는 모드
     final hasCachedData = showCachedData && cartItems.isNotEmpty;
@@ -115,9 +126,17 @@ class _CartScreenState extends State<CartScreen> {
           isRefreshing = false;
         });
       } else {
+        final message = result['message']?.toString() ?? '';
         setState(() {
           if (!hasCachedData) {
-            errorMessage = result['message'] ?? '장바구니를 불러오는데 실패했습니다.';
+            if (message.contains('로그인')) {
+              cartItems = [];
+              shippingCost = 0;
+              totalPrice = 0;
+              errorMessage = null;
+            } else {
+              errorMessage = message.isNotEmpty ? message : '장바구니를 불러오는데 실패했습니다.';
+            }
             isLoading = false;
           } else {
             // 캐시된 데이터를 유지하고 에러 무시
@@ -166,6 +185,9 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _updateQuantity(int ctId, int newQuantity) async {
+    if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
+      return;
+    }
     if (newQuantity < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('수량은 1개 이상이어야 합니다')),
@@ -194,6 +216,9 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _deleteCartItem(int ctId) async {
+    if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -235,6 +260,9 @@ class _CartScreenState extends State<CartScreen> {
 
   // 선택된 아이템들 삭제
   Future<void> _deleteSelectedItems() async {
+    if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
+      return;
+    }
     final selectedDisplayedItems = _selectedDisplayedItemIds;
     if (selectedDisplayedItems.isEmpty) return;
 
@@ -345,6 +373,9 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _openCheckoutWebView() async {
+    if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
+      return;
+    }
     if (_selectedDisplayedItemIds.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

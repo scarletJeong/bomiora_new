@@ -7,6 +7,7 @@ import '../models/health_profile_model.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
+import '../../../common/widgets/login_required_dialog.dart';
 
 class HealthProfileListScreen extends StatefulWidget {
   const HealthProfileListScreen({super.key});
@@ -87,60 +88,12 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       appBar: const HealthAppBar(title: '건강프로필'),
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _currentUser == null
-              ? _buildLoginRequired()
-              : _buildContent(),
-    );
-  }
-
-  Widget _buildLoginRequired() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.login,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '로그인이 필요합니다',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '건강프로필를 작성하려면 로그인해주세요',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/login');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 12,
-              ),
-            ),
-            child: const Text('로그인'),
-          ),
-        ],
-      ),
+          : _buildContent(),
     );
   }
 
   Widget _buildContent() {
-    if (_healthProfile == null) {
+    if (_currentUser == null || _healthProfile == null) {
       return _buildEmptyState();
     }
 
@@ -148,52 +101,60 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   Widget _buildEmptyState() {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 100),
-          Icon(
-            Icons.assignment_outlined,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            '건강프로필가 없습니다',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '다이어트 상담을 위해\n건강프로필를 작성해주세요',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[500],
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _navigateToForm,
-            icon: const Icon(Icons.add),
-            label: const Text('건강프로필 작성하기'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.assignment_outlined,
+                      size: 80,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '건강프로필가 없습니다',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '다이어트 상담을 위해\n건강프로필를 작성해주세요',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: _navigateToForm,
+                      icon: const Icon(Icons.add),
+                      label: const Text('건강프로필 작성하기'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5A8D),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 300),
-          // const AppFooter(),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1206,6 +1167,13 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   void _navigateToForm() async {
+    if (_currentUser == null) {
+      await showLoginRequiredDialog(
+        context,
+        message: '건강프로필 작성은 로그인 후 이용할 수 있습니다.',
+      );
+      return;
+    }
     final result = await Navigator.push(
       context,
       MaterialPageRoute(

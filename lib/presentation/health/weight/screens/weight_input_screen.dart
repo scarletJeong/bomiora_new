@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_measurement_datetime_dialogs.dart';
@@ -134,7 +135,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       final user = await AuthService.getUser();
 
       if (user == null) {
-        throw Exception('로그인이 필요합니다');
+        await showLoginRequiredDialog(
+          context,
+          message: '건강 기록 입력은 로그인 후 이용할 수 있습니다.',
+        );
+        return;
       }
 
       final weight = double.parse(_weightController.text);

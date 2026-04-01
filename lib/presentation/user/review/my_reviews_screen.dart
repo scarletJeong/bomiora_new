@@ -22,6 +22,7 @@ class MyReviewsScreen extends StatefulWidget {
 class _MyReviewsScreenState extends State<MyReviewsScreen> {
   List<ReviewModel> _reviews = [];
   bool _isLoading = false;
+  bool _requiresLogin = false;
   int _currentPage = 0;
   bool _hasMore = true;
 
@@ -166,9 +167,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       final user = await AuthService.getUser();
       if (user == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
+          setState(() {
+            _requiresLogin = true;
+          });
         }
         return;
       }
@@ -183,6 +184,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         final newReviews = result['reviews'] as List<ReviewModel>;
 
         setState(() {
+          _requiresLogin = false;
           if (refresh) {
             _reviews = newReviews;
           } else {
@@ -807,7 +809,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         appBar: const HealthAppBar(title: '내 리뷰'),
         child: _isLoading && _reviews.isEmpty
             ? const Center(child: CircularProgressIndicator(color: _kPink))
-            : _reviews.isEmpty
+            : _requiresLogin
+                ? _buildLoginMessage()
+                : _reviews.isEmpty
                 ? _buildEmpty()
                 : RefreshIndicator(
                     color: _kPink,
@@ -929,6 +933,22 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           const SizedBox(height: 16),
           Text(
             '작성한 리뷰가 없습니다',
+            style: TextStyle(fontSize: 16, color: Colors.grey[600], fontFamily: 'Gmarket Sans TTF'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoginMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.rate_review_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            '로그인 후 이용 가능합니다.',
             style: TextStyle(fontSize: 16, color: Colors.grey[600], fontFamily: 'Gmarket Sans TTF'),
           ),
         ],

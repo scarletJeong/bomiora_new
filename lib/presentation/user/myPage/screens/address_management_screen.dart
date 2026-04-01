@@ -224,6 +224,28 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   color: Color(0xFFFF3787),
                 ),
               )
+            : _currentUser == null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.location_off_outlined,
+                          size: 56,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '로그인 후 이용 가능합니다.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
             : SingleChildScrollView(
                 padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
                 child: Column(

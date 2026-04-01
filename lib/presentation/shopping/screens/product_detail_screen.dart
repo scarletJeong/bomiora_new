@@ -28,6 +28,7 @@ import 'product_reviews_screen.dart';
 import 'webview_screen.dart';
 import '../../review/screens/review_detail_screen.dart';
 import '../../customer_service/screens/contact_form_screen.dart';
+import '../../common/widgets/login_required_dialog.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -334,6 +335,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   /// 찜하기 토글
   Future<void> _toggleFavorite() async {
     if (_product == null) return;
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty) {
+      if (!mounted) return;
+      await showLoginRequiredDialog(
+        context,
+        message: '찜하기는 로그인 후 이용할 수 있습니다.',
+      );
+      return;
+    }
 
     try {
       final wasFavorite = _isFavorite;
@@ -2170,6 +2181,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         },
         onAddToCart: () async {
           if (_product == null || _selectedOptions.isEmpty) return;
+
+          final user = await AuthService.getUser();
+          if (user == null || user.id.isEmpty) {
+            if (!mounted) return;
+            await showLoginRequiredDialog(
+              context,
+              message: '장바구니 담기는 로그인 후 이용할 수 있습니다.',
+            );
+            return;
+          }
           
           Navigator.of(context).pop();
           
@@ -2223,6 +2244,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         onBuyNow: () async {
           if (_product == null || _selectedOptions.isEmpty) return;
 
+          final user = await AuthService.getUser();
+          if (user == null || user.id.isEmpty) {
+            if (!mounted) return;
+            await showLoginRequiredDialog(
+              context,
+              message: '상품 구매는 로그인 후 이용할 수 있습니다.',
+            );
+            return;
+          }
+
           Navigator.of(context).pop();
 
           final result = await CartService.addOptionsToCart(
@@ -2251,6 +2282,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   Future<bool> _addGeneralProductToCart({required int quantity}) async {
     if (_product == null) return false;
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty) {
+      if (!mounted) return false;
+      await showLoginRequiredDialog(
+        context,
+        message: '장바구니 담기와 구매는 로그인 후 이용할 수 있습니다.',
+      );
+      return false;
+    }
     final result = await CartService.addToCart(
       productId: _product!.id,
       quantity: quantity,
@@ -2419,6 +2459,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   /// 처방 예약 페이지로 이동
   void _navigateToQuestionnaire() async {
     if (_product == null) return;
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty) {
+      if (!mounted) return;
+      await showLoginRequiredDialog(
+        context,
+        message: '로그인 후 이용 가능합니다.',
+      );
+      return;
+    }
     
     // 선택된 옵션 정보를 리스트로 변환 (여러 옵션 지원)
     if (_selectedOptions.isEmpty) {

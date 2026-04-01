@@ -5,6 +5,7 @@ import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_measurement_datetime_dialogs.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/login_required_dialog.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
@@ -103,7 +104,11 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       final user = await AuthService.getUser();
 
       if (user == null) {
-        throw Exception('로그인이 필요합니다');
+        await showLoginRequiredDialog(
+          context,
+          message: '건강 기록 입력은 로그인 후 이용할 수 있습니다.',
+        );
+        return;
       }
 
       final systolic = int.parse(_systolicController.text);

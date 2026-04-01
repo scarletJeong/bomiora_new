@@ -63,11 +63,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       // 현재 로그인된 사용자 ID 가져오기
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
-        }
+        setState(() {
+          _allOrders = [];
+          _displayedOrders = [];
+        });
         return;
       }
       final userId = user.id;

@@ -22,6 +22,7 @@ class _WishListScreenState extends State<WishListScreen> {
   List<Map<String, dynamic>> _wishList = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool _requiresLogin = false;
   int _visibleCount = 5;
 
   @override
@@ -36,6 +37,7 @@ class _WishListScreenState extends State<WishListScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _requiresLogin = false;
     });
 
     try {
@@ -52,8 +54,14 @@ class _WishListScreenState extends State<WishListScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final message = e.toString();
       setState(() {
-        _errorMessage = '찜 목록을 불러오는데 실패했습니다: $e';
+        if (message.contains('로그인')) {
+          _requiresLogin = true;
+          _errorMessage = null;
+        } else {
+          _errorMessage = '찜 목록을 불러오는데 실패했습니다: $e';
+        }
         _isLoading = false;
       });
     }
@@ -110,7 +118,9 @@ class _WishListScreenState extends State<WishListScreen> {
               ? const Center(
                   child: CircularProgressIndicator(color: _pink),
                 )
-              : _errorMessage != null
+              : _requiresLogin
+                  ? _buildLoginMessage()
+                  : _errorMessage != null
                   ? _buildError()
                   : _buildContent(),
         ),
@@ -137,6 +147,22 @@ class _WishListScreenState extends State<WishListScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoginMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.favorite_border, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            '로그인 후 이용 가능합니다.',
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+        ],
       ),
     );
   }

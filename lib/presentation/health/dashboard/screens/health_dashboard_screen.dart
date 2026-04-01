@@ -32,6 +32,7 @@ import 'health_connect_screen.dart';
 import 'health_goal_screen.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_status_label.dart';
+import '../../../common/widgets/login_required_dialog.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -89,12 +90,33 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       final user = await AuthService.getUser();
 
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login required')),
-          );
-          Navigator.pop(context);
-        }
+        setState(() {
+          currentUser = null;
+          latestWeightRecord = null;
+          latestBloodPressureRecord = null;
+          latestBloodSugarRecord = null;
+          latestMenstrualCycleRecord = null;
+          latestHeartRateRecord = null;
+          latestStepsRecord = null;
+          latestHealthGoal = null;
+          currentWeight = 0.0;
+          height = 170.0;
+          bmi = 0.0;
+          consumedCalories = 0;
+          totalCarbs = 0;
+          totalProtein = 0;
+          totalFat = 0;
+          totalOther = 0;
+          mealCalories['Breakfast'] = 0;
+          mealCalories['Lunch'] = 0;
+          mealCalories['Dinner'] = 0;
+          mealCalories['Snack'] = 0;
+          steps = 0;
+          heartRate = 0;
+          systolicBP = 0;
+          diastolicBP = 0;
+          isLoading = false;
+        });
         return;
       }
 
@@ -361,7 +383,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       ),
                     ),
                     Text(
-                      '${currentUser?.name ?? 'User'} !',
+                      '${currentUser?.name ?? '-'} 님',
                       style: const TextStyle(
                         color: Colors.white,
                         fontFamily: 'Gmarket Sans TTF',
@@ -383,6 +405,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             children: [
               OutlinedButton(
                 onPressed: () async {
+                  if (currentUser == null) {
+                    await showLoginRequiredDialog(
+                      context,
+                      message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                    );
+                    return;
+                  }
                   final saved = await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(
@@ -624,6 +653,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   void _openHealthConnectScreen() {
+    if (currentUser == null) {
+      showLoginRequiredDialog(
+        context,
+        message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -659,6 +695,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return GestureDetector(
       onTap: () async {
         if (title == '키' || title == '체중' || title == 'BMI') {
+          if (currentUser == null) {
+            await showLoginRequiredDialog(
+              context,
+              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+            );
+            return;
+          }
           if (!mounted) return;
 
           final result = await Navigator.push(
@@ -715,6 +758,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   Widget _buildMealSection() {
     return GestureDetector(
       onTap: () async {
+        if (currentUser == null) {
+          await showLoginRequiredDialog(
+            context,
+            message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+          );
+          return;
+        }
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -1031,13 +1081,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         titleFontSize: 14,
                         valueFontSize: 16,
                         statusFontSize: 9,
-                        onMore: () => Navigator.push(
+                        onMore: () {
+                          if (currentUser == null) {
+                            showLoginRequiredDialog(
+                              context,
+                              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                            );
+                            return;
+                          }
+                          Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 BloodSugarListScreen(initialDate: selectedDate),
                           ),
-                        ),
+                        );
+                        },
                       ),
                       const SizedBox(height: 12),
                       _buildRecordCard(
@@ -1051,13 +1110,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         titleFontSize: 14,
                         valueFontSize: 12,
                         statusFontSize: 9,
-                        onMore: () => Navigator.push(
+                        onMore: () {
+                          if (currentUser == null) {
+                            showLoginRequiredDialog(
+                              context,
+                              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                            );
+                            return;
+                          }
+                          Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => BloodPressureListScreen(
                                 initialDate: selectedDate),
                           ),
-                        ),
+                        );
+                        },
                       ),
                     ],
                   ),
@@ -1079,13 +1147,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       : '입력하세요.',
                   titleFontSize: 14,
                   valueFontSize: 16,
-                  onMore: () => Navigator.push(
+                  onMore: () {
+                    if (currentUser == null) {
+                      showLoginRequiredDialog(
+                        context,
+                        message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                      );
+                      return;
+                    }
+                    Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
                           HeartRateListScreen(initialDate: selectedDate),
                     ),
-                  ),
+                  );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -1095,14 +1172,23 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   value: _periodText(),
                   titleFontSize: 14,
                   valueFontSize: 13,
-                  onMore: () => Navigator.push(
+                  onMore: () {
+                    if (currentUser == null) {
+                      showLoginRequiredDialog(
+                        context,
+                        message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                      );
+                      return;
+                    }
+                    Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => MenstrualCycleInfoScreen(
                         initialDate: selectedDate,
                       ),
                     ),
-                  ),
+                  );
+                  },
                 ),
               ),
             ],
@@ -1200,6 +1286,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     if (latestStepsRecord == null) {
       return GestureDetector(
         onTap: () {
+          if (currentUser == null) {
+            showLoginRequiredDialog(
+              context,
+              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -1241,6 +1334,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               SizedBox(
                 width: double.infinity,
                 child: _buildMoreButton(() {
+                if (currentUser == null) {
+                  showLoginRequiredDialog(
+                    context,
+                    message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                  );
+                  return;
+                }
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1260,6 +1360,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
     return GestureDetector(
       onTap: () {
+        if (currentUser == null) {
+          showLoginRequiredDialog(
+            context,
+            message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+          );
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -1333,6 +1440,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             SizedBox(
               width: double.infinity,
               child: _buildMoreButton(() {
+                if (currentUser == null) {
+                  showLoginRequiredDialog(
+                    context,
+                    message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                  );
+                  return;
+                }
                 Navigator.push(
                   context,
                   MaterialPageRoute(

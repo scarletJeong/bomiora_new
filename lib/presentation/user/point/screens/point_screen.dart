@@ -112,28 +112,7 @@ class _PointScreenState extends State<PointScreen> {
                 color: Color(0xFFFF5A8D),
               ),
             )
-          : _currentUser == null
-              ? _buildLoginRequired()
-              : _buildContent(),
-    );
-  }
-
-  Widget _buildLoginRequired() {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lock, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              '로그인이 필요합니다',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
+          : _buildContent(),
     );
   }
 
@@ -150,11 +129,28 @@ class _PointScreenState extends State<PointScreen> {
               const SizedBox(height: 10),
               _buildRulesText(),
               const SizedBox(height: 20),
-              ..._displayedHistory.map(_buildHistoryCard),
-              if (_displayedHistory.length < _pointHistory.length) ...[
-                const SizedBox(height: 10),
-                _buildLoadMoreButton(),
-              ],
+                if (_displayedHistory.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        '포인트 내역이 없습니다.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontFamily: 'Gmarket Sans TTF',
+                        ),
+                      ),
+                    ),
+                  )
+                else ...[
+                  ..._displayedHistory.map(_buildHistoryCard),
+                  if (_displayedHistory.length < _pointHistory.length) ...[
+                    const SizedBox(height: 10),
+                    _buildLoadMoreButton(),
+                  ],
+                ],
             ],
           ),
         ),
