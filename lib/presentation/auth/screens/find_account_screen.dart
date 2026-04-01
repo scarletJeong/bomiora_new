@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -1177,45 +1178,28 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 128,
-              height: 128,
-              decoration: ShapeDecoration(
-                color: const Color(0x19FF5C8F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.search_off_rounded,
-                  size: 56,
-                  color: Color(0xFFFF5C8F),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 8,
-              bottom: 8,
-              child: Container(
-                padding: const EdgeInsets.all(4),
+        SizedBox(
+          width: 128,
+          height: 128,
+          child: Image.asset(
+            AppAssets.loginFail,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
                 decoration: ShapeDecoration(
-                  color: Colors.white,
+                  color: const Color(0x19FF5C8F),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(9999),
                   ),
                 ),
                 child: const Icon(
-                  Icons.close_rounded,
-                  size: 20,
+                  Icons.search_off_rounded,
+                  size: 56,
                   color: Color(0xFFFF5C8F),
                 ),
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
         const SizedBox(height: 10),
         Container(

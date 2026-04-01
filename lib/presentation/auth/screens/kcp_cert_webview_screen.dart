@@ -1,7 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'dart:async';
+
+import '../../../core/network/api_client.dart';
+import '../../common/widgets/app_bar.dart';
 
 class KcpCertWebViewScreen extends StatefulWidget {
   const KcpCertWebViewScreen({super.key});
@@ -12,109 +16,142 @@ class KcpCertWebViewScreen extends StatefulWidget {
 
 class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
   InAppWebViewController? _webViewController;
+  Timer? _pollingTimer;
+
   double _progress = 0;
   bool _isLoading = true;
+  bool _hasNavigated = false;
+  String? _initialHtml;
+  String? _requestToken;
+  String? _errorMessage;
 
-  // KCP 본인인증 URL 생성
-  String _getKcpCertUrl() {
-    // 개발 환경에 따라 URL 변경
-    if (kIsWeb) {
-      final currentHost = Uri.base.host;
-      if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-        return 'http://localhost/bomiora/www/plugin/kcpcert/kcpcert_form.php?pageType=register';
-      } else {
-        // 프로덕션 환경에서는 실제 도메인 사용
-        return 'https://bomiora.kr/plugin/kcpcert/kcpcert_form.php?pageType=register';
+  @override
+  void initState() {
+    super.initState();
+    _initializeKcpRequest();
+  }
+
+  Future<void> _initializeKcpRequest() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _initialHtml = null;
+      _requestToken = null;
+      _progress = 0;
+    });
+
+    try {
+      final response = await ApiClient.get('/api/auth/kcp/request');
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode != 200 || data['success'] != true) {
+        throw Exception(data['message'] ?? 'KCP 요청 데이터 생성에 실패했습니다.');
       }
-    } else {
-      // 모바일 환경에서는 개발 서버 또는 프로덕션 서버 사용
-      return 'https://bomiora.net/plugin/kcpcert/kcpcert_form.php?pageType=register';
+
+      final html = (data['html'] ?? '').toString();
+      final token = (data['token'] ?? '').toString();
+
+      if (html.isEmpty || token.isEmpty) {
+        throw Exception('KCP 요청 응답이 올바르지 않습니다.');
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _initialHtml = html;
+        _requestToken = token;
+        _isLoading = false;
+      });
+
+      // 콜백 페이지 감지 실패와 무관하게, 토큰 발급 직후부터 결과를 폴링한다.
+      _startPollingResult();
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = '본인인증 준비 중 오류가 발생했습니다.\n$e';
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('본인인증'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+      appBar: HealthAppBar(
+        title: '본인인증',
+        onBack: () => Navigator.pop(context),
       ),
       body: Stack(
         children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(_getKcpCertUrl())),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              domStorageEnabled: true,
-              databaseEnabled: true,
-              cacheEnabled: true,
-              clearCache: false,
-              useHybridComposition: true,
-              allowsInlineMediaPlayback: true,
-              mediaPlaybackRequiresUserGesture: false,
-              mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-              allowFileAccess: true,
-              allowContentAccess: true,
+          if (_initialHtml != null)
+            InAppWebView(
+              initialData: InAppWebViewInitialData(data: _initialHtml!),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                domStorageEnabled: true,
+                databaseEnabled: true,
+                cacheEnabled: true,
+                clearCache: false,
+                useHybridComposition: true,
+                allowsInlineMediaPlayback: true,
+                mediaPlaybackRequiresUserGesture: false,
+                mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                allowFileAccess: true,
+                allowContentAccess: true,
+              ),
+              onWebViewCreated: (controller) {
+                _webViewController = controller;
+              },
+              onLoadStart: (controller, url) {
+                debugPrint('🌐 [KCP Cert] 페이지 로드 시작: $url');
+                _detectCallbackPage(controller, url);
+              },
+              onLoadStop: (controller, url) async {
+                if (!mounted) {
+                  return;
+                }
+
+                setState(() {
+                  _isLoading = false;
+                });
+
+                debugPrint('🌐 [KCP Cert] 페이지 로드 완료: $url');
+                await _detectCallbackPage(controller, url);
+              },
+              onProgressChanged: (controller, progress) {
+                if (!mounted) {
+                  return;
+                }
+
+                setState(() {
+                  _progress = progress / 100;
+                });
+              },
+              onReceivedError: (controller, request, error) {
+                debugPrint('❌ [KCP Cert] 에러 발생: ${error.description}');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('본인인증 중 오류가 발생했습니다: ${error.description}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
             ),
-            onWebViewCreated: (controller) {
-              _webViewController = controller;
-            },
-            onLoadStart: (controller, url) {
-              print('🌐 [KCP Cert] 페이지 로드 시작: $url');
-              
-              // 결과 페이지로 이동했는지 확인
-              if (url.toString().contains('kcpcert_result.php')) {
-                print('✅ [KCP Cert] 결과 페이지 감지');
-                // JavaScript로 인증 정보 추출 시도
-                _extractCertInfo(controller);
-              }
-            },
-            onLoadStop: (controller, url) async {
-              setState(() {
-                _isLoading = false;
-              });
-              print('🌐 [KCP Cert] 페이지 로드 완료: $url');
-              
-              // 결과 페이지에서 인증 정보 추출
-              if (url.toString().contains('kcpcert_result.php')) {
-                print('✅ [KCP Cert] 결과 페이지 로드 완료');
-                // 약간의 지연 후 정보 추출 (페이지 렌더링 대기)
-                await Future.delayed(const Duration(milliseconds: 500));
-                await _extractCertInfo(controller);
-              }
-            },
-            onProgressChanged: (controller, progress) {
-              setState(() {
-                _progress = progress / 100;
-              });
-            },
-            onReceivedError: (controller, request, error) {
-              print('❌ [KCP Cert] 에러 발생: ${error.description}');
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('본인인증 중 오류가 발생했습니다: ${error.description}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-          ),
-          if (_isLoading || _progress < 1.0)
+          if (_errorMessage != null) _buildErrorView(),
+          if (_isLoading || (_initialHtml != null && _progress < 1.0))
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               child: LinearProgressIndicator(
-                value: _progress,
+                value: _progress > 0 ? _progress : null,
                 backgroundColor: Colors.grey[200],
                 valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
               ),
@@ -124,67 +161,163 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     );
   }
 
-  // JavaScript로 인증 정보 추출
-  Future<void> _extractCertInfo(InAppWebViewController controller) async {
+  Widget _buildErrorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _errorMessage ?? '알 수 없는 오류가 발생했습니다.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _initializeKcpRequest,
+              child: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _detectCallbackPage(
+    InAppWebViewController controller,
+    WebUri? url,
+  ) async {
+    if (_hasNavigated) {
+      return;
+    }
+
+    final urlText = url?.toString() ?? '';
+    if (urlText.contains('/api/auth/kcp/callback')) {
+      _startPollingResult();
+      return;
+    }
+
     try {
-      // 결과 페이지에서 인증 정보를 추출하는 JavaScript 실행
-      // PHP 결과 페이지는 부모 창에 데이터를 전달하는 방식이므로,
-      // 여기서는 URL 파라미터나 페이지 내용을 분석해야 함
-      
-      // 방법 1: 페이지 내용에서 데이터 추출 시도
-      final script = '''
+      const script = '''
         (function() {
           try {
-            // form_auth 폼에서 데이터 추출
-            var form = document.querySelector('form[name="form_auth"]');
-            if (!form) return null;
-            
-            var data = {};
-            var inputs = form.querySelectorAll('input[type="hidden"]');
-            inputs.forEach(function(input) {
-              data[input.name] = input.value;
+            var body = document.body;
+            return JSON.stringify({
+              href: window.location.href,
+              token: body ? body.getAttribute('data-kcp-token') : '',
+              success: body ? body.getAttribute('data-kcp-success') : '',
+              text: body && body.innerText ? body.innerText.substring(0, 500) : ''
             });
-            
-            // 인증 성공 여부 확인 (res_cd가 "0000"이면 성공)
-            if (data.res_cd === "0000" && data.cert_enc_use === "Y") {
-              return JSON.stringify({
-                success: true,
-                cert_no: data.cert_no || '',
-                res_cd: data.res_cd || '',
-                site_cd: data.site_cd || '',
-                ordr_idxx: data.ordr_idxx || ''
-              });
-            }
-            return null;
-          } catch(e) {
-            console.error('인증 정보 추출 오류:', e);
-            return null;
+          } catch (e) {
+            return JSON.stringify({ error: String(e) });
           }
         })();
       ''';
-      
+
       final result = await controller.evaluateJavascript(source: script);
-      print('📋 [KCP Cert] JavaScript 실행 결과: $result');
-      
-      if (result != null && result.toString().contains('success')) {
-        // 인증 성공 - 회원가입 화면으로 이동
-        // 실제 사용자 정보는 서버에서 복호화해야 하므로, 
-        // 일단 인증 완료 플래그만 전달하고 회원가입 화면으로 이동
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/signup',
-            arguments: {'cert_completed': true},
-          );
-        }
+      final parsed = _parseJavascriptResult(result);
+      final token = (parsed['token'] ?? '').toString();
+
+      if (token.isNotEmpty) {
+        _requestToken = token;
+        _startPollingResult();
       }
     } catch (e) {
-      print('❌ [KCP Cert] 인증 정보 추출 실패: $e');
+      debugPrint('❌ [KCP Cert] callback 감지 실패: $e');
+    }
+  }
+
+  Map<String, dynamic> _parseJavascriptResult(dynamic result) {
+    try {
+      if (result is String && result.isNotEmpty) {
+        final decoded = jsonDecode(result);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      }
+    } catch (_) {}
+
+    return <String, dynamic>{};
+  }
+
+  void _startPollingResult() {
+    if (_requestToken == null || _requestToken!.isEmpty || _hasNavigated) {
+      return;
+    }
+
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _pollKcpResult();
+    });
+    _pollKcpResult();
+  }
+
+  Future<void> _pollKcpResult() async {
+    final token = _requestToken;
+    if (token == null || token.isEmpty || _hasNavigated || !mounted) {
+      return;
+    }
+
+    try {
+      final response = await ApiClient.get('/api/auth/kcp/result/$token');
+
+      if (response.statusCode == 404) {
+        return;
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      debugPrint('📥 [KCP Cert] polling 결과: ${jsonEncode(data)}');
+
+      final status = (data['status'] ?? '').toString();
+      final completed = data['cert_completed'] == true;
+
+      if (status == 'pending' && !completed) {
+        return;
+      }
+
+      _pollingTimer?.cancel();
+
+      if (data['success'] == true && completed) {
+        _hasNavigated = true;
+        Navigator.pushReplacementNamed(
+          context,
+          '/signup',
+          arguments: {
+            'cert_completed': true,
+            'name': data['name'],
+            'phone': data['phone'],
+            'birthday': data['birthday'],
+            'sex_code': data['sex_code'],
+            'gender': data['gender'],
+            'ci': data['ci'],
+            'di': data['di'],
+            'kcp_raw': data,
+          },
+        );
+        return;
+      }
+
+      final message =
+          (data['message'] ?? data['res_msg'] ?? '본인인증에 실패했습니다.').toString();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ [KCP Cert] polling 오류: $e');
     }
   }
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
+    _webViewController = null;
     super.dispose();
   }
 }

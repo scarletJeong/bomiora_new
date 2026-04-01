@@ -10,6 +10,53 @@ class AuthRepository {
     return value.toString();
   }
 
+  static Future<Map<String, dynamic>> checkEmail({
+    required String email,
+  }) async {
+    try {
+      final response = await ApiClient.post(ApiEndpoints.checkEmail, {
+        'email': email,
+      });
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
+        final exists = data['exists'] == true;
+        return {
+          'success': true,
+          'exists': exists,
+          'data': data,
+          'error': exists ? _asErrorMessage(data['message'], fallback: '이미 존재하는 이메일입니다.') : null,
+        };
+      }
+
+      String errorMessage = '서버 오류: ${response.statusCode}';
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = _asErrorMessage(
+            errorData['message'] ?? errorData['error'],
+            fallback: errorMessage,
+          );
+        }
+      } catch (_) {}
+
+      return {
+        'success': false,
+        'exists': false,
+        'error': errorMessage,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'exists': false,
+        'error': '이메일 중복 확인 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
   /// 비밀번호를 SHA1로 해시 처리 (PHP 서버와 호환)
   static String hashPassword(String password) {
     final bytes = utf8.encode(password);
@@ -250,6 +297,10 @@ class AuthRepository {
     required String password,
     required String name,
     String? phone,
+    String? birthday,
+    String? gender,
+    Map<String, dynamic>? certInfo,
+    Map<String, bool>? agreements,
   }) async {
     try {
       // 평문 비밀번호를 전송 (Spring Boot에서 PBKDF2로 해싱)
@@ -261,6 +312,10 @@ class AuthRepository {
         'password': password, // 평문 비밀번호 전송 (HTTPS로 보호)
         'name': name,
         'phone': phone,
+        'birthday': birthday,
+        'gender': gender,
+        'certInfo': certInfo,
+        'agreements': agreements,
       });
 
       if (response.statusCode == 200) {
@@ -273,12 +328,23 @@ class AuthRepository {
           'data': data,
           'error': _asErrorMessage(data['message']),
         };
-      } else {
-        return {
-          'success': false,
-          'error': '서버 오류: ${response.statusCode}',
-        };
       }
+
+      String errorMessage = '서버 오류: ${response.statusCode}';
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = _asErrorMessage(
+            errorData['message'] ?? errorData['error'],
+            fallback: errorMessage,
+          );
+        }
+      } catch (_) {}
+
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
     } catch (e) {
       return {
         'success': false,

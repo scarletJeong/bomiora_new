@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/utils/node_value_parser.dart';
+import '../../../data/models/user/user_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/kakao_auth_service.dart';
-import '../../../data/models/user/user_model.dart';
-import '../../../core/utils/node_value_parser.dart';
+import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/dashboard/screens/health_dashboard_screen.dart';
+import '../../user/healthprofile/screens/health_profile_list_screen.dart';
+import '../widgets/agreement_widget.dart';
+
+enum _SignupStep { form, agreement, complete }
 
 class SignupScreen extends StatefulWidget {
-  final Map<String, dynamic>? certInfo; // 본인인증 정보
+  final Map<String, dynamic>? certInfo;
 
   const SignupScreen({
     super.key,
@@ -23,29 +29,68 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
-  final _nicknameController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
+  _SignupStep _step = _SignupStep.form;
 
-  // 본인인증 정보
   String? _certName;
   String? _certPhone;
   String? _certBirthday;
-  String? _certGender; // "M" 또는 "F"
+  String? _certGender;
+  Map<String, dynamic> _rawCertInfo = {};
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  bool _isDuplicateEmailMessage(String? message) {
+    if (message == null) return false;
+    return message.contains('이미 존재하는 이메일') || message.contains('이미 있는 아이디');
+  }
 
   @override
   void initState() {
     super.initState();
-    // 본인인증 정보가 있으면 설정
-    if (widget.certInfo != null) {
-      _certName = widget.certInfo!['name']?.toString();
-      _certPhone = widget.certInfo!['phone']?.toString();
-      _certBirthday = widget.certInfo!['birthday']?.toString();
-      final sexCode = widget.certInfo!['sex_code']?.toString();
-      _certGender = (sexCode == "01") ? "M" : "F";
-    }
+    _rawCertInfo = Map<String, dynamic>.from(widget.certInfo ?? <String, dynamic>{});
+    _certName = _readString(widget.certInfo, [
+      'name',
+      'user_name',
+      'mem_name',
+      'userName',
+    ]);
+    _certPhone = _normalizePhone(
+      _readString(widget.certInfo, [
+        'phone',
+        'phone_no',
+        'phoneNo',
+        'mobile_no',
+        'mobileNo',
+        'tel_no',
+      ]),
+    );
+    _certBirthday = _normalizeBirthday(
+      _readString(widget.certInfo, [
+        'birthday',
+        'birth',
+        'birth_day',
+        'birthDay',
+      ]),
+    );
+    _certGender = _normalizeGender(
+      _readString(widget.certInfo, [
+        'gender',
+        'sex',
+        'sex_code',
+        'sexCode',
+      ]),
+    );
   }
 
   @override
@@ -53,41 +98,101 @@ class _SignupScreenState extends State<SignupScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _passwordConfirmController.dispose();
-    _nicknameController.dispose();
     super.dispose();
   }
 
-  // 생년월일 포맷팅 (YYYYMMDD -> YYYY-MM-DD)
-  String _formatBirthday(String? birthday) {
-    if (birthday == null || birthday.length != 8) return '';
-    return '${birthday.substring(0, 4)}-${birthday.substring(4, 6)}-${birthday.substring(6, 8)}';
+  String? _readString(Map<String, dynamic>? source, List<String> keys) {
+    if (source == null) return null;
+    for (final key in keys) {
+      final value = source[key];
+      if (value != null) {
+        final text = value.toString().trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return null;
   }
 
-  // 전화번호 포맷팅 (숫자만 -> 010-1234-5678)
-  String _formatPhone(String? phone) {
-    if (phone == null) return '';
-    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+  String? _normalizePhone(String? phone) {
+    if (phone == null || phone.isEmpty) return null;
+    return phone.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  String? _normalizeBirthday(String? birthday) {
+    if (birthday == null || birthday.isEmpty) return null;
+    return birthday.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  String? _normalizeGender(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final normalized = value.trim().toUpperCase();
+    if (normalized == 'M' || normalized == 'MALE' || normalized == '1' || normalized == '01') {
+      return 'M';
+    }
+    if (normalized == 'F' || normalized == 'FEMALE' || normalized == '2' || normalized == '02') {
+      return 'F';
+    }
+    return null;
+  }
+
+  List<String> _phoneSegments(String? phone) {
+    final digits = _normalizePhone(phone) ?? '';
     if (digits.length == 11) {
-      return '${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7, 11)}';
+      return [digits.substring(0, 3), digits.substring(3, 7), digits.substring(7)];
     }
-    return phone;
+    return [digits, '', ''];
   }
 
-  Future<void> _handleSignup() async {
-    if (!_formKey.currentState!.validate()) {
+  String _formatBirthday(String? birthday) {
+    final digits = _normalizeBirthday(birthday);
+    if (digits == null || digits.length != 8) return digits ?? '';
+    return digits;
+  }
+
+  Future<void> _handleInputComplete() async {
+    FocusScope.of(context).unfocus();
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_certName == null || _certPhone == null || _certBirthday == null || _certGender == null) {
+      _showErrorSnackBar('본인인증 정보를 확인한 뒤 다시 진행해주세요.');
       return;
     }
 
-    // 본인인증 정보 확인
-    if (_certName == null || _certPhone == null || _certBirthday == null || _certGender == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('본인인증을 먼저 완료해주세요.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final email = _emailController.text.trim().toLowerCase();
+      final checkResult = await AuthRepository.checkEmail(email: email);
+      if (!mounted) return;
+
+      if (checkResult['success'] != true) {
+        _showErrorSnackBar(
+          checkResult['error']?.toString() ?? '이메일 중복 확인 중 오류가 발생했습니다.',
+        );
+        return;
+      }
+
+      if (checkResult['exists'] == true) {
+        _showErrorSnackBar('이미 있는 아이디입니다.');
+        return;
+      }
+
+      setState(() {
+        _step = _SignupStep.agreement;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> _handleAgreementNext(Map<String, bool> agreements) async {
+    if (_certName == null || _certPhone == null) return;
 
     setState(() {
       _isLoading = true;
@@ -96,44 +201,62 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final result = await AuthRepository.register(
         email: _emailController.text.trim(),
-        password: _passwordController.text,
+        password: _passwordController.text.trim(),
         name: _certName!,
         phone: _certPhone,
+        birthday: _certBirthday,
+        gender: _certGender,
+        agreements: agreements,
+        certInfo: _rawCertInfo,
       );
 
-      if (result['success']) {
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        final resultData = result['data'];
+        final dataMap = resultData is Map<String, dynamic>
+            ? NodeValueParser.normalizeMap(Map<String, dynamic>.from(resultData))
+            : <String, dynamic>{};
+        final userRaw = dataMap['user'];
+        final userJson = NodeValueParser.normalizeMap(
+          userRaw is Map
+              ? Map<String, dynamic>.from(userRaw)
+              : <String, dynamic>{},
+        );
+        final userId =
+            NodeValueParser.asString(userJson['mb_id']) ??
+            NodeValueParser.asString(userJson['id']) ??
+            '';
+        userJson['id'] = userId;
+        userJson['password'] = _passwordController.text;
+
+        final user = UserModel.fromJson(userJson);
+        final token = NodeValueParser.asString(dataMap['token']);
+        await AuthService.saveLoginData(user: user, token: token);
+
         if (!mounted) return;
-        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('회원가입이 완료되었습니다. 로그인해주세요.'),
+            content: Text('회원가입 및 자동로그인이 완료되었습니다.'),
             backgroundColor: Colors.green,
           ),
         );
-
-        // 로그인 화면으로 이동
-        Navigator.popUntil(context, (route) => route.isFirst);
+        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
       } else {
-        if (!mounted) return;
-        final errorMessage = result['error'] ?? '회원가입에 실패했습니다';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        final errorMessage = result['error']?.toString() ?? '회원가입에 실패했습니다.';
+        if (_isDuplicateEmailMessage(errorMessage)) {
+          setState(() {
+            _step = _SignupStep.form;
+          });
+          _showErrorSnackBar('이미 있는 아이디입니다.');
+          return;
+        }
+        _showErrorSnackBar(errorMessage);
       }
     } catch (e) {
       if (!mounted) return;
-      print('❌ [SIGNUP SCREEN] 예외 발생: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('회원가입 중 오류가 발생했습니다: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      debugPrint('❌ [SIGNUP] 회원가입 오류: $e');
+      _showErrorSnackBar('회원가입 중 오류가 발생했습니다: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -141,472 +264,737 @@ class _SignupScreenState extends State<SignupScreen> {
         });
       }
     }
+  }
+
+  void _handleBack() {
+    if (_step == _SignupStep.complete) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      return;
+    }
+    if (_step == _SignupStep.agreement) {
+      setState(() {
+        _step = _SignupStep.form;
+      });
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  void _goHome() {
+    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+  }
+
+  void _goHealthDashboard() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const HealthDashboardScreen()),
+    );
+  }
+
+  void _goHealthQuestionnaire() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const HealthProfileListScreen()),
+    );
+  }
+
+  void _goShoppingMall() {
+    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('회원가입'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+      appBar: HealthAppBar(
+        title: '회원가입',
+        onBack: _handleBack,
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 본인인증 정보 표시 (읽기 전용)
-              if (_certName != null || _certPhone != null || _certBirthday != null || _certGender != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue[200]!),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.verified, color: Colors.blue[700], size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            '본인인증 완료',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (_certName != null)
-                        _buildReadOnlyField('이름', _certName!),
-                      if (_certPhone != null)
-                        _buildReadOnlyField('전화번호', _formatPhone(_certPhone)),
-                      if (_certBirthday != null)
-                        _buildReadOnlyField('생년월일', _formatBirthday(_certBirthday)),
-                      if (_certGender != null)
-                        _buildReadOnlyField('성별', _certGender == "M" ? "남성" : "여성"),
-                    ],
-                  ),
-                ),
-
-              // 이메일 입력
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: '이메일',
-                  hintText: 'example@email.com',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '이메일을 입력해주세요';
-                  }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return '올바른 이메일 형식을 입력해주세요';
-                  }
-                  return null;
-                },
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
+          child: switch (_step) {
+            _SignupStep.form => _buildFormStep(),
+            _SignupStep.agreement => AgreementWidget(
+                isLoading: _isLoading,
+                onNext: _handleAgreementNext,
               ),
-              const SizedBox(height: 24),
-
-              // 비밀번호 입력
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: '비밀번호',
-                  hintText: '8자 이상 입력해주세요',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '비밀번호를 입력해주세요';
-                  }
-                  if (value.length < 8) {
-                    return '비밀번호는 8자 이상이어야 합니다';
-                  }
-                  return null;
-                },
+            _SignupStep.complete => _SignupCompleteView(
+                onGoHome: _goHome,
+                onGoHealthDashboard: _goHealthDashboard,
+                onGoHealthQuestionnaire: _goHealthQuestionnaire,
+                onGoShoppingMall: _goShoppingMall,
               ),
-              const SizedBox(height: 24),
-
-              // 비밀번호 확인
-              TextFormField(
-                controller: _passwordConfirmController,
-                obscureText: _obscurePasswordConfirm,
-                decoration: InputDecoration(
-                  labelText: '비밀번호 확인',
-                  hintText: '비밀번호를 다시 입력해주세요',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePasswordConfirm ? Icons.visibility_off : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePasswordConfirm = !_obscurePasswordConfirm;
-                      });
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '비밀번호 확인을 입력해주세요';
-                  }
-                  if (value != _passwordController.text) {
-                    return '비밀번호가 일치하지 않습니다';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // 닉네임 입력 (선택)
-              TextFormField(
-                controller: _nicknameController,
-                decoration: InputDecoration(
-                  labelText: '닉네임 (선택)',
-                  hintText: '닉네임을 입력해주세요',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // 구분선
-              Row(
-                children: [
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      '또는',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // 카카오 로그인 버튼
-              _buildKakaoLoginButton(),
-              const SizedBox(height: 24),
-
-              // 회원가입 버튼
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleSignup,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        '회원가입',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-            ],
-          ),
+          },
         ),
       ),
     );
   }
 
-  Widget _buildReadOnlyField(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
+  Widget _buildFormStep() {
+    final phone = _phoneSegments(_certPhone);
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '환영합니다.',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 20,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -1.8,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        '회원정보를 입력해주세요.\n만 14세 미만은 가입이 불가합니다.',
+                        style: TextStyle(
+                          color: Color(0xFF898686),
+                          fontSize: 16,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: -1.44,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _ReadonlyField(
+                        label: '이름',
+                        value: _certName ?? '',
+                      ),
+                      const SizedBox(height: 10),
+                      _ReadonlyField(
+                        label: '생년월일',
+                        value: _formatBirthday(_certBirthday),
+                      ),
+                      const SizedBox(height: 10),
+                      _GenderReadonlyField(gender: _certGender),
+                      const SizedBox(height: 10),
+                      _PhoneReadonlyField(segments: phone),
+                      const SizedBox(height: 10),
+                      _SignupTextField(
+                        label: '아이디(이메일)',
+                        controller: _emailController,
+                        hintText: '이메일을 입력해주세요',
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return '이메일을 입력해주세요.';
+                          }
+                          if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(value.trim())) {
+                            return '올바른 이메일 형식을 입력해주세요.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      _SignupTextField(
+                        label: '비밀번호',
+                        controller: _passwordController,
+                        hintText: '비밀번호를 입력해주세요',
+                        obscureText: _obscurePassword,
+                        suffix: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: const Color(0xFF898686),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return '비밀번호를 입력해주세요.';
+                          }
+                          if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,16}$')
+                              .hasMatch(value)) {
+                            return '8~16자/문자,숫자,특수문자를 모두 포함해주세요.';
+                          }
+                          return null;
+                        },
+                        helperText: '*8~16자/문자,숫자,특수문자 모두 혼용',
+                      ),
+                      const SizedBox(height: 10),
+                      _SignupTextField(
+                        label: '비밀번호 확인',
+                        controller: _passwordConfirmController,
+                        hintText: '비밀번호를 다시 입력해주세요',
+                        obscureText: _obscurePasswordConfirm,
+                        suffix: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePasswordConfirm = !_obscurePasswordConfirm;
+                            });
+                          },
+                          icon: Icon(
+                            _obscurePasswordConfirm ? Icons.visibility_off : Icons.visibility,
+                            color: const Color(0xFF898686),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return '비밀번호 확인을 입력해주세요.';
+                          }
+                          if (value != _passwordController.text) {
+                            return '비밀번호가 일치하지 않습니다.';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 40,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _handleInputComplete,
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: const Color(0xFFD2D2D2),
+              disabledBackgroundColor: const Color(0xFFD2D2D2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              '입력완료',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+}
 
-  // 카카오 로그인 버튼
-  Widget _buildKakaoLoginButton() {
-    return OutlinedButton(
-      onPressed: _isLoading ? null : _handleKakaoLogin,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+class _SignupTextField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String? hintText;
+  final bool obscureText;
+  final Widget? suffix;
+  final String? helperText;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+
+  const _SignupTextField({
+    required this.label,
+    required this.controller,
+    this.hintText,
+    this.obscureText = false,
+    this.suffix,
+    this.helperText,
+    this.keyboardType,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        side: BorderSide(color: Colors.grey[300]!),
-        backgroundColor: Colors.white,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildKakaoIcon(),
-          const SizedBox(width: 12),
-          const Text(
-            '카카오로 시작하기',
-            style: TextStyle(
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          validator: validator,
+          style: const TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              color: Color(0xFFB8B8B8),
+              fontSize: 14,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            suffixIcon: suffix,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(width: 1, color: Color(0xFFE53935)),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(width: 1, color: Color(0xFFE53935)),
+            ),
+          ),
+        ),
+        if (helperText != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            helperText!,
+            style: const TextStyle(
+              color: Color(0xFF898686),
+              fontSize: 10,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ReadonlyField extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ReadonlyField({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          alignment: Alignment.centerLeft,
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF1A1A1A),
               fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PhoneReadonlyField extends StatelessWidget {
+  final List<String> segments;
+
+  const _PhoneReadonlyField({
+    required this.segments,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '휴대폰 번호',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _PhoneBox(text: segments[0])),
+            const SizedBox(width: 7),
+            const _PhoneDivider(),
+            const SizedBox(width: 7),
+            Expanded(child: _PhoneBox(text: segments[1])),
+            const SizedBox(width: 7),
+            const _PhoneDivider(),
+            const SizedBox(width: 7),
+            Expanded(child: _PhoneBox(text: segments[2])),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PhoneBox extends StatelessWidget {
+  final String text;
+
+  const _PhoneBox({
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      alignment: Alignment.center,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 16,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
+}
 
-  // 카카오 아이콘
-  Widget _buildKakaoIcon() {
-    try {
-      return Image.asset(
-        'assets/img/kakao_login_on.png',
-        width: 24,
-        height: 24,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEE500),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(
-              Icons.chat_bubble_outline,
-              size: 16,
-              color: Colors.black87,
-            ),
-          );
-        },
-      );
-    } catch (e) {
-      return Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          color: const Color(0xFFFEE500),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: const Icon(
-          Icons.chat_bubble_outline,
-          size: 16,
-          color: Colors.black87,
-        ),
-      );
-    }
+class _PhoneDivider extends StatelessWidget {
+  const _PhoneDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 15,
+      height: 1,
+      color: const Color(0xFFD9D9D9),
+    );
   }
+}
 
-  // 카카오 로그인 처리
-  Future<void> _handleKakaoLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
+class _GenderReadonlyField extends StatelessWidget {
+  final String? gender;
 
-    try {
-      final kakaoResult = await KakaoAuthService.login();
+  const _GenderReadonlyField({
+    required this.gender,
+  });
 
-      if (!kakaoResult['success']) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(kakaoResult['error'] ?? '카카오 로그인에 실패했습니다.'),
-            backgroundColor: Colors.red,
+  @override
+  Widget build(BuildContext context) {
+    final isMale = gender == 'M';
+    final isFemale = gender == 'F';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '성별',
+          style: TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
           ),
-        );
-        return;
-      }
-
-      final kakaoData = kakaoResult['data'];
-      final kakaoId = kakaoData['kakaoId']?.toString() ?? '';
-      final email = kakaoData['email']?.toString();
-      final nickname = kakaoData['nickname']?.toString();
-
-      if (kakaoId.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('카카오 로그인 정보를 가져올 수 없습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // 서버에 카카오 로그인 요청
-      final result = await AuthRepository.loginWithKakao(
-        kakaoId: kakaoId,
-        email: email,
-        nickname: nickname,
-        profileImageUrl: kakaoData['profileImageUrl']?.toString(),
-        accessToken: kakaoData['accessToken']?.toString(),
-      );
-
-      if (result['success']) {
-        final resultData = result['data'];
-        if (resultData is! Map) {
-          throw const FormatException('카카오 로그인 응답 형식이 올바르지 않습니다.');
-        }
-        final userData = NodeValueParser.normalizeMap(
-          Map<String, dynamic>.from(resultData),
-        );
-        final userRaw = userData['user'];
-        final userJson = NodeValueParser.normalizeMap(
-          userRaw is Map
-              ? Map<String, dynamic>.from(userRaw)
-              : Map<String, dynamic>.from(userData),
-        );
-        
-        final userId =
-            NodeValueParser.asString(userJson['mb_id']) ??
-            NodeValueParser.asString(userJson['id']) ??
-            '';
-        userJson['id'] = userId;
-
-        final user = UserModel.fromJson(userJson);
-        final token = NodeValueParser.asString(userData['token']);
-
-        await AuthService.saveLoginData(user: user, token: token);
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${user.name}님, 환영합니다!')),
-        );
-
-        Future.microtask(() {
-          if (!mounted) return;
-          try {
-            Navigator.of(context).pushReplacementNamed('/home');
-          } catch (e) {
-            print('❌ [KAKAO LOGIN] 네비게이션 오류: $e');
-          }
-        });
-      } else {
-        if (!mounted) return;
-        final errorMessage = result['error'] ?? '카카오 로그인에 실패했습니다';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      print('❌ [KAKAO LOGIN] 예외 발생: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('카카오 로그인 중 오류가 발생했습니다: $e'),
-          backgroundColor: Colors.red,
         ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _GenderOption(
+                label: '여',
+                selected: isFemale,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _GenderOption(
+                label: '남',
+                selected: isMale,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _GenderOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+
+  const _GenderOption({
+    required this.label,
+    required this.selected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      alignment: Alignment.center,
+      decoration: ShapeDecoration(
+        color: selected ? const Color(0x0CFF5A8D) : Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: 1,
+            color: selected ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(7),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? const Color(0xFFFF5A8D) : const Color(0xFF898383),
+          fontSize: 14,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+class _SignupCompleteView extends StatelessWidget {
+  final VoidCallback onGoHome;
+  final VoidCallback onGoHealthDashboard;
+  final VoidCallback onGoHealthQuestionnaire;
+  final VoidCallback onGoShoppingMall;
+
+  const _SignupCompleteView({
+    required this.onGoHome,
+    required this.onGoHealthDashboard,
+    required this.onGoHealthQuestionnaire,
+    required this.onGoShoppingMall,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '회원 가입 완료 !',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 20,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        '회원가입을 진심으로 축하드립니다.\n보미오라만의 다양한 서비스를 만나보세요.',
+                        style: TextStyle(
+                          color: Color(0xFF898686),
+                          fontSize: 16,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _BenefitCard(
+                  title: '문진표',
+                  subtitle: '나의 건강 상태 확인하기',
+                  icon: Icons.assignment_rounded,
+                  iconBackground: Color(0xFFEFF6FF),
+                  iconColor: Color(0xFF2563EB),
+                  onTap: onGoHealthQuestionnaire,
+                ),
+                const SizedBox(height: 10),
+                const _BenefitCard(
+                  title: '비대면 진료',
+                  subtitle: '집에서 편하게 받는 진료',
+                  icon: Icons.medical_services_rounded,
+                  iconBackground: Color(0xFFECFDF5),
+                  iconColor: Color(0xFF10B981),
+                ),
+                const SizedBox(height: 10),
+                _BenefitCard(
+                  title: '쇼핑몰',
+                  subtitle: '맞춤 영양제 및 건강 용품',
+                  icon: Icons.shopping_bag_rounded,
+                  iconBackground: Color(0xFFFFF7ED),
+                  iconColor: Color(0xFFF97316),
+                  onTap: onGoShoppingMall,
+                ),
+                const SizedBox(height: 10),
+                _BenefitCard(
+                  title: '건강 대시보드',
+                  subtitle: '나의 건강 데이터를 한눈에',
+                  icon: Icons.monitor_heart_rounded,
+                  iconBackground: Color(0xFFFAF5FF),
+                  iconColor: Color(0xFF9333EA),
+                  onTap: onGoHealthDashboard,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 40,
+          child: ElevatedButton(
+            onPressed: onGoHome,
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: const Color(0xFFFF5A8D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              '홈으로 이동',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BenefitCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconBackground;
+  final Color iconColor;
+  final VoidCallback? onTap;
+
+  const _BenefitCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconBackground,
+    required this.iconColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: ShapeDecoration(
+                color: iconBackground,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Icon(icon, size: 24, color: iconColor),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFF1E293B),
+                      fontSize: 16,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      height: 1.75,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      height: 1.67,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 24,
+              color: Color(0xFF94A3B8),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -2,6 +2,7 @@ class ApiEndpoints {
   // 인증 관련 (Spring Boot 서버)
   static const String login = '/api/auth/login';
   static const String register = '/api/auth/register';
+  static const String checkEmail = '/api/auth/check-email';
   static const String logout = '/api/auth/logout';
   static const String findId = '/api/auth/find-id';
   static const String forgotPassword = '/api/auth/forgot-password';
