@@ -18,7 +18,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
   InAppWebViewController? _webViewController;
   Timer? _pollingTimer;
 
-  double _progress = 0;
   bool _isLoading = true;
   bool _hasNavigated = false;
   String? _initialHtml;
@@ -37,7 +36,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       _errorMessage = null;
       _initialHtml = null;
       _requestToken = null;
-      _progress = 0;
     });
 
     try {
@@ -123,15 +121,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
                 debugPrint('🌐 [KCP Cert] 페이지 로드 완료: $url');
                 await _detectCallbackPage(controller, url);
               },
-              onProgressChanged: (controller, progress) {
-                if (!mounted) {
-                  return;
-                }
-
-                setState(() {
-                  _progress = progress / 100;
-                });
-              },
               onReceivedError: (controller, request, error) {
                 debugPrint('❌ [KCP Cert] 에러 발생: ${error.description}');
                 if (mounted) {
@@ -145,17 +134,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
               },
             ),
           if (_errorMessage != null) _buildErrorView(),
-          if (_isLoading || (_initialHtml != null && _progress < 1.0))
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: LinearProgressIndicator(
-                value: _progress > 0 ? _progress : null,
-                backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-              ),
-            ),
         ],
       ),
     );

@@ -235,13 +235,9 @@ class _SignupScreenState extends State<SignupScreen> {
         await AuthService.saveLoginData(user: user, token: token);
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('회원가입 및 자동로그인이 완료되었습니다.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        setState(() {
+          _step = _SignupStep.complete;
+        });
       } else {
         final errorMessage = result['error']?.toString() ?? '회원가입에 실패했습니다.';
         if (_isDuplicateEmailMessage(errorMessage)) {
