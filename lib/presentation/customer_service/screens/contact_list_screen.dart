@@ -20,6 +20,7 @@ class _ContactListScreenState extends State<ContactListScreen> {
   List<Contact> _contacts = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool _requiresLogin = false;
   int _contactCount = 0;
   /// 목록에 표시할 최대 개수(더보기/8개 단위 확장).
   int _visibleCount = 8;
@@ -40,6 +41,7 @@ class _ContactListScreenState extends State<ContactListScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _requiresLogin = false;
     });
 
     try {
@@ -53,8 +55,14 @@ class _ContactListScreenState extends State<ContactListScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final message = e.toString();
       setState(() {
-        _errorMessage = '문의내역을 불러오는데 실패했습니다: $e';
+        if (message.contains('로그인')) {
+          _requiresLogin = true;
+          _errorMessage = null;
+        } else {
+          _errorMessage = '문의내역을 불러오는데 실패했습니다: $e';
+        }
         _isLoading = false;
         _contactCount = 0;
       });
@@ -201,6 +209,10 @@ class _ContactListScreenState extends State<ContactListScreen> {
       );
     }
 
+    if (_requiresLogin) {
+      return _buildLoginMessage();
+    }
+
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -305,57 +317,87 @@ class _ContactListScreenState extends State<ContactListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 27, right: 27),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildCountRow(),
-                    const SizedBox(height: 20),
-                    const ContactInquiryTypeFilters(),
-                    const SizedBox(height: 12),
-                  ],
+              if (!_requiresLogin)
+                Padding(
+                  padding: const EdgeInsets.only(left: 27, right: 27),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildCountRow(),
+                      const SizedBox(height: 20),
+                      const ContactInquiryTypeFilters(),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
-              ),
               Expanded(child: _buildListBody()),
-              SafeArea(
-                top: false,
-                minimum: const EdgeInsets.fromLTRB(27, 8, 27, 12),
-                child: GestureDetector(
-                  onTap: _openContactForm,
-                  child: Container(
-                    width: double.infinity,
-                    height: 40,
-                    padding: const EdgeInsets.all(10),
-                    clipBehavior: Clip.antiAlias,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFFFF5A8D),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          '1:1 문의하기',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
+              if (!_requiresLogin)
+                SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.fromLTRB(27, 8, 27, 12),
+                  child: GestureDetector(
+                    onTap: _openContactForm,
+                    child: Container(
+                      width: double.infinity,
+                      height: 40,
+                      padding: const EdgeInsets.all(10),
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: const Color(0xFFFF5A8D),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            '1:1 문의하기',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginMessage() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 27),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '로그인 후 이용 가능합니다.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontFamily: 'Gmarket Sans TTF',
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
