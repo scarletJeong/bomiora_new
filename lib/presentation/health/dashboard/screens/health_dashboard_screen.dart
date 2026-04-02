@@ -1356,7 +1356,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       );
     }
 
-    final double ratio = (steps / 8000).clamp(0.0, 1.0);
+    final int targetSteps =
+        (latestHealthGoal?.dailyStepGoal != null &&
+                latestHealthGoal!.dailyStepGoal! > 0)
+            ? latestHealthGoal!.dailyStepGoal!
+            : 0;
+    final double ratio = (steps / targetSteps).clamp(0.0, 1.0);
 
     return GestureDetector(
       onTap: () {
@@ -1422,8 +1427,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                 color: Color(0xFFFF5A8D),
                               ),
                             ),
-                            const Text('/8000',
-                                style: TextStyle(
+                            Text('/${NumberFormat('#,###').format(targetSteps)}',
+                                style: const TextStyle(
                                     fontSize: 9,
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w300,

@@ -375,14 +375,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
             child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 70),
+                      const SizedBox(height: 60),
                       if (_currentUser == null)
                         _buildGuestHeader()
                       else
                       _buildProfileHeader(),
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 40),
                       _buildStatsRow(),
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 30),
                       _buildLineMenuItem(
                         title: '찜 목록',
                         onTap: () {
