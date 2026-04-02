@@ -5,10 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 
 class KcpCertWebViewScreen extends StatefulWidget {
-  const KcpCertWebViewScreen({super.key});
+  const KcpCertWebViewScreen({
+    super.key,
+    this.flow = 'signup',
+    this.email,
+  });
+
+  final String flow;
+  final String? email;
 
   @override
   State<KcpCertWebViewScreen> createState() => _KcpCertWebViewScreenState();
@@ -261,20 +269,64 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
 
       if (data['success'] == true && completed) {
         _hasNavigated = true;
+        final certInfo = {
+          'cert_completed': true,
+          'name': data['name'],
+          'phone': data['phone'],
+          'birthday': data['birthday'],
+          'sex_code': data['sex_code'],
+          'gender': data['gender'],
+          'ci': data['ci'],
+          'di': data['di'],
+          'kcp_raw': data,
+        };
+
+        if (widget.flow == 'find-account') {
+          Navigator.pushReplacementNamed(
+            context,
+            '/find-account-result',
+            arguments: certInfo,
+          );
+          return;
+        }
+
+        if (widget.flow == 'find-password') {
+          final email = (widget.email ?? '').trim();
+          final result = await AuthRepository.forgotPassword(
+            email: email,
+            name: (data['name'] ?? '').toString(),
+            phone: (data['phone'] ?? '').toString(),
+          );
+
+          if (!mounted) return;
+
+          if (result['success'] == true) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/find-password-reset',
+              arguments: {
+                ...certInfo,
+                'email': email,
+              },
+            );
+          } else {
+            Navigator.pushReplacementNamed(
+              context,
+              '/find-account-not-found',
+              arguments: {
+                ...certInfo,
+                'email': email,
+                'mode': 'password',
+              },
+            );
+          }
+          return;
+        }
+
         Navigator.pushReplacementNamed(
           context,
           '/signup',
-          arguments: {
-            'cert_completed': true,
-            'name': data['name'],
-            'phone': data['phone'],
-            'birthday': data['birthday'],
-            'sex_code': data['sex_code'],
-            'gender': data['gender'],
-            'ci': data['ci'],
-            'di': data['di'],
-            'kcp_raw': data,
-          },
+          arguments: certInfo,
         );
         return;
       }

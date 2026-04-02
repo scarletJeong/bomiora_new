@@ -11,7 +11,12 @@ enum _FindAccountTab { id, password }
 enum _FindAccountStep { form, result }
 
 class FindAccountScreen extends StatefulWidget {
-  const FindAccountScreen({super.key});
+  const FindAccountScreen({
+    super.key,
+    this.initialTab = 'id',
+  });
+
+  final String initialTab;
 
   @override
   State<FindAccountScreen> createState() => _FindAccountScreenState();
@@ -112,6 +117,13 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     });
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _selectedTab =
+        widget.initialTab == 'password' ? _FindAccountTab.password : _FindAccountTab.id;
+  }
+
   String get _remainingTimeText {
     final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
@@ -170,6 +182,36 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       _resultText = null;
     });
     _startCountdown();
+  }
+
+  void _handlePhoneCertNavigation() {
+    if (_selectedTab == _FindAccountTab.password) {
+      final email = _passwordEmailController.text.trim();
+      if (email.isEmpty) {
+        setState(() {
+          _emailLookupErrorText = '아이디(이메일)를 입력해 주세요.';
+        });
+        return;
+      }
+
+      Navigator.pushNamed(
+        context,
+        '/kcp-cert',
+        arguments: {
+          'flow': 'find-password',
+          'email': email,
+        },
+      );
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      '/kcp-cert',
+      arguments: {
+        'flow': 'find-account',
+      },
+    );
   }
 
   Future<void> _handleSubmit() async {
@@ -1064,7 +1106,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   width: double.infinity,
                   height: 43,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/kcp-cert'),
+                    onPressed: _handlePhoneCertNavigation,
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
                       backgroundColor: const Color(0xFFFF5A8D),

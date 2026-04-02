@@ -5,6 +5,7 @@ class ApiEndpoints {
   static const String checkEmail = '/api/auth/check-email';
   static const String logout = '/api/auth/logout';
   static const String findId = '/api/auth/find-id';
+  static const String resetPassword = '/api/auth/reset-password';
   static const String withdraw = '/api/auth/withdraw';
   static const String forgotPassword = '/api/auth/forgot-password';
   static const String verifyToken = '/api/auth/verify';

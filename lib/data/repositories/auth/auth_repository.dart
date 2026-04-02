@@ -291,6 +291,61 @@ class AuthRepository {
     }
   }
 
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String name,
+    required String phone,
+    required String password,
+  }) async {
+    try {
+      final response = await ApiClient.post(ApiEndpoints.resetPassword, {
+        'email': email,
+        'name': name,
+        'phone': phone,
+        'password': password,
+      });
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
+        final success = data['success'] ?? true;
+        return {
+          'success': success,
+          'data': data,
+          'error': success
+              ? null
+              : _asErrorMessage(
+                  data['message'],
+                  fallback: '비밀번호 재설정에 실패했습니다',
+                ),
+        };
+      }
+
+      String errorMessage = '서버 오류: ${response.statusCode}';
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = _asErrorMessage(
+            errorData['message'] ?? errorData['error'],
+            fallback: errorMessage,
+          );
+        }
+      } catch (_) {}
+
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '비밀번호 재설정 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
   // 회원가입 API 호출 (Spring Boot 서버)
   static Future<Map<String, dynamic>> register({
     required String email,

@@ -5,6 +5,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'presentation/home/screens/home_screen.dart';
 import 'presentation/auth/screens/login_screen.dart';
 import 'presentation/auth/screens/find_account_screen.dart';
+import 'presentation/auth/screens/find_account_not_found_screen.dart';
+import 'presentation/auth/screens/find_account_result_screen.dart';
+import 'presentation/auth/screens/find_password_reset_screen.dart';
 import 'presentation/auth/screens/kcp_cert_webview_screen.dart';
 import 'presentation/auth/screens/signup_screen.dart';
 import 'data/services/auth_service.dart';
@@ -91,7 +94,30 @@ class BomioraApp extends StatelessWidget {
       home: const AuthWrapper(),
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/find-account': (context) => const FindAccountScreen(),
+        '/find-account': (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return FindAccountScreen(
+            initialTab: (args?['tab'] ?? 'id').toString(),
+          );
+        },
+        '/find-account-result': (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return FindAccountResultScreen(
+            certInfo: Map<String, dynamic>.from(args ?? const {}),
+          );
+        },
+        '/find-account-not-found': (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return FindAccountNotFoundScreen(findAccountInfo: args);
+        },
+        '/find-password-reset': (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return FindPasswordResetScreen(resetInfo: args);
+        },
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
         // (임시) 카테고리 페이지 접근 차단
         '/category': (context) => const _TemporaryBlockedScreen(featureLabel: '카테고리'),
@@ -106,7 +132,14 @@ class BomioraApp extends StatelessWidget {
         '/qna': (context) => const ContactListScreen(),
         '/cancel-member': (context) => const CancelMemberScreen(),
         '/customer-service': (context) => const ContactListScreen(),
-        '/kcp-cert': (context) => const KcpCertWebViewScreen(),
+        '/kcp-cert': (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return KcpCertWebViewScreen(
+            flow: (args?['flow'] ?? 'signup').toString(),
+            email: args?['email']?.toString(),
+          );
+        },
         '/point': (context) => const PointScreen(),
         '/order': (context) => const DeliveryListScreen(),
         '/signup': (context) {
