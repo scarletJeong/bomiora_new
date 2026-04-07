@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_assets.dart';
+import '../../../data/models/user/user_model.dart';
+import '../../../data/services/auth_service.dart';
+import 'confirm_dialog.dart';
 
-/// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer
-class AppBarMenuTapDrawer extends StatelessWidget {
+/// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
+class AppBarMenuTapDrawer extends StatefulWidget {
   final VoidCallback onHealthDashboardTap;
 
   const AppBarMenuTapDrawer({
@@ -12,237 +14,904 @@ class AppBarMenuTapDrawer extends StatelessWidget {
   });
 
   @override
+  State<AppBarMenuTapDrawer> createState() => _AppBarMenuTapDrawerState();
+}
+
+class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
+  static const String _fontFamily = 'Gmarket Sans TTF';
+
+  static const Color _inkTitle = Color(0xFF1A1A1A);
+  static const Color _inkMuted = Color(0xFF898686);
+  static const Color _divider = Color(0x7FD2D2D2);
+  static const Color _logoutBorder = Color(0xFFD2D2D2);
+  static const Color _brandPink = Color(0xFFFF5A8D);
+
+  UserModel? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshUser();
+  }
+
+  Future<void> _refreshUser() async {
+    final u = await AuthService.getUser();
+    if (mounted) setState(() => _user = u);
+  }
+
+  String get _greetingName {
+    final u = _user;
+    if (u == null) return '회원';
+    final n = (u.nickname != null && u.nickname!.trim().isNotEmpty)
+        ? u.nickname!.trim()
+        : u.name.trim();
+    return n.isEmpty ? '회원' : n;
+  }
+
+  Future<void> _onLogoutPressed(BuildContext context) async {
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '로그아웃',
+      message: '정말 로그아웃하시겠습니까?',
+      confirmText: '로그아웃',
+    );
+
+    if (confirmed) {
+      await AuthService.logout();
+      if (context.mounted) {
+        Navigator.pop(context);
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    }
+  }
+
+  void _popAndPushNamed(BuildContext context, String route, {Object? arguments}) {
+    Navigator.pop(context);
+    Navigator.pushNamed(context, route, arguments: arguments);
+  }
+
+  Widget _buildShortcutGrid(BuildContext context) {
+    Widget cell(_DrawerShortcutData d) {
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: _DrawerShortcut(
+            icon: d.icon,
+            label: d.label,
+            onTap: d.onTap,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            cell(_DrawerShortcutData(
+              icon: Icons.home_outlined,
+              label: '홈',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, '/home');
+              },
+            )),
+            cell(_DrawerShortcutData(
+              icon: Icons.assignment_outlined,
+              label: '문진표',
+              onTap: () => _popAndPushNamed(context, '/profile'),
+            )),
+            cell(_DrawerShortcutData(
+              icon: Icons.local_shipping_outlined,
+              label: '주문배송',
+              onTap: () => _popAndPushNamed(context, '/order'),
+            )),
+            cell(_DrawerShortcutData(
+              icon: Icons.shopping_cart_outlined,
+              label: '장바구니',
+              onTap: () {},
+            )),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            cell(_DrawerShortcutData(
+              icon: Icons.confirmation_number_outlined,
+              label: '쿠폰',
+              onTap: () => _popAndPushNamed(context, '/coupon'),
+            )),
+            cell(_DrawerShortcutData(
+              icon: Icons.stars_outlined,
+              label: '포인트',
+              onTap: () => _popAndPushNamed(context, '/point'),
+            )),
+            cell(_DrawerShortcutData(
+              icon: Icons.person_outline,
+              label: '마이페이지',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, '/my_page');
+              },
+            )),
+            cell(_DrawerShortcutData(
+              icon: Icons.headset_mic_outlined,
+              label: '고객센터',
+              onTap: () {},
+            )),
+          ],
+        ),
+      ],
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(
-              color: Color(0xFFFDF1F7),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.asset(
-                  AppAssets.bomioraLogo,
-                  height: 40,
-                  color: Colors.white,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '보미오라 다이어트 쇼핑몰',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        drawerTheme: DrawerThemeData(
+          width: 322,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
           ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 4,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.8,
-              children: [
-                _MenuGridItem(
-                  icon: Icons.home,
-                  label: '홈',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushReplacementNamed(context, '/home');
-                  },
-                ),
-                _MenuGridItem(
-                  icon: Icons.assignment,
-                  label: '건강프로필',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/profile');
-                  },
-                ),
-                _MenuGridItem(
-                  icon: Icons.local_shipping,
-                  label: '주문배송',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/order');
-                  },
-                ),
-                _MenuGridItem(
-                  icon: Icons.shopping_cart,
-                  label: '장바구니',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                _MenuGridItem(
-                  icon: Icons.card_giftcard,
-                  label: '쿠폰',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/coupon');
-                  },
-                ),
-                _MenuGridItem(
-                  icon: Icons.stars,
-                  label: '마일리지',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/point');
-                  },
-                ),
-                _MenuGridItem(
-                  icon: Icons.person,
-                  label: 'Mypage',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushReplacementNamed(context, '/my_page');
-                  },
-                ),
-                _MenuGridItem(
-                  icon: Icons.headset_mic,
-                  label: '고객센터',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('건강대시보드'),
-            onTap: onHealthDashboardTap,
-          ),
-          const Divider(),
-          ExpansionTile(
-            title: const Text('비대면 치료'),
+          scrimColor: Colors.black.withValues(alpha: 0.20),
+        ),
+      ),
+      child: Drawer(
+        backgroundColor: Colors.white,
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             children: [
-              ListTile(
-                title: const Text('다이어트'),
+              _buildHeader(context),
+              const SizedBox(height: 20),
+              _buildShortcutGrid(context),
+              const SizedBox(height: 20),
+              const Divider(height: 1, thickness: 1, color: _divider),
+              const SizedBox(height: 10),
+              _SectionRow(
+                title: '건강 대시보드',
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.pushNamed(
-                    context,
-                    '/product-list',
-                    arguments: {
-                      'categoryId': '10',
-                      'categoryName': '다이어트',
-                      'productKind': 'prescription',
-                    },
-                  );
+                  widget.onHealthDashboardTap();
                 },
               ),
-              ListTile(
-                title: const Text('디톡스'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(
-                    context,
-                    '/product-list',
-                    arguments: {
-                      'categoryId': '20',
-                      'categoryName': '디톡스',
-                      'productKind': 'prescription',
-                    },
-                  );
-                },
+              Theme(
+                data: theme.copyWith(dividerColor: Colors.transparent),
+                child: Column(
+                  children: [
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      initiallyExpanded: true,
+                      iconColor: _inkTitle,
+                      collapsedIconColor: _inkTitle,
+                      title: const Text(
+                        '비대면 치료',
+                        style: TextStyle(
+                          color: _inkTitle,
+                          fontSize: 16,
+                          fontFamily: _fontFamily,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -1.44,
+                        ),
+                      ),
+                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                      children: [
+                        _ExpansionSubmenuWithRail(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _SubLink(
+                                label: '다이어트',
+                                onTap: () => _popAndPushNamed(
+                                  context,
+                                  '/product-list',
+                                  arguments: {
+                                    'categoryId': '10',
+                                    'categoryName': '다이어트',
+                                    'productKind': 'prescription',
+                                  },
+                                ),
+                              ),
+                              _SubLink(
+                                label: '디톡스',
+                                onTap: () => _popAndPushNamed(
+                                  context,
+                                  '/product-list',
+                                  arguments: {
+                                    'categoryId': '20',
+                                    'categoryName': '디톡스',
+                                    'productKind': 'prescription',
+                                  },
+                                ),
+                              ),
+                              _SubLink(
+                                label: '건강/면역',
+                                onTap: () => _popAndPushNamed(
+                                  context,
+                                  '/product-list',
+                                  arguments: {
+                                    'categoryId': '50',
+                                    'categoryName': '건강/면역',
+                                    'productKind': 'prescription',
+                                  },
+                                ),
+                              ),
+                              _SubLink(
+                                label: '심신안정',
+                                onTap: () => _popAndPushNamed(
+                                  context,
+                                  '/product-list',
+                                  arguments: {
+                                    'categoryId': '80',
+                                    'categoryName': '심신안정',
+                                    'productKind': 'prescription',
+                                  },
+                                ),
+                              ),
+                              _SubLink(
+                                label: '문진표',
+                                onTap: () => _popAndPushNamed(context, '/profile'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      initiallyExpanded: false,
+                      iconColor: _inkTitle,
+                      collapsedIconColor: _inkTitle,
+                      title: const Text(
+                        '헬스케어 스토어',
+                        style: TextStyle(
+                          color: _inkTitle,
+                          fontSize: 16,
+                          fontFamily: _fontFamily,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -1.44,
+                        ),
+                      ),
+                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                      children: [
+                        _ExpansionSubmenuWithRail(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _SubLink(label: '다이어트', onTap: () {}),
+                              _SubLink(label: '디톡스', onTap: () {}),
+                              _SubLink(label: '건강/면역', onTap: () {}),
+                              _SubLink(label: '뷰티/코스메틱', onTap: () {}),
+                              _SubLink(label: '헤어/탈모', onTap: () {}),
+                              _SubLink(label: '헬스케어 웨어러블', onTap: () {}),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      initiallyExpanded: false,
+                      iconColor: _inkTitle,
+                      collapsedIconColor: _inkTitle,
+                      title: const Text(
+                        '건강 콘텐츠',
+                        style: TextStyle(
+                          color: _inkTitle,
+                          fontSize: 16,
+                          fontFamily: _fontFamily,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -1.44,
+                        ),
+                      ),
+                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                      children: [
+                        _ExpansionSubmenuWithRail(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _SubLink(label: '건강상식', onTap: () {}),
+                              _SubLink(label: '운동가이드', onTap: () {}),
+                              _SubLink(label: '추천식단', onTap: () {}),
+                              _SubLink(label: '질환관리', onTap: () {}),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              ListTile(
-                title: const Text('심신안정'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(
-                    context,
-                    '/product-list',
-                    arguments: {
-                      'categoryId': '80',
-                      'categoryName': '심신안정',
-                      'productKind': 'prescription',
-                    },
-                  );
-                },
+              const SizedBox(height: 10),
+              const Divider(height: 1, thickness: 1, color: _divider),
+              const SizedBox(height: 16),
+              const Text(
+                '최근에 본 상품',
+                style: TextStyle(
+                  color: _inkMuted,
+                  fontSize: 12,
+                  fontFamily: _fontFamily,
+                  fontWeight: FontWeight.w500,
+                  height: 1.32,
+                ),
               ),
-              ListTile(
-                title: const Text('건강/면역'),
-                onTap: () {
+              const SizedBox(height: 12),
+              _RecentProductsGrid(
+                onTapProduct: () {
                   Navigator.pop(context);
-                  Navigator.pushNamed(
-                    context,
-                    '/product-list',
-                    arguments: {
-                      'categoryId': '50',
-                      'categoryName': '건강/면역',
-                      'productKind': 'prescription',
-                    },
-                  );
                 },
               ),
             ],
           ),
-          const ListTile(
-            title: Text('헬스케어 스토어'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    if (_user == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '로그인을 하세요.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              _DrawerSettingsIcon(),
+            ],
           ),
-          const ListTile(
-            title: Text('커뮤니티'),
-          ),
-          const ListTile(
-            title: Text('챌린저'),
-          ),
-          const ListTile(
-            title: Text('전문가 매칭'),
-          ),
-          const ListTile(
-            title: Text('건강콘텐츠'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/login');
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _brandPink,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    minimumSize: const Size(0, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text(
+                    '로그인',
+                    style: TextStyle(
+                      fontFamily: _fontFamily,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(
+                      context,
+                      '/kcp-cert',
+                      arguments: const {'flow': 'signup'},
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: _brandPink,
+                    side: const BorderSide(color: _brandPink, width: 1),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    minimumSize: const Size(0, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text(
+                    '회원가입',
+                    style: TextStyle(
+                      fontFamily: _fontFamily,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontFamily: _fontFamily,
+                    color: Colors.black,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '$_greetingName 님 ',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const TextSpan(
+                      text: '안녕하세요.',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const _DrawerSettingsIcon(),
+          ],
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () => _onLogoutPressed(context),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(84, 32),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            side: const BorderSide(color: _logoutBorder, width: 1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            foregroundColor: const Color(0xFF898686),
+          ),
+          child: const Text(
+            '로그아웃',
+            style: TextStyle(
+              fontSize: 10,
+              fontFamily: _fontFamily,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 표시만 하며 탭해도 동작 없음
+class _DrawerSettingsIcon extends StatelessWidget {
+  const _DrawerSettingsIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: 30,
+      height: 30,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Color(0xFFF3F3F3),
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.settings_outlined,
+            size: 18,
+            color: Color(0xFF898686),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _MenuGridItem extends StatelessWidget {
+/// 펼친 하위 메뉴 왼쪽에 이어지는 세로 라인
+class _ExpansionSubmenuWithRail extends StatelessWidget {
+  final Widget child;
+
+  const _ExpansionSubmenuWithRail({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(
+          left: BorderSide(color: Color(0xFFD2D2D2), width: 1.5),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _DrawerShortcutData {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _MenuGridItem({
+  const _DrawerShortcutData({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+}
+
+/// 4×2 그리드 셀: 마우스 호버·손가락 누름 시 아이콘·글자 #FF5A8D
+class _DrawerShortcut extends StatefulWidget {
+  static const String _fontFamily = 'Gmarket Sans TTF';
+  static const Color _muted = Color(0xFF898686);
+  static const Color _hoverPink = Color(0xFFFF5A8D);
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _DrawerShortcut({
     required this.icon,
     required this.label,
     required this.onTap,
   });
 
   @override
+  State<_DrawerShortcut> createState() => _DrawerShortcutState();
+}
+
+class _DrawerShortcutState extends State<_DrawerShortcut> {
+  bool _hover = false;
+  bool _pressed = false;
+
+  bool get _highlight => _hover || _pressed;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 32,
-            color: Colors.grey[600],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w500,
+    final color = _highlight ? _DrawerShortcut._hoverPink : _DrawerShortcut._muted;
+    final labelStyle = TextStyle(
+      color: color,
+      fontSize: 9.5,
+      fontFamily: _DrawerShortcut._fontFamily,
+      fontWeight: _highlight ? FontWeight.w700 : FontWeight.w500,
+      height: 1.35,
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => setState(() => _pressed = true),
+          onPointerUp: (_) => setState(() => _pressed = false),
+          onPointerCancel: (_) => setState(() => _pressed = false),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12),
+            splashColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.18),
+            highlightColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.08),
+            hoverColor: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x19000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 0),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      widget.icon,
+                      size: 22,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.label,
+                    style: labelStyle,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-            textAlign: TextAlign.center,
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionRow extends StatelessWidget {
+  static const String _fontFamily = 'Gmarket Sans TTF';
+
+  final String title;
+  final VoidCallback onTap;
+
+  const _SectionRow({required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF1A1A1A),
+                  fontSize: 16,
+                  fontFamily: _fontFamily,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -1.44,
+                ),
+              ),
+            ),
+            Transform.rotate(
+              angle: -1.5708,
+              child: const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF1A1A1A)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubLink extends StatelessWidget {
+  static const String _fontFamily = 'Gmarket Sans TTF';
+
+  final String label;
+  final VoidCallback onTap;
+
+  const _SubLink({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF898686),
+              fontSize: 14,
+              fontFamily: _fontFamily,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -1.26,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 디자인 시안용 정적 카드 그리드 (추후 최근 본 상품 API 연동 시 교체)
+class _RecentProductsGrid extends StatelessWidget {
+  final VoidCallback onTapProduct;
+
+  const _RecentProductsGrid({required this.onTapProduct});
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = 5.12;
+    const borderColor = Color(0x7FD2D2D2);
+
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _RecentProductCard(
+                title: '4, 5, 6단계 보미 다이어트환',
+                price: '178,000원',
+                onTap: onTapProduct,
+                radius: radius,
+                borderColor: borderColor,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _RecentProductCard(
+                title: '보미 디톡스환 Plus',
+                price: '68,000원',
+                onTap: onTapProduct,
+                radius: radius,
+                borderColor: borderColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _RecentProductCard(
+                title: '4, 5, 6단계 보미 다이어트환',
+                price: '178,000원',
+                onTap: onTapProduct,
+                radius: radius,
+                borderColor: borderColor,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _RecentProductCard(
+                title: '보미 디톡스환 Plus',
+                price: '68,000원',
+                onTap: onTapProduct,
+                radius: radius,
+                borderColor: borderColor,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RecentProductCard extends StatelessWidget {
+  static const String _fontFamily = 'Gmarket Sans TTF';
+
+  final String title;
+  final String price;
+  final VoidCallback onTap;
+  final double radius;
+  final Color borderColor;
+
+  const _RecentProductCard({
+    required this.title,
+    required this.price,
+    required this.onTap,
+    required this.radius,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(radius),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(radius),
+                    topRight: Radius.circular(radius),
+                  ),
+                  child: Container(
+                    height: 100,
+                    color: const Color(0xFFE8E8E8),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.image_outlined, color: Colors.grey.shade500, size: 32),
+                  ),
+                ),
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.favorite_border, size: 12, color: Color(0xFF898686)),
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: borderColor, width: 0.51),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(radius),
+                  bottomRight: Radius.circular(radius),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '보미오라한의원',
+                    style: TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 8,
+                      fontFamily: _fontFamily,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 10,
+                      fontFamily: _fontFamily,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.90,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Text(
+                        '0%',
+                        style: TextStyle(
+                          color: Color(0xFFFF5A8D),
+                          fontSize: 8,
+                          fontFamily: _fontFamily,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        price,
+                        style: const TextStyle(
+                          color: Color(0xFF1A1A1A),
+                          fontSize: 8,
+                          fontFamily: _fontFamily,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
