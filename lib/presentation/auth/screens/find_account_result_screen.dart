@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../utils/find_id_accounts.dart';
+import '../widgets/find_account_result_actions.dart';
+import '../widgets/registered_account_list.dart';
 
 class FindAccountResultScreen extends StatefulWidget {
   const FindAccountResultScreen({
@@ -48,10 +51,7 @@ class _FindAccountResultScreenState
 
       if (!mounted) return;
 
-      final accounts = (result['accounts'] as List<dynamic>? ?? const [])
-          .map((item) => item is Map ? (item['email'] ?? '').toString() : '')
-          .where((email) => email.isNotEmpty)
-          .toList();
+      final accounts = parseFindIdAccountEmails(result);
 
       if (accounts.isEmpty) {
         _goToNotFound();
@@ -109,132 +109,39 @@ class _FindAccountResultScreenState
                         const SizedBox(height: 20),
                         Expanded(
                           child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 10,
-                                        ),
-                                        child: const Text(
-                                          '등록된 아이디',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 16,
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      Column(
-                                        children: List.generate(
-                                          _accounts.length,
-                                          (index) => Padding(
-                                            padding: EdgeInsets.only(
-                                              bottom: index == _accounts.length - 1
-                                                  ? 0
-                                                  : 5,
-                                            ),
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                onTap: () => setState(
-                                                  () => _selectedAccountIndex = index,
-                                                ),
-                                                borderRadius: BorderRadius.circular(12),
-                                                child: _AccountItem(
-                                                  email: _accounts[index],
-                                                  selected: index == _selectedAccountIndex,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: RegisteredAccountList(
+                                accounts: _accounts,
+                                selectedIndex: _selectedAccountIndex,
+                                sectionTitle: '등록된 아이디',
+                                topSpacing: 0,
+                                onSelect: (index) => setState(
+                                  () => _selectedAccountIndex = index,
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: 40,
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    if (_accounts.isEmpty) return;
-                                    final i = _selectedAccountIndex
-                                        .clamp(0, _accounts.length - 1);
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      '/find-account',
-                                      arguments: {
-                                        'tab': 'password',
-                                        'prefillEmail': _accounts[i],
-                                      },
-                                    );
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(
-                                      width: 0.5,
-                                      color: Color(0xFFD2D2D2),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    '비밀번호 찾기',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Color(0xFF898686),
-                                      fontSize: 16,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: SizedBox(
-                                height: 40,
-                                child: ElevatedButton(
-                                  onPressed: () => Navigator.pushReplacementNamed(
-                                    context,
-                                    '/login',
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    elevation: 0,
-                                    backgroundColor: const Color(0xFFFF5A8D),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    '로그인하기',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        FindAccountResultActions(
+                          onPasswordFind: () {
+                            if (_accounts.isEmpty) return;
+                            final i = _selectedAccountIndex
+                                .clamp(0, _accounts.length - 1);
+                            Navigator.pushReplacementNamed(
+                              context,
+                              '/find-account',
+                              arguments: {
+                                'tab': 'password',
+                                'prefillEmail': _accounts[i],
+                              },
+                            );
+                          },
+                          onLogin: () => Navigator.pushReplacementNamed(
+                            context,
+                            '/login',
+                          ),
                         ),
                       ],
                     ),
@@ -273,71 +180,6 @@ class _FindAccountResultScreenState
                 fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccountItem extends StatelessWidget {
-  const _AccountItem({
-    required this.email,
-    required this.selected,
-  });
-
-  final String email;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: ShapeDecoration(
-        color: selected ? const Color(0x0CFF5C8F) : Colors.white,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: 1,
-            color: selected
-                ? const Color(0xFFFF5C8F)
-                : const Color(0xFFD2D2D2),
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              email,
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: selected ? FontWeight.w500 : FontWeight.w300,
-              ),
-            ),
-          ),
-          Container(
-            width: 24,
-            height: 24,
-            decoration: ShapeDecoration(
-              color: selected ? const Color(0xFFFF5C8F) : Colors.white,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  width: 2,
-                  color: selected
-                      ? const Color(0xFFFF5C8F)
-                      : const Color(0xFFD2D2D2),
-                ),
-                borderRadius: BorderRadius.circular(9999),
-              ),
-            ),
-            child: selected
-                ? const Icon(Icons.check, size: 16, color: Colors.white)
-                : null,
           ),
         ],
       ),

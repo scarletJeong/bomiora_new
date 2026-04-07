@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../utils/find_id_accounts.dart';
+import '../widgets/find_account_result_actions.dart';
+import '../widgets/registered_account_list.dart';
 
 enum _FindAccountTab { id, password }
 enum _FindAccountStep { form, result }
@@ -196,6 +199,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     _startCountdown();
   }
 
+  void _goToFindAccountNotFound([Map<String, dynamic>? arguments]) {
+    Navigator.pushReplacementNamed(
+      context,
+      '/find-account-not-found',
+      arguments: arguments,
+    );
+  }
+
   void _handlePhoneCertNavigation() {
     if (_selectedTab == _FindAccountTab.password) {
       final email = _passwordEmailController.text.trim();
@@ -260,16 +271,10 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
         if (result['success'] == true) {
           _countdownTimer?.cancel();
-          final accounts = (result['accounts'] as List<dynamic>? ?? const [])
-              .map((item) => item is Map ? (item['email'] ?? '').toString() : '')
-              .where((email) => email.isNotEmpty)
-              .toList();
+          final accounts = parseFindIdAccountEmails(result);
 
           if (accounts.isEmpty) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/find-account-not-found',
-            );
+            _goToFindAccountNotFound();
             return;
           }
           setState(() {
@@ -278,10 +283,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             _step = _FindAccountStep.result;
           });
         } else {
-          Navigator.pushReplacementNamed(
-            context,
-            '/find-account-not-found',
-          );
+          _goToFindAccountNotFound();
         }
       } else {
         final result = await AuthRepository.findId(
@@ -291,25 +293,18 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
         if (!mounted) return;
 
-        final accounts = (result['accounts'] as List<dynamic>? ?? const [])
-            .map((item) => item is Map ? (item['email'] ?? '').toString() : '')
-            .where((email) => email.isNotEmpty)
-            .toList();
+        final accounts = parseFindIdAccountEmails(result);
         final email = _passwordEmailController.text.trim();
         final name = _passwordNameController.text.trim();
         final phone = _phoneNumber;
 
         if (accounts.isEmpty) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/find-account-not-found',
-            arguments: {
-              'mode': 'password',
-              'email': email,
-              'name': name,
-              'phone': phone,
-            },
-          );
+          _goToFindAccountNotFound({
+            'mode': 'password',
+            'email': email,
+            'name': name,
+            'phone': phone,
+          });
           return;
         } else if (!accounts.contains(email)) {
           setState(() {
@@ -1193,70 +1188,22 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _FoundAccountResultList(
+        RegisteredAccountList(
           accounts: _foundAccounts,
           selectedIndex: _selectedFoundAccountIndex,
           onSelect: (i) => setState(() => _selectedFoundAccountIndex = i),
         ),
         const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 40,
-                child: OutlinedButton(
-                  onPressed: () {
-                    if (_foundAccounts.isEmpty) return;
-                    final i = _selectedFoundAccountIndex.clamp(0, _foundAccounts.length - 1);
-                    _resetForTab(
-                      _FindAccountTab.password,
-                      prefillPasswordEmail: _foundAccounts[i],
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    '비밀번호 찾기',
-                    style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFFF5A8D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    '로그인하기',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+        FindAccountResultActions(
+          onPasswordFind: () {
+            if (_foundAccounts.isEmpty) return;
+            final i = _selectedFoundAccountIndex.clamp(0, _foundAccounts.length - 1);
+            _resetForTab(
+              _FindAccountTab.password,
+              prefillPasswordEmail: _foundAccounts[i],
+            );
+          },
+          onLogin: () => Navigator.pushReplacementNamed(context, '/login'),
         ),
       ],
     );
@@ -1287,95 +1234,6 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           fontWeight: FontWeight.w500,
         ),
       ),
-    );
-  }
-}
-
-// 아이디 찾기 결과 리스트
-class _FoundAccountResultList extends StatelessWidget {
-  final List<String> accounts;
-  final int selectedIndex;
-  final ValueChanged<int> onSelect;
-
-  const _FoundAccountResultList({
-    required this.accounts,
-    required this.selectedIndex,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 10),
-        Column(
-          children: List.generate(accounts.length, (index) {
-            final isSelected = index == selectedIndex;
-            return Padding(
-              padding: EdgeInsets.only(bottom: index == accounts.length - 1 ? 0 : 5),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => onSelect(index),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: ShapeDecoration(
-                      color: isSelected ? const Color(0x0CFF5C8F) : Colors.white,
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: 1,
-                          color: isSelected
-                              ? const Color(0xFFFF5C8F)
-                              : const Color(0xFFD2D2D2),
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            accounts[index],
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: isSelected ? FontWeight.w500 : FontWeight.w300,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: ShapeDecoration(
-                            color: isSelected ? const Color(0xFFFF5C8F) : Colors.white,
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                width: 2,
-                                color: isSelected
-                                    ? const Color(0xFFFF5C8F)
-                                    : const Color(0xFFD2D2D2),
-                              ),
-                              borderRadius: BorderRadius.circular(9999),
-                            ),
-                          ),
-                          child: isSelected
-                              ? const Icon(Icons.check, size: 16, color: Colors.white)
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      ],
     );
   }
 }
