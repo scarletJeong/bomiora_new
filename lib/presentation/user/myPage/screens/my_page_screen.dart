@@ -14,6 +14,7 @@ import '../../../shopping/wish/screens/wish_list_screen.dart';
 import 'refund_account_screen.dart';
 import 'cancel_member_screen.dart';
 import '../../healthprofile/screens/health_profile_list_screen.dart';
+import '../widgets/my_page_shared.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -353,7 +354,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       const SizedBox(height: 40),
                       _buildStatsRow(),
                       const SizedBox(height: 30),
-                      _buildLineMenuItem(
+                      MyPageLineMenuItem(
                         title: '찜 목록',
                         onTap: () {
                           Navigator.push(
@@ -363,7 +364,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         },
                       ),
                       const SizedBox(height: 10),
-                      _buildLineMenuItem(
+                      MyPageLineMenuItem(
                         title: '배송지 관리',
                         onTap: () {
                           Navigator.push(
@@ -373,7 +374,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         },
                       ),
                       const SizedBox(height: 10),
-                      _buildLineMenuItem(
+                      MyPageLineMenuItem(
                         title: '환불 계좌 등록',
                         onTap: () {
                           Navigator.push(
@@ -383,12 +384,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         },
                       ),
                       const SizedBox(height: 10),
-                      _buildLineMenuItem(
+                      MyPageLineMenuItem(
                         title: '내 리뷰 활동',
                         onTap: () => Navigator.pushNamed(context, '/my_reviews'),
                       ),
                       const SizedBox(height: 10),
-                      _buildLineMenuItem(
+                      MyPageLineMenuItem(
                         title: '1:1 문의',
                         onTap: () {
                           Navigator.push(
@@ -398,7 +399,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         },
                       ),
                       const SizedBox(height: 10),
-                      _buildLineMenuItem(
+                      MyPageLineMenuItem(
                         title: '건강프로필 관리',
                         isLast: true,
                         onTap: () => Navigator.push(
@@ -459,28 +460,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
       children: [
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: ShapeDecoration(
-                color: const Color(0xFFFF5A8D),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(45),
-                ),
-              ),
-              child: Container(
-                width: 77,
-                height: 77,
-                decoration: ShapeDecoration(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(45),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.person,
-                  size: 44,
-                  color: Color(0xFFD2D2D2),
-                ),
+            MyPageAvatarFrame(
+              child: const Icon(
+                Icons.person,
+                size: 44,
+                color: Color(0xFFD2D2D2),
               ),
             ),
             const SizedBox(width: 10),
@@ -535,28 +519,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
       children: [
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: ShapeDecoration(
-                color: const Color(0xFFFF5A8D),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(45),
-                ),
-              ),
-              child: Container(
-                width: 77,
-                height: 77,
-                decoration: ShapeDecoration(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(45),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.person_outline,
-                  size: 44,
-                  color: Color(0xFFD2D2D2),
-                ),
+            MyPageAvatarFrame(
+              child: const Icon(
+                Icons.person_outline,
+                size: 44,
+                color: Color(0xFFD2D2D2),
               ),
             ),
             const SizedBox(width: 10),
@@ -734,96 +701,4 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  Widget _buildLineMenuItem({
-    required String title,
-    required VoidCallback onTap,
-    bool isLast = false,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              width: isLast ? 1 : 0.5,
-              color: const Color(0xFF1A1A1A),
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 1,
-                  height: 16,
-                  color: const Color(0xFF1A1A1A),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -1.44,
-                  ),
-                ),
-              ],
-            ),
-            const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: Color(0xFF1A1A1A),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegacyMenuItem({
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              width: 0.5,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 16,
-                fontWeight: FontWeight.w300,
-                letterSpacing: -1.44,
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: Color(0xFF1A1A1A),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

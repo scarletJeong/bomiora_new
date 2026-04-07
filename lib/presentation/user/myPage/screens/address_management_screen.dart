@@ -6,6 +6,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'address_form_screen.dart';
+import '../widgets/my_page_common.dart';
 
 /// 배송지 관리 화면
 class AddressManagementScreen extends StatefulWidget {
@@ -219,11 +220,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: _isLoadingAddresses
-            ? const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFFF3787),
-                ),
-              )
+            ? const MyPageLoadingIndicator()
             : _currentUser == null
                 ? Center(
                     child: Column(

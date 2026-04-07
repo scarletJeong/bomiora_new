@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
+import '../widgets/my_page_shared.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 
@@ -204,11 +205,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   Widget _buildPersonalInfoBody() {
     // 사용자 정보가 로드되지 않았으면 로딩 표시
     if (_currentUser == null) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFFFF3787),
-        ),
-      );
+      return const MyPageLoadingIndicator();
     }
 
     return SingleChildScrollView(
@@ -346,10 +343,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 height: 40,
                 child: ElevatedButton(
                   onPressed: _sendVerificationCode,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5A8D),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  style: MyPageButtonStyles.pinkElevated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
                   child: const Text(
@@ -406,10 +400,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 height: 40,
                 child: ElevatedButton(
                   onPressed: _sendVerificationCode,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5A8D),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  style: MyPageButtonStyles.pinkElevated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
                   child: const Text(
@@ -518,11 +509,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             height: 40,
             child: ElevatedButton(
               onPressed: _saveProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5A8D),
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+              style: MyPageButtonStyles.pinkElevated(),
               child: const Text(
                 '저장',
                 style: TextStyle(
@@ -558,26 +545,8 @@ class _ProfileHeader extends StatelessWidget {
       children: [
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: ShapeDecoration(
-                color: const Color(0xFFFF5A8D),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(45),
-                ),
-              ),
-              child: Container(
-                width: 77,
-                height: 77,
-                decoration: ShapeDecoration(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(45),
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(Icons.person, color: Color(0xFFFF5A8D), size: 34),
-              ),
+            MyPageAvatarFrame(
+              child: const Icon(Icons.person, color: Color(0xFFFF5A8D), size: 34),
             ),
             const SizedBox(width: 10),
             Column(
