@@ -21,6 +21,8 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
   bool _isSubmitting = false;
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
 
   String get _email => (widget.resetInfo?['email'] ?? '').toString().trim();
   String get _name => (widget.resetInfo?['name'] ?? '').toString().trim();
@@ -102,7 +104,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      appBar: const HealthAppBar(title: '아이디/비밀번호찾기'),
+      appBar: const HealthAppBar(title: '비밀번호 재설정'),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -110,16 +112,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
-                '아이디/비밀번호찾기',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 5),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -128,6 +121,10 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
                       _buildPasswordSection(
                         title: '새 비밀번호를 입력해 주세요',
                         controller: _passwordController,
+                        obscureText: _obscureNewPassword,
+                        onToggleObscure: () => setState(
+                          () => _obscureNewPassword = !_obscureNewPassword,
+                        ),
                         hasError: _hasPasswordRuleError,
                         helperText: _hasPasswordRuleError
                             ? '*8~16자/문자,숫자,특수문자 모두 혼용'
@@ -138,50 +135,55 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
                       _buildPasswordSection(
                         title: '새 비밀번호를 다시 한번 입력해 주세요',
                         controller: _confirmController,
+                        obscureText: _obscureConfirmPassword,
+                        onToggleObscure: () => setState(
+                          () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                        ),
                         hasError: _hasConfirmMismatch,
                         helperText: _hasConfirmMismatch
                             ? '비밀번호가 일치하지 않습니다.'
                             : null,
                         helperColor: const Color(0xFFEF4444),
                       ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: _canSubmit ? _handleSubmit : null,
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: _canSubmit
+                                ? const Color(0xFFFF5A8D)
+                                : const Color(0xFFD2D2D2),
+                            disabledBackgroundColor: const Color(0xFFD2D2D2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  '변경하기',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: _canSubmit ? _handleSubmit : null,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: _canSubmit
-                        ? const Color(0xFFFF5A8D)
-                        : const Color(0xFFD2D2D2),
-                    disabledBackgroundColor: const Color(0xFFD2D2D2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          '변경하기',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
                 ),
               ),
             ],
@@ -194,6 +196,8 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   Widget _buildPasswordSection({
     required String title,
     required TextEditingController controller,
+    required bool obscureText,
+    required VoidCallback onToggleObscure,
     required bool hasError,
     required String? helperText,
     required Color helperColor,
@@ -207,15 +211,15 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
             title,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 16,
+              fontSize: 18,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 5),
           TextField(
             controller: controller,
-            obscureText: true,
+            obscureText: obscureText,
             onChanged: (_) => setState(() {}),
             style: const TextStyle(
               color: Colors.black,
@@ -227,7 +231,18 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 10,
-                vertical: 10,
+                vertical: 12,
+              ),
+              suffixIcon: IconButton(
+                onPressed: onToggleObscure,
+                icon: Icon(
+                  obscureText
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: const Color(0xFF898686),
+                  size: 22,
+                ),
+                tooltip: obscureText ? '비밀번호 표시' : '비밀번호 숨기기',
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),

@@ -22,6 +22,19 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _autoLogin = false;
   String? _loginErrorText;
+  String? _returnTo;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map) {
+      final v = args['returnTo']?.toString();
+      if (v != null && v.isNotEmpty && v != '/login') {
+        _returnTo = v;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -276,13 +289,13 @@ class _LoginScreenState extends State<LoginScreen> {
           try {
             // context를 다시 가져와서 사용
             final navigator = Navigator.of(context);
-            navigator.pushReplacementNamed('/home');
+            navigator.pushReplacementNamed(_returnTo ?? '/home');
           } catch (e) {
             print('❌ [LOGIN] 네비게이션 오류: $e');
             // 실패 시 홈으로 이동 시도
             if (mounted) {
               try {
-                Navigator.of(context).pushReplacementNamed('/home');
+                Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
               } catch (e2) {
                 print('❌ [LOGIN] 홈 네비게이션도 실패: $e2');
               }
@@ -631,7 +644,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Future.microtask(() {
           if (!mounted) return;
           try {
-            Navigator.of(context).pushReplacementNamed('/home');
+            Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
           } catch (e) {
             print('❌ [KAKAO LOGIN] 네비게이션 오류: $e');
           }

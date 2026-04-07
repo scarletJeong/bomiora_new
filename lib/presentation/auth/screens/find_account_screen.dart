@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_assets.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -14,9 +13,12 @@ class FindAccountScreen extends StatefulWidget {
   const FindAccountScreen({
     super.key,
     this.initialTab = 'id',
+    this.prefillEmail,
   });
 
   final String initialTab;
+  /// 비밀번호 찾기 탭 진입 시 이메일(아이디) 자동 입력
+  final String? prefillEmail;
 
   @override
   State<FindAccountScreen> createState() => _FindAccountScreenState();
@@ -48,7 +50,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   String? _emailLookupErrorText;
   String? _verificationErrorText;
   List<String> _foundAccounts = [];
-  bool _showNotFoundResult = false;
+  int _selectedFoundAccountIndex = 0;
   Timer? _countdownTimer;
 
   @override
@@ -95,7 +97,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     });
   }
 
-  void _resetForTab(_FindAccountTab tab) {
+  void _resetForTab(_FindAccountTab tab, {String? prefillPasswordEmail}) {
     _countdownTimer?.cancel();
     setState(() {
       _selectedTab = tab;
@@ -112,8 +114,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       _phoneLastController.clear();
       _verificationCodeController.clear();
       _foundAccounts = [];
-      _showNotFoundResult = false;
+      _selectedFoundAccountIndex = 0;
       _clearMessages();
+      if (tab == _FindAccountTab.password) {
+        final pre = prefillPasswordEmail?.trim();
+        if (pre != null && pre.isNotEmpty) {
+          _passwordEmailController.text = pre;
+        }
+      }
     });
   }
 
@@ -122,6 +130,10 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     super.initState();
     _selectedTab =
         widget.initialTab == 'password' ? _FindAccountTab.password : _FindAccountTab.id;
+    final pre = widget.prefillEmail?.trim();
+    if (pre != null && pre.isNotEmpty && _selectedTab == _FindAccountTab.password) {
+      _passwordEmailController.text = pre;
+    }
   }
 
   String get _remainingTimeText {
@@ -253,19 +265,23 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               .where((email) => email.isNotEmpty)
               .toList();
 
+          if (accounts.isEmpty) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/find-account-not-found',
+            );
+            return;
+          }
           setState(() {
-            if (accounts.isEmpty) {
-              _showNotFoundResult = true;
-            } else {
-              _foundAccounts = accounts;
-            }
+            _foundAccounts = accounts;
+            _selectedFoundAccountIndex = 0;
             _step = _FindAccountStep.result;
           });
         } else {
-          setState(() {
-            _showNotFoundResult = true;
-            _step = _FindAccountStep.result;
-          });
+          Navigator.pushReplacementNamed(
+            context,
+            '/find-account-not-found',
+          );
         }
       } else {
         final result = await AuthRepository.findId(
@@ -275,21 +291,55 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
         if (!mounted) return;
 
-        setState(() {
-          final accounts = (result['accounts'] as List<dynamic>? ?? const [])
-              .map((item) => item is Map ? (item['email'] ?? '').toString() : '')
-              .where((email) => email.isNotEmpty)
-              .toList();
-          final email = _passwordEmailController.text.trim();
+        final accounts = (result['accounts'] as List<dynamic>? ?? const [])
+            .map((item) => item is Map ? (item['email'] ?? '').toString() : '')
+            .where((email) => email.isNotEmpty)
+            .toList();
+        final email = _passwordEmailController.text.trim();
+        final name = _passwordNameController.text.trim();
+        final phone = _phoneNumber;
 
-          if (accounts.isEmpty) {
-            _errorText = result['error']?.toString() ?? '일치하는 회원 정보를 찾을 수 없습니다.';
-          } else if (!accounts.contains(email)) {
+        if (accounts.isEmpty) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/find-account-not-found',
+            arguments: {
+              'mode': 'password',
+              'email': email,
+              'name': name,
+              'phone': phone,
+            },
+          );
+          return;
+        } else if (!accounts.contains(email)) {
+          setState(() {
             _emailLookupErrorText = '등록된 아이디(이메일)가 없습니다.';
+          });
+        } else {
+          final forgot = await AuthRepository.forgotPassword(
+            email: email,
+            name: name,
+            phone: phone,
+          );
+          if (!mounted) return;
+          if (forgot['success'] == true) {
+            Navigator.pushNamed(
+              context,
+              '/find-password-reset',
+              arguments: {
+                'email': email,
+                'name': name,
+                'phone': phone,
+                'cert_completed': true,
+              },
+            );
           } else {
-            _resultText = '입력하신 정보가 확인되었습니다.';
+            setState(() {
+              _errorText = forgot['error']?.toString() ??
+                  '비밀번호 재설정을 진행할 수 없습니다.';
+            });
           }
-        });
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -360,9 +410,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                         const SizedBox(height: 16),
                         _buildMessageArea(),
                       ] else ...[
-                        _showNotFoundResult
-                            ? _buildFindIdNotFoundView()
-                            : _buildFindIdResultView(),
+                        _buildFindIdResultView(),
                       ],
                     ],
                   ),
@@ -1145,7 +1193,11 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _FoundAccountResultList(accounts: _foundAccounts),
+        _FoundAccountResultList(
+          accounts: _foundAccounts,
+          selectedIndex: _selectedFoundAccountIndex,
+          onSelect: (i) => setState(() => _selectedFoundAccountIndex = i),
+        ),
         const SizedBox(height: 20),
         Row(
           children: [
@@ -1153,7 +1205,14 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               child: SizedBox(
                 height: 40,
                 child: OutlinedButton(
-                  onPressed: () => _resetForTab(_FindAccountTab.password),
+                  onPressed: () {
+                    if (_foundAccounts.isEmpty) return;
+                    final i = _selectedFoundAccountIndex.clamp(0, _foundAccounts.length - 1);
+                    _resetForTab(
+                      _FindAccountTab.password,
+                      prefillPasswordEmail: _foundAccounts[i],
+                    );
+                  },
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
                     shape: RoundedRectangleBorder(
@@ -1203,134 +1262,6 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     );
   }
 
-  Widget _buildFindIdNotFoundView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            '등록된 아이디',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: 128,
-          height: 128,
-          child: Image.asset(
-            AppAssets.loginFail,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                decoration: ShapeDecoration(
-                  color: const Color(0x19FF5C8F),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.search_off_rounded,
-                  size: 56,
-                  color: Color(0xFFFF5C8F),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          child: const Column(
-            children: [
-              Text(
-                '일치하는 정보가 없습니다.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                '입력하신 정보로 가입된 아이디를\n찾을 수 없습니다. 다시 확인해 주세요.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 12,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 40,
-                child: OutlinedButton(
-                  onPressed: () => _resetForTab(_FindAccountTab.id),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    '다시 찾기',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pushNamed(context, '/kcp-cert'),
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFFF5A8D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    '회원가입 하기',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildMessageArea() {
     if (_errorText == null && _resultText == null) {
       return const SizedBox.shrink();
@@ -1363,9 +1294,13 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 // 아이디 찾기 결과 리스트
 class _FoundAccountResultList extends StatelessWidget {
   final List<String> accounts;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
 
   const _FoundAccountResultList({
     required this.accounts,
+    required this.selectedIndex,
+    required this.onSelect,
   });
 
   @override
@@ -1373,73 +1308,68 @@ class _FoundAccountResultList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            '등록된 아이디',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
         const SizedBox(height: 10),
         Column(
           children: List.generate(accounts.length, (index) {
-            final isSelected = index == 0;
+            final isSelected = index == selectedIndex;
             return Padding(
               padding: EdgeInsets.only(bottom: index == accounts.length - 1 ? 0 : 5),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: ShapeDecoration(
-                  color: isSelected ? const Color(0x0CFF5C8F) : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                      width: 1,
-                      color: isSelected
-                          ? const Color(0xFFFF5C8F)
-                          : const Color(0xFFD2D2D2),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        accounts[index],
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: isSelected ? FontWeight.w500 : FontWeight.w300,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => onSelect(index),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: ShapeDecoration(
+                      color: isSelected ? const Color(0x0CFF5C8F) : Colors.white,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(
+                          width: 1,
+                          color: isSelected
+                              ? const Color(0xFFFF5C8F)
+                              : const Color(0xFFD2D2D2),
                         ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: ShapeDecoration(
-                        color: isSelected ? const Color(0xFFFF5C8F) : Colors.white,
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                            width: 2,
-                            color: isSelected
-                                ? const Color(0xFFFF5C8F)
-                                : const Color(0xFFD2D2D2),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            accounts[index],
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: isSelected ? FontWeight.w500 : FontWeight.w300,
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(9999),
                         ),
-                      ),
-                      child: isSelected
-                          ? const Icon(Icons.check, size: 16, color: Colors.white)
-                          : null,
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: ShapeDecoration(
+                            color: isSelected ? const Color(0xFFFF5C8F) : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                width: 2,
+                                color: isSelected
+                                    ? const Color(0xFFFF5C8F)
+                                    : const Color(0xFFD2D2D2),
+                              ),
+                              borderRadius: BorderRadius.circular(9999),
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check, size: 16, color: Colors.white)
+                              : null,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             );

@@ -22,6 +22,7 @@ class _FindAccountResultScreenState
   bool _isLoading = true;
   String? _errorText;
   List<String> _accounts = const [];
+  int _selectedAccountIndex = 0;
 
   String get _certName => (widget.certInfo['name'] ?? '').toString().trim();
 
@@ -59,6 +60,7 @@ class _FindAccountResultScreenState
 
       setState(() {
         _accounts = accounts;
+        _selectedAccountIndex = 0;
         _isLoading = false;
       });
     } catch (e) {
@@ -139,9 +141,18 @@ class _FindAccountResultScreenState
                                                   ? 0
                                                   : 5,
                                             ),
-                                            child: _AccountItem(
-                                              email: _accounts[index],
-                                              selected: index == 0,
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () => setState(
+                                                  () => _selectedAccountIndex = index,
+                                                ),
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: _AccountItem(
+                                                  email: _accounts[index],
+                                                  selected: index == _selectedAccountIndex,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -161,10 +172,16 @@ class _FindAccountResultScreenState
                                 height: 40,
                                 child: OutlinedButton(
                                   onPressed: () {
+                                    if (_accounts.isEmpty) return;
+                                    final i = _selectedAccountIndex
+                                        .clamp(0, _accounts.length - 1);
                                     Navigator.pushReplacementNamed(
                                       context,
                                       '/find-account',
-                                      arguments: {'tab': 'password'},
+                                      arguments: {
+                                        'tab': 'password',
+                                        'prefillEmail': _accounts[i],
+                                      },
                                     );
                                   },
                                   style: OutlinedButton.styleFrom(
