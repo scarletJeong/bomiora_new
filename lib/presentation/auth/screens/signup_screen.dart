@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/node_value_parser.dart';
+import '../../../core/validation/app_password_validator.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
@@ -413,8 +414,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           if (value == null || value.isEmpty) {
                             return '비밀번호를 입력해주세요.';
                           }
-                          if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,16}$')
-                              .hasMatch(value)) {
+                          if (!isValidAppPassword(value)) {
                             return '8~16자/문자,숫자,특수문자를 모두 포함해주세요.';
                           }
                           return null;

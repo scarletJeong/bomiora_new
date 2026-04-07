@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/validation/app_password_validator.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -29,24 +30,17 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   String get _phone => (widget.resetInfo?['phone'] ?? '').toString().trim();
 
   bool get _hasPasswordRuleError =>
-      _passwordController.text.isNotEmpty && !_isValidPassword(_passwordController.text);
+      _passwordController.text.isNotEmpty &&
+      !isValidAppPassword(_passwordController.text);
 
   bool get _hasConfirmMismatch =>
       _confirmController.text.isNotEmpty &&
       _passwordController.text != _confirmController.text;
 
   bool get _canSubmit =>
-      _isValidPassword(_passwordController.text) &&
+      isValidAppPassword(_passwordController.text) &&
       _passwordController.text == _confirmController.text &&
       !_isSubmitting;
-
-  bool _isValidPassword(String value) {
-    if (value.length < 8 || value.length > 16) return false;
-    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(value);
-    final hasNumber = RegExp(r'\d').hasMatch(value);
-    final hasSpecial = RegExp(r'[!@#$%^&*(),.?":{}|<>_\-\[\]\\/~`+=;]').hasMatch(value);
-    return hasLetter && hasNumber && hasSpecial;
-  }
 
   @override
   void dispose() {
