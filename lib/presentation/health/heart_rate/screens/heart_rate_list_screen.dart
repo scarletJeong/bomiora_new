@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -7,13 +10,19 @@ import '../../../../data/repositories/health/heart_rate/heart_rate_repository.da
 import '../../../../data/services/auth_service.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/period_chart_widget.dart';
+import '../widgets/heart_rate_period_chart.dart';
+import '../widgets/heart_rate_tooltip.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_chart_y_axis_strip.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../weight/widgets/weight_chart_section.dart';
+
+Color _heartRateColorForStatus(String status) =>
+    HeartRateRecord.statusMeansExercise(status)
+        ? const Color(0xFFFF8686)
+        : const Color(0xFF86B0FF);
 
 class HeartRateListScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -36,6 +45,11 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   double timeOffset = 0.0;
   double? _dragStartX;
   VoidCallback? _refreshExpandedChart;
+
+  /// 시간대별(일) 차트 탭 툴팁
+  _DailyChartTooltip? _dailyChartTooltip;
+  String? _recordsCacheDateKey;
+  List<HeartRateRecord>? _recordsCacheForDate;
 
   @override
   void initState() {
@@ -62,7 +76,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 
   Future<void> _loadData() async {
     if (!mounted) return;
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      _dailyChartTooltip = null;
+    });
 
     try {
       currentUser = await AuthService.getUser();
@@ -80,6 +97,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       _allRecords.clear();
     } finally {
       if (mounted) {
+        _recordsCacheDateKey = null;
+        _recordsCacheForDate = null;
         setState(() => isLoading = false);
       }
     }
@@ -93,11 +112,21 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   }
 
   List<HeartRateRecord> _recordsForSelectedDate() {
-    final key = DateFormat('yyyy-MM-dd').format(selectedDate);
-    return _allRecords
-        .where((r) => DateFormat('yyyy-MM-dd').format(r.measuredAt) == key)
-        .toList()
+    final key =
+        '${selectedDate.year}-${selectedDate.month}-${selectedDate.day}';
+    if (_recordsCacheDateKey == key && _recordsCacheForDate != null) {
+      return _recordsCacheForDate!;
+    }
+    final list = _allRecords.where((r) {
+      final d = r.measuredAt;
+      return d.year == selectedDate.year &&
+          d.month == selectedDate.month &&
+          d.day == selectedDate.day;
+    }).toList()
       ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+    _recordsCacheDateKey = key;
+    _recordsCacheForDate = list;
+    return list;
   }
 
   List<Map<String, dynamic>> getChartData() {
@@ -139,25 +168,15 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           .where((r) => DateFormat('yyyy-MM-dd').format(r.measuredAt) == key)
           .toList();
 
-      if (dayRecords.isEmpty) {
-        chartData.add({
-          'date': DateFormat('M.d').format(date),
-          'heartRate': null,
-          'measurementType': null,
-          'record': null,
-          'xPosition': i / days,
-        });
-      } else {
-        dayRecords.sort((a, b) => b.heartRate.compareTo(a.heartRate));
-        final peak = dayRecords.first;
-        chartData.add({
-          'date': DateFormat('M.d').format(date),
-          'heartRate': peak.heartRate,
-          'measurementType': peak.sourceType,
-          'record': peak,
-          'xPosition': i / days,
-        });
-      }
+      chartData.add({
+        'date': DateFormat('M.d').format(date),
+        'slotDate': date,
+        'heartRate': null,
+        'measurementType': null,
+        'record': null,
+        'xPosition': i / days,
+        'hrSeries': _buildHeartRateSeriesForSlot(dayRecords),
+      });
     }
 
     return chartData;
@@ -172,27 +191,57 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         return r.measuredAt.year == year && r.measuredAt.month == month;
       }).toList();
       final xPosition = (month - 1) / 11.0;
-      if (dayRecords.isEmpty) {
-        chartData.add({
-          'date': '$month',
-          'heartRate': null,
-          'measurementType': null,
-          'record': null,
-          'xPosition': xPosition,
+      chartData.add({
+        'date': '$month',
+        'slotYear': year,
+        'slotMonth': month,
+        'heartRate': null,
+        'measurementType': null,
+        'record': null,
+        'xPosition': xPosition,
+        'hrSeries': _buildHeartRateSeriesForSlot(dayRecords),
+      });
+    }
+    return chartData;
+  }
+
+  /// 같은 슬롯(하루 또는 한 달) 내: 운동 먼저(아래), 일상 나중(위). 2건+ 막대, 1건 점.
+  List<Map<String, dynamic>> _buildHeartRateSeriesForSlot(
+    List<HeartRateRecord> records,
+  ) {
+    if (records.isEmpty) return [];
+
+    final exercise =
+        records.where((r) => r.isExerciseForChart).toList();
+    final daily =
+        records.where((r) => !r.isExerciseForChart).toList();
+
+    final out = <Map<String, dynamic>>[];
+
+    void addCategory(List<HeartRateRecord> list, bool isExercise) {
+      if (list.isEmpty) return;
+      final bpms = list.map((r) => r.heartRate).toList();
+      final minB = bpms.reduce(math.min);
+      final maxB = bpms.reduce(math.max);
+      if (list.length >= 2) {
+        out.add(<String, dynamic>{
+          'kind': 'bar',
+          'exercise': isExercise,
+          'minBpm': minB,
+          'maxBpm': maxB,
         });
       } else {
-        dayRecords.sort((a, b) => b.heartRate.compareTo(a.heartRate));
-        final peak = dayRecords.first;
-        chartData.add({
-          'date': '$month',
-          'heartRate': peak.heartRate,
-          'measurementType': peak.sourceType,
-          'record': peak,
-          'xPosition': xPosition,
+        out.add(<String, dynamic>{
+          'kind': 'dot',
+          'exercise': isExercise,
+          'bpm': minB,
         });
       }
     }
-    return chartData;
+
+    addCategory(exercise, true);
+    addCategory(daily, false);
+    return out;
   }
 
   Map<String, double> _calculateTimeRange() {
@@ -223,6 +272,237 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     });
   }
 
+  void _handleDailyChartTap(
+    Offset local,
+    Size chartSize,
+    List<_HeartDailyVisual> visuals,
+  ) {
+    final idx = _HeartRateChartPainter.hitTestVisual(
+      local,
+      chartSize,
+      visuals,
+      minValue: 50,
+      maxValue: 250,
+    );
+    _DailyChartTooltip? nextTooltip;
+    if (idx == null) {
+      nextTooltip = null;
+    } else {
+      final v = visuals[idx];
+      const maxStartHour = 18;
+      final startHour =
+          (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
+      final endHour = startHour + 6;
+      final hour = v.isBar ? v.bucketHour : v.record?.measuredAt.hour;
+      if (hour == null || hour < startHour || hour > endHour) {
+        nextTooltip = null;
+      } else {
+        final inHour = _recordsForSelectedDate()
+            .where((r) => r.measuredAt.hour == hour)
+            .toList();
+        if (inHour.length >= 2) {
+          nextTooltip = _DailyChartTooltip.hourBucket(
+            chartLocal: local,
+            bucketHour: hour,
+            records: inHour,
+          );
+        } else if (!v.isBar && v.record != null) {
+          nextTooltip = _DailyChartTooltip.single(
+            chartLocal: local,
+            record: v.record!,
+          );
+        } else {
+          nextTooltip = null;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    _setChartState(() => _dailyChartTooltip = nextTooltip);
+  }
+
+  Widget _buildDailyTooltipBubble(_DailyChartTooltip t) {
+    const font = 'Gmarket Sans TTF';
+    const headerStyle = TextStyle(
+      color: Color(0xFF374151),
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      fontFamily: font,
+    );
+
+    String rangeValueFor(List<HeartRateRecord> list) {
+      if (list.isEmpty) return '';
+      final bpms = list.map((e) => e.heartRate).toList();
+      final minB = bpms.reduce(math.min);
+      final maxB = bpms.reduce(math.max);
+      if (list.length >= 2) {
+        return minB == maxB ? '$minB' : '$minB ~ $maxB';
+      }
+      return '${list.single.heartRate}';
+    }
+
+    if (t.isHourBucket && t.hourRecords != null && t.bucketHour != null) {
+      final daily = t.hourRecords!
+          .where((r) => !r.isExerciseForChart)
+          .toList()
+        ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+      final exercise = t.hourRecords!
+          .where((r) => r.isExerciseForChart)
+          .toList()
+        ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+
+      final body = <Widget>[
+        Text(
+          '${t.bucketHour}시',
+          textAlign: TextAlign.center,
+          style: headerStyle,
+        ),
+        const SizedBox(height: 8),
+      ];
+      if (daily.isNotEmpty) {
+        body.add(
+          heartRateTooltipValueRowWithBadge(
+            badgeLabel: '일',
+            badgeColor: heartRateTooltipDailyColor,
+            value: rangeValueFor(daily),
+          ),
+        );
+      }
+      if (daily.isNotEmpty && exercise.isNotEmpty) {
+        body.add(const SizedBox(height: 6));
+      }
+      if (exercise.isNotEmpty) {
+        body.add(
+          heartRateTooltipValueRowWithBadge(
+            badgeLabel: '운',
+            badgeColor: heartRateTooltipExerciseColor,
+            value: rangeValueFor(exercise),
+          ),
+        );
+      }
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: body,
+        ),
+      );
+    }
+    final r = t.record!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            DateFormat('HH:mm').format(r.measuredAt),
+            textAlign: TextAlign.center,
+            style: headerStyle,
+          ),
+          const SizedBox(height: 8),
+          heartRateTooltipValueRowWithBadge(
+            badgeLabel: r.isExerciseForChart ? '운' : '일',
+            badgeColor: r.isExerciseForChart
+                ? heartRateTooltipExerciseColor
+                : heartRateTooltipDailyColor,
+            value: '${r.heartRate}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 같은 시(hour)·같은 status(운동/일상) 그룹: 2건 이상이면 min–max 막대, 1건이면 점.
+  /// 해당 **시(hour) 전체**에 기록이 2건 이상이면 분 단위 x 대신 그 시 정각 x축에만 표시.
+  List<_HeartDailyVisual> _buildDailyHeartVisuals() {
+    const maxStartHour = 18;
+    final startHour =
+        (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
+    final endHour = startHour + 6;
+    final minHour = startHour.toDouble();
+    final range = (endHour - minHour).toDouble();
+    if (range <= 0) return [];
+
+    double xNorm(HeartRateRecord r) {
+      final h = r.measuredAt.hour +
+          r.measuredAt.minute / 60.0 +
+          r.measuredAt.second / 3600.0;
+      return ((h - minHour) / range).clamp(0.0, 1.0);
+    }
+
+    final records = _recordsForSelectedDate();
+    final hourTotalCount = <int, int>{};
+    for (final r in records) {
+      final calHour = r.measuredAt.hour;
+      if (calHour < startHour || calHour > endHour) continue;
+      hourTotalCount[calHour] = (hourTotalCount[calHour] ?? 0) + 1;
+    }
+
+    final groups = <String, List<HeartRateRecord>>{};
+    for (final r in records) {
+      final calHour = r.measuredAt.hour;
+      if (calHour < startHour || calHour > endHour) continue;
+      final cat = r.isExerciseForChart ? 'E' : 'D';
+      groups.putIfAbsent('$calHour|$cat', () => []).add(r);
+    }
+
+    final out = <_HeartDailyVisual>[];
+    for (final e in groups.entries) {
+      final parts = e.key.split('|');
+      if (parts.length != 2) continue;
+      final bucketHour = int.tryParse(parts[0]);
+      if (bucketHour == null) continue;
+      final isEx = parts[1] == 'E';
+      final list = List<HeartRateRecord>.from(e.value)
+        ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+      final color =
+          _heartRateColorForStatus(isEx ? '운동' : '일상');
+
+      /// X축 정수 시 라벨(10시)과 동일: 해당 시각 0분 위치 (평균 시각 아님)
+      final hourTickX =
+          (bucketHour - minHour) / range.clamp(0.001, double.infinity);
+      final snapToHourTick =
+          (hourTotalCount[bucketHour] ?? 0) >= 2;
+
+      if (list.length >= 2) {
+        final bpms = list.map((r) => r.heartRate).toList();
+        final minB = bpms.reduce(math.min);
+        final maxB = bpms.reduce(math.max);
+        out.add(_HeartDailyVisual.range(
+          hourTickX.clamp(0.0, 1.0),
+          minB,
+          maxB,
+          color,
+          bucketHour,
+        ));
+      } else {
+        final r = list.single;
+        final x = snapToHourTick ? hourTickX.clamp(0.0, 1.0) : xNorm(r);
+        out.add(_HeartDailyVisual.point(x, r.heartRate, color, r));
+      }
+    }
+    out.sort((a, b) {
+      final c = a.xNorm.compareTo(b.xNorm);
+      if (c != 0) return c;
+      if (a.isBar == b.isBar) return 0;
+      return a.isBar ? -1 : 1;
+    });
+    return out;
+  }
+
   List<double> getYAxisLabels() => [250, 200, 150, 100, 50];
 
   @override
@@ -250,8 +530,11 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                       onDateChanged: (newDate) {
                         _setChartState(() {
                           selectedDate = newDate;
+                          _recordsCacheDateKey = null;
+                          _recordsCacheForDate = null;
                           selectedChartPointIndex = null;
                           tooltipPosition = null;
+                          _dailyChartTooltip = null;
                           if (_isToday()) {
                             final now = DateTime.now();
                             timeOffset =
@@ -281,8 +564,11 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                       onChanged: (period) {
                         _setChartState(() {
                           selectedPeriod = period;
+                          _recordsCacheDateKey = null;
+                          _recordsCacheForDate = null;
                           selectedChartPointIndex = null;
                           tooltipPosition = null;
+                          _dailyChartTooltip = null;
                           if (period == '월') {
                             timeOffset = 0.0;
                           } else if (period == '주') {
@@ -442,9 +728,14 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                Text(
-                  '${record.heartRate}bpm',
-                  style: const TextStyle(
+                heartRateTooltipValueRowWithBadge(
+                  badgeLabel:
+                      record.isExerciseForChart ? '운' : '일',
+                  badgeColor: record.isExerciseForChart
+                      ? heartRateTooltipExerciseColor
+                      : heartRateTooltipDailyColor,
+                  value: '${record.heartRate}bpm',
+                  valueStyle: const TextStyle(
                     color: Colors.black,
                     fontSize: 16,
                     fontFamily: 'Gmarket Sans TTF',
@@ -462,13 +753,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   Widget _buildChart(
       {bool showExpandButton = true,
       double chartHeight = ChartConstants.healthChartHeight}) {
-    final chartData = getChartData();
     final yLabels = getYAxisLabels();
 
     Widget chartBody;
     if (selectedPeriod != '일') {
-      chartBody = PeriodChartWidget(
-        chartData: chartData,
+      chartBody = HeartRateChartWidget(
+        chartData: getChartData(),
         yLabels: yLabels,
         selectedPeriod: selectedPeriod,
         selectedDate: selectedDate,
@@ -478,6 +768,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           _setChartState(() => timeOffset = newOffset);
         },
         onTooltipChanged: (index, position) {
+          if (!mounted) return;
           _setChartState(() {
             selectedChartPointIndex = index;
             tooltipPosition = position;
@@ -485,12 +776,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         },
         selectedChartPointIndex: selectedChartPointIndex,
         tooltipPosition: tooltipPosition,
-        dataType: 'heartRate',
         yAxisCount: yLabels.length,
-        showYAxisUnitHeader: true,
-        yAxisUnitLabel: '(bpm)',
         useCalendarYearMonths: selectedPeriod == '월',
         padding: ChartConstants.weightChartCardPadding,
+        cardBackgroundColor: Colors.white,
       );
     } else if (_recordsForSelectedDate().isEmpty) {
       chartBody = HealthDailyNoDataChartCard(
@@ -499,8 +788,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         subtitle: '심박수를 측정해보세요',
       );
     } else {
-      chartBody =
-          _buildDailyChart(chartData, yLabels, chartHeight: chartHeight);
+      chartBody = _buildDailyChart(yLabels, chartHeight: chartHeight);
     }
 
     if (!showExpandButton) return chartBody;
@@ -535,10 +823,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   }
 
   Widget _buildDailyChart(
-    List<Map<String, dynamic>> chartData,
     List<double> yLabels, {
     double chartHeight = ChartConstants.healthChartHeight,
   }) {
+    final dailyVisuals = _buildDailyHeartVisuals();
     return Container(
       height: chartHeight,
       padding: ChartConstants.weightChartCardPadding,
@@ -559,73 +847,141 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    buildChartYAxisStripWithUnit(
-                      yLabels: yLabels,
-                      showUnitHeader: yLabels.length > 1,
-                      unitLabel: '(bpm)',
+                    ColoredBox(
+                      color: Colors.white,
+                      child: buildChartYAxisStripWithUnit(
+                        yLabels: yLabels,
+                        showUnitHeader: yLabels.length > 1,
+                        unitLabel: '(bpm)',
+                      ),
                     ),
                     SizedBox(width: ChartConstants.yAxisSpacing),
                     Expanded(
-                      child: Column(
-                        children: [
-                          if (yLabels.length > 1)
-                            SizedBox(height: unitBand),
-                          Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, inner) {
-                                final w = inner.maxWidth;
-                                final h = inner.maxHeight;
-                                if (w <= 0 || h <= 0) {
-                                  return const SizedBox.shrink();
-                                }
-                                // PeriodChartWidget과 동일: 자식 없는 CustomPaint는 size 필수,
-                                // 지정 안 하면 영역이 거의 0으로 잡혀 가로 그리드가 세로 띠처럼 보임.
-                                return GestureDetector(
-                                  behavior: HitTestBehavior.translucent,
-                                  onPanStart: (selectedPeriod == '일' ||
-                                          selectedPeriod == '월')
-                                      ? (details) => _dragStartX =
-                                          details.localPosition.dx
-                                      : null,
-                                  onPanUpdate: (selectedPeriod == '일' ||
-                                          selectedPeriod == '월')
-                                      ? (details) {
-                                          if (_dragStartX != null) {
-                                            final deltaX = details
-                                                    .localPosition.dx -
-                                                _dragStartX!;
-                                            _handleDragUpdate(deltaX, w);
-                                            _dragStartX =
-                                                details.localPosition.dx;
-                                          }
-                                        }
-                                      : null,
-                                  onPanEnd: (selectedPeriod == '일' ||
-                                          selectedPeriod == '월')
-                                      ? (_) => _dragStartX = null
-                                      : null,
-                                  child: CustomPaint(
-                                    size: Size(w, h),
-                                    painter: _HeartRateChartPainter(
-                                      chartData,
-                                      50,
-                                      250,
-                                      timeOffset: timeOffset,
-                                      pointColorFor: (HeartRateRecord? r) {
-                                        if (r == null) {
-                                          return const Color(0xFF86B0FF);
-                                        }
-                                        return r.status == '운동'
-                                            ? const Color(0xFFFF8686)
-                                            : const Color(0xFF86B0FF);
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
+                      child: ColoredBox(
+                        color: Colors.white,
+                        child: Column(
+                          children: [
+                            if (yLabels.length > 1)
+                              SizedBox(height: unitBand),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, inner) {
+                                  final w = inner.maxWidth;
+                                  final h = inner.maxHeight;
+                                  if (w <= 0 || h <= 0) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  const tooltipPad = 6.0;
+                                  Widget? dailyTooltipOverlay;
+                                  if (_dailyChartTooltip != null) {
+                                    final double anchorLeft =
+                                        _dailyChartTooltip!.chartLocal.dx
+                                            .clamp(
+                                      tooltipPad,
+                                      math.max(
+                                        tooltipPad,
+                                        w - tooltipPad,
+                                      ),
+                                    ).toDouble();
+                                    /// [HeartRateTooltip._positionedCard]와 동일
+                                    final double maxTooltipW = (w -
+                                                anchorLeft -
+                                                tooltipPad)
+                                            .clamp(88.0, 240.0)
+                                            .toDouble();
+                                    final double topY =
+                                        (_dailyChartTooltip!.chartLocal.dy -
+                                                92)
+                                            .clamp(
+                                      tooltipPad,
+                                      math.max(
+                                        tooltipPad,
+                                        h - 110 - tooltipPad,
+                                      ),
+                                    ).toDouble();
+                                    dailyTooltipOverlay = Positioned(
+                                      left: anchorLeft,
+                                      top: topY,
+                                      child: FractionalTranslation(
+                                        translation: const Offset(-0.5, 0),
+                                        child: Material(
+                                          type: MaterialType.transparency,
+                                          child: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              minWidth: 88,
+                                              maxWidth: maxTooltipW,
+                                            ),
+                                            child: _buildDailyTooltipBubble(
+                                              _dailyChartTooltip!,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      GestureDetector(
+                                        behavior: HitTestBehavior.translucent,
+                                        onTapDown: (details) {
+                                          _handleDailyChartTap(
+                                            details.localPosition,
+                                            Size(w, h),
+                                            dailyVisuals,
+                                          );
+                                        },
+                                        onPanStart:
+                                            (selectedPeriod == '일' ||
+                                                    selectedPeriod == '월')
+                                                ? (details) {
+                                                    _setChartState(
+                                                      () => _dailyChartTooltip =
+                                                          null,
+                                                    );
+                                                    _dragStartX = details
+                                                        .localPosition.dx;
+                                                  }
+                                                : null,
+                                        onPanUpdate:
+                                            (selectedPeriod == '일' ||
+                                                    selectedPeriod == '월')
+                                                ? (details) {
+                                                    if (_dragStartX != null) {
+                                                      final deltaX = details
+                                                              .localPosition
+                                                              .dx -
+                                                          _dragStartX!;
+                                                      _handleDragUpdate(
+                                                          deltaX, w);
+                                                      _dragStartX = details
+                                                          .localPosition.dx;
+                                                    }
+                                                  }
+                                                : null,
+                                        onPanEnd:
+                                            (selectedPeriod == '일' ||
+                                                    selectedPeriod == '월')
+                                                ? (_) => _dragStartX = null
+                                                : null,
+                                        child: CustomPaint(
+                                          size: Size(w, h),
+                                          painter: _HeartRateChartPainter(
+                                            visuals: dailyVisuals,
+                                            minValue: 50,
+                                            maxValue: 250,
+                                          ),
+                                        ),
+                                      ),
+                                      if (dailyTooltipOverlay != null)
+                                        dailyTooltipOverlay,
+                                    ],
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -656,6 +1012,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           selectedPeriod = period;
           selectedChartPointIndex = null;
           tooltipPosition = null;
+          _dailyChartTooltip = null;
           if (period == '월' || period == '주') {
             timeOffset = 0.0;
           } else if (_isToday()) {
@@ -705,6 +1062,48 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   }
 }
 
+/// 시간대별(일) 차트 탭 시 표시
+class _DailyChartTooltip {
+  final Offset chartLocal;
+  /// true: 해당 시에 기록 2건 이상 → 일상/운동 구간을 한 카드에 표시
+  final bool isHourBucket;
+  final HeartRateRecord? record;
+  final int? bucketHour;
+  final List<HeartRateRecord>? hourRecords;
+
+  _DailyChartTooltip._({
+    required this.chartLocal,
+    required this.isHourBucket,
+    this.record,
+    this.bucketHour,
+    this.hourRecords,
+  });
+
+  factory _DailyChartTooltip.single({
+    required Offset chartLocal,
+    required HeartRateRecord record,
+  }) {
+    return _DailyChartTooltip._(
+      chartLocal: chartLocal,
+      isHourBucket: false,
+      record: record,
+    );
+  }
+
+  factory _DailyChartTooltip.hourBucket({
+    required Offset chartLocal,
+    required int bucketHour,
+    required List<HeartRateRecord> records,
+  }) {
+    return _DailyChartTooltip._(
+      chartLocal: chartLocal,
+      isHourBucket: true,
+      bucketHour: bucketHour,
+      hourRecords: records,
+    );
+  }
+}
+
 class _HeartLegend extends StatelessWidget {
   final Color color;
   final String label;
@@ -744,36 +1143,140 @@ class _HeartLegend extends StatelessWidget {
   }
 }
 
+class _HeartDailyVisual {
+  final bool isBar;
+  final double xNorm;
+  final int singleBpm;
+  final int minBpm;
+  final int maxBpm;
+  final Color color;
+  final HeartRateRecord? record;
+  final int? bucketHour;
+
+  _HeartDailyVisual.point(
+    this.xNorm,
+    this.singleBpm,
+    this.color,
+    this.record,
+  )   : isBar = false,
+        minBpm = singleBpm,
+        maxBpm = singleBpm,
+        bucketHour = null;
+
+  _HeartDailyVisual.range(
+    this.xNorm,
+    this.minBpm,
+    this.maxBpm,
+    this.color,
+    this.bucketHour,
+  )   : isBar = true,
+        singleBpm = minBpm,
+        record = null;
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! _HeartDailyVisual) return false;
+    return isBar == other.isBar &&
+        xNorm == other.xNorm &&
+        minBpm == other.minBpm &&
+        maxBpm == other.maxBpm &&
+        color == other.color &&
+        bucketHour == other.bucketHour &&
+        record?.id == other.record?.id;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(isBar, xNorm, minBpm, maxBpm, color, bucketHour, record?.id);
+}
+
 class _HeartRateChartPainter extends CustomPainter {
-  final List<Map<String, dynamic>> data;
+  final List<_HeartDailyVisual> visuals;
   final double minValue;
   final double maxValue;
-  final double timeOffset;
-  final Color Function(HeartRateRecord? record) pointColorFor;
 
-  _HeartRateChartPainter(
-    this.data,
-    this.minValue,
-    this.maxValue, {
-    required this.timeOffset,
-    required this.pointColorFor,
+  _HeartRateChartPainter({
+    required this.visuals,
+    required this.minValue,
+    required this.maxValue,
   });
+
+  static const double _leftPad = ChartConstants.weightDailyChartInnerPadH;
+  static const double _rightPad = ChartConstants.weightDailyChartInnerPadH;
+  static const double _topPad = 20.0;
+  static const double _botPad = 20.0;
+  static const double _dotRadius = 6.0;
+  static const double _barWidth = 10.0;
+  static const double _minBarHeight = 5.0;
+  static const double _hitSlop = 14.0;
+
+  /// 탭 위치가 점/막대에 가까우면 인덱스, 아니면 null (위에서 그린 순서 우선)
+  static int? hitTestVisual(
+    Offset local,
+    Size size,
+    List<_HeartDailyVisual> visuals, {
+    required double minValue,
+    required double maxValue,
+  }) {
+    if (visuals.isEmpty) return null;
+    final plotH = size.height - _topPad - _botPad;
+    final plotW = size.width - _leftPad - _rightPad;
+    final rangeBpm = maxValue - minValue;
+    if (rangeBpm <= 0 || plotW <= 0 || plotH <= 0) return null;
+
+    double toY(double bpm) {
+      final n = (maxValue - bpm) / rangeBpm;
+      return _topPad + plotH * n;
+    }
+
+    for (int i = visuals.length - 1; i >= 0; i--) {
+      final v = visuals[i];
+      final x = _leftPad + plotW * v.xNorm.clamp(0.0, 1.0);
+      if (v.isBar) {
+        var yHigh = toY(v.maxBpm.toDouble());
+        var yLow = toY(v.minBpm.toDouble());
+        if (yHigh > yLow) {
+          final t = yHigh;
+          yHigh = yLow;
+          yLow = t;
+        }
+        var barH = yLow - yHigh;
+        if (barH < _minBarHeight) {
+          final mid = (yHigh + yLow) / 2;
+          yHigh = mid - _minBarHeight / 2;
+          barH = _minBarHeight;
+        }
+        final rect = Rect.fromLTRB(
+          x - _barWidth / 2 - _hitSlop,
+          yHigh - _hitSlop,
+          x + _barWidth / 2 + _hitSlop,
+          yHigh + barH + _hitSlop,
+        );
+        if (rect.contains(local)) return i;
+      } else {
+        final y = toY(v.singleBpm.toDouble());
+        if ((local - Offset(x, y)).distance <= _dotRadius + _hitSlop) {
+          return i;
+        }
+      }
+    }
+    return null;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final leftPad = ChartConstants.weightDailyChartInnerPadH;
-    final rightPad = ChartConstants.weightDailyChartInnerPadH;
-    const topPad = 20.0;
-    const botPad = 20.0;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = Colors.white,
+    );
+
+    const leftPad = _leftPad;
+    const rightPad = _rightPad;
+    const topPad = _topPad;
+    const botPad = _botPad;
     final plotH = size.height - topPad - botPad;
     final plotW = size.width - leftPad - rightPad;
 
-    const maxStartHour = 18;
-    final startHour =
-        (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
-    final endHour = startHour + 6;
-
-    // 일자별/월별 PeriodChartPainter와 동일: 가로 그리드만, 좌우 패딩 구간 전체 너비
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
@@ -788,36 +1291,63 @@ class _HeartRateChartPainter extends CustomPainter {
       );
     }
 
-    if (data.isEmpty) return;
+    if (visuals.isEmpty) return;
 
-    final spots = <({Offset offset, Color color})>[];
+    final rangeBpm = maxValue - minValue;
+    if (rangeBpm <= 0) return;
 
-    for (int i = 0; i < data.length; i++) {
-      final hour = (data[i]['hour'] as int?) ?? 0;
-      if (hour < startHour || hour > endHour) continue;
-
-      final xPosition =
-          (data[i]['xPosition'] as double?) ?? (i / (data.length - 1));
-      final v = (data[i]['bloodSugar'] as int).toDouble();
-      final normalized = (maxValue - v) / (maxValue - minValue);
-      final x = leftPad + plotW * xPosition;
-      final y = topPad + plotH * normalized;
-      final rec = data[i]['record'] as HeartRateRecord?;
-      spots.add((offset: Offset(x, y), color: pointColorFor(rec)));
+    double toY(double bpm) {
+      final n = (maxValue - bpm) / rangeBpm;
+      return topPad + plotH * n;
     }
 
-    const dotRadius = 6.0;
-    for (final s in spots) {
-      canvas.drawCircle(
-        s.offset,
-        dotRadius,
-        Paint()
-          ..color = s.color
-          ..style = PaintingStyle.fill,
-      );
+    const dotRadius = _dotRadius;
+    const barWidth = _barWidth;
+    const minBarHeight = _minBarHeight;
+
+    for (final v in visuals) {
+      final x = leftPad + plotW * v.xNorm.clamp(0.0, 1.0);
+      final fill = Paint()
+        ..color = v.color
+        ..style = PaintingStyle.fill;
+
+      if (v.isBar) {
+        var yHigh = toY(v.maxBpm.toDouble());
+        var yLow = toY(v.minBpm.toDouble());
+        if (yHigh > yLow) {
+          final t = yHigh;
+          yHigh = yLow;
+          yLow = t;
+        }
+        var barH = yLow - yHigh;
+        if (barH < minBarHeight) {
+          final mid = (yHigh + yLow) / 2;
+          yHigh = mid - minBarHeight / 2;
+          barH = minBarHeight;
+        }
+        final barRect = Rect.fromLTWH(x - barWidth / 2, yHigh, barWidth, barH);
+        final cornerR = math.min(barWidth / 2, barH / 2);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            barRect,
+            Radius.circular(cornerR),
+          ),
+          fill,
+        );
+      } else {
+        canvas.drawCircle(
+          Offset(x, toY(v.singleBpm.toDouble())),
+          dotRadius,
+          fill,
+        );
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _HeartRateChartPainter oldDelegate) {
+    return !listEquals(oldDelegate.visuals, visuals) ||
+        oldDelegate.minValue != minValue ||
+        oldDelegate.maxValue != maxValue;
+  }
 }

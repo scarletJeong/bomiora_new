@@ -8,6 +8,19 @@ class HeartRateRecord {
   final int? sourceRecordId;
   final DateTime? createdAt;
 
+  /// 그래프 색상 등 UI에서 운동 구간 여부 판별
+  bool get isExerciseForChart => statusMeansExercise(status);
+
+  /// API/입력값 표기 차이 흡수 (공백, zero-width, 영문 등)
+  static bool statusMeansExercise(String status) {
+    final s = status
+        .replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '')
+        .trim();
+    if (s == '운동') return true;
+    final lower = s.toLowerCase();
+    return lower == 'exercise' || lower == 'workout' || lower == 'active';
+  }
+
   const HeartRateRecord({
     this.id,
     required this.mbId,
@@ -37,7 +50,7 @@ class HeartRateRecord {
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
       heartRate: _parseInt(json['heart_rate'] ?? json['heartRate']) ?? 0,
       measuredAt: _parseDateTime(json['measured_at'] ?? json['measuredAt']) ?? DateTime.now(),
-      status: _parseString(json['status']) ?? '일상',
+      status: _statusFromJson(json),
       sourceType:
           _parseString(json['source_type'] ?? json['sourceType']) ??
           'health_sync',
@@ -46,6 +59,24 @@ class HeartRateRecord {
           ? _parseDateTime(json['created_at'] ?? json['createdAt'])
           : null,
     );
+  }
+
+  /// API마다 키가 달라질 수 있음. 빈 문자열은 기본값으로 간주.
+  static String _statusFromJson(Map<String, dynamic> json) {
+    const keys = [
+      'status',
+      'hr_status',
+      'Status',
+      'measurement_status',
+      'measure_type',
+      'activity_type',
+      'record_status',
+    ];
+    for (final k in keys) {
+      final s = _parseString(json[k]);
+      if (s != null && s.trim().isNotEmpty) return s.trim();
+    }
+    return '일상';
   }
 
   static DateTime? _parseDateTime(dynamic value) {
