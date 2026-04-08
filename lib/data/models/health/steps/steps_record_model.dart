@@ -129,7 +129,26 @@ class StepsRecord {
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
     try {
-      return DateTime.parse(value.toString());
+      final raw = value.toString().trim();
+      final parsed = DateTime.parse(raw);
+
+      // 서버가 로컬 시각을 보내고 'Z'가 붙어 UTC로 오인되는 경우
+      // (예: "2026-04-08T09:00:00.000Z"가 사실 09:00 로컬 의미) 시각 유지.
+      final looksLikeWallClockUtcZ =
+          raw.endsWith('Z') && !raw.contains('+') && !raw.contains('-');
+      if (parsed.isUtc && looksLikeWallClockUtcZ) {
+        return DateTime(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+          parsed.hour,
+          parsed.minute,
+          parsed.second,
+          parsed.millisecond,
+          parsed.microsecond,
+        );
+      }
+      return parsed.isUtc ? parsed.toLocal() : parsed;
     } catch (_) {
       return null;
     }

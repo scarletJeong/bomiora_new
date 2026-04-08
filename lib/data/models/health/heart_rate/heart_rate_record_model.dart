@@ -82,7 +82,27 @@ class HeartRateRecord {
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
     try {
-      final parsed = DateTime.parse(value.toString());
+      final raw = value.toString().trim();
+      final parsed = DateTime.parse(raw);
+
+      // 서버/DB가 "로컬 시각"을 보냈는데 직렬화 과정에서 'Z'만 붙어
+      // UTC로 해석되어 +9시간(한국) 밀리는 케이스를 방지.
+      // - "...Z" 이면서 명시적 오프셋(+09:00/-04:00 등)이 없는 경우:
+      //   "벽시계(wall-clock) 시각"을 로컬로 재구성해 시/분을 유지한다.
+      final looksLikeWallClockUtcZ =
+          raw.endsWith('Z') && !raw.contains('+') && !raw.contains('-');
+      if (parsed.isUtc && looksLikeWallClockUtcZ) {
+        return DateTime(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+          parsed.hour,
+          parsed.minute,
+          parsed.second,
+          parsed.millisecond,
+          parsed.microsecond,
+        );
+      }
       return parsed.isUtc ? parsed.toLocal() : parsed;
     } catch (_) {
       return null;

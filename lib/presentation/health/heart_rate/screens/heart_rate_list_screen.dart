@@ -174,7 +174,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         'heartRate': null,
         'measurementType': null,
         'record': null,
-        'xPosition': i / days,
+        // 주간 7칸: 0.0~1.0 양끝 포함 정규화 (차트의 슬롯 인덱스 역산과 일치)
+        'xPosition': days <= 1 ? 0.0 : i / (days - 1),
         'hrSeries': _buildHeartRateSeriesForSlot(dayRecords),
       });
     }
@@ -1202,7 +1203,10 @@ class _HeartRateChartPainter extends CustomPainter {
   });
 
   static const double _leftPad = ChartConstants.weightDailyChartInnerPadH;
-  static const double _rightPad = ChartConstants.weightDailyChartInnerPadH;
+  // X축 라벨(끝의 '(시)')이 차지하는 오른쪽 여백과 동일하게 맞춰야
+  // 정시 라벨 중심과 점/막대가 정확히 정렬된다.
+  static const double _rightPad = ChartConstants.weightDailyChartInnerPadH +
+      ChartConstants.weightXAxisUnitReservedWidth;
   static const double _topPad = 20.0;
   static const double _botPad = 20.0;
   static const double _dotRadius = 6.0;

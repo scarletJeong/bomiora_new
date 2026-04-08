@@ -53,7 +53,10 @@ double? heartRatePeriodSlotCenterX({
     return leftPad + effW * (relativeIndex + 0.5) / visibleSlots;
   }
 
-  final dataIndex = (xPosition * totalDays).round();
+  // 주간(7칸): xPosition은 0.0~1.0 양끝 포함 정규화로 들어옴을 전제로 함.
+  // (tap hit-test 역산 로직과 동일하게) (totalDays-1) 기준으로 인덱스를 복원해야
+  // 슬롯 중심((index+0.5)/7)과 정확히 정렬된다.
+  final dataIndex = (xPosition * (totalDays - 1)).round().clamp(0, totalDays - 1);
   return leftPad + effW * (dataIndex + 0.5) / 7;
 }
 
