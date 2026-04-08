@@ -10,6 +10,8 @@ import '../../../../data/repositories/health/steps/steps_repository.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../../../data/services/auth_service.dart';
+import '../utils/step_calculator.dart';
+import '../widgets/steps_chart_tooltip.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
@@ -35,6 +37,12 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   String selectedPeriod = '일';
   double timeOffset = 0.0;
   VoidCallback? _refreshExpandedChart;
+  /// 주간(월~일) 일자키 `YYYY-MM-DD` → 총 걸음 (`bm_steps` 집계)
+  Map<String, int> weekStepsByDate = {};
+  /// 선택 연도 1~12월 총 걸음
+  List<int> monthSteps12 = List<int>.filled(12, 0);
+  int? _tooltipIndex;
+  Offset? _tooltipPosition;
 
   @override
   void initState() {
@@ -62,10 +70,16 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         return;
       }
 
+      final end =
+          DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final start = end.subtract(const Duration(days: 6));
+
       final results = await Future.wait([
         StepsRepository.getStepsRecordByMbId(user.id, selectedDate),
         StepsRepository.getStepsStatisticsByMbId(user.id),
         HealthGoalRepository.fetchLatest(user.id).catchError((_) => null),
+        StepsRepository.getStepsDailyRange(user.id, start, end),
+        StepsRepository.getStepsMonthlyTotalsForYear(user.id, selectedDate.year),
       ]);
 
       setState(() {
@@ -73,6 +87,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         todayStepsRecord = results[0] as StepsRecord?;
         stepsStatistics = results[1] as StepsStatistics?;
         latestHealthGoal = results[2] as HealthGoalRecordModel?;
+        weekStepsByDate = Map<String, int>.from(results[3] as Map<String, int>);
+        monthSteps12 = List<int>.from(results[4] as List<int>);
         isLoading = false;
       });
     } catch (e, st) {
@@ -95,6 +111,14 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     return selectedDate.year == now.year &&
         selectedDate.month == now.month &&
         selectedDate.day == now.day;
+  }
+
+  void _clearTooltip() {
+    if (_tooltipIndex == null && _tooltipPosition == null) return;
+    setState(() {
+      _tooltipIndex = null;
+      _tooltipPosition = null;
+    });
   }
 
   double _defaultDailyTimeOffset() {
@@ -183,7 +207,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                     iconColor: const Color(0xFF898686),
                     dividerColor: const Color(0xFFD2D2D2),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 5),
                   _buildTotalStepsCard(),
                   const SizedBox(height: 20),
                   Row(
@@ -193,8 +217,12 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                           title: '거리',
                           unitSmall: '(km)',
                           icon: Icons.directions_walk,
-                          value: ((todayStepsRecord?.totalSteps ?? 0) * 0.0007)
-                              .toStringAsFixed(1),
+                          value: (todayStepsRecord != null &&
+                                  todayStepsRecord!.distance > 0)
+                              ? todayStepsRecord!.distance.toStringAsFixed(1)
+                              : StepCalculator.kmFromSteps(
+                                      todayStepsRecord?.totalSteps ?? 0)
+                                  .toStringAsFixed(1),
                           valueUnit: 'km',
                         ),
                       ),
@@ -204,8 +232,12 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                           title: '칼로리',
                           unitSmall: '(kcal)',
                           icon: Icons.local_fire_department,
-                          value: (((todayStepsRecord?.totalSteps ?? 0) * 0.04))
-                              .toStringAsFixed(0),
+                          value: (todayStepsRecord != null &&
+                                  todayStepsRecord!.calories > 0)
+                              ? todayStepsRecord!.calories.toString()
+                              : StepCalculator.kcalFromSteps(
+                                      todayStepsRecord?.totalSteps ?? 0)
+                                  .toString(),
                           valueUnit: 'kcal',
                         ),
                       ),
@@ -259,31 +291,22 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           Row(
             children: [
               Expanded(
+                flex: 3,
                 child: Center(
                   child: SizedBox(
-                    width: 160,
-                    height: 160,
+                    width: 204,
+                    height: 204,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        SizedBox(
-                          width: 150,
-                          height: 150,
-                          child: CircularProgressIndicator(
-                            value: 1,
-                            strokeWidth: 14,
-                            color: const Color(0x7FD9D9D9),
-                            backgroundColor: Colors.transparent,
-                          ),
-                        ),
-                        SizedBox(
-                          width: 150,
-                          height: 150,
-                          child: CircularProgressIndicator(
-                            value: ratio,
-                            strokeWidth: 14,
-                            color: const Color(0xFFFF5A8D),
-                            backgroundColor: Colors.transparent,
+                        CustomPaint(
+                          size: const Size(192, 192),
+                          painter: _StepsGoalRingPainter(
+                            progress: ratio,
+                            trackColor: const Color(0x7FD9D9D9),
+                            progressColor: const Color(0xFFFF5A8D),
+                            strokeWidth: 18,
+                            progressStrokeWidth: 18,
                           ),
                         ),
                         Column(
@@ -316,6 +339,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 ),
               ),
               Expanded(
+                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -403,7 +427,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     required String valueUnit,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -441,7 +465,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               ),
               Container(
                 width: 30,
-                height: 32,
+                height: 30,
                 decoration: BoxDecoration(
                   color: const Color(0xFFFDF2F8),
                   borderRadius: BorderRadius.circular(9999),
@@ -450,7 +474,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -458,7 +482,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 value,
                 style: const TextStyle(
                   color: Color(0xFFFF5A8D),
-                  fontSize: 26,
+                  fontSize: 22,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                 ),
@@ -468,7 +492,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 valueUnit,
                 style: const TextStyle(
                   color: Color(0xFF1A1A1A),
-                  fontSize: 12,
+                  fontSize: 11,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
                 ),
@@ -544,48 +568,84 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               final visibleData = _buildVisibleChartData(data);
               final forceWhiteBg =
                   selectedPeriod == '일' || selectedPeriod == '월';
+              final chartH = constraints.maxHeight -
+                  _stepsYAxisUnitBandHeight -
+                  26;
 
               return ColoredBox(
                 color: forceWhiteBg ? Colors.white : Colors.transparent,
-                child: Column(
-                  children: [
-                    const SizedBox(height: _stepsYAxisUnitBandHeight),
-                    Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onPanUpdate: selectedPeriod == '일' || selectedPeriod == '월'
-                            ? (details) {
-                                final next = timeOffset -
-                                    (details.delta.dx /
-                                        math.max(constraints.maxWidth, 1)) *
-                                        (selectedPeriod == '일' ? 2.4 : 1.8);
-                                setState(() {
-                                  timeOffset = _clampTimeOffset(next);
-                                });
-                                _notifyExpandedChart();
-                              }
-                            : null,
-                        child: CustomPaint(
-                          painter: _StepsBarChartPainter(
-                            data: visibleData,
-                            maxValue: maxValue,
-                            yTickCount: yTicks.length,
-                            barWidth: selectedPeriod == '일'
-                                ? 8
-                                : selectedPeriod == '월'
-                                    ? 12
-                                    : 14,
-                          ),
-                          size: Size(
-                            double.infinity,
-                            constraints.maxHeight - _stepsYAxisUnitBandHeight - 26,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _clearTooltip,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: _stepsYAxisUnitBandHeight),
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: (d) {
+                            if (visibleData.isEmpty) return;
+                            final w = math.max(constraints.maxWidth, 1.0);
+                            final localX =
+                                d.localPosition.dx.clamp(0.0, w);
+                            final idx = ((localX / w) * visibleData.length)
+                                .floor()
+                                .clamp(0, visibleData.length - 1);
+                            setState(() {
+                              _tooltipIndex = idx;
+                              _tooltipPosition = Offset(localX, 30);
+                            });
+                          },
+                          onPanUpdate:
+                              selectedPeriod == '일' || selectedPeriod == '월'
+                                  ? (details) {
+                                      final next = timeOffset -
+                                          (details.delta.dx /
+                                              math.max(
+                                                  constraints.maxWidth, 1)) *
+                                              (selectedPeriod == '일'
+                                                  ? 2.4
+                                                  : 1.8);
+                                      setState(() {
+                                        timeOffset =
+                                            _clampTimeOffset(next);
+                                      });
+                                      _notifyExpandedChart();
+                                    }
+                                  : null,
+                          child: Stack(
+                            children: [
+                              CustomPaint(
+                                painter: _StepsBarChartPainter(
+                                  data: visibleData,
+                                  maxValue: maxValue,
+                                  yTickCount: yTicks.length,
+                                  barWidth: selectedPeriod == '일'
+                                      ? 8
+                                      : selectedPeriod == '월'
+                                          ? 12
+                                          : 14,
+                                ),
+                                size: Size(double.infinity, chartH),
+                              ),
+                              StepsChartTooltip(
+                                selectedPeriod: selectedPeriod,
+                                data: _tooltipDataForVisible(
+                                  visibleData: visibleData,
+                                  visibleIndex: _tooltipIndex,
+                                ),
+                                tooltipPosition: _tooltipPosition,
+                                chartWidth: constraints.maxWidth,
+                                chartHeight: chartH,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildXAxisLabelRow(labels),
-                  ],
+                      const SizedBox(height: 10),
+                      _buildXAxisLabelRow(labels),
+                    ],
+                  ),
                 ),
               );
             },
@@ -595,71 +655,140 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     );
   }
 
+  Map<String, dynamic> _tooltipDataForVisible({
+    required List<_StepsBarData> visibleData,
+    required int? visibleIndex,
+  }) {
+    if (visibleIndex == null ||
+        visibleIndex < 0 ||
+        visibleIndex >= visibleData.length) {
+      return const {};
+    }
+    final bar = visibleData[visibleIndex];
+    final steps = bar.value;
+
+    if (selectedPeriod == '일') {
+      final parts = bar.label.split(':');
+      final hour = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+      final minute = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+      return {
+        'slotHour': hour,
+        'slotMinute': minute,
+        'steps': steps,
+      };
+    }
+
+    if (selectedPeriod == '주') {
+      final end =
+          DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final start = end.subtract(const Duration(days: 6));
+      final d = start.add(Duration(days: visibleIndex));
+      return {
+        'slotDate': d,
+        'steps': steps,
+      };
+    }
+
+    final month = int.tryParse(bar.label) ?? 1;
+    return {
+      'slotYear': selectedDate.year,
+      'slotMonth': month,
+      'steps': steps,
+    };
+  }
+
   List<_StepsBarData> _buildPeriodChartData() {
     if (selectedPeriod == '일') {
+      final raw = todayStepsRecord?.halfHourSteps ?? const <int>[];
       return List<_StepsBarData>.generate(48, (i) {
         final hour = i ~/ 2;
         final minute = i.isEven ? '00' : '30';
-        final value = switch (i) {
-          24 => 600,
-          25 => 1000,
-          26 => 3000,
-          _ => 0,
-        };
+        final value = i < raw.length ? raw[i] : 0;
         return _StepsBarData(label: '$hour:$minute', value: value);
       });
     }
 
     if (selectedPeriod == '주') {
-      final base = stepsStatistics?.weeklyAverage ?? todayStepsRecord?.totalSteps ?? 3000;
-      const labels = ['월', '화', '수', '목', '금', '토', '일'];
-      return List<_StepsBarData>.generate(
-        7,
-        (i) => _StepsBarData(
-          label: labels[i],
-          value: (base * (0.68 + (i * 0.08))).round(),
-        ),
-      );
+      final end =
+          DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final start = end.subtract(const Duration(days: 6));
+      return List<_StepsBarData>.generate(7, (i) {
+        final d = start.add(Duration(days: i));
+        final key =
+            '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        return _StepsBarData(
+          label: '${d.month}.${d.day}',
+          value: weekStepsByDate[key] ?? 0,
+        );
+      });
     }
 
-    final base =
-        stepsStatistics?.monthlyAverage ?? todayStepsRecord?.totalSteps ?? 4000;
     return List<_StepsBarData>.generate(
       12,
       (i) => _StepsBarData(
         label: '${i + 1}',
-        value: (base * (0.55 + ((i % 6) * 0.07) + (i ~/ 6) * 0.12)).round(),
+        value: i < monthSteps12.length ? monthSteps12[i] : 0,
       ),
     );
   }
 
+  int _chartDataMax() {
+    final data = _buildPeriodChartData();
+    if (data.isEmpty) return 0;
+    return data.fold<int>(0, (a, b) => math.max(a, b.value));
+  }
+
+  int _defaultEmptyChartMax() {
+    if (selectedPeriod == '일') return 1000;
+    if (selectedPeriod == '주') return 8000;
+    return 50000;
+  }
+
+  int _niceYStep(int rough) {
+    if (rough <= 0) return 200;
+    final exp = (math.log(rough) / math.ln10).floor();
+    final pow10 = math.max(1, math.pow(10, exp).toInt());
+    for (final m in [1, 2, 5, 10]) {
+      final s = m * pow10;
+      if (rough <= s * 5) return s;
+    }
+    return 10 * pow10;
+  }
+
   int _chartMaxValue() {
-    if (selectedPeriod == '일') return 5000;
-    if (selectedPeriod == '주') return 50000;
-    return 500000;
+    final raw = _chartDataMax();
+    if (raw <= 0) return _defaultEmptyChartMax();
+    final target = (raw * 1.15).ceil();
+    final step = _niceYStep((target / 5).ceil());
+    var cap = ((target + step - 1) ~/ step) * step;
+    if (cap < target) cap += step;
+    final bands = (cap / step).round();
+    if (bands > 6) {
+      final step2 = step * ((bands / 6).ceil());
+      cap = ((target + step2 - 1) ~/ step2) * step2;
+    }
+    return math.max(cap, step * 2);
   }
 
   List<int> _buildYAxisTicks() {
-    if (selectedPeriod == '일') {
-      return const [5000, 4000, 3000, 2000, 1000, 0];
-    }
-    return const [5, 4, 3, 2, 1, 0];
+    final cap = _chartMaxValue();
+    return List<int>.generate(6, (i) {
+      final v = (cap * (5 - i) / 5).round();
+      return math.max(0, v);
+    });
   }
 
   List<String> _buildYAxisDisplayLabels() {
-    return _buildYAxisTicks().map((e) => '$e').toList();
+    final fmt = NumberFormat('#,###');
+    return _buildYAxisTicks().map((e) => fmt.format(e)).toList();
   }
 
-  String _yAxisUnitLabel() {
-    if (selectedPeriod == '일') return '(보)';
-    if (selectedPeriod == '주') return '(만보)';
-    return '(10만보)';
-  }
+  String _yAxisUnitLabel() => '(보)';
 
   List<String> _buildXAxisLabels() {
     if (selectedPeriod == '일') {
       const visibleSlots = 12;
-      final maxStart = 48 - visibleSlots;
+      const maxStart = 48 - visibleSlots;
       final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
       return List<String>.generate(7, (i) {
         final hour = ((startIndex + (i * 2)) ~/ 2).toString().padLeft(2, '0');
@@ -669,7 +798,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     if (selectedPeriod == '월') {
       const visibleMonths = 7;
       const totalMonths = 12;
-      final maxStart = totalMonths - visibleMonths;
+      const maxStart = totalMonths - visibleMonths;
       final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
       return List<String>.generate(visibleMonths, (i) => '${startIndex + i + 1}');
     }
@@ -788,6 +917,61 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   }
 }
 
+class _StepsGoalRingPainter extends CustomPainter {
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+  final double trackStrokeWidth;
+  final double progressStrokeWidth;
+
+  _StepsGoalRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+    required double strokeWidth,
+    double? progressStrokeWidth,
+  })  : trackStrokeWidth = strokeWidth,
+        progressStrokeWidth = progressStrokeWidth ?? strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final trackW = trackStrokeWidth;
+    final progressW = progressStrokeWidth;
+    final maxW = math.max(trackW, progressW);
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - maxW / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final track = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = trackW
+      ..strokeCap = StrokeCap.round;
+    final progressPaint = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = progressW
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, track);
+
+    final p = progress.clamp(0.0, 1.0);
+    if (p <= 0) return;
+
+    /// 12시 방향에서 **반시계** 방향으로 채움
+    final sweep = -math.pi * 2 * p;
+    canvas.drawArc(rect, -math.pi / 2, sweep, false, progressPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StepsGoalRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.progressColor != progressColor ||
+        oldDelegate.trackStrokeWidth != trackStrokeWidth ||
+        oldDelegate.progressStrokeWidth != progressStrokeWidth;
+  }
+}
+
 class _StepsBarData {
   final String label;
   final int value;
@@ -813,7 +997,7 @@ class _StepsBarChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.isEmpty || maxValue <= 0) return;
+    if (data.isEmpty) return;
 
     const topPadding = 20.0;
     const bottomPadding = 20.0;
@@ -835,8 +1019,9 @@ class _StepsBarChartPainter extends CustomPainter {
     }
 
     final slotWidth = chartWidth / data.length;
+    final scaleMax = maxValue <= 0 ? 1 : maxValue;
     for (int i = 0; i < data.length; i++) {
-      final factor = (data[i].value / maxValue).clamp(0.0, 1.0);
+      final factor = (data[i].value / scaleMax).clamp(0.0, 1.0);
       final barHeight =
           math.max(chartHeight * factor, data[i].value > 0 ? 4.0 : 0.0);
       if (barHeight == 0) continue;

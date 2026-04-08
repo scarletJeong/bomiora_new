@@ -6,6 +6,8 @@ class StepsRecord {
   final double distance; // km
   final int calories;
   final List<HourlySteps> hourlySteps;
+  /// 30분 슬롯 48개(0=00:00~00:29, …) — `half_hour_steps` API 필드
+  final List<int> halfHourSteps;
   final DateTime createdAt;
   final DateTime updatedAt;
   /// 선택 일자 기준 전날 대비 걸음 차이 (`/api/steps/daily-total` 등에서만 채워질 수 있음)
@@ -19,6 +21,7 @@ class StepsRecord {
     required this.distance,
     required this.calories,
     required this.hourlySteps,
+    this.halfHourSteps = const [],
     required this.createdAt,
     required this.updatedAt,
     this.stepsDifference,
@@ -45,9 +48,54 @@ class StepsRecord {
     return double.tryParse(v.toString()) ?? def;
   }
 
+  static List<int> _halfHourStepsFromJson(
+    Map<String, dynamic> json,
+    List<HourlySteps> hourlySteps,
+  ) {
+    final raw = json['half_hour_steps'] ?? json['halfHourSteps'];
+    if (raw is List<dynamic>) {
+      if (raw.length >= 48 && raw.take(48).every((e) => e == null || e is num)) {
+        return List<int>.generate(
+          48,
+          (i) => i < raw.length ? _intVal(raw[i]) : 0,
+        );
+      }
+      final slots = List<int>.filled(48, 0);
+      var any = false;
+      for (final e in raw) {
+        if (e is Map) {
+          final m = Map<String, dynamic>.from(e);
+          final slot = _intVal(m['slot'], -1);
+          if (slot >= 0 && slot < 48) {
+            slots[slot] = _intVal(m['steps']);
+            any = true;
+          }
+        }
+      }
+      if (any) return slots;
+    }
+    final slots = List<int>.filled(48, 0);
+    for (final h in hourlySteps) {
+      if (h.hour >= 0 && h.hour < 24) {
+        final half = (h.steps / 2).round();
+        slots[h.hour * 2] += half;
+        slots[h.hour * 2 + 1] += h.steps - half;
+      }
+    }
+    return slots;
+  }
+
   factory StepsRecord.fromJson(Map<String, dynamic> json) {
     final dateRaw =
         json['date'] ?? json['record_date'] ?? json['recordDate'];
+    final List<HourlySteps> hourlySteps =
+        (json['hourly_steps'] ?? json['hourlySteps']) is List
+            ? List<HourlySteps>.from(
+                ((json['hourly_steps'] ?? json['hourlySteps']) as List<dynamic>).map(
+                  (e) => HourlySteps.fromJson(Map<String, dynamic>.from(e as Map)),
+                ),
+              )
+            : <HourlySteps>[];
     return StepsRecord(
       id: _intVal(json['id']),
       userId: _intVal(json['user_id'] ?? json['userId']),
@@ -57,11 +105,8 @@ class StepsRecord {
         json['distance'] ?? json['distance_km'] ?? json['distanceKm'],
       ),
       calories: _intVal(json['calories'] ?? json['calories_burned'] ?? json['caloriesBurned']),
-      hourlySteps: (json['hourly_steps'] ?? json['hourlySteps']) is List
-          ? ((json['hourly_steps'] ?? json['hourlySteps']) as List<dynamic>)
-              .map((e) => HourlySteps.fromJson(Map<String, dynamic>.from(e as Map)))
-              .toList()
-          : [],
+      hourlySteps: hourlySteps,
+      halfHourSteps: _halfHourStepsFromJson(json, hourlySteps),
       createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']) ?? DateTime.now(),
       updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']) ?? DateTime.now(),
       stepsDifference: _intNullable(json['steps_difference'] ?? json['stepsDifference']),
@@ -99,6 +144,8 @@ class StepsRecord {
       'distance': distance,
       'calories': calories,
       'hourly_steps': hourlySteps.map((item) => item.toJson()).toList(),
+      'half_hour_steps':
+          halfHourSteps.asMap().entries.map((e) => {'slot': e.key, 'steps': e.value}).toList(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       if (stepsDifference != null) 'steps_difference': stepsDifference,
@@ -113,6 +160,7 @@ class StepsRecord {
     double? distance,
     int? calories,
     List<HourlySteps>? hourlySteps,
+    List<int>? halfHourSteps,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? stepsDifference,
@@ -125,6 +173,7 @@ class StepsRecord {
       distance: distance ?? this.distance,
       calories: calories ?? this.calories,
       hourlySteps: hourlySteps ?? this.hourlySteps,
+      halfHourSteps: halfHourSteps ?? this.halfHourSteps,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       stepsDifference: stepsDifference ?? this.stepsDifference,
