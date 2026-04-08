@@ -363,8 +363,11 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                                     color: Colors.transparent,
                                     child: InkWell(
                                       onTap: selectable
-                                          ? () =>
-                                              setState(() => _selectedDate = date)
+                                          ? () {
+                                              // 날짜 1회 탭 즉시 선택 + 팝업 닫기
+                                              _selectedDate = date;
+                                              Navigator.of(context).pop(date);
+                                            }
                                           : null,
                                       customBorder: const CircleBorder(),
                                       child: Container(
@@ -401,58 +404,6 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                         ),
                       );
                     }),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _kBorderGray,
-                              side: const BorderSide(
-                                color: _kBorderGray,
-                                width: 0.5,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: const Text(
-                              '닫기',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: () =>
-                                Navigator.pop(context, _selectedDate),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _kAccentPink,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: const Text(
-                              '등록',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
