@@ -1169,7 +1169,18 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               Expanded(
                 child: _buildBottomRecordCard(
                   title: '생리주기',
-                  value: _periodText(),
+                  valueWidget: Text(
+                    _periodText(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    style: const TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 13,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
                   titleFontSize: 14,
                   valueFontSize: 13,
                   onMore: () {
@@ -1432,12 +1443,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
   Widget _buildBottomRecordCard({
     required String title,
-    required String value,
+    String? value,
+    Widget? valueWidget,
     required VoidCallback onMore,
     IconData titleIcon = Icons.favorite_border,
     double titleFontSize = 16,
     double valueFontSize = 20,
   }) {
+    assert(value != null || valueWidget != null);
     return GestureDetector(
       onTap: onMore,
       child: Container(
@@ -1461,18 +1474,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: TextStyle(
-                  color: const Color(0xFF9CA3AF),
-                  fontSize: valueFontSize,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
-                ),
-              ),
+              child: valueWidget ??
+                  Text(
+                    value!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    style: TextStyle(
+                      color: const Color(0xFF9CA3AF),
+                      fontSize: valueFontSize,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
             ),
           ],
         ),
@@ -1483,7 +1497,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   // 생리주기 텍스트
   String _periodText() {
     if (latestMenstrualCycleRecord == null) {
-      return 'No record';
+      return '입력하세요.';
     }
 
     final int dday = latestMenstrualCycleRecord!.nextPeriodStart
