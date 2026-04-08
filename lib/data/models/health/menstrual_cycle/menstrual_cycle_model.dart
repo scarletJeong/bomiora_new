@@ -109,7 +109,7 @@ class MenstrualCycleRecord {
     return {
       if (id != null) 'id': id,
       'mb_id': mbId,
-      'last_period_start': lastPeriodStart.toIso8601String(),
+      'last_period_start': _formatDateOnly(lastPeriodStart),
       'cycle_length': cycleLength,
       'period_length': periodLength,
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
@@ -120,8 +120,9 @@ class MenstrualCycleRecord {
     return MenstrualCycleRecord(
       id: _parseInt(json['id']),
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
-      lastPeriodStart:
-          _parseDateTime(json['last_period_start'] ?? json['lastPeriodStart']) ?? DateTime.now(),
+      lastPeriodStart: _parseDateOnly(
+              json['last_period_start'] ?? json['lastPeriodStart']) ??
+          DateTime.now(),
       cycleLength: _parseInt(json['cycle_length'] ?? json['cycleLength']) ?? 28,
       periodLength:
           _parseInt(json['period_length'] ?? json['periodLength']) ?? 5,
@@ -139,22 +140,23 @@ class MenstrualCycleRecord {
     if (value == null) return null;
     try {
       final parsed = DateTime.parse(value.toString());
-      if (parsed.isUtc) {
-        return DateTime(
-          parsed.year,
-          parsed.month,
-          parsed.day,
-          parsed.hour,
-          parsed.minute,
-          parsed.second,
-          parsed.millisecond,
-          parsed.microsecond,
-        );
-      }
-      return parsed;
+      return parsed.isUtc ? parsed.toLocal() : parsed;
     } catch (_) {
       return null;
     }
+  }
+
+  static DateTime? _parseDateOnly(dynamic value) {
+    final parsed = _parseDateTime(value);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  static String _formatDateOnly(DateTime value) {
+    final d = DateTime(value.year, value.month, value.day);
+    return '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
   }
 
   static String? _parseString(dynamic value) {

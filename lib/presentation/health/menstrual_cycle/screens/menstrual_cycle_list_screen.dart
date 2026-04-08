@@ -32,6 +32,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   MenstrualCycleRecord? _currentRecord;
   bool _isLoading = true;
   late DateTime selectedDate;
+  bool _isAutoCreatingCycle = false;
 
   @override
   void initState() {
@@ -60,6 +61,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         _currentRecord = record;
         _isLoading = false;
       });
+      _maybeAutoCreateNextCycleForDate(selectedDate);
     } catch (e) {
       print('생리주기 데이터 로딩 오류: $e');
       setState(() {
@@ -206,7 +208,10 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         children: [
           MenstrualCycleDateHeader(
             selectedDate: selectedDate,
-            onDateChanged: (d) => setState(() => selectedDate = d),
+            onDateChanged: (d) {
+              setState(() => selectedDate = d);
+              _maybeAutoCreateNextCycleForDate(d);
+            },
           ),
           const SizedBox(height: 16),
         ],
@@ -225,9 +230,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     }
 
     final cycleLength = _currentRecord!.cycleLength;
-
-    // 생리주기 완료 시 자동으로 다음 생리주기 생성
-    _checkAndCreateNextCycle();
 
     final elapsedDays =
         selectedDate.difference(_currentRecord!.lastPeriodStart).inDays + 1;
@@ -716,13 +718,22 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     }
   }
 
-  // 생리주기 완료 시 자동으로 다음 생리주기 생성
-  Future<void> _checkAndCreateNextCycle() async {
+  Future<void> _maybeAutoCreateNextCycleForDate(DateTime baseDate) async {
+    if (_isAutoCreatingCycle || _currentRecord == null) return;
+    _isAutoCreatingCycle = true;
+    try {
+      await _checkAndCreateNextCycle(baseDate: baseDate);
+    } finally {
+      _isAutoCreatingCycle = false;
+    }
+  }
+
+  // 생리주기 완료 시 자동으로 다음 생리주기 생성 (중복 row 방지)
+  Future<void> _checkAndCreateNextCycle({required DateTime baseDate}) async {
     if (_currentRecord == null) return;
 
     final daysSinceLastPeriod =
-        selectedDate.difference(_currentRecord!.lastPeriodStart).inDays;
-    final cycleDay = (daysSinceLastPeriod % _currentRecord!.cycleLength) + 1;
+        baseDate.difference(_currentRecord!.lastPeriodStart).inDays;
 
     // 현재 생리주기가 완료되었는지 확인 (생리주기 길이를 초과)
     if (daysSinceLastPeriod >= _currentRecord!.cycleLength) {
@@ -731,11 +742,17 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           .add(Duration(days: _currentRecord!.cycleLength));
 
       // 현재 날짜가 다음 생리주기 시작일 이후인지 확인
-      if (selectedDate.isAfter(nextPeriodStart) ||
-          selectedDate.isAtSameMomentAs(nextPeriodStart)) {
+      if (baseDate.isAfter(nextPeriodStart) ||
+          baseDate.isAtSameMomentAs(nextPeriodStart)) {
         try {
           final user = await AuthService.getUser();
           if (user == null) return;
+
+          final records =
+              await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
+          final alreadyExists = records.any((r) =>
+              DateUtils.isSameDay(r.lastPeriodStart, nextPeriodStart));
+          if (alreadyExists) return;
 
           // 새로운 생리주기 레코드 생성
           final newRecord = MenstrualCycleRecord(
