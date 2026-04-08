@@ -32,6 +32,7 @@ import 'presentation/user/coupon/screens/coupon_screen.dart';
 import 'presentation/review/screens/all_reviews_screen.dart';
 import 'presentation/user/healthprofile/screens/health_profile_list_screen.dart';
 import 'presentation/user/review/my_reviews_screen.dart';
+import 'presentation/health/dashboard/screens/health_dashboard_screen.dart';
 
 void main() async {
   // Flutter 바인딩 초기화
@@ -99,6 +100,7 @@ class BomioraApp extends StatelessWidget {
               ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
           return FindAccountScreen(
             initialTab: (args?['tab'] ?? 'id').toString(),
+            prefillEmail: args?['prefillEmail']?.toString(),
           );
         },
         '/find-account-result': (context) {
@@ -120,11 +122,12 @@ class BomioraApp extends StatelessWidget {
         },
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
         // (임시) 카테고리 페이지 접근 차단
-        '/category': (context) => const _TemporaryBlockedScreen(featureLabel: '카테고리'),
+        '/category': (context) => const ShowcaseScreen(),
         '/favorite': (context) => const WishListScreen(),
         '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 1),
+        '/health': (context) => const HealthDashboardScreen(),
         // (임시) 장바구니 페이지 접근 차단
-        '/cart': (context) => const _TemporaryBlockedScreen(featureLabel: '장바구니'),
+        '/cart': (context) => const CartScreen(),
         '/coupon': (context) => const CouponScreen(),
         '/review': (context) => const AllReviewsScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
@@ -155,8 +158,9 @@ class BomioraApp extends StatelessWidget {
         // 제품 목록 페이지: /product-list 여리
         if (uri.pathSegments.length == 1 && uri.pathSegments[0] == 'product-list') {
           // (임시) 상품 목록 페이지 접근 차단
+          final arguments = settings.arguments as Map<String, dynamic>? ?? {};
           return MaterialPageRoute(
-            builder: (context) => const _TemporaryBlockedScreen(featureLabel: '카테고리/상품목록'),
+            builder: (context) => ProductListScreen.fromArguments(arguments),
             settings: RouteSettings(
               name: routeName,
               arguments: settings.arguments,
@@ -167,8 +171,9 @@ class BomioraApp extends StatelessWidget {
         // 제품 상세 페이지: /product/:it_id
         if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'product') {
           // (임시) 상품 상세 페이지 접근 차단
+          final productId = uri.pathSegments[1];
           return MaterialPageRoute(
-            builder: (context) => const _TemporaryBlockedScreen(featureLabel: '상품 페이지'),
+            builder: (context) => ProductDetailScreen(productId: productId),
             settings: RouteSettings(
               name: routeName, // URL 업데이트를 위해 route name 설정 (예: /product/1691479590)
               arguments: settings.arguments,

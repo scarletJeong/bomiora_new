@@ -263,12 +263,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
           Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const HealthDashboardScreen(),
-            ),
-          );
         },
       ),
       backgroundColor: Colors.white,

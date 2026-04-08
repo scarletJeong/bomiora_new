@@ -7,7 +7,6 @@ import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../health/dashboard/screens/health_dashboard_screen.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/agreement_widget.dart';
 
@@ -282,9 +281,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _goHealthDashboard() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const HealthDashboardScreen()),
-    );
+    Navigator.of(context).pushNamed('/health');
   }
 
   void _goHealthQuestionnaire() {

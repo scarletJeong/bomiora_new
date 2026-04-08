@@ -10,7 +10,6 @@ import '../widgets/home_quick_tab_section.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
-import '../../health/dashboard/screens/health_dashboard_screen.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/appbar_menutap.dart';
@@ -129,12 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
           Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const HealthDashboardScreen(),
-            ),
-          );
+          Navigator.pushNamed(context, '/health');
         },
       ),
       body: _getCurrentPage(),
