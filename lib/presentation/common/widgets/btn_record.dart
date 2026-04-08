@@ -9,6 +9,8 @@ class BtnRecord extends StatelessWidget {
   final double? borderRadius;
   final double? elevation;
   final bool isLoading;
+  /// null이면 기본 굵은 16px. 체중 등 Gmarket 적용 시 전달.
+  final TextStyle? textStyle;
 
   const BtnRecord({
     super.key,
@@ -20,6 +22,7 @@ class BtnRecord extends StatelessWidget {
     this.borderRadius,
     this.elevation,
     this.isLoading = false,
+    this.textStyle,
   });
 
   @override
@@ -48,10 +51,11 @@ class BtnRecord extends StatelessWidget {
               )
             : Text(
                 text,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: textStyle ??
+                    const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
       ),
     );

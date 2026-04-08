@@ -1209,75 +1209,76 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     double valueFontSize = 12,
     double statusFontSize = 10,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F5),
-                  borderRadius: BorderRadius.circular(999),
+    return GestureDetector(
+      onTap: onMore,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F5),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Icon(icon, size: 18, color: const Color(0xFFFF5A8D)),
                 ),
-                child: Icon(icon, size: 18, color: const Color(0xFFFF5A8D)),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Spacer(),
-              _buildMoreButton(onMore),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (subtitle.isNotEmpty)
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: const Color(0xFF8C8888),
-                fontSize: 12,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-                letterSpacing: -1.08,
-              ),
-            ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Text(
-                  value,
+                const SizedBox(width: 8),
+                Text(
+                  title,
                   style: TextStyle(
-                    color: const Color(0xFF6B7280),
-                    fontSize: valueFontSize,
                     fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                    height: 1.2,
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (subtitle.isNotEmpty)
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: const Color(0xFF8C8888),
+                  fontSize: 12,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: -1.08,
+                ),
               ),
-              HealthStatusLabel(
-                label: statusText,
-                fontSize: statusFontSize,
-              ),
-            ],
-          ),
-        ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      color: const Color(0xFF6B7280),
+                      fontSize: valueFontSize,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+                HealthStatusLabel(
+                  label: statusText,
+                  fontSize: statusFontSize,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1331,25 +1332,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ),
               ),
               const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: _buildMoreButton(() {
-                if (currentUser == null) {
-                  showLoginRequiredDialog(
-                    context,
-                    message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-                  );
-                  return;
-                }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          StepsTodayScreen(initialDate: selectedDate),
-                    ),
-                  );
-                }, minHeight: 30, verticalPadding: 8),
-              ),
             ],
           ),
         ),
@@ -1442,24 +1424,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               ),
             ),
             const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: _buildMoreButton(() {
-                if (currentUser == null) {
-                  showLoginRequiredDialog(
-                    context,
-                    message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-                  );
-                  return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          StepsTodayScreen(initialDate: selectedDate)),
-                );
-              }, minHeight: 34, verticalPadding: 8),
-            ),
           ],
         ),
       ),
@@ -1474,69 +1438,44 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     double titleFontSize = 16,
     double valueFontSize = 20,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF0F0F0)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(titleIcon, color: const Color(0xFFFF5A8D), size: 18),
-              const SizedBox(width: 6),
-              Text(title,
-                  style: TextStyle(
-                      fontSize: titleFontSize, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w700)),
-              const Spacer(),
-              _buildMoreButton(onMore),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              style: TextStyle(
-                color: const Color(0xFF9CA3AF),
-                fontSize: valueFontSize,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
+    return GestureDetector(
+      onTap: onMore,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFF0F0F0)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(titleIcon, color: const Color(0xFFFF5A8D), size: 18),
+                const SizedBox(width: 6),
+                Text(title,
+                    style: TextStyle(
+                        fontSize: titleFontSize, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TextStyle(
+                  color: const Color(0xFF9CA3AF),
+                  fontSize: valueFontSize,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // more 버튼튼
-  Widget _buildMoreButton(
-    VoidCallback onPressed, {
-    double minHeight = 20,
-    double verticalPadding = 20,
-  }) {
-    return Transform.translate(
-      offset: const Offset(0, -4),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF5A8D),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: EdgeInsets.symmetric(horizontal: 7, vertical: verticalPadding),
-          minimumSize: minHeight > 0 ? Size(0, minHeight) : Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: const VisualDensity(horizontal: -3, vertical: -4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+          ],
         ),
-        child: const Text('+ More',
-            style: TextStyle(fontSize: 8, height: 1.0, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300)),
       ),
     );
   }
