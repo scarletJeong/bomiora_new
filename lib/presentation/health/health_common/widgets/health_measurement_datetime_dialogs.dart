@@ -1,5 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
+
+/// 새 측정 기록: 목록에서 보고 있는 날짜에 맞춘 기본 시각 (당일이면 지금, 과거 날짜면 그 날짜+현재 시·분, 미래는 항상 금지).
+DateTime healthDefaultNewRecordDateTime(DateTime contextDay) {
+  final day = DateUtils.dateOnly(contextDay);
+  final now = DateTime.now();
+  final today = DateUtils.dateOnly(now);
+  if (day == today) return now;
+  final candidate =
+      DateTime(day.year, day.month, day.day, now.hour, now.minute);
+  return candidate.isAfter(now) ? now : candidate;
+}
 
 const Color _kAccentPink = Color(0xFFFF5A8D);
 const Color _kNavyText = Color(0xFF0E2451);
@@ -27,6 +40,8 @@ Future<DateTime?> showHealthDateThenTimePickers(
   required DateTime initialDateTime,
   DateTime? firstDate,
   DateTime? lastDate,
+  /// 선택한 날짜·시간이 이 시각을 넘지 않도록 제한 (보통 `DateTime.now()`: 오늘은 미래 시각 선택 불가).
+  DateTime? latestAllowed,
 }) async {
   final first = DateUtils.dateOnly(firstDate ?? DateTime(2020));
   final last = DateUtils.dateOnly(lastDate ?? DateTime.now());
@@ -47,32 +62,48 @@ Future<DateTime?> showHealthDateThenTimePickers(
 
   if (pickedDate == null || !context.mounted) return null;
 
+  TimeOfDay? maxTime;
+  if (latestAllowed != null &&
+      DateUtils.isSameDay(pickedDate, latestAllowed)) {
+    maxTime = TimeOfDay(
+      hour: latestAllowed.hour,
+      minute: latestAllowed.minute,
+    );
+  }
   final pickedTime = await showHealthTimePickerDialog(
     context,
     initialTime: TimeOfDay.fromDateTime(initialDateTime),
+    maxTime: maxTime,
   );
 
   if (pickedTime == null) return null;
 
-  return DateTime(
+  var result = DateTime(
     pickedDate.year,
     pickedDate.month,
     pickedDate.day,
     pickedTime.hour,
     pickedTime.minute,
   );
+  if (latestAllowed != null && result.isAfter(latestAllowed)) {
+    result = latestAllowed;
+  }
+  return result;
 }
 
 /// 시간만 선택 (기존 날짜는 호출 측에서 유지)
 Future<TimeOfDay?> showHealthTimePickerDialog(
   BuildContext context, {
   required TimeOfDay initialTime,
+  /// 오늘 날짜일 때 상한(포함). null이면 23:59까지 선택 가능.
+  TimeOfDay? maxTime,
 }) {
   return showDialog<TimeOfDay>(
     context: context,
     barrierDismissible: true,
     barrierColor: Colors.black.withValues(alpha: 0.2),
-    builder: (ctx) => _HealthTimePickerDialog(initialTime: initialTime),
+    builder: (ctx) =>
+        _HealthTimePickerDialog(initialTime: initialTime, maxTime: maxTime),
   );
 }
 
@@ -413,8 +444,12 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
 
 class _HealthTimePickerDialog extends StatefulWidget {
   final TimeOfDay initialTime;
+  final TimeOfDay? maxTime;
 
-  const _HealthTimePickerDialog({required this.initialTime});
+  const _HealthTimePickerDialog({
+    required this.initialTime,
+    this.maxTime,
+  });
 
   @override
   State<_HealthTimePickerDialog> createState() => _HealthTimePickerDialogState();
@@ -422,17 +457,42 @@ class _HealthTimePickerDialog extends StatefulWidget {
 
 class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
   static const double _itemExtent = 44;
+  static const int _wheelTickDebounceMs = 70;
 
   late FixedExtentScrollController _hourController;
   late FixedExtentScrollController _minuteController;
   late int _hour;
   late int _minute;
+  int _lastHourWheelTickMs = 0;
+  int _lastMinuteWheelTickMs = 0;
+
+  int get _hourCount {
+    final m = widget.maxTime;
+    if (m == null) return 24;
+    return (m.hour + 1).clamp(1, 24);
+  }
+
+  int _minuteCountForHour(int hour) {
+    final m = widget.maxTime;
+    if (m == null) return 60;
+    if (hour < m.hour) return 60;
+    return (m.minute + 1).clamp(1, 60);
+  }
+
+  void _clampSelectionToMax() {
+    final m = widget.maxTime;
+    if (m == null) return;
+    if (_hour > m.hour) _hour = m.hour;
+    final maxMin = _minuteCountForHour(_hour) - 1;
+    if (_minute > maxMin) _minute = maxMin;
+  }
 
   @override
   void initState() {
     super.initState();
     _hour = widget.initialTime.hour;
     _minute = widget.initialTime.minute;
+    _clampSelectionToMax();
     _hourController = FixedExtentScrollController(initialItem: _hour);
     _minuteController = FixedExtentScrollController(initialItem: _minute);
   }
@@ -507,31 +567,63 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                             Expanded(
                               child: SizedBox(
                                 height: _itemExtent * 4,
-                                child: ListWheelScrollView.useDelegate(
-                                  controller: _hourController,
-                                  itemExtent: _itemExtent,
-                                  physics: const FixedExtentScrollPhysics(),
-                                  perspective: 0.003,
-                                  diameterRatio: 1.6,
-                                  onSelectedItemChanged: (i) {
-                                    setState(() => _hour = i.clamp(0, 23));
+                                child: Listener(
+                                  onPointerSignal: (event) {
+                                    if (!kIsWeb || event is! PointerScrollEvent) return;
+                                    final nowMs =
+                                        DateTime.now().millisecondsSinceEpoch;
+                                    if (nowMs - _lastHourWheelTickMs <
+                                        _wheelTickDebounceMs) {
+                                      return;
+                                    }
+                                    _lastHourWheelTickMs = nowMs;
+                                    final delta = event.scrollDelta.dy > 0 ? 1 : -1;
+                                    _changeHourBy(delta);
                                   },
-                                  childDelegate:
-                                      ListWheelChildBuilderDelegate(
-                                    childCount: 24,
-                                    builder: (context, index) {
-                                      final dist = (index - _hour)
-                                          .abs()
-                                          .clamp(0, 2);
-                                      final style = _timeRowStyle(dist);
-                                      return Center(
-                                        child: Text(
-                                          index.toString().padLeft(2, '0'),
-                                          style: style,
-                                          overflow: TextOverflow.clip,
-                                        ),
-                                      );
+                                  child: ListWheelScrollView.useDelegate(
+                                    controller: _hourController,
+                                    itemExtent: _itemExtent,
+                                    physics: kIsWeb
+                                        ? const NeverScrollableScrollPhysics()
+                                        : const FixedExtentScrollPhysics(),
+                                    perspective: 0.003,
+                                    diameterRatio: 1.6,
+                                    onSelectedItemChanged: (i) {
+                                      final nextHour = i.clamp(0, _hourCount - 1);
+                                      if (nextHour == _hour) return;
+                                      final beforeCount = _minuteCountForHour(_hour);
+                                      setState(() {
+                                        _hour = nextHour;
+                                        final afterCount = _minuteCountForHour(_hour);
+                                        if (_minute >= afterCount) {
+                                          _minute = afterCount - 1;
+                                        }
+                                      });
+                                      final afterCount = _minuteCountForHour(_hour);
+                                      if (beforeCount != afterCount) {
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                          if (!mounted) return;
+                                          if (_minuteController.hasClients) {
+                                            _minuteController.jumpToItem(_minute);
+                                          }
+                                        });
+                                      }
                                     },
+                                    childDelegate:
+                                        ListWheelChildBuilderDelegate(
+                                      childCount: _hourCount,
+                                      builder: (context, index) {
+                                        final dist = (index - _hour).abs();
+                                        return Center(
+                                          child: Text(
+                                            index.toString().padLeft(2, '0'),
+                                            style: _timeRowStyle(dist),
+                                            overflow: TextOverflow.clip,
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
@@ -547,32 +639,47 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                             Expanded(
                               child: SizedBox(
                                 height: _itemExtent * 4,
-                                child: ListWheelScrollView.useDelegate(
-                                  controller: _minuteController,
-                                  itemExtent: _itemExtent,
-                                  physics: const FixedExtentScrollPhysics(),
-                                  perspective: 0.003,
-                                  diameterRatio: 1.6,
-                                  onSelectedItemChanged: (i) {
-                                    setState(
-                                        () => _minute = i.clamp(0, 59));
+                                child: Listener(
+                                  onPointerSignal: (event) {
+                                    if (!kIsWeb || event is! PointerScrollEvent) return;
+                                    final nowMs =
+                                        DateTime.now().millisecondsSinceEpoch;
+                                    if (nowMs - _lastMinuteWheelTickMs <
+                                        _wheelTickDebounceMs) {
+                                      return;
+                                    }
+                                    _lastMinuteWheelTickMs = nowMs;
+                                    final delta = event.scrollDelta.dy > 0 ? 1 : -1;
+                                    _changeMinuteBy(delta);
                                   },
-                                  childDelegate:
-                                      ListWheelChildBuilderDelegate(
-                                    childCount: 60,
-                                    builder: (context, index) {
-                                      final dist = (index - _minute)
-                                          .abs()
-                                          .clamp(0, 2);
-                                      final style = _timeRowStyle(dist);
-                                      return Center(
-                                        child: Text(
-                                          index.toString().padLeft(2, '0'),
-                                          style: style,
-                                          overflow: TextOverflow.clip,
-                                        ),
-                                      );
+                                  child: ListWheelScrollView.useDelegate(
+                                    controller: _minuteController,
+                                    itemExtent: _itemExtent,
+                                    physics: kIsWeb
+                                        ? const NeverScrollableScrollPhysics()
+                                        : const FixedExtentScrollPhysics(),
+                                    perspective: 0.003,
+                                    diameterRatio: 1.6,
+                                    onSelectedItemChanged: (i) {
+                                      final mc = _minuteCountForHour(_hour);
+                                      final nextMinute = i.clamp(0, mc - 1);
+                                      if (nextMinute == _minute) return;
+                                      setState(() => _minute = nextMinute);
                                     },
+                                    childDelegate:
+                                        ListWheelChildBuilderDelegate(
+                                      childCount: _minuteCountForHour(_hour),
+                                      builder: (context, index) {
+                                        final dist = (index - _minute).abs();
+                                        return Center(
+                                          child: Text(
+                                            index.toString().padLeft(2, '0'),
+                                            style: _timeRowStyle(dist),
+                                            overflow: TextOverflow.clip,
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
@@ -648,28 +755,52 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
   }
 
   TextStyle _timeRowStyle(int distanceFromSelection) {
-    switch (distanceFromSelection) {
-      case 0:
-        return const TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: 24,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
-        );
-      case 1:
-        return const TextStyle(
-          color: _kTimeMuted,
-          fontSize: 20,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w300,
-        );
-      default:
-        return const TextStyle(
-          color: _kTimeMuted,
-          fontSize: 16,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w300,
-        );
+    final isSelected = distanceFromSelection == 0;
+    return TextStyle(
+      color: isSelected
+          ? const Color(0xFF1A1A1A)
+          : const Color(0xFF1A1A1A).withValues(alpha: 0.58),
+      fontSize: 22,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w300,
+    );
+  }
+
+  void _changeHourBy(int delta) {
+    final nextHour = (_hour + delta).clamp(0, _hourCount - 1);
+    if (nextHour == _hour) return;
+    final beforeCount = _minuteCountForHour(_hour);
+    setState(() {
+      _hour = nextHour;
+      final afterCount = _minuteCountForHour(_hour);
+      if (_minute >= afterCount) {
+        _minute = afterCount - 1;
+      }
+    });
+    if (_hourController.hasClients) {
+      _hourController.animateToItem(
+        _hour,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+      );
+    }
+    final afterCount = _minuteCountForHour(_hour);
+    if (beforeCount != afterCount && _minuteController.hasClients) {
+      _minuteController.jumpToItem(_minute);
+    }
+  }
+
+  void _changeMinuteBy(int delta) {
+    final maxMinute = _minuteCountForHour(_hour) - 1;
+    final nextMinute = (_minute + delta).clamp(0, maxMinute);
+    if (nextMinute == _minute) return;
+    setState(() => _minute = nextMinute);
+    if (_minuteController.hasClients) {
+      _minuteController.animateToItem(
+        _minute,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+      );
     }
   }
 }
