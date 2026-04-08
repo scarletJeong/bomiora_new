@@ -41,6 +41,13 @@ class _SignupScreenState extends State<SignupScreen> {
   String? _certGender;
   Map<String, dynamic> _rawCertInfo = {};
 
+  bool get _canInputComplete {
+    if (_isLoading) return false;
+    return _emailController.text.trim().isNotEmpty &&
+        _passwordController.text.isNotEmpty &&
+        _passwordConfirmController.text.isNotEmpty;
+  }
+
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -58,6 +65,14 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
+    void onFieldChanged() {
+      if (!mounted) return;
+      setState(() {});
+    }
+    _emailController.addListener(onFieldChanged);
+    _passwordController.addListener(onFieldChanged);
+    _passwordConfirmController.addListener(onFieldChanged);
+
     _rawCertInfo = Map<String, dynamic>.from(widget.certInfo ?? <String, dynamic>{});
     _certName = _readString(widget.certInfo, [
       'name',
@@ -457,10 +472,11 @@ class _SignupScreenState extends State<SignupScreen> {
           width: double.infinity,
           height: 40,
           child: ElevatedButton(
-            onPressed: _isLoading ? null : _handleInputComplete,
+            onPressed: _canInputComplete ? _handleInputComplete : null,
             style: ElevatedButton.styleFrom(
               elevation: 0,
-              backgroundColor: const Color(0xFFD2D2D2),
+              backgroundColor:
+                  _canInputComplete ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
               disabledBackgroundColor: const Color(0xFFD2D2D2),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),

@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _autoLogin = false;
   String? _loginErrorText;
   String? _returnTo;
+  bool _didApplyPrefillEmail = false;
 
   @override
   void didChangeDependencies() {
@@ -32,6 +33,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final v = args['returnTo']?.toString();
       if (v != null && v.isNotEmpty && v != '/login') {
         _returnTo = v;
+      }
+      final prefill = args['prefillEmail']?.toString().trim();
+      if (!_didApplyPrefillEmail &&
+          prefill != null &&
+          prefill.isNotEmpty &&
+          _emailController.text.trim().isEmpty) {
+        _emailController.text = prefill;
+        _didApplyPrefillEmail = true;
       }
     }
   }
@@ -189,8 +198,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   backgroundColor: Colors.white,
                                   imagePath: AppAssets.loginGoogle,
                                   onTap: null,
-                                  imagePadding: const EdgeInsets.all(2.5),
                                   imageSize: 42,
+                                  imageScale: 1.15,
                                 ),
                                 const SizedBox(width: 10),
                                 _buildSocialButton(
@@ -238,11 +247,9 @@ class _LoginScreenState extends State<LoginScreen> {
           throw const FormatException('로그인 응답 형식이 올바르지 않습니다.');
         }
         final userData = NodeValueParser.normalizeMap(
-          Map<String, dynamic>.from(resultData as Map),
+          Map<String, dynamic>.from(resultData),
         );
-        
-        print('🔍 [LOGIN DEBUG] 전체 응답 데이터: $userData');
-        
+
         // mb_id를 id로 매핑
         final userRaw = userData['user'];
         final userJson = NodeValueParser.normalizeMap(
@@ -250,14 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ? Map<String, dynamic>.from(userRaw)
               : Map<String, dynamic>.from(userData),
         );
-        
-        print('👤 [LOGIN DEBUG] 원본 user 데이터: $userJson');
-        print('📋 [LOGIN DEBUG] id (mb_no): ${userJson['id']}');
-        print('📋 [LOGIN DEBUG] mbId: ${userJson['mbId']}');
-        print('📋 [LOGIN DEBUG] mb_no: ${userJson['mb_no']}');
-        print('📋 [LOGIN DEBUG] mb_id: ${userJson['mb_id']}');
-        print('📋 [LOGIN DEBUG] email: ${userJson['email']}');
-        print('📋 [LOGIN DEBUG] name: ${userJson['name']}');
+
         
         final userId =
             NodeValueParser.asString(userJson['mb_id']) ??
@@ -542,6 +542,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required VoidCallback? onTap,
     Color? borderColor,
     double imageSize = 24,
+    double imageScale = 1.0,
     EdgeInsets imagePadding = EdgeInsets.zero,
   }) {
     return InkWell(
@@ -563,11 +564,14 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Center(
           child: Padding(
             padding: imagePadding,
-            child: Image.asset(
-              imagePath,
-              width: imageSize,
-              height: imageSize,
-              fit: BoxFit.contain,
+            child: Transform.scale(
+              scale: imageScale,
+              child: Image.asset(
+                imagePath,
+                width: imageSize,
+                height: imageSize,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),
@@ -618,7 +622,7 @@ class _LoginScreenState extends State<LoginScreen> {
           throw const FormatException('카카오 로그인 응답 형식이 올바르지 않습니다.');
         }
         final userData = NodeValueParser.normalizeMap(
-          Map<String, dynamic>.from(resultData as Map),
+          Map<String, dynamic>.from(resultData),
         );
         final userRaw = userData['user'];
         final userJson = NodeValueParser.normalizeMap(

@@ -4,8 +4,8 @@ import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../utils/find_id_accounts.dart';
-import '../widgets/find_account_result_actions.dart';
-import '../widgets/registered_account_list.dart';
+import '../widgets/find_account_btn.dart';
+import '../widgets/registered_account_ui.dart';
 
 class FindAccountResultScreen extends StatefulWidget {
   const FindAccountResultScreen({
@@ -97,34 +97,20 @@ class _FindAccountResultScreenState
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Text(
-                          '아이디/비밀번호찾기',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 20,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
                         Expanded(
                           child: SingleChildScrollView(
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: RegisteredAccountList(
-                                accounts: _accounts,
-                                selectedIndex: _selectedAccountIndex,
-                                sectionTitle: '등록된 아이디',
-                                topSpacing: 0,
-                                onSelect: (index) => setState(
-                                  () => _selectedAccountIndex = index,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                RegisteredAccountList(
+                                  accounts: _accounts,
+                                  selectedIndex: _selectedAccountIndex,
+                                  onSelect: (index) => setState(
+                                    () => _selectedAccountIndex = index,
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        FindAccountResultActions(
+                                const SizedBox(height: 20),
+                                FindAccountResultActions(
                           onPasswordFind: () {
                             if (_accounts.isEmpty) return;
                             final i = _selectedAccountIndex
@@ -138,9 +124,22 @@ class _FindAccountResultScreenState
                               },
                             );
                           },
-                          onLogin: () => Navigator.pushReplacementNamed(
-                            context,
-                            '/login',
+                          onLogin: () {
+                            if (_accounts.isEmpty) {
+                              Navigator.pushReplacementNamed(context, '/login');
+                              return;
+                            }
+                            final i = _selectedAccountIndex
+                                .clamp(0, _accounts.length - 1);
+                            Navigator.pushReplacementNamed(
+                              context,
+                              '/login',
+                              arguments: {'prefillEmail': _accounts[i]},
+                            );
+                          },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],

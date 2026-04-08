@@ -114,7 +114,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
                 _webViewController = controller;
               },
               onLoadStart: (controller, url) {
-                debugPrint('🌐 [KCP Cert] 페이지 로드 시작: $url');
                 _detectCallbackPage(controller, url);
               },
               onLoadStop: (controller, url) async {
@@ -126,11 +125,9 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
                   _isLoading = false;
                 });
 
-                debugPrint('🌐 [KCP Cert] 페이지 로드 완료: $url');
                 await _detectCallbackPage(controller, url);
               },
               onReceivedError: (controller, request, error) {
-                debugPrint('❌ [KCP Cert] 에러 발생: ${error.description}');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -210,7 +207,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         _startPollingResult();
       }
     } catch (e) {
-      debugPrint('❌ [KCP Cert] callback 감지 실패: $e');
+      // no-op
     }
   }
 
@@ -256,7 +253,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       }
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      debugPrint('📥 [KCP Cert] polling 결과: ${jsonEncode(data)}');
 
       final status = (data['status'] ?? '').toString();
       final completed = data['cert_completed'] == true;
@@ -340,7 +336,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('❌ [KCP Cert] polling 오류: $e');
+      // no-op
     }
   }
 

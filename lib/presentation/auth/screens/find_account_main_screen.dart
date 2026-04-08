@@ -6,8 +6,8 @@ import '../../../data/repositories/auth/auth_repository.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../utils/find_id_accounts.dart';
-import '../widgets/find_account_result_actions.dart';
-import '../widgets/registered_account_list.dart';
+import '../widgets/find_account_btn.dart';
+import '../widgets/registered_account_ui.dart';
 
 enum _FindAccountTab { id, password }
 enum _FindAccountStep { form, result }
@@ -52,6 +52,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   String? _resultText;
   String? _emailLookupErrorText;
   String? _verificationErrorText;
+  /// 휴대폰 번호 행 바로 아래 표시(발송 전 검증, 인증 만료 등). 분홍 박스 미사용.
+  String? _phoneInlineErrorText;
   List<String> _foundAccounts = [];
   int _selectedFoundAccountIndex = 0;
   Timer? _countdownTimer;
@@ -92,6 +94,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     _resultText = null;
     _emailLookupErrorText = null;
     _verificationErrorText = null;
+    _phoneInlineErrorText = null;
   }
 
   void _handleFieldChanged(String _) {
@@ -163,8 +166,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           _isCodeExpired = true;
           _isCodeSent = false;
           _verificationCodeController.clear();
-          _errorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
+          _errorText = null;
           _resultText = null;
+          _phoneInlineErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
         });
         return;
       }
@@ -185,7 +189,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         _phoneMidController.text.trim().length < 3 ||
         _phoneLastController.text.trim().length < 4) {
       setState(() {
-        _errorText = '이름과 휴대폰 번호를 먼저 입력해 주세요.';
+        _errorText = null;
+        _phoneInlineErrorText = '이름과 휴대폰 번호를 먼저 입력해 주세요.';
       });
       return;
     }
@@ -195,6 +200,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       _isCodeExpired = false;
       _verificationErrorText = null;
       _resultText = null;
+      _errorText = null;
+      _phoneInlineErrorText = null;
     });
     _startCountdown();
   }
@@ -548,7 +555,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   const SizedBox(height: 10),
                   _buildFieldLabel('휴대폰 번호'),
                   const SizedBox(height: 10),
-                  _buildPhoneRow(),
+                  _buildPhoneSection(),
                 ],
               ),
             ),
@@ -594,7 +601,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                 const SizedBox(height: 10),
                 _buildFieldLabel('휴대폰 번호'),
                 const SizedBox(height: 10),
-                _buildPhoneRow(),
+                _buildPhoneSection(),
               ],
             ),
           ),
@@ -805,67 +812,93 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     );
   }
 
-  Widget _buildPhoneRow() {
-    return Row(
+  Widget _buildPhoneSection() {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _buildFixedPhoneBox('010')),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 7),
-                child: SizedBox(
-                  width: 8,
-                  child: Divider(color: Color(0xFFD9D9D9), thickness: 1),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(child: _buildFixedPhoneBox('010')),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 7),
+                    child: SizedBox(
+                      width: 8,
+                      child: Divider(color: Color(0xFFD9D9D9), thickness: 1),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildPhoneInput(
+                      controller: _phoneMidController,
+                      maxLength: 4,
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 7),
+                    child: SizedBox(
+                      width: 8,
+                      child: Divider(color: Color(0xFFD9D9D9), thickness: 1),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildPhoneInput(
+                      controller: _phoneLastController,
+                      maxLength: 4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 60,
+              height: 40,
+              child: ElevatedButton(
+                onPressed: _handleSendCode,
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: const Color(0xFFFF5A8D),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
+                child: const Text(
+                  '발송',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              Expanded(
-                child: _buildPhoneInput(
-                  controller: _phoneMidController,
-                  maxLength: 4,
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 7),
-                child: SizedBox(
-                  width: 8,
-                  child: Divider(color: Color(0xFFD9D9D9), thickness: 1),
-                ),
-              ),
-              Expanded(
-                child: _buildPhoneInput(
-                  controller: _phoneLastController,
-                  maxLength: 4,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 60,
-          height: 40,
-          child: ElevatedButton(
-            onPressed: _handleSendCode,
-            style: ElevatedButton.styleFrom(
-              elevation: 0,
-              backgroundColor: const Color(0xFFFF5A8D),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: EdgeInsets.zero,
-            ),
-            child: const Text(
-              '발송',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          child: _phoneInlineErrorText == null
+              ? const SizedBox.shrink()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 14),
+                    Text(
+                      _phoneInlineErrorText!,
+                      style: const TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ],
     );
@@ -1203,7 +1236,19 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               prefillPasswordEmail: _foundAccounts[i],
             );
           },
-          onLogin: () => Navigator.pushReplacementNamed(context, '/login'),
+          onLogin: () {
+            if (_foundAccounts.isEmpty) {
+              Navigator.pushReplacementNamed(context, '/login');
+              return;
+            }
+            final i = _selectedFoundAccountIndex
+                .clamp(0, _foundAccounts.length - 1);
+            Navigator.pushReplacementNamed(
+              context,
+              '/login',
+              arguments: {'prefillEmail': _foundAccounts[i]},
+            );
+          },
         ),
       ],
     );
