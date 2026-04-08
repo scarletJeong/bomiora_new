@@ -66,7 +66,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   num totalOther = 0;
 
   int steps = 6320;
-  int heartRate = 96;
+  int heartRate = 0;
   int systolicBP = 0;
   int diastolicBP = 0;
 
@@ -216,6 +216,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  /// 선택한 날짜와 같은 날 기록만 남기고, measuredAt 기준 가장 최신 1건.
   T? _latestOfDate<T>(
     List<T> records,
     DateTime Function(T) getDateTime,
@@ -223,8 +224,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     final sameDayRecords =
         records.where((r) => _isSameDay(getDateTime(r), selectedDate)).toList();
     if (sameDayRecords.isEmpty) return null;
-    sameDayRecords.sort((a, b) => getDateTime(a).compareTo(getDateTime(b)));
-    return sameDayRecords.last;
+    sameDayRecords.sort((a, b) => getDateTime(b).compareTo(getDateTime(a)));
+    return sameDayRecords.first;
   }
 
   FoodRecordSummary? _recordForMeal(
@@ -1097,7 +1098,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         title: '혈압',
                         value: latestBloodPressureRecord != null
                             ? '수축기 $systolicBP mmHg\n이완기 $diastolicBP mmHg'
-                            : '입력하세요.',
+                            : '입력하세요.\n입력하세요.',
                         subtitle: '',
                         statusText: _bloodPressureStatusLabel(),
                         icon: Icons.monitor_heart,
@@ -1136,11 +1137,23 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 child: _buildBottomRecordCard(
                   title: '심박수',
                   titleIcon: Icons.access_time,
-                  value: latestHeartRateRecord != null
-                      ? '$heartRate bpm'
-                      : '입력하세요.',
+                  value: latestHeartRateRecord != null ? null : '입력하세요.',
+                  valueWidget: latestHeartRateRecord != null
+                      ? Text(
+                          '$heartRate bpm',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: const TextStyle(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 13,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        )
+                      : null,
                   titleFontSize: 14,
-                  valueFontSize: 16,
+                  valueFontSize: 13,
                   onMore: () {
                     if (currentUser == null) {
                       showLoginRequiredDialog(
@@ -1348,7 +1361,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 latestHealthGoal!.dailyStepGoal! > 0)
             ? latestHealthGoal!.dailyStepGoal!
             : 0;
-    final double ratio = (steps / targetSteps).clamp(0.0, 1.0);
+    final double ratio = (targetSteps <= 0)
+        ? 0.0
+        : (steps / targetSteps).clamp(0.0, 1.0);
+    final fmt = NumberFormat('#,###');
 
     return GestureDetector(
       onTap: () {
@@ -1390,37 +1406,41 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     fit: StackFit.expand,
                     alignment: Alignment.center,
                     children: [
-                      const CircularProgressIndicator(
-                        value: 1,
-                        strokeWidth: 8,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Color(0xFFF3F4F6)),
-                      ),
-                      CircularProgressIndicator(
-                        value: ratio,
-                        strokeWidth: 8,
-                        color: const Color(0xFFFF5A8D),
-                        backgroundColor: Colors.transparent,
+                      CustomPaint(
+                        painter: _StepsGoalRingPainter(
+                          progress: ratio,
+                          trackColor: const Color(0xFFF3F4F6),
+                          progressColor: const Color(0xFFFF5A8D),
+                          strokeWidth: 8,
+                        ),
                       ),
                       Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '$steps',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFFFF5A8D),
-                              ),
-                            ),
-                            Text('/${NumberFormat('#,###').format(targetSteps)}',
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                fmt.format(steps),
                                 style: const TextStyle(
-                                    fontSize: 9,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w300,
-                                    color: Color(0xFFD1D5DB))),
-                          ],
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFFFF5A8D),
+                                ),
+                              ),
+                              Text(
+                                targetSteps > 0
+                                    ? '/${fmt.format(targetSteps)}'
+                                    : '/-',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                  color: Color(0xFFD1D5DB),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -1520,6 +1540,54 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     if (sugar < 70) return '주의';
     if (sugar <= 140) return '정상';
     return '의심';
+  }
+}
+
+class _StepsGoalRingPainter extends CustomPainter {
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+  final double strokeWidth;
+
+  _StepsGoalRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - strokeWidth / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final track = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    final progressPaint = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, track);
+
+    final p = progress.clamp(0.0, 1.0);
+    if (p <= 0) return;
+
+    // 12시 방향에서 반시계 방향으로 채움
+    final sweep = -math.pi * 2 * p;
+    canvas.drawArc(rect, -math.pi / 2, sweep, false, progressPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StepsGoalRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.progressColor != progressColor ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }
 
