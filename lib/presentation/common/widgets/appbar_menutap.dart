@@ -139,7 +139,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             )),
             cell(_DrawerShortcutData(
               icon: Icons.headset_mic_outlined,
-              label: '고객센터',
+              label: '카카오톡 상담',
               onTap: () {},
             )),
           ],
@@ -593,6 +593,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
       height: 1.35,
     );
 
+    final isPoint = widget.label == '포인트';
     return Material(
       color: Colors.transparent,
       child: MouseRegion(
@@ -629,11 +630,21 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                       ],
                     ),
                     alignment: Alignment.center,
-                    child: Icon(
-                      widget.icon,
-                      size: 22,
-                      color: color,
-                    ),
+                    child: isPoint
+                        ? Text(
+                            'P',
+                            style: TextStyle(
+                              color: color,
+                          fontSize: 16,
+                              fontFamily: _DrawerShortcut._fontFamily,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          )
+                        : Icon(
+                            widget.icon,
+                            size: 22,
+                            color: color,
+                          ),
                   ),
                   const SizedBox(height: 6),
                   Text(

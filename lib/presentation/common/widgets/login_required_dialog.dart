@@ -99,7 +99,14 @@ Future<bool> showLoginRequiredDialog(
   );
 
   if (result == true && context.mounted) {
-    Navigator.pushNamed(context, '/login');
+    final returnTo = ModalRoute.of(context)?.settings.name;
+    Navigator.pushNamed(
+      context,
+      '/login',
+      arguments: {
+        if (returnTo != null && returnTo.isNotEmpty) 'returnTo': returnTo,
+      },
+    );
     return true;
   }
 
