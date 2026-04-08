@@ -30,6 +30,57 @@ class HealthProfileFormScreen extends StatefulWidget {
   State<HealthProfileFormScreen> createState() => _HealthProfileFormScreenState();
 }
 
+class _Answer6MenuLine extends StatelessWidget {
+  const _Answer6MenuLine({
+    required this.label,
+    required this.showBottomDivider,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool showBottomDivider;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: showBottomDivider
+              ? const Border(
+                  bottom: BorderSide(
+                    width: 0.3,
+                    color: Color(0x7FD2D2D2),
+                  ),
+                )
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 10,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final PageController _pageController;
@@ -44,6 +95,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   
   // 다이어트 경험 관련 필드 백업 (있음 → 없음 → 있음 선택 시 복원용)
   final Map<String, String> _backupAnswer13Fields = {};
+  int _dietDetailResetTick = 0;
+  final GlobalKey _answer6FieldKey = GlobalKey();
+  OverlayEntry? _answer6MenuOverlay;
+  ScrollController? _answer6MenuScrollController;
   
   // 건강 프로필 섹션들
   late List<HealthProfileSection> _sections;
@@ -781,7 +836,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_isFirstVisibleInStep(stepIndex, question.id)) ...[
+          if ((widget.initialSectionIndices == null ||
+                  widget.initialSectionIndices!.isEmpty) &&
+              _isFirstVisibleInStep(stepIndex, question.id)) ...[
             _buildFigmaStepHeading(stepIndex),
             const SizedBox(height: 24),
           ],
@@ -1131,6 +1188,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
+              key: _answer6FieldKey,
               height: 50,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: ShapeDecoration(
@@ -1149,67 +1207,40 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ],
               ),
               alignment: Alignment.center,
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: selected,
-                  menuMaxHeight: 5 * kMinInteractiveDimension,
-                  dropdownColor: Colors.white,
-                  hint: const Text(
-                    '선택',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF898383),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF898383)),
-                  borderRadius: BorderRadius.circular(10),
-                  items: options
-                      .map(
-                        (e) => DropdownMenuItem<String>(
-                          value: e,
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: Center(
-                              child: Text(
-                                e,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 10,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  selectedItemBuilder: (context) => options
-                      .map(
-                        (e) => Center(
-                          child: Text(
-                            e,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFF1A1A1A),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) {
-                    if (v == null) return;
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _openAnswer6Menu(
+                  options: options,
+                  onSelected: (v) {
                     setState(() {
                       _formData['answer_6'] = v;
                       state.didChange(v);
                     });
                   },
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selected ?? '선택',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected == null
+                              ? const Color(0xFF898686)
+                              : const Color(0xFF1A1A1A),
+                          fontSize: 10,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: Colors.black87,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1225,6 +1256,96 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         );
       },
     );
+  }
+
+  void _removeAnswer6MenuOverlay() {
+    _answer6MenuOverlay?.remove();
+    _answer6MenuOverlay = null;
+    _answer6MenuScrollController?.dispose();
+    _answer6MenuScrollController = null;
+  }
+
+  void _openAnswer6Menu({
+    required List<String> options,
+    required ValueChanged<String> onSelected,
+  }) {
+    _removeAnswer6MenuOverlay();
+    _answer6MenuScrollController = ScrollController();
+    final ctx = _answer6FieldKey.currentContext;
+    if (ctx == null) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final overlay = Overlay.of(context);
+    final pos = box.localToGlobal(Offset.zero);
+    final top = pos.dy + box.size.height + 4;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final menuWidth = box.size.width.clamp(160.0, screenWidth - 16.0);
+    
+    _answer6MenuOverlay = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _removeAnswer6MenuOverlay,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Positioned(
+            left: pos.dx
+                .clamp(8.0, MediaQuery.sizeOf(context).width - menuWidth - 8),
+            top: top,
+            width: menuWidth,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x19000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 0),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  height: options.length > 4 ? 220 : null,
+                  child: Scrollbar(
+                    controller: _answer6MenuScrollController,
+                    thumbVisibility: options.length > 4,
+                    child: SingleChildScrollView(
+                      controller: _answer6MenuScrollController,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < options.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 5),
+                            _Answer6MenuLine(
+                              label: options[i],
+                              showBottomDivider: i < options.length - 1,
+                              onTap: () {
+                                onSelected(options[i]);
+                                _removeAnswer6MenuOverlay();
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    overlay.insert(_answer6MenuOverlay!);
   }
 
   Widget _figmaLabeledRow({
@@ -1267,9 +1388,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               child: GestureDetector(
                 onTap: () {
                   setState(() {
+                    final oldValue = _formData['answer_13'];
                     _formData['answer_13'] = '2';
-                    _backupAnswer13Fields['answer_13_medicine'] =
-                        _formData['answer_13_medicine']?.toString() ?? '';
+                    if (oldValue == '1' || oldValue == '없음') {
+                      _formData['answer_13_medicine'] =
+                          _backupAnswer13Fields['answer_13_medicine'] ?? '';
+                      _formData['answer_13_period'] =
+                          _backupAnswer13Fields['answer_13_period'] ?? '';
+                      _formData['answer_13_dosage'] =
+                          _backupAnswer13Fields['answer_13_dosage'] ?? '';
+                      _formData['answer_13_sideeffect'] =
+                          _backupAnswer13Fields['answer_13_sideeffect'] ?? '';
+                    }
                   });
                 },
                 child: Container(
@@ -1291,6 +1421,14 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               child: GestureDetector(
                 onTap: () {
                   setState(() {
+                    _backupAnswer13Fields['answer_13_medicine'] =
+                        _formData['answer_13_medicine']?.toString() ?? '';
+                    _backupAnswer13Fields['answer_13_period'] =
+                        _formData['answer_13_period']?.toString() ?? '';
+                    _backupAnswer13Fields['answer_13_dosage'] =
+                        _formData['answer_13_dosage']?.toString() ?? '';
+                    _backupAnswer13Fields['answer_13_sideeffect'] =
+                        _formData['answer_13_sideeffect']?.toString() ?? '';
                     _formData['answer_13'] = '1';
                     _formData['answer_13_medicine'] = '';
                     _formData['answer_13_period'] = '';
@@ -1366,6 +1504,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     _formData['answer_13_period'] = '';
                     _formData['answer_13_dosage'] = '';
                     _formData['answer_13_sideeffect'] = '';
+                    _dietDetailResetTick++;
                   });
                 },
                 style: OutlinedButton.styleFrom(
@@ -1407,9 +1546,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: TextFormField(
+              key: ValueKey<String>('diet_$id:$_dietDetailResetTick'),
               initialValue: _formData[id]?.toString() ?? '',
               decoration: _figmaInputDecoration(hint: hint),
               style: _figmaFieldTextStyle,
+              onChanged: (v) => _formData[id] = v,
               onSaved: (v) => _formData[id] = v ?? '',
             ),
           ),
@@ -1459,6 +1600,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               keyboardType:
                   maxLines > 1 ? TextInputType.multiline : TextInputType.text,
               textAlignVertical: TextAlignVertical.center,
+              textAlign: TextAlign.center,
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
@@ -1484,7 +1626,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       );
     }
 
-    /// 1행: 1식·2식·3식·기타 라벨 / 2행: 입력 (4열)
+    /// 1행: 1식·2식·3식·4식 라벨 / 2행: 입력 (4열)
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
@@ -1501,15 +1643,15 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               headerCell('1식'),
               headerCell('2식'),
               headerCell('3식'),
-              headerCell('기타'),
+              headerCell('4식'),
             ],
           ),
           TableRow(
             children: [
-              fieldCell('meal_1'),
-              fieldCell('meal_2'),
+              fieldCell('meal_1', hint: '예: 8시'),
+              fieldCell('meal_2', hint: '예: 12시'),
               fieldCell('meal_3', hint: '예: 19시'),
-              fieldCell('meal_other', hint: '예: 밤 야식'),
+              fieldCell('meal_other', hint: '예: 21시'),
             ],
           ),
         ],
@@ -1703,25 +1845,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _figmaTitleLeadingBarRow(
-            child: Text(
-              section.title,
-              style: _figmaBlockTitleStyle,
-            ),
-          ),
-          if (section.description.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              section.description,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
-          
-           ...section.questions.where((question) => _shouldShowQuestion(question)).map((question) => _buildQuestionWidget(question)),
+          ...section.questions
+              .where((question) => _shouldShowQuestion(question))
+              .map((question) => _buildQuestionWidget(question)),
         ],
       ),
     );
@@ -1874,6 +2000,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         
         
       case 'radio':
+        if (question.id == 'answer_13') {
+          return _buildFigmaYesNoChips();
+        }
         return Column(
           children: question.options!.map((option) {
             // 성별 변환 (M/F -> 남성/여성)
@@ -2335,6 +2464,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   const SizedBox(height: 4),
                   TextFormField(
                     initialValue: _formData['meal_1'] ?? '',
+                    textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: '예: 08:00',
                       border: OutlineInputBorder(
@@ -2367,6 +2497,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   const SizedBox(height: 4),
                   TextFormField(
                     initialValue: _formData['meal_2'] ?? '',
+                    textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: '예: 12:00',
                       border: OutlineInputBorder(
@@ -2399,6 +2530,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   const SizedBox(height: 4),
                   TextFormField(
                     initialValue: _formData['meal_3'] ?? '',
+                    textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: '예: 19:00',
                       border: OutlineInputBorder(
@@ -2422,7 +2554,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '기타',
+                    '4식',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -2431,8 +2563,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   const SizedBox(height: 4),
                   TextFormField(
                     initialValue: _formData['meal_other'] ?? '',
+                    textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      hintText: '예: 간식',
+                      hintText: '예: 21:00',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -2498,6 +2631,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   @override
   void dispose() {
+    _removeAnswer6MenuOverlay();
     _pageController.dispose();
     super.dispose();
   }
