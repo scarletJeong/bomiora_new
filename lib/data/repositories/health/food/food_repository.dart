@@ -42,6 +42,7 @@ dynamic _decodeResponseBody(String rawBody) {
 class FoodSearchItem {
   final String foodCode;
   final String foodName;
+  final String manufacturerName;
   final num? energy;
   final num? carbohydrates;
   final num? protein;
@@ -54,6 +55,7 @@ class FoodSearchItem {
   FoodSearchItem({
     required this.foodCode,
     required this.foodName,
+    this.manufacturerName = '',
     this.energy,
     this.carbohydrates,
     this.protein,
@@ -67,6 +69,7 @@ class FoodSearchItem {
     return FoodSearchItem(
       foodCode: _bufferFieldToString(json['food_code']),
       foodName: _bufferFieldToString(json['food_name']),
+      manufacturerName: _bufferFieldToString(json['manufacturer_name']),
       energy: json['energy'] != null ? num.tryParse(json['energy'].toString()) : null,
       carbohydrates: json['carbohydrates'] != null
           ? num.tryParse(json['carbohydrates'].toString())
@@ -198,41 +201,124 @@ const Map<String, String> _mealKeyToFoodTime = {
 class FoodRepository {
   static String get _baseUrl => ApiClient.baseUrl;
 
-  /// 식품명으로 검색 (칼로리/탄수화물/단백질/지방 반환)
-  static Future<List<FoodSearchItem>> searchFood(String keyword, {int limit = 20}) async {
-    try {
-      final q = keyword.trim();
-      final uri = Uri.parse('$_baseUrl${ApiEndpoints.foodSearch(q, limit: limit)}');
-      final response = await http.get(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-      );
+  static int _foodCodePriority(String code) {
+    if (code.isEmpty) return 99;
+    final type = code[0].toUpperCase();
+    if (type == 'D') return 0; // 음식
+    if (type == 'P') return 1; // 가공식품
+    if (type == 'F') return 2; // 건강기능식품
+    return 3;
+  }
 
-      if (response.statusCode == 200) {
-        final body = _decodeResponseBody(response.body);
-        List<dynamic> list = [];
-        if (body is List) {
-          list = body;
-        } else if (body is Map && body['data'] is List) {
-          list = body['data'] as List;
-        } else if (body is Map && body['success'] == true && body['data'] is List) {
-          list = body['data'] as List;
-        }
-        final items = list.map((e) {
+  static List<String> _splitKeywordTokens(String keyword) {
+    return keyword
+        .trim()
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  static bool _matchesAllTokens(FoodSearchItem item, List<String> tokens) {
+    if (tokens.isEmpty) return true;
+    final searchable = '${item.manufacturerName} ${item.foodName}'.toLowerCase();
+    for (final token in tokens) {
+      if (!searchable.contains(token)) return false;
+    }
+    return true;
+  }
+
+  static Future<List<FoodSearchItem>> _fetchFoodSearchRaw(
+    String keyword, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final q = keyword.trim();
+    if (q.isEmpty) return [];
+    final uri = Uri.parse(
+      '$_baseUrl${ApiEndpoints.foodSearch(q, limit: limit, offset: offset)}',
+    );
+    final response = await http.get(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) return [];
+    final body = _decodeResponseBody(response.body);
+    List<dynamic> list = [];
+    if (body is List) {
+      list = body;
+    } else if (body is Map && body['data'] is List) {
+      list = body['data'] as List;
+    } else if (body is Map && body['success'] == true && body['data'] is List) {
+      list = body['data'] as List;
+    }
+    return list
+        .map((e) {
           final unwrapped = _unwrapBuffer(e);
           if (unwrapped is! Map) return null;
           return FoodSearchItem.fromJson(Map<String, dynamic>.from(unwrapped));
-        }).whereType<FoodSearchItem>().toList();
-        if (kDebugMode) {
-          debugPrint('[칼로리 검색] 결과 수: ${items.length}');
-          for (var i = 0; i < items.length; i++) {
-            final it = items[i];
-            debugPrint('  ${i + 1}. ${it.foodName} | food_code: ${it.foodCode} | ${it.energy ?? 0}kcal');
+        })
+        .whereType<FoodSearchItem>()
+        .toList();
+  }
+
+  /// 식품명으로 검색 (칼로리/탄수화물/단백질/지방 반환)
+  static Future<List<FoodSearchItem>> searchFood(
+    String keyword, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final q = keyword.trim();
+      if (q.isEmpty) return [];
+      if (limit <= 0) return [];
+      if (offset < 0) offset = 0;
+
+      // 공백 포함 검색어는 전체 문장 + 토큰 단위 재검색으로 회수율 보완
+      // 예) "스타벅스 커피" -> ["스타벅스 커피", "스타벅스", "커피"]
+      final queries = <String>{q};
+      final baseTokens = _splitKeywordTokens(q);
+      if (baseTokens.length > 1) {
+        queries.addAll(baseTokens);
+      }
+
+      final merged = <FoodSearchItem>[];
+      final dedup = <String>{};
+      final neededCount = offset + limit;
+      for (final query in queries) {
+        final fetchLimit = query == q ? neededCount : (neededCount * 2);
+        final list = await _fetchFoodSearchRaw(query, limit: fetchLimit, offset: 0);
+        for (final item in list) {
+          final key = '${item.foodCode}|${item.foodName}';
+          if (dedup.add(key)) {
+            merged.add(item);
           }
         }
-        return items;
       }
-      return [];
+
+      final filtered = merged.where((item) => _matchesAllTokens(item, baseTokens)).toList();
+      final sorted = (filtered.isNotEmpty ? filtered : merged)..sort((a, b) {
+        final pA = _foodCodePriority(a.foodCode);
+        final pB = _foodCodePriority(b.foodCode);
+        if (pA != pB) return pA.compareTo(pB);
+        return a.foodName.compareTo(b.foodName);
+      });
+
+      if (offset >= sorted.length) return [];
+      final end = (offset + limit) > sorted.length ? sorted.length : (offset + limit);
+      final result = sorted.sublist(offset, end);
+
+      if (kDebugMode) {
+        debugPrint('[칼로리 검색] 질의="$q", offset=$offset, limit=$limit, 결과 수: ${result.length}');
+        for (var i = 0; i < result.length; i++) {
+          final it = result[i];
+          debugPrint(
+            '  ${i + 1}. ${it.manufacturerName} ${it.foodName} | food_code: ${it.foodCode} | ${it.energy ?? 0}kcal',
+          );
+        }
+      }
+      return result;
     } catch (e) {
       print('음식 검색 오류: $e');
       return [];

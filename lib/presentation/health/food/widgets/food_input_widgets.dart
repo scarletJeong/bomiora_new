@@ -29,24 +29,47 @@ class CalorieSearchBlock extends StatefulWidget {
 }
 
 class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
+  static const int _pageSize = 20;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _resultsScrollController = ScrollController();
   List<FoodSearchItem> _results = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = false;
   bool _isAdding = false;
+  String _currentKeyword = '';
+  int _currentOffset = 0;
 
   Future<void> _doSearch() async {
     final keyword = _searchController.text.trim();
     if (keyword.isEmpty) {
-      setState(() => _results = []);
+      setState(() {
+        _results = [];
+        _currentKeyword = '';
+        _currentOffset = 0;
+        _hasMore = false;
+      });
       return;
     }
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _isLoadingMore = false;
+      _currentKeyword = keyword;
+      _currentOffset = 0;
+      _hasMore = false;
+    });
     try {
-      final list = await FoodRepository.searchFood(keyword, limit: 20);
+      final list = await FoodRepository.searchFood(
+        keyword,
+        limit: _pageSize,
+        offset: 0,
+      );
       if (mounted) {
         setState(() {
           _results = list;
+          _currentOffset = list.length;
+          _hasMore = list.length == _pageSize;
           _isLoading = false;
         });
       }
@@ -54,9 +77,43 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       if (mounted) {
         setState(() {
           _results = [];
+          _currentOffset = 0;
+          _hasMore = false;
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadMoreResults() async {
+    if (_isLoading || _isLoadingMore || !_hasMore) return;
+    final keyword = _currentKeyword.trim();
+    if (keyword.isEmpty) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final list = await FoodRepository.searchFood(
+        keyword,
+        limit: _pageSize,
+        offset: _currentOffset,
+      );
+      if (!mounted) return;
+      setState(() {
+        _results.addAll(list);
+        _currentOffset += list.length;
+        _hasMore = list.length == _pageSize;
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
+  void _onResultsScroll() {
+    if (!_resultsScrollController.hasClients) return;
+    final position = _resultsScrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 24) {
+      _loadMoreResults();
     }
   }
 
@@ -133,7 +190,14 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   void dispose() {
     _searchController.dispose();
     _focusNode.dispose();
+    _resultsScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _resultsScrollController.addListener(_onResultsScroll);
   }
 
   @override
@@ -284,12 +348,28 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             ),
             constraints: const BoxConstraints(maxHeight: 220),
             child: ListView.separated(
+              controller: _resultsScrollController,
               shrinkWrap: true,
               padding: EdgeInsets.zero,
-              itemCount: _results.length,
+              itemCount: _results.length + (_isLoadingMore ? 1 : 0),
               separatorBuilder: (_, __) =>
                   const Divider(height: 1, thickness: 1, color: Color(0xFFF1F1F1)),
               itemBuilder: (context, i) {
+                if (i >= _results.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFFFF5A8D),
+                        ),
+                      ),
+                    ),
+                  );
+                }
                 final item = _results[i];
                 return SearchResultRow(
                   name: item.foodName,

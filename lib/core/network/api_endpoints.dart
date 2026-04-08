@@ -73,8 +73,8 @@ class ApiEndpoints {
   /// 주간/월간/통계 등 기존 경로 (userId = 숫자 회원 ID)
   static String stepsStatistics(int userId) => '/api/steps/statistics/$userId';
   static const String healthStats = '/api/health/stats';
-  static String foodSearch(String q, {int limit = 20}) =>
-      '/api/health/food/search?q=${Uri.encodeComponent(q)}&limit=$limit';
+  static String foodSearch(String q, {int limit = 20, int offset = 0}) =>
+      '/api/health/food/search?q=${Uri.encodeComponent(q)}&limit=$limit&offset=$offset';
   static String foodRecords(String recordDate) =>
       '/api/health/food/records?record_date=$recordDate';
   static const String foodRecordCreate = '/api/health/food/records';
