@@ -77,6 +77,75 @@ class StepsRepository {
     return getStepsRecordByMbId('$userId', date);
   }
 
+  /// `bm_steps` 일자별 합계 — 주간 차트용 (`GET /api/steps/daily-range`)
+  static Future<Map<String, int>> getStepsDailyRange(
+    String mbId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      final s = DateTime(start.year, start.month, start.day);
+      final e = DateTime(end.year, end.month, end.day);
+      final ss = s.toIso8601String().split('T')[0];
+      final ee = e.toIso8601String().split('T')[0];
+      final response = await ApiClient.get(
+        ApiEndpoints.stepsDailyRange(mbId: mbId, startYyyyMmDd: ss, endYyyyMmDd: ee),
+      );
+      if (response.statusCode != 200) return {};
+      final root = _tryDecodeObject(response.body);
+      if (root == null) return {};
+      if (root['success'] != true || root['data'] is! Map) return {};
+      final data = Map<String, dynamic>.from(root['data'] as Map);
+      final days = data['days'];
+      if (days is! List) return {};
+      final out = <String, int>{};
+      for (final item in days) {
+        if (item is! Map) continue;
+        final m = Map<String, dynamic>.from(item);
+        final d = m['date']?.toString();
+        if (d == null || d.isEmpty) continue;
+        final key = d.length >= 10 ? d.substring(0, 10) : d;
+        final steps = m['total_steps'] ?? m['totalSteps'];
+        out[key] = steps is num ? steps.round() : int.tryParse(steps?.toString() ?? '') ?? 0;
+      }
+      return out;
+    } catch (e) {
+      print('기간별 걸음 조회 오류: $e');
+      return {};
+    }
+  }
+
+  /// 연도별 월 합계 12개 (`GET /api/steps/monthly-totals`)
+  static Future<List<int>> getStepsMonthlyTotalsForYear(String mbId, int year) async {
+    try {
+      final response = await ApiClient.get(
+        ApiEndpoints.stepsMonthlyTotals(mbId: mbId, year: year),
+      );
+      if (response.statusCode != 200) return List<int>.filled(12, 0);
+      final root = _tryDecodeObject(response.body);
+      if (root == null) return List<int>.filled(12, 0);
+      if (root['success'] != true || root['data'] is! Map) return List<int>.filled(12, 0);
+      final data = Map<String, dynamic>.from(root['data'] as Map);
+      final months = data['months'];
+      final out = List<int>.filled(12, 0);
+      if (months is List) {
+        for (final item in months) {
+          if (item is! Map) continue;
+          final m = Map<String, dynamic>.from(item);
+          final mi = m['month'];
+          final month = mi is num ? mi.round() : int.tryParse(mi?.toString() ?? '') ?? 0;
+          if (month < 1 || month > 12) continue;
+          final ts = m['total_steps'] ?? m['totalSteps'];
+          out[month - 1] = ts is num ? ts.round() : int.tryParse(ts?.toString() ?? '') ?? 0;
+        }
+      }
+      return out;
+    } catch (e) {
+      print('월별 걸음 조회 오류: $e');
+      return List<int>.filled(12, 0);
+    }
+  }
+
   // 걸음수 기록 저장
   static Future<bool> saveStepsRecord(StepsRecord record) async {
     try {

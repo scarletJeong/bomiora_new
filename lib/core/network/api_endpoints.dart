@@ -70,6 +70,16 @@ class ApiEndpoints {
   static String stepsDailyTotal({required String mbId, required String dateYyyyMmDd}) =>
       '/api/steps/daily-total?mb_id=${Uri.encodeComponent(mbId)}&date=${Uri.encodeComponent(dateYyyyMmDd)}';
 
+  static String stepsDailyRange({
+    required String mbId,
+    required String startYyyyMmDd,
+    required String endYyyyMmDd,
+  }) =>
+      '/api/steps/daily-range?mb_id=${Uri.encodeComponent(mbId)}&start=${Uri.encodeComponent(startYyyyMmDd)}&end=${Uri.encodeComponent(endYyyyMmDd)}';
+
+  static String stepsMonthlyTotals({required String mbId, required int year}) =>
+      '/api/steps/monthly-totals?mb_id=${Uri.encodeComponent(mbId)}&year=$year';
+
   /// 주간/월간/통계 등 기존 경로 (userId = 숫자 회원 ID)
   static String stepsStatistics(int userId) => '/api/steps/statistics/$userId';
   static const String healthStats = '/api/health/stats';
