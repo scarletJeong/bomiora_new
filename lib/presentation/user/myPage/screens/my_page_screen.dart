@@ -14,7 +14,7 @@ import '../../../shopping/wish/screens/wish_list_screen.dart';
 import 'refund_account_screen.dart';
 import 'cancel_member_screen.dart';
 import '../../healthprofile/screens/health_profile_list_screen.dart';
-import '../widgets/my_page_shared.dart';
+import '../widgets/my_page_common.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
