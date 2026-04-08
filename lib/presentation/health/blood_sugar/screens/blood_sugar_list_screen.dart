@@ -200,34 +200,50 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       final hourRecords = List<BloodSugarRecord>.from(byHour[hour]!)
         ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
 
-      if (hourRecords.length >= 2) {
-        final minSugar = hourRecords
-            .map((r) => r.bloodSugar)
-            .reduce((a, b) => a < b ? a : b);
-        final maxSugar = hourRecords
-            .map((r) => r.bloodSugar)
-            .reduce((a, b) => a > b ? a : b);
-        final xPosition = (hour - windowStartHour) / 6.0;
-        chartData.add({
-          'date': '${hour.toString().padLeft(2, '0')}:00',
-          'bloodSugar': null,
-          'minBloodSugar': minSugar,
-          'maxBloodSugar': maxSugar,
-          'barColor': _barColorForHourRecords(hourRecords),
-          'hourSlotBar': true,
-          'hour': hour,
-          'xPosition': xPosition.clamp(0.0, 1.0),
-          'record': hourRecords.last,
-          'records': hourRecords,
-          'count': hourRecords.length,
-        });
-      } else {
-        final record = hourRecords.single;
-        final recordHour = record.measuredAt.hour;
-        final recordMinute = record.measuredAt.minute;
-        final chartPoint = _createChartPoint(
-            record, recordHour, recordMinute, minHourDiff, maxHourDiff);
-        chartData.add(chartPoint);
+      // 같은 시간대라도 측정유형별로 분리해서 그린다.
+      // (겹쳐도 허용) -> 범례 색상(공복/식전/식후/취침전/평상시)이 모두 보이도록.
+      final byType = <String, List<BloodSugarRecord>>{};
+      for (final r in hourRecords) {
+        final t = r.measurementType.trim().isEmpty ? '기타' : r.measurementType.trim();
+        byType.putIfAbsent(t, () => []).add(r);
+      }
+
+      final typeEntries = byType.entries.toList()
+        ..sort((a, b) => _measurementTypeOrder(a.key).compareTo(_measurementTypeOrder(b.key)));
+
+      for (final e in typeEntries) {
+        final typed = List<BloodSugarRecord>.from(e.value)
+          ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+        if (typed.length >= 2) {
+          final minSugar = typed
+              .map((r) => r.bloodSugar)
+              .reduce((a, b) => a < b ? a : b);
+          final maxSugar = typed
+              .map((r) => r.bloodSugar)
+              .reduce((a, b) => a > b ? a : b);
+          final xPosition = (hour - windowStartHour) / 6.0;
+          chartData.add({
+            'date': '${hour.toString().padLeft(2, '0')}:00',
+            'bloodSugar': null,
+            'minBloodSugar': minSugar,
+            'maxBloodSugar': maxSugar,
+            'barColor': _measurementTypeColor(e.key),
+            'hourSlotBar': true,
+            'hour': hour,
+            'measurementType': e.key,
+            'xPosition': xPosition.clamp(0.0, 1.0),
+            'record': typed.last,
+            'records': typed,
+            'count': typed.length,
+          });
+        } else {
+          final record = typed.single;
+          final recordHour = record.measuredAt.hour;
+          final recordMinute = record.measuredAt.minute;
+          final chartPoint = _createChartPoint(
+              record, recordHour, recordMinute, minHourDiff, maxHourDiff);
+          chartData.add(chartPoint);
+        }
       }
     }
 
@@ -472,7 +488,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         });
       }
     } catch (e) {
-      print('혈당 기록 로드 오류: $e');
       setState(() {
         isLoading = false;
       });
@@ -815,19 +830,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   bool _isDiffUp(int? diff) => diff != null && diff > 0;
-
-  /// 시간대 막대는 측정유형(공복/식전/식후...) 기준 색상 사용.
-  /// 같은 시간대에 유형이 섞이면 중립색(핑크)로 표시.
-  Color _barColorForHourRecords(List<BloodSugarRecord> records) {
-    final types = records
-        .map((r) => r.measurementType.trim())
-        .where((t) => t.isNotEmpty)
-        .toSet();
-    if (types.length == 1) {
-      return _measurementTypeColor(types.first);
-    }
-    return const Color(0xFFE91E63);
-  }
 
   /// 혈당 상태별 헤더 색상: 정상 #71D375, 전단계 #FFE78B, 의심 #FF6161.
   /// 사용처: 공복/식후 카드 헤더(_buildSugarSummaryCardNew의 headerColor), 아래 범례(_SugarLegend)와 동일 구간 색상.
