@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
-import '../../health_common/widgets/health_measurement_datetime_dialogs.dart';
+import '../../health_common/widgets/health_date_selector.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';

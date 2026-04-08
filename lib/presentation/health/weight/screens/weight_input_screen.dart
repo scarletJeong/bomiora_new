@@ -8,7 +8,7 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
-import '../../health_common/widgets/health_measurement_datetime_dialogs.dart';
+import '../../health_common/widgets/health_date_selector.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/repositories/health/weight/weight_repository.dart';
