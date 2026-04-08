@@ -74,13 +74,8 @@ class ApiClient {
     };
     
     final body = json.encode(data);
-    
-    print('📤 [API POST] URL: $url');
-    print('📤 [API POST] Headers: $headers');
-    print('📤 [API POST] Body: ${data.toString().replaceAll(RegExp(r'password[:\s]*[^,}]+'), 'password: [보호됨]')}');
-    
+
     try {
-      print('⏳ [API POST] 요청 시작...');
       final response = await http.post(
         Uri.parse(url),
         headers: headers,
@@ -88,29 +83,15 @@ class ApiClient {
       ).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          print('⏱️ [API POST] 타임아웃 발생 (30초)');
           throw TimeoutException('요청 시간이 초과되었습니다', const Duration(seconds: 30));
         },
       );
-      
-      print('✅ [API POST] 응답 수신 완료');
-      print('📥 [API POST] 응답 상태: ${response.statusCode}');
-      print('📥 [API POST] 응답 헤더: ${response.headers}');
-      print('📥 [API POST] 응답 본문 길이: ${response.body.length} bytes');
-      if (response.body.length < 500) {
-        print('📥 [API POST] 응답 본문: ${response.body}');
-      }
-      
       return response;
     } on TimeoutException catch (e) {
-      print('⏱️ [API POST] 타임아웃 오류: $e');
       rethrow;
     } on SocketException catch (e) {
-      print('🌐 [API POST] 네트워크 연결 오류: $e');
       rethrow;
     } catch (e, stackTrace) {
-      print('❌ [API POST] 요청 실패: $e');
-      print('❌ [API POST] 스택 트레이스: $stackTrace');
       rethrow;
     }
   }
@@ -144,11 +125,6 @@ class ApiClient {
   // 파일 업로드 요청 (웹 호환성 고려)
   static Future<http.Response> uploadFile(String endpoint, dynamic file) async {
     try {
-      print('🔍 [DEBUG] 파일 업로드 요청 시작');
-      print('🌐 [DEBUG] 엔드포인트: $baseUrl$endpoint');
-      print('📁 [DEBUG] 파일 타입: ${file.runtimeType}');
-      print('🌍 [DEBUG] 웹 환경: $kIsWeb');
-      
       var request = http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'));
       
       if (kIsWeb) {
@@ -156,36 +132,25 @@ class ApiClient {
         if (file is XFile) {
           // XFile에서 바이트 읽기
           final bytes = await file.readAsBytes();
-          print('📊 [DEBUG] 웹 파일 크기: ${bytes.length} bytes');
           request.files.add(http.MultipartFile.fromBytes(
             'file',
             bytes,
             filename: 'image.jpg',
           ));
         } else {
-          print('❌ [DEBUG] 웹에서 잘못된 파일 타입: ${file.runtimeType}');
           return http.Response('Invalid file type for web upload', 400);
         }
       } else {
         // 모바일/데스크톱에서는 파일 경로 사용
         File fileObj = file as File;
-        print('📂 [DEBUG] 모바일 파일 경로: ${fileObj.path}');
-        print('📊 [DEBUG] 파일 존재 여부: ${await fileObj.exists()}');
-        if (await fileObj.exists()) {
-          print('📊 [DEBUG] 파일 크기: ${await fileObj.length()} bytes');
-        }
         request.files.add(await http.MultipartFile.fromPath('file', fileObj.path));
       }
       
-      print('📤 [DEBUG] 요청 전송 중...');
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
-      print('📡 [DEBUG] 업로드 응답: ${response.statusCode}');
-      print('📄 [DEBUG] 응답 본문: ${response.body}');
       
       return response;
     } catch (e) {
-      print('💥 [DEBUG] 파일 업로드 오류: $e');
       return http.Response('File upload failed: $e', 500);
     }
   }
