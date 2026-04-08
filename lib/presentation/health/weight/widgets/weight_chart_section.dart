@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../common/chart_layout.dart';
 
 const double _weightYAxisUnitBandHeight = 16.0;
+const String _weightPageFontFamily = 'Gmarket Sans TTF';
 
 /// 주·월 그래프와 동일: 상단 `(kg)` 밴드 + 숫자 눈금 Stack(가운데 정렬, 11pt)
 Widget _buildWeightYAxisStripLikePeriodChart({
@@ -41,6 +42,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                       label.toStringAsFixed(0),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
+                        fontFamily: _weightPageFontFamily,
                         fontSize: 11,
                         color: Colors.grey,
                       ),
@@ -66,6 +68,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                       child: Text(
                         unitLabel,
                         style: TextStyle(
+                          fontFamily: _weightPageFontFamily,
                           fontSize: 11,
                           color: Colors.grey[700],
                           fontWeight: FontWeight.w500,
@@ -125,6 +128,8 @@ class WeightChartContent extends StatelessWidget {
   final List<Map<String, dynamic>> chartData;
   final List<double> yLabels;
   final double chartHeight;
+  /// 시간대별(일)에서 선택일에 기록이 하나라도 있으면 true (혈당 hasActualDailyData와 동일)
+  final bool hasActualDailyData;
   final bool showExpandButton;
   final VoidCallback? onExpand;
   final Widget Function(double chartHeight) dataChartBuilder;
@@ -135,6 +140,7 @@ class WeightChartContent extends StatelessWidget {
     required this.selectedPeriod,
     required this.chartData,
     required this.yLabels,
+    required this.hasActualDailyData,
     required this.dataChartBuilder,
     required this.emptyChartBuilder,
     this.chartHeight = ChartConstants.healthChartHeight,
@@ -180,26 +186,16 @@ class WeightChartContent extends StatelessWidget {
   }
 
   Widget _buildChartBody() {
-    if (selectedPeriod != '일' && chartData.isEmpty) {
-      return emptyChartBuilder(chartHeight);
+    if (selectedPeriod == '일' && !hasActualDailyData) {
+      return HealthDailyNoDataChartCard(
+        chartHeight: chartHeight,
+        title: '해당 기간에 체중 기록이 없습니다',
+        subtitle: '체중을 측정해보세요',
+      );
     }
 
-    if (selectedPeriod == '일' && chartData.isEmpty) {
-      return Container(
-        height: chartHeight,
-        padding: ChartConstants.weightChartCardPadding,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Center(
-          child: Text(
-            '해당 기간에 체중 기록이 없습니다',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-        ),
-      );
+    if (selectedPeriod != '일' && chartData.isEmpty) {
+      return emptyChartBuilder(chartHeight);
     }
 
     return dataChartBuilder(chartHeight);
@@ -229,7 +225,11 @@ Widget buildWeightXAxisLabels({
     hourLabels.add(
       Text(
         hourLabel,
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        style: TextStyle(
+          fontFamily: _weightPageFontFamily,
+          fontSize: 12,
+          color: Colors.grey[600],
+        ),
       ),
     );
   }
@@ -265,7 +265,11 @@ Widget _buildWeightPeriodXAxisLabels({
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.clip,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(
+                fontFamily: _weightPageFontFamily,
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
             ),
           );
         }),
@@ -291,7 +295,11 @@ Widget _buildWeightPeriodXAxisLabels({
       return Expanded(
         child: Text(
           label,
-          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+          style: TextStyle(
+            fontFamily: _weightPageFontFamily,
+            fontSize: 10,
+            color: Colors.grey[600],
+          ),
           textAlign: TextAlign.center,
         ),
       );
@@ -326,6 +334,7 @@ Widget _buildXAxisLabelWithUnit({
           child: Text(
             unitText,
             style: TextStyle(
+              fontFamily: _weightPageFontFamily,
               fontSize: 9,
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
@@ -882,6 +891,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
               '$year년 $month월',
               textAlign: TextAlign.center,
               style: const TextStyle(
+                fontFamily: _weightPageFontFamily,
                 color: Colors.black87,
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -894,6 +904,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
+                fontFamily: _weightPageFontFamily,
                 color: Colors.black87,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -1267,6 +1278,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
+                fontFamily: _weightPageFontFamily,
                 color: Colors.grey[700],
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -1279,6 +1291,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: const TextStyle(
+                fontFamily: _weightPageFontFamily,
                 color: Colors.black87,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,

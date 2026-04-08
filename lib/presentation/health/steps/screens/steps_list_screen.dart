@@ -480,11 +480,15 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     );
   }
 
-  Widget _buildChartCard({bool showExpandButton = true}) {
+  Widget _buildChartCard({
+    bool showExpandButton = true,
+    double? chartHeight,
+  }) {
+    final h = chartHeight ?? ChartConstants.healthChartHeight;
     return Stack(
       children: [
         Container(
-          height: ChartConstants.healthChartHeight,
+          height: h,
           padding: const EdgeInsets.fromLTRB(8, 16, 16, 16),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -538,46 +542,51 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
             builder: (context, constraints) {
               final labels = _buildXAxisLabels();
               final visibleData = _buildVisibleChartData(data);
+              final forceWhiteBg =
+                  selectedPeriod == '일' || selectedPeriod == '월';
 
-              return Column(
-                children: [
-                  const SizedBox(height: _stepsYAxisUnitBandHeight),
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onPanUpdate: selectedPeriod == '일' || selectedPeriod == '월'
-                          ? (details) {
-                              final next = timeOffset -
-                                  (details.delta.dx /
-                                      math.max(constraints.maxWidth, 1)) *
-                                      (selectedPeriod == '일' ? 2.4 : 1.8);
-                              setState(() {
-                                timeOffset = _clampTimeOffset(next);
-                              });
-                              _notifyExpandedChart();
-                            }
-                          : null,
-                      child: CustomPaint(
-                        painter: _StepsBarChartPainter(
-                          data: visibleData,
-                          maxValue: maxValue,
-                          yTickCount: yTicks.length,
-                          barWidth: selectedPeriod == '일'
-                              ? 8
-                              : selectedPeriod == '월'
-                                  ? 12
-                                  : 14,
-                        ),
-                        size: Size(
-                          double.infinity,
-                          constraints.maxHeight - _stepsYAxisUnitBandHeight - 26,
+              return ColoredBox(
+                color: forceWhiteBg ? Colors.white : Colors.transparent,
+                child: Column(
+                  children: [
+                    const SizedBox(height: _stepsYAxisUnitBandHeight),
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onPanUpdate: selectedPeriod == '일' || selectedPeriod == '월'
+                            ? (details) {
+                                final next = timeOffset -
+                                    (details.delta.dx /
+                                        math.max(constraints.maxWidth, 1)) *
+                                        (selectedPeriod == '일' ? 2.4 : 1.8);
+                                setState(() {
+                                  timeOffset = _clampTimeOffset(next);
+                                });
+                                _notifyExpandedChart();
+                              }
+                            : null,
+                        child: CustomPaint(
+                          painter: _StepsBarChartPainter(
+                            data: visibleData,
+                            maxValue: maxValue,
+                            yTickCount: yTicks.length,
+                            barWidth: selectedPeriod == '일'
+                                ? 8
+                                : selectedPeriod == '월'
+                                    ? 12
+                                    : 14,
+                          ),
+                          size: Size(
+                            double.infinity,
+                            constraints.maxHeight - _stepsYAxisUnitBandHeight - 26,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  _buildXAxisLabelRow(labels),
-                ],
+                    const SizedBox(height: 10),
+                    _buildXAxisLabelRow(labels),
+                  ],
+                ),
               );
             },
           ),
@@ -762,7 +771,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           _notifyExpandedChart();
         },
       ),
-      chartBuilder: (_) => _buildChartCard(showExpandButton: false),
+      chartBuilder: (_) => LayoutBuilder(
+        builder: (context, constraints) {
+          final h =
+              ChartConstants.healthExpandedChartHeight(constraints.maxHeight);
+          return _buildChartCard(showExpandButton: false, chartHeight: h);
+        },
+      ),
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;
       },

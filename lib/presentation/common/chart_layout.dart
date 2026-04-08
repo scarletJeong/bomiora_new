@@ -1,9 +1,22 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// 차트 관련 공통 상수들
 class ChartConstants {
   /// 건강 모듈 목록·그래프 확대 공통 높이 (혈압/혈당/심박수/체중/걸음)
   static const double healthChartHeight = 320.0;
+
+  /// 가로 확대 화면: 부모가 준 세로 공간에 맞춤 (혈당·걸음 확대와 동일한 방식).
+  /// [bottomLegendReserve]: 확대 페이지 하단 범례 등을 위해 남길 여백(혈압/심박 등).
+  static double healthExpandedChartHeight(
+    double parentMaxHeight, {
+    double topReserve = 8,
+    double bottomLegendReserve = 34,
+  }) {
+    return (parentMaxHeight - topReserve - bottomLegendReserve)
+        .clamp(160.0, healthChartHeight);
+  }
 
   // Y축 관련 상수
   static const double yAxisLabelWidth = 25.0; // Y축 라벨 영역 너비
@@ -74,5 +87,58 @@ class ChartConstants {
     }
     
     return Offset(left, top);
+  }
+}
+
+/// 시간대별(일)에서 **선택일 당일 기록이 없을 때** — 축·그리드 없이 문구만 (혈당 그래프와 동일).
+class HealthDailyNoDataChartCard extends StatelessWidget {
+  const HealthDailyNoDataChartCard({
+    super.key,
+    required this.chartHeight,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final double chartHeight;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: chartHeight,
+      padding: ChartConstants.weightChartCardPadding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'Gmarket Sans TTF',
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontFamily: 'Gmarket Sans TTF',
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -12,8 +12,9 @@ import '../../../../data/repositories/health/blood_sugar/blood_sugar_repository.
 
 class BloodSugarInputScreen extends StatefulWidget {
   final BloodSugarRecord? record; // null이면 새 기록, 있으면 수정
+  final DateTime? recordContextDate;
 
-  const BloodSugarInputScreen({super.key, this.record});
+  const BloodSugarInputScreen({super.key, this.record, this.recordContextDate});
 
   @override
   State<BloodSugarInputScreen> createState() => _BloodSugarInputScreenState();
@@ -40,6 +41,9 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       _selectedDateTime = widget.record!.measuredAt;
       _selectedMeasurementType = widget.record!.measurementType;
       _calculatedStatus = widget.record!.status;
+    } else if (widget.recordContextDate != null) {
+      _selectedDateTime =
+          healthDefaultNewRecordDateTime(widget.recordContextDate!);
     }
 
     // 혈당 변경 시 상태 자동 계산
@@ -62,11 +66,13 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   }
 
   Future<void> _selectDate() async {
+    final latest = DateTime.now();
     final picked = await showHealthDateThenTimePickers(
       context,
       initialDateTime: _selectedDateTime,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: latest,
+      latestAllowed: latest,
     );
     if (picked != null) {
       setState(() => _selectedDateTime = picked);
@@ -74,26 +80,49 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
   }
 
   Future<void> _selectTime() async {
+    final now = DateTime.now();
+    TimeOfDay? maxTime;
+    if (_selectedDateTime.year == now.year &&
+        _selectedDateTime.month == now.month &&
+        _selectedDateTime.day == now.day) {
+      maxTime = TimeOfDay(hour: now.hour, minute: now.minute);
+    }
     final time = await showHealthTimePickerDialog(
       context,
       initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
+      maxTime: maxTime,
     );
 
     if (time != null) {
       setState(() {
-        _selectedDateTime = DateTime(
+        var next = DateTime(
           _selectedDateTime.year,
           _selectedDateTime.month,
           _selectedDateTime.day,
           time.hour,
           time.minute,
         );
+        if (next.isAfter(now)) next = now;
+        _selectedDateTime = next;
       });
     }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final now = DateTime.now();
+    if (_selectedDateTime.isAfter(now)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('현재 시각 이후로는 기록할 수 없습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _isSaving = true);
 

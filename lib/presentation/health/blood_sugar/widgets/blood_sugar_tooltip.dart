@@ -71,6 +71,12 @@ class BloodSugarTooltip extends StatelessWidget {
   String _headerLine(Map<String, dynamic> payload) {
     switch (selectedPeriod) {
       case '일':
+        if (payload['hourSlotBar'] == true) {
+          final hour = payload['hour'] as int?;
+          if (hour != null) {
+            return '$hour시';
+          }
+        }
         final record = payload['record'];
         if (record != null) {
           try {
@@ -107,6 +113,37 @@ class BloodSugarTooltip extends StatelessWidget {
     }
 
     final bloodSugar = data['bloodSugar'];
+    if (data['hourSlotBar'] == true) {
+      final minSugar = data['minBloodSugar'] as int?;
+      final maxSugar = data['maxBloodSugar'] as int?;
+      if (minSugar == null || maxSugar == null) return const SizedBox.shrink();
+      final header = _headerLine(data);
+      final body = minSugar == maxSugar
+          ? '$minSugar'
+          : '최저 $minSugar ~ 최고 $maxSugar';
+      return _positionedCard(
+        minWidth: 120,
+        estimatedHeight: 56,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (header.isNotEmpty)
+              Text(
+                header,
+                style: _headerStyle,
+                textAlign: TextAlign.center,
+              ),
+            if (header.isNotEmpty) const SizedBox(height: 4),
+            Text(
+              body,
+              style: _valueStyle,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
     if (bloodSugar == null) return const SizedBox.shrink();
 
     final header = _headerLine(data);
@@ -213,7 +250,7 @@ class BloodSugarTooltip extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

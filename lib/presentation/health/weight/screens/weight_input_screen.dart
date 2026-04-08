@@ -17,8 +17,15 @@ import '../../../../core/utils/image_picker_utils.dart';
 class WeightInputScreen extends StatefulWidget {
   final WeightRecord? record; // null이면 새 기록, 있으면 수정
   final Map<String, String?>? initialImages; // 초기 이미지 경로
+  /// 목록·대시보드에서 보고 있던 날짜(새 기록일 때 기본 측정일시에 반영)
+  final DateTime? recordContextDate;
 
-  const WeightInputScreen({super.key, this.record, this.initialImages});
+  const WeightInputScreen({
+    super.key,
+    this.record,
+    this.initialImages,
+    this.recordContextDate,
+  });
 
   @override
   State<WeightInputScreen> createState() => _WeightInputScreenState();
@@ -54,6 +61,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     } else {
       // 새 기록 모드: 최신 기록에서 키 가져오기
       _loadLatestHeight();
+
+      if (widget.recordContextDate != null) {
+        _selectedDateTime =
+            healthDefaultNewRecordDateTime(widget.recordContextDate!);
+      }
 
       // 초기 이미지 설정
       if (widget.initialImages != null) {
@@ -97,11 +109,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   }
 
   Future<void> _selectDateThenTime() async {
+    final latest = DateTime.now();
     final picked = await showHealthDateThenTimePickers(
       context,
       initialDateTime: _selectedDateTime,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: latest,
+      latestAllowed: latest,
     );
     if (picked != null) {
       setState(() => _selectedDateTime = picked);
@@ -109,25 +123,48 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   }
 
   Future<void> _selectTimeOnly() async {
+    final now = DateTime.now();
+    TimeOfDay? maxTime;
+    if (_selectedDateTime.year == now.year &&
+        _selectedDateTime.month == now.month &&
+        _selectedDateTime.day == now.day) {
+      maxTime = TimeOfDay(hour: now.hour, minute: now.minute);
+    }
     final time = await showHealthTimePickerDialog(
       context,
       initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
+      maxTime: maxTime,
     );
     if (time != null) {
       setState(() {
-        _selectedDateTime = DateTime(
+        var next = DateTime(
           _selectedDateTime.year,
           _selectedDateTime.month,
           _selectedDateTime.day,
           time.hour,
           time.minute,
         );
+        if (next.isAfter(now)) next = now;
+        _selectedDateTime = next;
       });
     }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final now = DateTime.now();
+    if (_selectedDateTime.isAfter(now)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('현재 시각 이후로는 기록할 수 없습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -270,35 +307,45 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: HealthAppBar(
-        title: widget.record == null ? '체중 기록하기' : '체중 수정하기',
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(25),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 측정 일시
-              _buildDateTimeCard(),
-              const SizedBox(height: 16),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
 
-              // 키 입력
-              _buildHeightInput(),
-              const SizedBox(height: 24),
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: widget.record == null ? '체중 기록하기' : '체중 수정하기',
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(25),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 측정 일시
+                _buildDateTimeCard(),
+                const SizedBox(height: 16),
 
-              // 체중 입력
-              _buildWeightInput(),
-              const SizedBox(height: 24),
+                // 키 입력
+                _buildHeightInput(),
+                const SizedBox(height: 24),
 
-              // 눈바디 이미지
-              _buildBodyImagesSection(),
-              const SizedBox(height: 24),
+                // 체중 입력
+                _buildWeightInput(),
+                const SizedBox(height: 24),
 
-              _buildActionButtons(),
-            ],
+                // 눈바디 이미지
+                _buildBodyImagesSection(),
+                const SizedBox(height: 24),
+
+                _buildActionButtons(),
+              ],
+            ),
           ),
         ),
       ),
@@ -593,6 +640,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
               child: const Text(
                 '삭제',
                 style: TextStyle(
+                  fontFamily: 'Gmarket Sans TTF',
                   color: Color(0xFF898383),
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -627,6 +675,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   : Text(
                       widget.record == null ? '등록' : '수정',
                       style: const TextStyle(
+                        fontFamily: 'Gmarket Sans TTF',
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -725,6 +774,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         Text(
           label,
           style: TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
             fontSize: 12,
             color: Colors.grey[600],
             fontWeight: FontWeight.w500,

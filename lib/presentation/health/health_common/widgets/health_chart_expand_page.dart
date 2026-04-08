@@ -6,8 +6,6 @@ Future<void> openHealthChartExpandPage({
   required BuildContext context,
   required WidgetBuilder periodSelectorBuilder,
   required WidgetBuilder chartBuilder,
-  /// 확대 화면에서 그래프 아래에 표시할 범례(페이지별 전체 범례)
-  WidgetBuilder? legendBuilder,
   ValueChanged<VoidCallback>? onRegisterRefresh,
   VoidCallback? onDisposeRefresh,
 }) async {
@@ -26,7 +24,6 @@ Future<void> openHealthChartExpandPage({
           return StatefulBuilder(
             builder: (context, expandedSetState) {
               onRegisterRefresh?.call(() => expandedSetState(() {}));
-              final legend = legendBuilder;
               return Scaffold(
                 backgroundColor: Colors.white,
                 body: SafeArea(
@@ -50,10 +47,6 @@ Future<void> openHealthChartExpandPage({
                         periodSelectorBuilder(context),
                         const SizedBox(height: 10),
                         Expanded(child: chartBuilder(context)),
-                        if (legend != null) ...[
-                          const SizedBox(height: 4),
-                          legend(context),
-                        ],
                       ],
                     ),
                   ),

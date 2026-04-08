@@ -185,17 +185,50 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     final timeRange = _calculateTimeRange();
     final minHourDiff = timeRange['min']!;
     final maxHourDiff = timeRange['max']!;
+    final range = maxHourDiff - minHourDiff;
+    final windowStartHour = minHourDiff.round();
+    if (range <= 0) return [];
 
-    List<Map<String, dynamic>> chartData = [];
+    final byHour = <int, List<BloodSugarRecord>>{};
+    for (final record in dayRecords) {
+      byHour.putIfAbsent(record.measuredAt.hour, () => []).add(record);
+    }
+    final sortedHours = byHour.keys.toList()..sort();
 
-    for (var record in dayRecords) {
-      final recordHour = record.measuredAt.hour;
-      final recordMinute = record.measuredAt.minute;
+    final chartData = <Map<String, dynamic>>[];
+    for (final hour in sortedHours) {
+      final hourRecords = List<BloodSugarRecord>.from(byHour[hour]!)
+        ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
 
-      // 통합 로직: 모든 데이터 표시 (필터링은 Painter에서)
-      final chartPoint = _createChartPoint(
-          record, recordHour, recordMinute, minHourDiff, maxHourDiff);
-      chartData.add(chartPoint);
+      if (hourRecords.length >= 2) {
+        final minSugar = hourRecords
+            .map((r) => r.bloodSugar)
+            .reduce((a, b) => a < b ? a : b);
+        final maxSugar = hourRecords
+            .map((r) => r.bloodSugar)
+            .reduce((a, b) => a > b ? a : b);
+        final xPosition = (hour - windowStartHour) / 6.0;
+        chartData.add({
+          'date': '${hour.toString().padLeft(2, '0')}:00',
+          'bloodSugar': null,
+          'minBloodSugar': minSugar,
+          'maxBloodSugar': maxSugar,
+          'barColor': _barColorForHourRecords(hourRecords),
+          'hourSlotBar': true,
+          'hour': hour,
+          'xPosition': xPosition.clamp(0.0, 1.0),
+          'record': hourRecords.last,
+          'records': hourRecords,
+          'count': hourRecords.length,
+        });
+      } else {
+        final record = hourRecords.single;
+        final recordHour = record.measuredAt.hour;
+        final recordMinute = record.measuredAt.minute;
+        final chartPoint = _createChartPoint(
+            record, recordHour, recordMinute, minHourDiff, maxHourDiff);
+        chartData.add(chartPoint);
+      }
     }
 
     return chartData;
@@ -654,7 +687,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                const BloodSugarInputScreen(),
+                                BloodSugarInputScreen(
+                                  recordContextDate: selectedDate,
+                                ),
                           ),
                         );
 
@@ -780,6 +815,19 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   bool _isDiffUp(int? diff) => diff != null && diff > 0;
+
+  /// 시간대 막대는 측정유형(공복/식전/식후...) 기준 색상 사용.
+  /// 같은 시간대에 유형이 섞이면 중립색(핑크)로 표시.
+  Color _barColorForHourRecords(List<BloodSugarRecord> records) {
+    final types = records
+        .map((r) => r.measurementType.trim())
+        .where((t) => t.isNotEmpty)
+        .toSet();
+    if (types.length == 1) {
+      return _measurementTypeColor(types.first);
+    }
+    return const Color(0xFFE91E63);
+  }
 
   /// 혈당 상태별 헤더 색상: 정상 #71D375, 전단계 #FFE78B, 의심 #FF6161.
   /// 사용처: 공복/식후 카드 헤더(_buildSugarSummaryCardNew의 headerColor), 아래 범례(_SugarLegend)와 동일 구간 색상.
@@ -969,11 +1017,10 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       ),
       chartBuilder: (_) => LayoutBuilder(
         builder: (context, constraints) {
-          final maxHeight = constraints.maxHeight;
-          final desired = ChartConstants.healthChartHeight;
-          const legendReserve = 34.0;
-          final safeHeight =
-              (maxHeight - 8 - legendReserve).clamp(160.0, desired);
+          final safeHeight = ChartConstants.healthExpandedChartHeight(
+            constraints.maxHeight,
+            bottomLegendReserve: 34,
+          );
 
           return BloodSugarChartSection(
             selectedPeriod: selectedPeriod,
@@ -1129,7 +1176,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const BloodSugarInputScreen(),
+                  builder: (context) => BloodSugarInputScreen(
+                        recordContextDate: selectedDate,
+                      ),
                 ),
               );
 

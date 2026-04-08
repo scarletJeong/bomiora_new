@@ -650,7 +650,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                const BloodPressureInputScreen(),
+                                BloodPressureInputScreen(
+                                  recordContextDate: selectedDate,
+                                ),
                           ),
                         );
 
@@ -1085,38 +1087,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 데이터 없음 메시지 빌드
   Widget _buildNoDataMessage(
       {double chartHeight = ChartConstants.healthChartHeight}) {
-    return Container(
-      height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              '해당 기간에 혈압 기록이 없습니다',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '혈압을 측정해보세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return HealthDailyNoDataChartCard(
+      chartHeight: chartHeight,
+      title: '해당 기간에 혈압 기록이 없습니다',
+      subtitle: '혈압을 측정해보세요',
     );
   }
 
@@ -1399,26 +1373,39 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     await openHealthChartExpandPage(
       context: context,
       periodSelectorBuilder: (_) => _buildPeriodButtons(),
-      chartBuilder: (_) =>
-          _buildChart(
-              showExpandButton: false,
-              forExpandedChart: true,
-              chartHeight: ChartConstants.healthChartHeight),
-      legendBuilder: (_) => Padding(
-        padding: const EdgeInsets.only(left: 4),
-        child: Row(
-          children: [
-            const _GraphSeriesLegend(
-                color: Color(0xFF86B0FF),
-                label: '수축기',
-                compact: true),
-            const SizedBox(width: 8),
-            const _GraphSeriesLegend(
-                color: Color(0xFFFFC686),
-                label: '이완기',
-                compact: true),
-          ],
-        ),
+      chartBuilder: (_) => LayoutBuilder(
+        builder: (context, constraints) {
+          final safeHeight = ChartConstants.healthExpandedChartHeight(
+            constraints.maxHeight,
+            bottomLegendReserve: 34,
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildChart(
+                showExpandButton: false,
+                forExpandedChart: true,
+                chartHeight: safeHeight,
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const _GraphSeriesLegend(
+                    color: Color(0xFF86B0FF),
+                    label: '수축기',
+                    compact: true,
+                  ),
+                  const SizedBox(width: 6),
+                  const _GraphSeriesLegend(
+                    color: Color(0xFFFFC686),
+                    label: '이완기',
+                    compact: true,
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;
@@ -1727,7 +1714,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const BloodPressureInputScreen(),
+                  builder: (context) => BloodPressureInputScreen(
+                        recordContextDate: selectedDate,
+                      ),
                 ),
               );
 

@@ -362,38 +362,10 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
 
   Widget _buildNoDataMessage(
       {double chartHeight = ChartConstants.healthChartHeight}) {
-    return Container(
-      height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              '해당 기간에 혈당 기록이 없습니다',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '혈당을 측정해보세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return HealthDailyNoDataChartCard(
+      chartHeight: chartHeight,
+      title: '해당 기간에 혈당 기록이 없습니다',
+      subtitle: '혈당을 측정해보세요',
     );
   }
 
@@ -599,6 +571,52 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     }
 
     for (int i = 0; i < chartData.length; i++) {
+      if (widget.selectedPeriod == '일' && chartData[i]['hourSlotBar'] == true) {
+        final minSugar = chartData[i]['minBloodSugar'] as int?;
+        final maxSugar = chartData[i]['maxBloodSugar'] as int?;
+        if (minSugar == null || maxSugar == null) continue;
+        final recordHour = chartData[i]['hour'] as int?;
+        if (recordHour != null) {
+          const maxStartHour = 18;
+          final startHour =
+              (widget.timeOffset * maxStartHour).clamp(0, maxStartHour).round();
+          final endHour = startHour + 6;
+          if (recordHour < startHour || recordHour > endHour) continue;
+        }
+        final xPosition = (chartData[i]['xPosition'] as double?) ?? 0.5;
+        final x = leftPadding + (effectiveWidth * xPosition);
+        const double topPadding = 20.0;
+        const double bottomPadding = 20.0;
+        final clampedMin =
+            minSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
+        final clampedMax =
+            maxSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
+        final normalizedMin = (widget.yLabels.first - clampedMin) /
+            (widget.yLabels.first - widget.yLabels.last);
+        final normalizedMax = (widget.yLabels.first - clampedMax) /
+            (widget.yLabels.first - widget.yLabels.last);
+        final yMin = topPadding +
+            (chartHeight - topPadding - bottomPadding) * normalizedMin;
+        final yMax = topPadding +
+            (chartHeight - topPadding - bottomPadding) * normalizedMax;
+        final yTop = math.min(yMin, yMax);
+        final yBottom = math.max(yMin, yMax);
+        final yCenter = (yTop + yBottom) / 2;
+        const halfW = 14.0;
+        final inBand = tapPosition.dx >= x - halfW &&
+            tapPosition.dx <= x + halfW &&
+            tapPosition.dy >= yTop - 10 &&
+            tapPosition.dy <= yBottom + 10;
+        final distance = inBand
+            ? 0.0
+            : ((tapPosition.dx - x).abs() + (tapPosition.dy - yCenter).abs());
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = i;
+          closestPoint = Offset(x, yCenter);
+        }
+        continue;
+      }
       if (chartData[i]['bloodSugar'] == null) continue;
       if (inOverlapDataIndex.contains(i)) continue;
 
@@ -930,27 +948,66 @@ class BloodSugarChartPainter extends CustomPainter {
     double x0,
     double chartWidth,
   ) {
-    final segments = <List<Offset>>[];
-    final indexSegments = <List<int>>[];
-    final currentPoints = <Offset>[];
-    final currentIndices = <int>[];
-
     const maxStartHour = 18;
     final startHour =
         (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
     final endHour = startHour + 6;
+    final points = <Offset>[];
+    final pointIndices = <int>[];
+    final barPaint = Paint()..style = PaintingStyle.fill;
+    const barWidth = 10.0;
 
     for (int i = 0; i < data.length; i++) {
+      if (data[i]['hourSlotBar'] == true) {
+        final minSugar = data[i]['minBloodSugar'] as int?;
+        final maxSugar = data[i]['maxBloodSugar'] as int?;
+        final recordHour = data[i]['hour'] as int?;
+        if (minSugar == null || maxSugar == null || recordHour == null) continue;
+        if (recordHour < startHour || recordHour > endHour) continue;
+        final xPosition = (data[i]['xPosition'] as double?) ?? 0.5;
+        final xCenter = x0 + (chartWidth * xPosition);
+        final clampedMin = minSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+        final clampedMax = maxSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+        final minNorm = (maxValue - clampedMin) / (maxValue - minValue);
+        final maxNorm = (maxValue - clampedMax) / (maxValue - minValue);
+        final yMin = _plotTopPadding +
+            (size.height - _plotTopPadding - _plotBottomPadding) * minNorm;
+        final yMax = _plotTopPadding +
+            (size.height - _plotTopPadding - _plotBottomPadding) * maxNorm;
+        final yTop = math.min(yMin, yMax);
+        final yBottom = math.max(yMin, yMax);
+        final centerY = (yTop + yBottom) / 2;
+        final barHeight = math.max(yBottom - yTop, 4.0);
+        final isHighlighted = highlightedIndex != null && highlightedIndex == i;
+        final barColor = data[i]['barColor'] is Color
+            ? data[i]['barColor'] as Color
+            : const Color(0xFFFF5A8D);
+        barPaint.color = barColor;
+        final w = isHighlighted ? barWidth + 3 : barWidth;
+        final rect = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(xCenter, centerY),
+            width: w,
+            height: barHeight,
+          ),
+          Radius.circular(w / 2),
+        );
+        canvas.drawRRect(rect, barPaint);
+        if (isHighlighted) {
+          canvas.drawRRect(
+            rect,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2,
+          );
+        }
+        continue;
+      }
       if (data[i]['bloodSugar'] == null) continue;
       final recordHour = data[i]['hour'] as int?;
       if (recordHour != null &&
           (recordHour < startHour || recordHour > endHour)) {
-        if (currentPoints.isNotEmpty) {
-          segments.add(List.from(currentPoints));
-          indexSegments.add(List.from(currentIndices));
-          currentPoints.clear();
-          currentIndices.clear();
-        }
         continue;
       }
 
@@ -970,38 +1027,28 @@ class BloodSugarChartPainter extends CustomPainter {
       final y = _plotTopPadding +
           (size.height - _plotTopPadding - _plotBottomPadding) * normalized;
 
-      currentPoints.add(Offset(x, y));
-      currentIndices.add(i);
+      points.add(Offset(x, y));
+      pointIndices.add(i);
     }
 
-    if (currentPoints.isNotEmpty) {
-      segments.add(currentPoints);
-      indexSegments.add(currentIndices);
-    }
-
-    for (int segIdx = 0; segIdx < segments.length; segIdx++) {
-      final points = segments[segIdx];
-      final indices = indexSegments[segIdx];
-      for (int i = 0; i < points.length; i++) {
-        final originalIndex = indices[i];
-        final isHighlighted =
-            highlightedIndex != null && highlightedIndex == originalIndex;
-        final pointPaint = Paint()
-          ..color = _seriesColorForDataIndex(originalIndex)
-          ..style = PaintingStyle.fill;
-        if (isHighlighted) {
-          canvas.drawCircle(points[i], 8, pointPaint);
-          canvas.drawCircle(
-            points[i],
-            8,
-            Paint()
-              ..color = Colors.white
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
-          );
-        } else {
-          canvas.drawCircle(points[i], 5, pointPaint);
-        }
+    for (int i = 0; i < points.length; i++) {
+      final originalIndex = pointIndices[i];
+      final isHighlighted = highlightedIndex != null && highlightedIndex == originalIndex;
+      final pointPaint = Paint()
+        ..color = _seriesColorForDataIndex(originalIndex)
+        ..style = PaintingStyle.fill;
+      if (isHighlighted) {
+        canvas.drawCircle(points[i], 8, pointPaint);
+        canvas.drawCircle(
+          points[i],
+          8,
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      } else {
+        canvas.drawCircle(points[i], 5, pointPaint);
       }
     }
   }

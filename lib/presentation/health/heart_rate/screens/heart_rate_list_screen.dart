@@ -492,6 +492,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         useCalendarYearMonths: selectedPeriod == '월',
         padding: ChartConstants.weightChartCardPadding,
       );
+    } else if (_recordsForSelectedDate().isEmpty) {
+      chartBody = HealthDailyNoDataChartCard(
+        chartHeight: chartHeight,
+        title: '해당 기간에 심박수 기록이 없습니다',
+        subtitle: '심박수를 측정해보세요',
+      );
     } else {
       chartBody =
           _buildDailyChart(chartData, yLabels, chartHeight: chartHeight);
@@ -660,22 +666,38 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           }
         }),
       ),
-      chartBuilder: (_) =>
-          _buildChart(
-              showExpandButton: false,
-              chartHeight: ChartConstants.healthChartHeight),
-      legendBuilder: (_) => Padding(
-        padding: const EdgeInsets.only(left: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const _HeartLegend(
-                color: Color(0xFFFF8686), label: '운동', compact: true),
-            const SizedBox(width: 8),
-            const _HeartLegend(
-                color: Color(0xFF86B0FF), label: '일상', compact: true),
-          ],
-        ),
+      chartBuilder: (_) => LayoutBuilder(
+        builder: (context, constraints) {
+          final safeHeight = ChartConstants.healthExpandedChartHeight(
+            constraints.maxHeight,
+            bottomLegendReserve: 34,
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildChart(
+                showExpandButton: false,
+                chartHeight: safeHeight,
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const _HeartLegend(
+                    color: Color(0xFFFF8686),
+                    label: '운동',
+                    compact: true,
+                  ),
+                  const SizedBox(width: 6),
+                  const _HeartLegend(
+                    color: Color(0xFF86B0FF),
+                    label: '일상',
+                    compact: true,
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
       onRegisterRefresh: (refresh) => _refreshExpandedChart = refresh,
       onDisposeRefresh: () => _refreshExpandedChart = null,
