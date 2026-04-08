@@ -29,7 +29,10 @@ class MenstrualCycleInfoScreen extends StatefulWidget {
 }
 
 class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
+  /// 선택된 날짜가 속한 주기 레코드(화면 표시용)
   MenstrualCycleRecord? _currentRecord;
+  /// 전체 히스토리(최근 시작일 내림차순)
+  List<MenstrualCycleRecord> _allRecords = const [];
   bool _isLoading = true;
   late DateTime selectedDate;
   bool _isAutoCreatingCycle = false;
@@ -55,10 +58,13 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         throw Exception('로그인이 필요합니다');
       }
 
-      final record =
-          await MenstrualCycleRepository.getLatestMenstrualCycleRecord(user.id);
+      final records =
+          await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
+      records.sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
+      final recordForSelected = _recordForDateFrom(records, selectedDate);
       setState(() {
-        _currentRecord = record;
+        _allRecords = records;
+        _currentRecord = recordForSelected ?? (records.isNotEmpty ? records.first : null);
         _isLoading = false;
       });
       _maybeAutoCreateNextCycleForDate(selectedDate);
@@ -74,6 +80,21 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         );
       }
     }
+  }
+
+  MenstrualCycleRecord? _recordForDateFrom(
+    List<MenstrualCycleRecord> records,
+    DateTime date,
+  ) {
+    final target = DateUtils.dateOnly(date);
+    for (final r in records) {
+      final start = DateUtils.dateOnly(r.lastPeriodStart);
+      final end = start.add(Duration(days: r.cycleLength - 1));
+      if (!target.isBefore(start) && !target.isAfter(end)) {
+        return r;
+      }
+    }
+    return null;
   }
 
   @override
@@ -209,8 +230,13 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           MenstrualCycleDateHeader(
             selectedDate: selectedDate,
             onDateChanged: (d) {
-              setState(() => selectedDate = d);
-              _maybeAutoCreateNextCycleForDate(d);
+              final nextDate = DateTime(d.year, d.month, d.day);
+              setState(() {
+                selectedDate = nextDate;
+                _currentRecord =
+                    _recordForDateFrom(_allRecords, nextDate) ?? _currentRecord;
+              });
+              _maybeAutoCreateNextCycleForDate(nextDate);
             },
           ),
           const SizedBox(height: 16),

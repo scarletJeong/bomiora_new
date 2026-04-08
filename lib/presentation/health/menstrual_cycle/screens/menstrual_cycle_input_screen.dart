@@ -361,17 +361,16 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
     final double barLeft;
     final double barRight;
-    if (_lastPeriodEnd == null) {
-      // 종료일 미선택: 시작일 칸에서 원과 같은 너비의 캡슐만
-      barLeft = firstCx - d / 2;
-      barRight = lastCx + d / 2;
-    } else {
-      final isGlobalStart = _lastPeriodStart != null &&
-          _sameDate(firstDay, _lastPeriodStart!);
-      final isGlobalEnd = _sameDate(lastDay, _lastPeriodEnd!);
-      barLeft = isGlobalStart ? firstCx - d / 2 : firstIdx * cellW;
-      barRight = isGlobalEnd ? lastCx + d / 2 : (lastIdx + 1) * cellW;
-    }
+    final startIsEndpoint = (_lastPeriodStart != null &&
+            _sameDate(firstDay, _lastPeriodStart!)) ||
+        _isHistoricalEndpoint(firstDay);
+    final endIsEndpoint =
+        (_lastPeriodEnd != null && _sameDate(lastDay, _lastPeriodEnd!)) ||
+            _isHistoricalEndpoint(lastDay);
+
+    // 종료일 미선택이더라도 "이전 내역" 범위 바는 끝점 원과 자연스럽게 이어져야 함
+    barLeft = startIsEndpoint ? firstCx - d / 2 : firstIdx * cellW;
+    barRight = endIsEndpoint ? lastCx + d / 2 : (lastIdx + 1) * cellW;
 
     final barWidth = math.max(0.0, barRight - barLeft);
     if (barWidth <= 0) return const SizedBox.shrink();
