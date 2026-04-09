@@ -16,18 +16,9 @@ class AuthService {
     String? token, // String?으로 변경
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    
-    print('💾 [AuthService.saveLoginData] 저장 시작');
-    print('   - User ID: ${user.id}');
-    print('   - User Email: ${user.email}');
-    print('   - User Name: ${user.name}');
-    print('   - User Nickname: ${user.nickname}');
-    print('   - User Phone: ${user.phone}');
-    print('   - Token: ${token != null ? "있음" : "없음"}');
-    
+
     final userJsonStr = json.encode(user.toJson());
-    print('   - 저장될 JSON: $userJsonStr');
-    
+
     await prefs.setString(_userKey, userJsonStr);
     if (token != null) { // token이 null이 아닐 때만 저장
       await prefs.setString(_tokenKey, token);
@@ -35,8 +26,6 @@ class AuthService {
       await prefs.remove(_tokenKey); // 기존 토큰이 있다면 삭제
     }
     await prefs.setBool(_isLoggedInKey, true);
-    
-    print('✅ [AuthService.saveLoginData] 저장 완료');
   }
 
   // 로그인 상태 확인
@@ -56,12 +45,10 @@ class AuthService {
         final user = UserModel.fromJson(userData);
         return user;
       } catch (e) {
-        print('❌ 사용자 정보 파싱 오류: $e');
         return null;
       }
     }
-    
-    print('⚠️ [AuthService.getUser] 저장된 사용자 정보 없음');
+
     return null;
   }
 

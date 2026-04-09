@@ -266,17 +266,9 @@ class _LoginScreenState extends State<LoginScreen> {
         userJson['id'] = userId;
         // 비밀번호 저장
         userJson['password'] = _passwordController.text;
-        
-        print('✅ [LOGIN DEBUG] 최종 매핑된 id: $userId');
-        
+
         final user = UserModel.fromJson(userJson);
-        
-        print('💾 [LOGIN DEBUG] UserModel 생성 완료:');
-        print('   - id: ${user.id}');
-        print('   - email: ${user.email}');
-        print('   - name: ${user.name}');
-        print('   - phone: ${user.phone}');
-        
+
         final token = NodeValueParser.asString(userData['token']); // token이 없으면 null이 됨
 
         await AuthService.saveLoginData(user: user, token: token); // token을 String?으로 전달
@@ -291,29 +283,22 @@ class _LoginScreenState extends State<LoginScreen> {
             final navigator = Navigator.of(context);
             navigator.pushReplacementNamed(_returnTo ?? '/home');
           } catch (e) {
-            print('❌ [LOGIN] 네비게이션 오류: $e');
             // 실패 시 홈으로 이동 시도
             if (mounted) {
               try {
                 Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
-              } catch (e2) {
-                print('❌ [LOGIN] 홈 네비게이션도 실패: $e2');
-              }
+              } catch (_) {}
             }
           }
         });
       } else {
         if (mounted) {
-          final errorMessage = result['error']?.toString() ?? '로그인에 실패했습니다';
-          print('❌ [LOGIN SCREEN] 로그인 실패: $errorMessage');
           setState(() {
             _loginErrorText = '아이디 혹은 비밀번호가 일치하지 않습니다.';
           });
         }
       }
-    } catch (e, stackTrace) {
-      print('❌ [LOGIN SCREEN] 예외 발생: $e');
-      print('❌ [LOGIN SCREEN] 스택 트레이스: $stackTrace');
+    } catch (_) {
     } finally {
       if (mounted) {
         setState(() {
@@ -649,18 +634,13 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!mounted) return;
           try {
             Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
-          } catch (e) {
-            print('❌ [KAKAO LOGIN] 네비게이션 오류: $e');
-          }
+          } catch (_) {}
         });
       } else {
         if (!mounted) return;
-        final errorMessage = result['error']?.toString() ?? '카카오 로그인에 실패했습니다';
-        print('❌ [KAKAO LOGIN] 실패: $errorMessage');
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      print('❌ [KAKAO LOGIN] 예외 발생: $e');
     } finally {
       if (mounted) {
         setState(() {

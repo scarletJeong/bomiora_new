@@ -71,25 +71,16 @@ class AuthRepository {
   }) async {
     try {
       // 평문 비밀번호를 전송 (Spring Boot에서 PBKDF2로 검증)
-      print('🔐 [LOGIN] 이메일: $email');
-      print('🔐 [LOGIN] 비밀번호: [보호됨]');
-      print('🌐 [LOGIN] API URL: ${ApiClient.baseUrl}${ApiEndpoints.login}');
-      
       final response = await ApiClient.post(ApiEndpoints.login, {
         'email': email,
         'password': password, // 평문 비밀번호 전송 (HTTPS로 보호)
       });
-
-      print('📡 [LOGIN] 응답 상태 코드: ${response.statusCode}');
-      print('📄 [LOGIN] 응답 헤더: ${response.headers}');
-      print('📄 [LOGIN] 응답 본문: ${response.body}');
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final data = decoded is Map<String, dynamic>
             ? decoded
             : <String, dynamic>{};
-        print('✅ [LOGIN] 로그인 응답 데이터: $data');
         
         // success 필드가 없으면 기본값으로 true 설정
         final success = data['success'] ?? true;
@@ -101,17 +92,11 @@ class AuthRepository {
         };
       } else if (response.statusCode == 405) {
         // Method Not Allowed - 서버가 POST를 허용하지 않음
-        print('❌ [LOGIN] 405 Method Not Allowed - 서버가 POST 메서드를 허용하지 않습니다');
-        print('❌ [LOGIN] 응답 본문: ${response.body}');
-        
         return {
           'success': false,
           'error': '서버 설정 오류: POST 메서드가 허용되지 않습니다. 서버 관리자에게 문의하세요.',
         };
       } else {
-        print('❌ [LOGIN] 서버 오류: ${response.statusCode}');
-        print('❌ [LOGIN] 응답 본문: ${response.body}');
-        
         String errorMessage = '서버 오류: ${response.statusCode}';
         try {
           final errorData = json.decode(response.body);
@@ -130,11 +115,8 @@ class AuthRepository {
           'error': errorMessage,
         };
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       // API 서버 연결 실패 시 에러 반환
-      print('❌ [LOGIN] API 서버 연결 실패: $e');
-      print('❌ [LOGIN] 스택 트레이스: $stackTrace');
-      
       String errorMessage = 'API 서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
       
       if (e.toString().contains('Connection refused')) {
@@ -159,10 +141,6 @@ class AuthRepository {
     String? accessToken,
   }) async {
     try {
-      print('🔐 [KAKAO LOGIN] 카카오 ID: $kakaoId');
-      print('🔐 [KAKAO LOGIN] 이메일: $email');
-      print('🔐 [KAKAO LOGIN] 닉네임: $nickname');
-      
       final response = await ApiClient.post('/api/auth/kakao/login', {
         'kakaoId': kakaoId,
         'email': email,
