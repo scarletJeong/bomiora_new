@@ -1,3 +1,5 @@
+import '../../../../core/utils/api_date_time.dart';
+
 class WeightRecord {
   final int? id;
   final String mbId;
@@ -56,7 +58,10 @@ class WeightRecord {
     return WeightRecord(
       id: json['recordId'] ?? json['record_id'] ?? json['id'],
       mbId: _parseString(json['mbId'] ?? json['mb_id']) ?? '',
-      measuredAt: _parseDateTime(json['measuredAt'] ?? json['measured_at']) ?? DateTime.now(),
+      measuredAt: ApiDateTime.parseInstant(
+            json['measuredAt'] ?? json['measured_at'],
+          ) ??
+          DateTime.now(),
       weight: (json['weight'] as num).toDouble(),
       height:
           json['height'] != null ? (json['height'] as num).toDouble() : null,
@@ -69,34 +74,12 @@ class WeightRecord {
         json['sideImagePath'] ?? json['side_image_path'],
       ),
       createdAt: (json['createdAt'] ?? json['created_at']) != null
-          ? _parseDateTime(json['createdAt'] ?? json['created_at'])
+          ? ApiDateTime.parseInstant(json['createdAt'] ?? json['created_at'])
           : null,
       updatedAt: (json['updatedAt'] ?? json['updated_at']) != null
-          ? _parseDateTime(json['updatedAt'] ?? json['updated_at'])
+          ? ApiDateTime.parseInstant(json['updatedAt'] ?? json['updated_at'])
           : null,
     );
-  }
-
-  // 안전한 날짜 파싱 함수
-  static DateTime? _parseDateTime(dynamic dateValue) {
-    try {
-      if (dateValue == null) return null;
-
-      String dateStr = dateValue.toString();
-
-      // 잘못된 날짜 형식 체크
-      if (dateStr.contains('0000-00-00') ||
-          dateStr.contains('1900-01-01') ||
-          dateStr.isEmpty) {
-        return null;
-      }
-
-      final parsed = DateTime.parse(dateStr);
-      // 서버가 UTC(Z)로 내려주면 로컬 시간(KST)으로 변환해서 화면 표시 일관성 유지
-      return parsed.isUtc ? parsed.toLocal() : parsed;
-    } catch (e) {
-      return null;
-    }
   }
 
   // String 필드에 객체가 내려와도 안전하게 파싱

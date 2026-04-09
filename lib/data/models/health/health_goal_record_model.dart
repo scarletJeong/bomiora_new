@@ -1,3 +1,5 @@
+import '../../../core/utils/api_date_time.dart';
+
 /// 목표설정 이력 (`bm_health_goal_records`) — API 응답 파싱용
 class HealthGoalRecordModel {
   final int? goalRecordId;
@@ -31,12 +33,6 @@ class HealthGoalRecordModel {
     return int.tryParse(v.toString());
   }
 
-  static DateTime? _parseDate(dynamic v) {
-    if (v == null) return null;
-    if (v is DateTime) return v;
-    return DateTime.tryParse(v.toString());
-  }
-
   factory HealthGoalRecordModel.fromJson(Map<String, dynamic> json) {
     return HealthGoalRecordModel(
       goalRecordId: _parseInt(json['goalRecordId'] ?? json['goal_record_id']),
@@ -46,7 +42,7 @@ class HealthGoalRecordModel {
       dailyStepGoal: _parseInt(json['dailyStepGoal'] ?? json['daily_step_goal']),
       weightRecordId: _parseInt(
           json['weightRecordId'] ?? json['weight_record_id']),
-      createdAt: _parseDate(json['createdAt'] ?? json['created_at']),
+      createdAt: ApiDateTime.parseInstant(json['createdAt'] ?? json['created_at']),
     );
   }
 }

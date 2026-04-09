@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/api_date_time.dart';
 import '../chart_layout.dart';
 
 /// 주/월별 차트를 위한 공통 위젯
@@ -461,6 +462,21 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
     }
   }
 
+  /// 혈압·혈당·체중 레코드 공통: 측정 시각 우선, 없으면 createdAt.
+  DateTime _chartTooltipTime(dynamic record) {
+    final measured = record.measuredAt;
+    if (measured is DateTime) return measured;
+    final fromMeasured = ApiDateTime.parseInstant(measured);
+    if (fromMeasured != null) return fromMeasured;
+
+    final created = record.createdAt;
+    if (created is DateTime) return created;
+    final fromCreated = ApiDateTime.parseInstant(created);
+    if (fromCreated != null) return fromCreated;
+
+    return DateTime.now();
+  }
+
   Widget _buildChartTooltip() {
     if (widget.selectedChartPointIndex == null ||
         widget.selectedChartPointIndex! >= widget.chartData.length) {
@@ -482,13 +498,7 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
 
     // 차트 데이터의 날짜 사용 (X축 라벨과 일치)
     final chartDate = data['date'] as String;
-    final DateTime dateTime = widget.dataType == 'bloodPressure'
-        ? (record.measuredAt is DateTime
-            ? record.measuredAt as DateTime
-            : DateTime.parse(record.measuredAt.toString()))
-        : (record.createdAt is DateTime
-            ? record.createdAt as DateTime
-            : DateTime.parse(record.createdAt.toString()));
+    final DateTime dateTime = _chartTooltipTime(record);
     final timeStr = DateFormat('HH:mm').format(dateTime);
     
     return Container(

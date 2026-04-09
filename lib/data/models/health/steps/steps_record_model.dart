@@ -1,3 +1,5 @@
+import '../../../../core/utils/api_date_time.dart';
+
 class StepsRecord {
   final int id;
   final int userId;
@@ -99,7 +101,7 @@ class StepsRecord {
     return StepsRecord(
       id: _intVal(json['id']),
       userId: _intVal(json['user_id'] ?? json['userId']),
-      date: _parseDate(dateRaw),
+      date: ApiDateTime.parseRecordDate(dateRaw),
       totalSteps: _intVal(json['total_steps'] ?? json['totalSteps']),
       distance: _doubleVal(
         json['distance'] ?? json['distance_km'] ?? json['distanceKm'],
@@ -107,51 +109,16 @@ class StepsRecord {
       calories: _intVal(json['calories'] ?? json['calories_burned'] ?? json['caloriesBurned']),
       hourlySteps: hourlySteps,
       halfHourSteps: _halfHourStepsFromJson(json, hourlySteps),
-      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']) ?? DateTime.now(),
-      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']) ?? DateTime.now(),
+      createdAt: ApiDateTime.parseInstant(
+            json['created_at'] ?? json['createdAt'],
+          ) ??
+          DateTime.now(),
+      updatedAt: ApiDateTime.parseInstant(
+            json['updated_at'] ?? json['updatedAt'],
+          ) ??
+          DateTime.now(),
       stepsDifference: _intNullable(json['steps_difference'] ?? json['stepsDifference']),
     );
-  }
-
-  static DateTime _parseDate(dynamic value) {
-    if (value == null) return DateTime.now();
-    final s = value.toString();
-    try {
-      if (s.length == 10 && s.contains('-')) {
-        return DateTime.parse('${s}T12:00:00');
-      }
-      return DateTime.parse(s);
-    } catch (_) {
-      return DateTime.now();
-    }
-  }
-
-  static DateTime? _parseDateTime(dynamic value) {
-    if (value == null) return null;
-    try {
-      final raw = value.toString().trim();
-      final parsed = DateTime.parse(raw);
-
-      // 서버가 로컬 시각을 보내고 'Z'가 붙어 UTC로 오인되는 경우
-      // (예: "2026-04-08T09:00:00.000Z"가 사실 09:00 로컬 의미) 시각 유지.
-      final looksLikeWallClockUtcZ =
-          raw.endsWith('Z') && !raw.contains('+') && !raw.contains('-');
-      if (parsed.isUtc && looksLikeWallClockUtcZ) {
-        return DateTime(
-          parsed.year,
-          parsed.month,
-          parsed.day,
-          parsed.hour,
-          parsed.minute,
-          parsed.second,
-          parsed.millisecond,
-          parsed.microsecond,
-        );
-      }
-      return parsed.isUtc ? parsed.toLocal() : parsed;
-    } catch (_) {
-      return null;
-    }
   }
 
   Map<String, dynamic> toJson() {
@@ -165,8 +132,8 @@ class StepsRecord {
       'hourly_steps': hourlySteps.map((item) => item.toJson()).toList(),
       'half_hour_steps':
           halfHourSteps.asMap().entries.map((e) => {'slot': e.key, 'steps': e.value}).toList(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
       if (stepsDifference != null) 'steps_difference': stepsDifference,
     };
   }

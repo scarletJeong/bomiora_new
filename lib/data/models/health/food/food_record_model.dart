@@ -1,3 +1,4 @@
+import '../../../../core/utils/api_date_time.dart';
 import 'food_item_model.dart';
 
 /// 식사 기록 모델
@@ -56,7 +57,13 @@ class FoodRecord {
       id: json['id'] ?? json['food_record_id'] ?? json['record_id'],
       mbId: (json['mbId'] ?? json['mb_id'] ?? '').toString(),
       mealType: (json['mealType'] ?? json['meal_type'] ?? '').toString(),
-      recordedAt: _parseDateTime(json['recordedAt'] ?? json['recorded_at']),
+      recordedAt: ApiDateTime.parseInstant(
+            json['recordedAt'] ??
+                json['recorded_at'] ??
+                json['eatenAt'] ??
+                json['eaten_at'],
+          ) ??
+          DateTime.now(),
       foods: foodsList,
       totalCalories: json['totalCalories'] != null || json['total_calories'] != null
           ? ((json['totalCalories'] ?? json['total_calories']) as num).toDouble()
@@ -64,48 +71,12 @@ class FoodRecord {
       imagePath: json['imagePath'] ?? json['image_path']?.toString(),
       notes: json['notes']?.toString(),
       createdAt: json['createdAt'] != null || json['created_at'] != null
-          ? _parseDateTime(json['createdAt'] ?? json['created_at'])
+          ? ApiDateTime.parseInstant(json['createdAt'] ?? json['created_at'])
           : null,
       updatedAt: json['updatedAt'] != null || json['updated_at'] != null
-          ? _parseDateTime(json['updatedAt'] ?? json['updated_at'])
+          ? ApiDateTime.parseInstant(json['updatedAt'] ?? json['updated_at'])
           : null,
     );
-  }
-
-  // 안전한 날짜 파싱 함수
-  static DateTime _parseDateTime(dynamic dateValue) {
-    try {
-      if (dateValue == null) {
-        return DateTime.now();
-      }
-      
-      String dateStr = dateValue.toString();
-      
-      if (dateStr.contains('0000-00-00') || 
-          dateStr.contains('1900-01-01') ||
-          dateStr.isEmpty) {
-        print('⚠️ 잘못된 날짜 형식 감지: $dateStr, 현재 시간으로 대체');
-        return DateTime.now();
-      }
-      
-      final parsed = DateTime.parse(dateStr);
-      if (parsed.isUtc) {
-        return DateTime(
-          parsed.year,
-          parsed.month,
-          parsed.day,
-          parsed.hour,
-          parsed.minute,
-          parsed.second,
-          parsed.millisecond,
-          parsed.microsecond,
-        );
-      }
-      return parsed;
-    } catch (e) {
-      print('❌ 날짜 파싱 오류: $dateValue, 현재 시간으로 대체');
-      return DateTime.now();
-    }
   }
 
   Map<String, dynamic> toJson() {
@@ -113,7 +84,7 @@ class FoodRecord {
       if (id != null) 'food_record_id': id,
       'mb_id': mbId,
       'meal_type': mealType,
-      'recorded_at': recordedAt.toIso8601String(),
+      'recorded_at': recordedAt.toUtc().toIso8601String(),
       'foods': foods.map((food) => food.toJson()).toList(),
       'total_calories': totalCalories,
       if (imagePath != null && imagePath!.isNotEmpty) 'image_path': imagePath,
@@ -127,7 +98,7 @@ class FoodRecord {
       if (id != null) 'food_record_id': id,
       'mb_id': mbId,
       'meal_type': mealType,
-      'recorded_at': recordedAt.toIso8601String(),
+      'recorded_at': recordedAt.toUtc().toIso8601String(),
       'foods': foods.map((food) => food.toJson()).toList(),
       'total_calories': totalCalories,
       if (imagePath != null && imagePath!.isNotEmpty) 'image_path': imagePath,

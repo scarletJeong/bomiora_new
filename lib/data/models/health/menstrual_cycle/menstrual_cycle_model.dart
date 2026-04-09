@@ -1,3 +1,4 @@
+import '../../../../core/utils/api_date_time.dart';
 import 'menstrual_cycle_calculator.dart';
 
 class MenstrualCycleRecord {
@@ -127,27 +128,17 @@ class MenstrualCycleRecord {
       periodLength:
           _parseInt(json['period_length'] ?? json['periodLength']) ?? 5,
       notes: _parseString(json['notes']),
-      createdAt: json['created_at'] != null 
-          ? _parseDateTime(json['created_at']) 
+      createdAt: (json['created_at'] != null || json['createdAt'] != null)
+          ? ApiDateTime.parseInstant(json['created_at'] ?? json['createdAt'])
           : null,
-      updatedAt: json['updated_at'] != null 
-          ? _parseDateTime(json['updated_at']) 
+      updatedAt: (json['updated_at'] != null || json['updatedAt'] != null)
+          ? ApiDateTime.parseInstant(json['updated_at'] ?? json['updatedAt'])
           : null,
     );
   }
 
-  static DateTime? _parseDateTime(dynamic value) {
-    if (value == null) return null;
-    try {
-      final parsed = DateTime.parse(value.toString());
-      return parsed.isUtc ? parsed.toLocal() : parsed;
-    } catch (_) {
-      return null;
-    }
-  }
-
   static DateTime? _parseDateOnly(dynamic value) {
-    final parsed = _parseDateTime(value);
+    final parsed = ApiDateTime.parseInstant(value);
     if (parsed == null) return null;
     return DateTime(parsed.year, parsed.month, parsed.day);
   }

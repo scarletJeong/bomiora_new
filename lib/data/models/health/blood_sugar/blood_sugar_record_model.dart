@@ -1,3 +1,5 @@
+import '../../../../core/utils/api_date_time.dart';
+
 class BloodSugarRecord {
   final int? id;
   final String mbId;
@@ -134,7 +136,10 @@ class BloodSugarRecord {
     return BloodSugarRecord(
       id: _parseInt(json['id']),
       mbId: _parseString(json['mb_id'] ?? json['mbId']) ?? '',
-      measuredAt: _parseDateTime(json['measured_at']) ?? DateTime.now(),
+      measuredAt: ApiDateTime.parseInstant(
+            json['measured_at'] ?? json['measuredAt'],
+          ) ??
+          DateTime.now(),
       bloodSugar: _parseInt(json['blood_sugar']) ?? 0,
       measurementType: (_parseString(
                   json['measurement_type'] ?? json['measurementType']) ??
@@ -142,18 +147,6 @@ class BloodSugarRecord {
           .trim(),
       status: _parseString(json['status']),
     );
-  }
-
-  static DateTime? _parseDateTime(dynamic value) {
-    if (value == null) return null;
-    try {
-      final parsed = DateTime.parse(value.toString());
-      // API가 UTC(Z)로 내려주면 로컬 시간대로 변환해
-      // 입력/DB 표시와 그래프 시간이 동일하게 보이도록 맞춘다.
-      return parsed.isUtc ? parsed.toLocal() : parsed;
-    } catch (_) {
-      return null;
-    }
   }
 
   static String? _parseString(dynamic value) {
