@@ -5,6 +5,7 @@ import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_bar.dart';
 import 'prescription_time_screen.dart';
 
 /// 프로필 작성 화면 (5개 서브 페이지)
@@ -31,6 +32,13 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
   HealthProfileModel? _existingProfile;
   int _currentPage = 0; // 0~4 (5개 서브 페이지)
   bool _isLoading = false;
+  bool _showWizard = true;
+
+  static const Color _kAccentBar = Color(0xFFFF5A8D);
+  static const Color _kCardBg = Color(0xFFF8F9FA);
+  static const Color _kInkTitle = Color(0xFF191C1D);
+  static const Color _kLabelBrown = Color(0xFF584045);
+  static const Color _kBorderLight = Color(0xFFF1F5F9);
   
   // 폼 데이터
   final Map<String, dynamic> _formData = {};
@@ -63,6 +71,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
         if (profile != null) {
           setState(() => _existingProfile = profile);
           _loadExistingData(profile);
+          setState(() => _showWizard = false);
+        } else {
+          setState(() => _showWizard = true);
         }
       }
     } catch (e) {
@@ -213,117 +224,258 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     final progress = ((_currentPage + 1) / 5 * 100).toInt();
     
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text(
-          '처방예약하기',
-          style: TextStyle(
-            fontSize: 18,
-            color: Colors.black,
+      appBar: const HealthAppBar(title: ''),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInkTitle),
+        child: _showWizard ? _buildWizard(progress) : _buildSummary(),
+      ),
+    );
+  }
+
+  Widget _buildWizard(int progress) {
+    return Column(
+      children: [
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '프로필 작성',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _kAccentBar,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '$progress%',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: _kAccentBar,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: (_currentPage + 1) / 5,
+                  backgroundColor: const Color(0x7FE2E8F0),
+                  valueColor: const AlwaysStoppedAnimation<Color>(_kAccentBar),
+                  minHeight: 8,
+                ),
+              ),
+            ],
           ),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      child: Column(
-        children: [
-          // 진행률 표시
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Text(
-                      '02 프로필작성',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFFFF3787),
-                        fontWeight: FontWeight.w600,
-                      ),
+        Expanded(
+          child: PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            children: [
+              _buildPage1BasicInfo(),
+              _buildPage2DietGoal(),
+              _buildPage3EatingHabits(),
+              _buildPage4ExerciseHealth(),
+              _buildPage5DietExperience(),
+            ],
+          ),
+        ),
+        _buildBottomButtons(),
+      ],
+    );
+  }
+
+  Widget _buildSummary() {
+    final profile = _existingProfile;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 672),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 20, left: 16, right: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildFigmaSection(
+                title: '기본 정보',
+                onEdit: () => setState(() => _showWizard = true),
+                child: _buildKeyValueRows([
+                  ('생년월일', _formData['birthDate']?.toString() ?? '-'),
+                  ('성별', (_formData['gender'] == 'F') ? '여성' : (_formData['gender'] == 'M' ? '남성' : '-')),
+                  ('키', '${_formData['height'] ?? '-'} cm'),
+                  ('현재 체중', '${_formData['currentWeight'] ?? '-'} kg'),
+                ]),
+              ),
+              const SizedBox(height: 24),
+              _buildFigmaSection(
+                title: '목표',
+                onEdit: () {
+                  setState(() {
+                    _showWizard = true;
+                    _currentPage = 1;
+                  });
+                  _pageController.jumpToPage(1);
+                },
+                child: _buildKeyValueRows([
+                  ('목표 체중', '${_formData['targetWeight'] ?? '-'} kg'),
+                  ('예상 기간', _formData['dietPeriod']?.toString() ?? '-'),
+                ]),
+              ),
+              const SizedBox(height: 24),
+              _buildFigmaSection(
+                title: '식습관/운동/건강',
+                onEdit: () {
+                  setState(() {
+                    _showWizard = true;
+                    _currentPage = 2;
+                  });
+                  _pageController.jumpToPage(2);
+                },
+                child: _buildKeyValueRows([
+                  ('하루 끼니', _formData['mealsPerDay']?.toString() ?? '-'),
+                  ('운동', _formData['exerciseFrequency']?.toString() ?? '-'),
+                  ('질병', (_formData['diseases'] as List?)?.join(', ') ?? '-'),
+                  ('복용약', (_formData['medications'] as List?)?.join(', ') ?? '-'),
+                ]),
+              ),
+              const SizedBox(height: 24),
+              _buildFigmaSection(
+                title: '다이어트약 경험',
+                onEdit: () {
+                  setState(() {
+                    _showWizard = true;
+                    _currentPage = 4;
+                  });
+                  _pageController.jumpToPage(4);
+                },
+                child: _buildKeyValueRows([
+                  ('복용 경험', _formData['dietExperience']?.toString() ?? '-'),
+                  ('복용약명', _formData['dietMedicine']?.toString() ?? '-'),
+                  ('복용기간', _formData['dietPeriodMonths']?.toString() ?? '-'),
+                ]),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _goToTimeSelection,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF3787),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    profile == null ? '프로필 작성하기' : '이 프로필로 예약 진행',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
-                    Row(
-                      children: List.generate(4, (index) {
-                        final stepIndex = index + 1;
-                        final isActive = stepIndex == 2; // 프로필작성은 2번
-                        return Row(
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isActive ? const Color(0xFFFF3787) : Colors.grey[300],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '$stepIndex',
-                                  style: TextStyle(
-                                    color: isActive ? Colors.white : Colors.grey[600],
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (index < 3) const SizedBox(width: 8),
-                          ],
-                        );
-                      }),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          value: (_currentPage + 1) / 5,
-                          backgroundColor: Colors.grey[200],
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF3787)),
-                          minHeight: 8,
-                        ),
-                      ),
+              ),
+              const SizedBox(height: 100),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFigmaSection({
+    required String title,
+    required VoidCallback onEdit,
+    required Widget child,
+    EdgeInsetsGeometry innerPadding = const EdgeInsets.all(16),
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kBorderLight),
+      ),
+      child: Padding(
+        padding: innerPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: _kLabelBrown,
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '$progress%',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF3787),
-                      ),
-                    ),
-                  ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: onEdit,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    foregroundColor: _kAccentBar,
+                  ),
+                  child: const Text(
+                    '수정',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ],
             ),
-          ),
-          // 페이지 컨텐츠
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (index) => setState(() => _currentPage = index),
-              children: [
-                _buildPage1BasicInfo(),
-                _buildPage2DietGoal(),
-                _buildPage3EatingHabits(),
-                _buildPage4ExerciseHealth(),
-                _buildPage5DietExperience(),
-              ],
-            ),
-          ),
-          // 하단 버튼
-          _buildBottomButtons(),
-        ],
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildKeyValueRows(List<(String, String)> rows) {
+    return Column(
+      children: rows.map((r) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 92,
+                child: Text(
+                  r.$1,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: _kLabelBrown,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  r.$2,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _kInkTitle,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
   

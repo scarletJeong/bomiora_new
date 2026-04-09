@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// 제품 상세페이지 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
 class ProductTailInfoSection extends StatelessWidget {
   final bool initialExpanded;
-  
+
   const ProductTailInfoSection({
     super.key,
     this.initialExpanded = false,
@@ -18,11 +18,17 @@ class ProductTailInfoSection extends StatelessWidget {
           // 배송 정보
           _buildDeliverySection(),
           const SizedBox(height: 12),
-          
+
+          // 기관인증/주의사항
+          _buildCertificationSection(),
+          const SizedBox(height: 12),
+          _buildWarningSection(),
+          const SizedBox(height: 12),
+
           // 처방 프로세스
           _buildPrescriptionProcessSection(),
           const SizedBox(height: 12),
-          
+
           // 교환/환불
           _buildExchangeRefundSection(),
         ],
@@ -39,6 +45,28 @@ class ProductTailInfoSection extends StatelessWidget {
   /// 처방 프로세스 섹션
   Widget _buildPrescriptionProcessSection() {
     return _PrescriptionProcessSection(initialExpanded: initialExpanded);
+  }
+
+  /// 기관인증 섹션
+  Widget _buildCertificationSection() {
+    return _SimpleExpandableSection(
+      title: '기관인증',
+      rows: const [
+        _SimpleInfoRow(label: '기관인증', value: '임시'),
+      ],
+      initialExpanded: initialExpanded,
+    );
+  }
+
+  /// 주의사항 섹션
+  Widget _buildWarningSection() {
+    return _SimpleExpandableSection(
+      title: '주의사항',
+      rows: const [
+        _SimpleInfoRow(label: '주의사항', value: '임시'),
+      ],
+      initialExpanded: initialExpanded,
+    );
   }
 
   /// 교환/환불 섹션
@@ -191,7 +219,7 @@ class ProductTailInfoSection extends StatelessWidget {
 /// 배송 섹션을 위한 StatefulWidget
 class _DeliverySection extends StatefulWidget {
   final bool initialExpanded;
-  
+
   const _DeliverySection({
     this.initialExpanded = false,
   });
@@ -210,11 +238,15 @@ class _DeliverySectionState extends State<_DeliverySection> {
   }
 
   @override
-  Widget build(BuildContext context) {    
+  Widget build(BuildContext context) {
     // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
     return Column(
       children: [
         InkWell(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
           onTap: () {
             setState(() {
               _isExpanded = !_isExpanded;
@@ -299,19 +331,30 @@ class _DeliverySectionState extends State<_DeliverySection> {
   }
 }
 
-/// 처방 프로세스 섹션을 위한 StatefulWidget
-class _PrescriptionProcessSection extends StatefulWidget {
+class _SimpleInfoRow {
+  final String label;
+  final String value;
+
+  const _SimpleInfoRow({required this.label, required this.value});
+}
+
+class _SimpleExpandableSection extends StatefulWidget {
   final bool initialExpanded;
-  
-  const _PrescriptionProcessSection({
+  final String title;
+  final List<_SimpleInfoRow> rows;
+
+  const _SimpleExpandableSection({
+    required this.title,
+    required this.rows,
     this.initialExpanded = false,
   });
 
   @override
-  State<_PrescriptionProcessSection> createState() => _PrescriptionProcessSectionState();
+  State<_SimpleExpandableSection> createState() =>
+      _SimpleExpandableSectionState();
 }
 
-class _PrescriptionProcessSectionState extends State<_PrescriptionProcessSection> {
+class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
   late bool _isExpanded;
 
   @override
@@ -321,11 +364,127 @@ class _PrescriptionProcessSectionState extends State<_PrescriptionProcessSection
   }
 
   @override
-  Widget build(BuildContext context) {    
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        InkWell(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
+          onTap: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.grey[600],
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: _isExpanded
+              ? Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: widget.rows
+                        .map((row) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _buildInfoRow(row.label, row.value),
+                            ))
+                        .toList(),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        const Divider(height: 1, thickness: 0.5),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.black87,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 처방 프로세스 섹션을 위한 StatefulWidget
+class _PrescriptionProcessSection extends StatefulWidget {
+  final bool initialExpanded;
+
+  const _PrescriptionProcessSection({
+    this.initialExpanded = false,
+  });
+
+  @override
+  State<_PrescriptionProcessSection> createState() =>
+      _PrescriptionProcessSectionState();
+}
+
+class _PrescriptionProcessSectionState
+    extends State<_PrescriptionProcessSection> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.initialExpanded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
     return Column(
       children: [
         InkWell(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
           onTap: () {
             setState(() {
               _isExpanded = !_isExpanded;
@@ -456,7 +615,7 @@ class _PrescriptionProcessSectionState extends State<_PrescriptionProcessSection
 /// 교환/환불 섹션을 위한 StatefulWidget
 class _ExchangeRefundSection extends StatefulWidget {
   final bool initialExpanded;
-  
+
   const _ExchangeRefundSection({
     this.initialExpanded = false,
   });
@@ -476,11 +635,14 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
 
   @override
   Widget build(BuildContext context) {
-    
     // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
     return Column(
       children: [
         InkWell(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
           onTap: () {
             setState(() {
               _isExpanded = !_isExpanded;
@@ -535,7 +697,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
+
                       // 1. 처방완료 후, 환자 단순 변심은 10일 이내
                       _buildRefundItem(
                         '1. 처방완료 후, 환자 단순 변심은 10일 이내',
@@ -543,7 +705,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
                         '반품 주소: 서울 강남구 봉은사로 109, 6층(논현동)',
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // 2. 표시와 상이, 의약품 문제의 경우
                       _buildRefundItem(
                         '2. 표시와 상이, 의약품 문제의 경우, 담당 한의사와 상담 후 반품 방법을 안내 받아 환불 진행',
@@ -551,7 +713,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
                         '반품 주소: 서울 강남구 봉은사로 109, 6층(논현동)',
                       ),
                       const SizedBox(height: 20),
-                      
+
                       // 환불/교환 불가능 사유
                       const Text(
                         '환불/교환 불가능 사유',

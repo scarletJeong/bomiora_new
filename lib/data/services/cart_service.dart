@@ -16,6 +16,7 @@ class CartService {
     int? optionPrice,
     String? odId, // 처방 예약 플로우의 경우 od_id 전달
     String? ctKind, // 상품 종류 (prescription, general) - 없으면 백엔드에서 판단
+    String? ctStatus, // 장바구니 상태 (쇼핑, 임시 등)
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -51,6 +52,10 @@ class CartService {
         print('📦 [장바구니 추가] ct_kind 전달: $ctKind');
       } else {
         print('⚠️ [장바구니 추가] ct_kind가 없습니다!');
+      }
+
+      if (ctStatus != null && ctStatus.isNotEmpty) {
+        requestData['ct_status'] = ctStatus;
       }
 
       print('📥 [API POST] 요청 데이터: $requestData');
@@ -89,6 +94,7 @@ class CartService {
     required Product product,
     required Map<ProductOption, int> selectedOptions,
     String? odId, // 처방 예약 플로우의 경우 od_id 전달
+    String? ctStatus,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -118,7 +124,7 @@ class CartService {
           // 개월수가 없으면 단계만
           ctOptionText = option.step;
         }
-        
+
         final result = await addToCart(
           productId: product.id,
           quantity: quantity,
@@ -128,6 +134,7 @@ class CartService {
           optionPrice: option.price,
           odId: odId, // 처방 예약 플로우의 경우 od_id 전달
           ctKind: product.ctKind, // 상품 종류 전달
+          ctStatus: ctStatus,
         );
 
         if (result['success'] == true) {
@@ -165,7 +172,7 @@ class CartService {
   }
 
   /// 장바구니 조회 (ct_status가 '쇼핑'인 것만)
-  static Future<Map<String, dynamic>> getCart() async {
+  static Future<Map<String, dynamic>> getCart({String ctStatus = '쇼핑'}) async {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
@@ -176,7 +183,9 @@ class CartService {
         };
       }
 
-      final response = await ApiClient.get('${ApiEndpoints.getCart}?mb_id=${user.id}&ct_status=쇼핑');
+      final response = await ApiClient.get(
+        '${ApiEndpoints.getCart}?mb_id=${user.id}&ct_status=${Uri.encodeComponent(ctStatus)}',
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -304,7 +313,8 @@ class CartService {
         };
       }
 
-      final response = await ApiClient.delete('${ApiEndpoints.removeCartItem}/$ctId');
+      final response =
+          await ApiClient.delete('${ApiEndpoints.removeCartItem}/$ctId');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         final data = json.decode(response.body);
@@ -326,4 +336,3 @@ class CartService {
     }
   }
 }
-

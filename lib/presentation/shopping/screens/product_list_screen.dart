@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/appbar_menutap.dart';
+import '../utils/get_product.dart';
+import '../widgets/product_banner_slider.dart';
+import '../../../core/constants/app_assets.dart';
 import 'product_detail_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
@@ -15,7 +19,7 @@ class ProductListScreen extends StatefulWidget {
     required this.categoryName,
     this.productKind,
   });
-  
+
   // arguments에서 생성하는 팩토리 생성자
   factory ProductListScreen.fromArguments(Map<String, dynamic> arguments) {
     return ProductListScreen(
@@ -40,9 +44,33 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
 
+  late String _activeCategoryId;
+  late String _activeCategoryName;
+
+  late List<_CategoryTab> _tabs;
+  late List<_CategoryTab> _baseTabOrder;
+
+  static const Color _brandPink = Color(0xFFFF5A8D);
+
   @override
   void initState() {
     super.initState();
+
+    _activeCategoryId = widget.categoryId;
+    _activeCategoryName = widget.categoryName;
+
+    if (widget.productKind == 'general') {
+      _baseTabOrder = productGeneralCategoryList
+          .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
+          .toList();
+    } else {
+      _baseTabOrder = productPrescriptionCategoryList
+          .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
+          .toList();
+    }
+
+    _tabs = _buildInitialTabs();
+
     _loadProducts();
     _scrollController.addListener(_onScroll);
   }
@@ -71,7 +99,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     try {
       final products = await ProductRepository.getProductsByCategory(
-        categoryId: widget.categoryId,
+        categoryId: _activeCategoryId,
         productKind: widget.productKind,
         page: 1,
         pageSize: _pageSize,
@@ -102,7 +130,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     try {
       final nextPage = _currentPage + 1;
       final products = await ProductRepository.getProductsByCategory(
-        categoryId: widget.categoryId,
+        categoryId: _activeCategoryId,
         productKind: widget.productKind,
         page: nextPage,
         pageSize: _pageSize,
@@ -130,17 +158,39 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: Text(widget.categoryName),
+      child: Scaffold(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu, color: Colors.black),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            ),
+          ),
+          title: Image.asset(
+            AppAssets.bomioraLogo,
+            height: 40,
+          ),
+          centerTitle: true,
+        ),
+        drawer: AppBarMenuTapDrawer(
+          onHealthDashboardTap: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/health');
+          },
+        ),
+        body: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+          child: _buildBody(),
         ),
       ),
-      child: _buildBody(),
     );
   }
 
@@ -180,233 +230,326 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
     }
 
-    if (_products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.shopping_bag_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '등록된 상품이 없습니다',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: _loadProducts,
-      child: GridView.builder(
+      child: CustomScrollView(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.65,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: _products.length + (_isLoadingMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _products.length) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          return _buildProductCard(_products[index]);
-        },
+        slivers: [
+          const SliverToBoxAdapter(
+            child: ProductBannerSlider(),
+          ),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 20),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+              child: _buildCategoryTabs(),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+            sliver: _products.isEmpty
+                ? SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 56),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '등록된 상품이 없습니다',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      // 카드가 너무 길어 보여 약간 더 납작하게 조정
+                      childAspectRatio: 0.66,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 16,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index == _products.length) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+                        return _buildProductCard(_products[index]);
+                      },
+                      childCount: _products.length + (_isLoadingMore ? 1 : 0),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildProductCard(Product product) {
-    return GestureDetector(
-      onTap: () {
-        // 상세 페이지로 이동 (URL 라우팅 사용)
-        Navigator.pushNamed(
-          context,
-          '/product/${product.id}',
-        );
-      },
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 상품 이미지
-            Expanded(
-              flex: 3,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: Stack(
-                  children: [
-                    product.imageUrl != null
-                        ? Image.network(
-                            product.imageUrl!,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              print('❌ 이미지 로드 실패: ${product.imageUrl}');
-                              print('   에러: $error');
-                              return _buildPlaceholderImage(product);
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              );
-                            },
-                          )
-                        : _buildPlaceholderImage(product),
-                    // 뱃지
-                    if (product.isNew || product.isBest)
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: product.isNew
-                                ? Colors.blue
-                                : Colors.orange,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            product.isNew ? 'NEW' : 'BEST',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+  Widget _buildCategoryTabs() {
+    final selected = _tabs.isNotEmpty ? _tabs.first : null;
+    final others = _tabs.length > 1 ? _tabs.sublist(1) : const <_CategoryTab>[];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (selected != null)
+          InkWell(
+            onTap: () => _onSelectTab(selected),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
               ),
+              child: Text(selected.label),
             ),
-            // 상품 정보
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 상품명
-                    Expanded(
-                      child: Text(
-                        product.name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+          ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: others.map((tab) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: InkWell(
+                    onTap: () => _onSelectTab(tab),
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[500],
                       ),
+                      child: Text(tab.label),
                     ),
-                    const SizedBox(height: 4),
-                    // 가격 정보
-                    if (product.originalPrice != null &&
-                        product.originalPrice! > product.price)
-                      Text(
-                        product.formattedOriginalPrice ?? '',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                    const SizedBox(height: 2),
-                    Row(
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onSelectTab(_CategoryTab tab) async {
+    if (_tabs.isNotEmpty && _tabs.first.id == tab.id) return;
+
+    setState(() {
+      _tabs = _buildTabsForSelectedId(tab.id);
+
+      _activeCategoryId = tab.id;
+      _activeCategoryName = tab.label;
+
+      _products = [];
+      _currentPage = 1;
+      _hasMore = true;
+      _isLoadingMore = false;
+      _hasError = false;
+      _errorMessage = null;
+      _isLoading = true;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
+
+    await _loadProducts();
+  }
+
+  List<_CategoryTab> _buildInitialTabs() {
+    final initialId = _activeCategoryId;
+    final existsInBase = _baseTabOrder.any((t) => t.id == initialId);
+    if (!existsInBase) {
+      return [
+        _CategoryTab(id: initialId, label: _activeCategoryName),
+        ..._baseTabOrder,
+      ];
+    }
+
+    return _buildTabsForSelectedId(initialId);
+  }
+
+  List<_CategoryTab> _buildTabsForSelectedId(String selectedId) {
+    final selected = _baseTabOrder.firstWhere(
+      (t) => t.id == selectedId,
+      orElse: () => _CategoryTab(id: selectedId, label: _activeCategoryName),
+    );
+
+    final rest = _baseTabOrder.where((t) => t.id != selected.id).toList();
+    return [selected, ...rest];
+  }
+
+  Widget _buildProductCard(Product product) {
+    return LayoutBuilder(
+      builder: (context, itemConstraints) {
+        final imageHeight = itemConstraints.hasBoundedHeight
+            ? itemConstraints.maxHeight * 0.62
+            : 220.0;
+
+        return GestureDetector(
+          onTap: () {
+            final detailRoute = widget.productKind == 'general'
+                ? '/product-general/${product.id}'
+                : '/product/${product.id}';
+            Navigator.pushNamed(
+              context,
+              detailRoute,
+            );
+          },
+          child: Card(
+            elevation: 2,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: imageHeight,
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Expanded(
-                          child: Text(
-                            product.formattedPrice,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                        if (product.discountRate != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red[100],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${product.discountRate!.toStringAsFixed(0)}%',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.red[700],
-                                fontWeight: FontWeight.bold,
+                        product.imageUrl != null
+                            ? Image.network(
+                                product.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  print('❌ 이미지 로드 실패: ${product.imageUrl}');
+                                  print('   에러: $error');
+                                  return _buildPlaceholderImage(product);
+                                },
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  );
+                                },
+                              )
+                            : _buildPlaceholderImage(product),
+                        if (product.isNew || product.isBest)
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    product.isNew ? Colors.blue : Colors.orange,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                product.isNew ? 'NEW' : 'BEST',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
                       ],
                     ),
-                    // 리뷰 정보 (있는 경우)
-                    if (product.rating != null && product.reviewCount != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        if (product.originalPrice != null &&
+                            product.originalPrice! > product.price)
+                          Text(
+                            product.formattedOriginalPrice ?? '',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.star,
-                              size: 12,
-                              color: Colors.amber[600],
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${product.rating!.toStringAsFixed(1)}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[700],
+                            if (product.discountRate != null)
+                              Text(
+                                '${product.discountRate!.toStringAsFixed(0)}%',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: _brandPink,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
+                            if (product.discountRate != null)
+                              const SizedBox(width: 6),
                             Text(
-                              '(${product.reviewCount})',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
+                              product.formattedPrice,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -450,7 +593,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 product.imageUrl ?? '(없음)',
                 style: TextStyle(
                   fontSize: 12,
-                  color: product.imageUrl != null ? Colors.black87 : Colors.grey,
+                  color:
+                      product.imageUrl != null ? Colors.black87 : Colors.grey,
                 ),
               ),
               if (product.imageUrl != null) ...[
@@ -488,4 +632,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ),
     );
   }
+}
+
+class _CategoryTab {
+  final String id;
+  final String label;
+
+  const _CategoryTab({
+    required this.id,
+    required this.label,
+  });
 }
