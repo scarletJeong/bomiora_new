@@ -167,12 +167,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black),
-            onPressed: isLoading ? null : _loadData,
-          ),
-        ],
       ),
       child: isLoading
           ? const Center(
@@ -292,48 +286,52 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
             children: [
               Expanded(
                 flex: 3,
-                child: Center(
-                  child: SizedBox(
-                    width: 204,
-                    height: 204,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size(192, 192),
-                          painter: _StepsGoalRingPainter(
-                            progress: ratio,
-                            trackColor: const Color(0x7FD9D9D9),
-                            progressColor: const Color(0xFFFF5A8D),
-                            strokeWidth: 18,
-                            progressStrokeWidth: 18,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Transform.translate(
+                    offset: const Offset(-18, 0),
+                    child: SizedBox(
+                      width: 204,
+                      height: 204,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CustomPaint(
+                            size: const Size(192, 192),
+                            painter: _StepsGoalRingPainter(
+                              progress: ratio,
+                              trackColor: const Color(0x7FD9D9D9),
+                              progressColor: const Color(0xFFFF5A8D),
+                              strokeWidth: 18,
+                              progressStrokeWidth: 18,
+                            ),
                           ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              '총 걸음 수',
-                              style: TextStyle(
-                                color: Color(0xFF1A1A1A),
-                                fontSize: 16,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                '총 걸음 수',
+                                style: TextStyle(
+                                  color: Color(0xFF1A1A1A),
+                                  fontSize: 16,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              NumberFormat('#,###').format(totalSteps),
-                              style: const TextStyle(
-                                color: Color(0xFFFF5A8D),
-                                fontSize: 28,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
+                              const SizedBox(height: 4),
+                              Text(
+                                NumberFormat('#,###').format(totalSteps),
+                                style: const TextStyle(
+                                  color: Color(0xFFFF5A8D),
+                                  fontSize: 28,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -591,6 +589,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             final idx = ((localX / w) * visibleData.length)
                                 .floor()
                                 .clamp(0, visibleData.length - 1);
+                            if (visibleData[idx].value <= 0) {
+                              setState(() {
+                                _tooltipIndex = null;
+                                _tooltipPosition = null;
+                              });
+                              return;
+                            }
                             setState(() {
                               _tooltipIndex = idx;
                               _tooltipPosition = Offset(localX, 30);
@@ -666,6 +671,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     }
     final bar = visibleData[visibleIndex];
     final steps = bar.value;
+    if (steps <= 0) return const {};
 
     if (selectedPeriod == '일') {
       final parts = bar.label.split(':');

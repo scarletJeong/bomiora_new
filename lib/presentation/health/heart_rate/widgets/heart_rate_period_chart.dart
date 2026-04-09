@@ -566,8 +566,13 @@ class _HeartRateChartPainter extends CustomPainter {
           final y = toY(bpm.toDouble());
           final rOuter = isSelected ? 8.0 : dotOuter;
           final rInner = isSelected ? 5.0 : dotInner;
-          canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);
-          canvas.drawCircle(Offset(x, y), rInner, Paint()..color = Colors.white);
+          if (exercise) {
+            canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);
+            canvas.drawCircle(Offset(x, y), rInner, Paint()..color = Colors.white);
+          } else {
+            // 일상: 안이 비지 않은 꽉 찬 점
+            canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);
+          }
           if (isSelected) {
             canvas.drawCircle(
               Offset(x, y),

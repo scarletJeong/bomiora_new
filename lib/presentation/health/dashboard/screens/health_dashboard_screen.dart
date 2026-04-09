@@ -22,6 +22,7 @@ import '../../../../data/repositories/health/food/food_repository.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../weight/screens/weight_list_screen.dart';
+import '../../weight/utils/weight_goal_progress.dart';
 import '../../blood_pressure/screens/blood_pressure_list_screen.dart';
 import '../../blood_sugar/screens/blood_sugar_list_screen.dart';
 import '../../menstrual_cycle/screens/menstrual_cycle_list_screen.dart';
@@ -83,8 +84,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => isLoading = true);
+  Future<void> _loadData({bool showBlockingLoader = true}) async {
+    if (showBlockingLoader) {
+      setState(() => isLoading = true);
+    }
 
     try {
       final user = await AuthService.getUser();
@@ -278,46 +281,51 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ],
               ),
             )
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildHeaderSection(),
-                  Transform.translate(
-                    offset: const Offset(0, -36),
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 0),
-                      padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.all(Radius.circular(44)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          HealthDateSelector(
-                            selectedDate: selectedDate,
-                            onDateChanged: (newDate) {
-                              setState(() {
-                                selectedDate = newDate;
-                              });
-                              _loadData();
-                            },
-                            monthTextColor: const Color(0xFF898686),
-                            selectedTextColor: const Color(0xFFFF5A8D),
-                            unselectedTextColor: const Color(0xFFB7B7B7),
-                            iconColor: const Color(0xFF898686),
-                          ),
-                          const SizedBox(height: 18),
-                          _buildBodyMetricsSection(),
-                          const SizedBox(height: 24),
-                          _buildMealSection(),
-                          const SizedBox(height: 24),
-                          _buildHealthMetricsSection(),
-                        ],
+          : RefreshIndicator(
+              color: const Color(0xFFFF5A8D),
+              onRefresh: () => _loadData(showBlockingLoader: false),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildHeaderSection(),
+                    Transform.translate(
+                      offset: const Offset(0, -36),
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 0),
+                        padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.all(Radius.circular(44)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            HealthDateSelector(
+                              selectedDate: selectedDate,
+                              onDateChanged: (newDate) {
+                                setState(() {
+                                  selectedDate = newDate;
+                                });
+                                _loadData();
+                              },
+                              monthTextColor: const Color(0xFF898686),
+                              selectedTextColor: const Color(0xFFFF5A8D),
+                              unselectedTextColor: const Color(0xFFB7B7B7),
+                              iconColor: const Color(0xFF898686),
+                            ),
+                            const SizedBox(height: 18),
+                            _buildBodyMetricsSection(),
+                            const SizedBox(height: 24),
+                            _buildMealSection(),
+                            const SizedBox(height: 24),
+                            _buildHealthMetricsSection(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
     );
@@ -459,29 +467,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     );
   }
 
-  /// 목표 체중까지의 진행률(0~1). 실제 측정 체중(cur)이 목표(tgt) 쪽으로 얼마나 왔는지. 앵커는 목표설정 시 저장 체중.
-  double _weightTowardGoalRatio(double cur, double tgt, double? goalAnchor) {
-    if (tgt <= 0 || cur <= 0) return 0.0;
-    if ((cur - tgt).abs() < 0.05) return 1.0;
-    final anchor = goalAnchor;
-    if (anchor == null || (anchor - tgt).abs() < 0.05) {
-      final d = (cur - tgt).abs();
-      final scale = math.max(math.max(cur, tgt), 30.0) * 0.2;
-      return (1.0 - (d / scale)).clamp(0.0, 1.0);
-    }
-    if (anchor > tgt) {
-      if (cur >= anchor) return 0.0;
-      if (cur <= tgt) return 1.0;
-      return ((anchor - cur) / (anchor - tgt)).clamp(0.0, 1.0);
-    }
-    if (anchor < tgt) {
-      if (cur <= anchor) return 0.0;
-      if (cur >= tgt) return 1.0;
-      return ((cur - anchor) / (tgt - anchor)).clamp(0.0, 1.0);
-    }
-    return 1.0;
-  }
-
   // 목표 체중 진행 바 (좌: 목표설정 시점에 저장된 체중, 우: 목표 체중, 채움은 실제 현재 체중 기준 진행)
   Widget _buildWeightProgressBar() {
     final double? goalTgt = latestHealthGoal?.targetWeight;
@@ -492,7 +477,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         ? anchor
         : currentWeight;
     final double ratio = goalTgt != null
-        ? _weightTowardGoalRatio(currentWeight, goalTgt, anchor)
+        ? weightTowardGoalRatio(currentWeight, goalTgt, anchor)
         : 0.0;
     final int diff = goalTgt != null
         ? (currentWeight - goalTgt).round()
@@ -1073,9 +1058,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                             : '',
                         statusText: _bloodSugarStatusLabel(),
                         icon: Icons.favorite,
-                        titleFontSize: 14,
-                        valueFontSize: 16,
-                        statusFontSize: 9,
+                        compact: true,
+                        titleFontSize: 13,
+                        valueFontSize: 15,
+                        statusFontSize: 8,
                         onMore: () {
                           if (currentUser == null) {
                             showLoginRequiredDialog(
@@ -1093,7 +1079,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         );
                         },
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildRecordCard(
                         title: '혈압',
                         value: latestBloodPressureRecord != null
@@ -1102,9 +1088,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         subtitle: '',
                         statusText: _bloodPressureStatusLabel(),
                         icon: Icons.monitor_heart,
-                        titleFontSize: 14,
-                        valueFontSize: 12,
-                        statusFontSize: 9,
+                        compact: true,
+                        titleFontSize: 13,
+                        valueFontSize: 11,
+                        statusFontSize: 8,
                         onMore: () {
                           if (currentUser == null) {
                             showLoginRequiredDialog(
@@ -1223,15 +1210,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     required String statusText,
     required IconData icon,
     required VoidCallback onMore,
+    bool compact = false,
     double titleFontSize = 14,
     double valueFontSize = 12,
     double statusFontSize = 10,
   }) {
+    final pad = compact ? 10.0 : 14.0;
+    final iconBox = compact ? 26.0 : 30.0;
+    final iconSz = compact ? 16.0 : 18.0;
+    final afterHeader = compact ? 6.0 : 10.0;
+    final subtitleFs = compact ? 11.0 : 12.0;
+
     return GestureDetector(
       onTap: onMore,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(pad),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
@@ -1243,13 +1237,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             Row(
               children: [
                 Container(
-                  width: 30,
-                  height: 30,
+                  width: iconBox,
+                  height: iconBox,
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF1F5),
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Icon(icon, size: 18, color: const Color(0xFFFF5A8D)),
+                  child: Icon(icon, size: iconSz, color: const Color(0xFFFF5A8D)),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -1262,13 +1256,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: afterHeader),
             if (subtitle.isNotEmpty)
               Text(
                 subtitle,
                 style: TextStyle(
                   color: const Color(0xFF8C8888),
-                  fontSize: 12,
+                  fontSize: subtitleFs,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
                   letterSpacing: -1.08,
@@ -1320,36 +1314,39 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           );
         },
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFF0F0F0)),
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Align(
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.center,
                 child: Text(
                   '걸음수',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text(
-                '입력하세요.',
-                style: TextStyle(
-                  color: Color(0xFF9CA3AF),
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    '입력하세요.',
+                    style: TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 14,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
                 ),
               ),
-              const Spacer(),
             ],
           ),
         ),
@@ -1383,25 +1380,24 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Align(
               alignment: Alignment.center,
               child: Text('걸음수',
-                  style: TextStyle(fontSize: 16, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontSize: 15, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w700)),
             ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
+            Expanded(
               child: Center(
                 child: SizedBox.square(
-                  dimension: 84,
+                  dimension: 72,
                   child: Stack(
                     fit: StackFit.expand,
                     alignment: Alignment.center,
@@ -1411,7 +1407,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           progress: ratio,
                           trackColor: const Color(0xFFF3F4F6),
                           progressColor: const Color(0xFFFF5A8D),
-                          strokeWidth: 8,
+                          strokeWidth: 7,
                         ),
                       ),
                       Center(
@@ -1423,7 +1419,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                               Text(
                                 fmt.format(steps),
                                 style: const TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w900,
                                   color: Color(0xFFFF5A8D),
                                 ),
@@ -1433,7 +1429,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                     ? '/${fmt.format(targetSteps)}'
                                     : '/-',
                                 style: const TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 8,
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
                                   color: Color(0xFFD1D5DB),
@@ -1448,7 +1444,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ),
               ),
             ),
-            const Spacer(),
           ],
         ),
       ),

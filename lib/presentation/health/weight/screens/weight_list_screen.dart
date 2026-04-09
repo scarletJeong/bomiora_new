@@ -19,6 +19,7 @@ import '../../../../data/repositories/health/weight/weight_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../core/utils/image_picker_utils.dart';
 import '../widgets/weight_chart_section.dart';
+import '../utils/weight_goal_progress.dart';
 import 'weight_input_screen.dart';
 
 class WeightListScreen extends StatefulWidget {
@@ -654,7 +655,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         (weight > 0 && goalStartWeight > 0) ? (weight - goalStartWeight) : 0.0;
     final progressRatio = (weight <= 0 || targetWeight <= 0)
         ? 0.0
-        : ((weight / targetWeight).clamp(0.0, 1.0));
+        : weightTowardGoalRatio(weight, targetWeight, goalStartWeight);
 
     return Container(
       width: double.infinity,
@@ -677,24 +678,13 @@ class _WeightListScreenState extends State<WeightListScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const SizedBox(
-                  width: 193,
-                  height: 193,
-                  child: CircularProgressIndicator(
-                    value: 1,
+                CustomPaint(
+                  size: const Size(193, 193),
+                  painter: _WeightGoalRingPainter(
+                    progress: progressRatio,
+                    trackColor: const Color(0x7FD9D9D9),
+                    progressColor: const Color(0xFFFF5A8D),
                     strokeWidth: 12,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Color(0x7FD9D9D9)),
-                  ),
-                ),
-                SizedBox(
-                  width: 193,
-                  height: 193,
-                  child: CircularProgressIndicator(
-                    value: progressRatio,
-                    strokeWidth: 12,
-                    color: const Color(0xFFFF5A8D),
-                    backgroundColor: Colors.transparent,
                   ),
                 ),
                 Column(
@@ -2258,6 +2248,54 @@ class _WeightExpandTempLegend extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// 목표 체중 원형: 전체 원 = 시작(목표설정 시 체중)~목표 체중 구간, 12시에서 반시계로 채움.
+class _WeightGoalRingPainter extends CustomPainter {
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+  final double strokeWidth;
+
+  _WeightGoalRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - strokeWidth / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final track = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    final progressPaint = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, track);
+
+    final p = progress.clamp(0.0, 1.0);
+    if (p <= 0) return;
+
+    final sweep = -math.pi * 2 * p;
+    canvas.drawArc(rect, -math.pi / 2, sweep, false, progressPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WeightGoalRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.progressColor != progressColor ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }
 
