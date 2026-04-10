@@ -42,11 +42,12 @@ abstract final class AppAssets {
 
   // 비대면처방 제품 메인 페이지
   static const String productMain = '${_img}product_main_1.jpg';
+  static const String productMainIcon1 = '${_img}product_main_icon1.svg';
+  static const String productMainIcon2 = '${_img}product_main_icon2.svg';
+  static const String productMainIcon3 = '${_img}product_main_icon3.svg';
+  static const String productIntro = '${_img}product_main_intro.png';
   static const String productMainBottom1 = '${_img}product_main_bottom_1.png';
   static const String productMainBottom2 = '${_img}product_main_bottom_2.png';
   static const String productMainBottom3 = '${_img}product_main_bottom_3.png';
   static const String productMainBottom4 = '${_img}product_main_bottom_4.png';
-  static const String productMainIcon1 = '${_img}product_main_icon1.svg';
-  static const String productMainIcon2 = '${_img}product_main_icon2.svg';
-  static const String productMainIcon3 = '${_img}product_main_icon3.svg';
 }

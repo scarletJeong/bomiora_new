@@ -1,6 +1,8 @@
 import 'dart:convert';
 import '../models/review/review_model.dart';
+import '../models/review/main_home_review_model.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_endpoints.dart';
 
 // 리뷰 서비스 내부 디버그 콘솔 출력 비활성화
 void print(Object? object) {}
@@ -52,6 +54,46 @@ class ReviewService {
     }
   }
   
+  /// 메인 홈 베스트 리뷰 (`bomiora_main_review`, 승인만)
+  static Future<Map<String, dynamic>> getMainHomeReviews({int size = 8}) async {
+    try {
+      final response = await ApiClient.get(
+        '${ApiEndpoints.mainHomeReviews}?size=$size',
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        if (data['success'] != true) {
+          return {
+            'success': false,
+            'message': data['message']?.toString() ?? '메인 리뷰를 불러올 수 없습니다.',
+            'reviews': <MainHomeReviewModel>[],
+          };
+        }
+        final raw = data['reviews'];
+        final list = <MainHomeReviewModel>[];
+        if (raw is List) {
+          for (final e in raw) {
+            if (e is Map) {
+              list.add(MainHomeReviewModel.fromJson(Map<String, dynamic>.from(e)));
+            }
+          }
+        }
+        return {'success': true, 'reviews': list};
+      }
+      return {
+        'success': false,
+        'message': '메인 리뷰를 불러올 수 없습니다.',
+        'reviews': <MainHomeReviewModel>[],
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '메인 리뷰 조회 중 오류: $e',
+        'reviews': <MainHomeReviewModel>[],
+      };
+    }
+  }
+
   /// 전체 리뷰 목록 조회 (모든 상품의 리뷰)
   /// 
   /// [rvkind] 리뷰 종류 ('general', 'supporter', null=전체)
