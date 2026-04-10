@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
@@ -29,8 +28,10 @@ class _ReviewSectionState extends State<ReviewSection> {
     if (!mounted) return;
     setState(() {
       _loading = false;
-      if (result['success'] == true && result['reviews'] is List<MainHomeReviewModel>) {
-        _reviews = List<MainHomeReviewModel>.from(result['reviews'] as List<MainHomeReviewModel>);
+      if (result['success'] == true &&
+          result['reviews'] is List<MainHomeReviewModel>) {
+        _reviews = List<MainHomeReviewModel>.from(
+            result['reviews'] as List<MainHomeReviewModel>);
       } else {
         _reviews = [];
       }
@@ -119,18 +120,13 @@ class _ReviewSectionState extends State<ReviewSection> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Container(
-                  height: 1,
-                  color: const Color(0xFFE0E0E0),
-                ),
+                child: Container(height: 1, color: const Color(0xFFE0E0E0)),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                      horizontal: 12, vertical: 6),
                   decoration: ShapeDecoration(
                     color: const Color(0xFFFF5A8D),
                     shape: RoundedRectangleBorder(
@@ -151,10 +147,7 @@ class _ReviewSectionState extends State<ReviewSection> {
                 ),
               ),
               Expanded(
-                child: Container(
-                  height: 1,
-                  color: const Color(0xFFE0E0E0),
-                ),
+                child: Container(height: 1, color: const Color(0xFFE0E0E0)),
               ),
             ],
           ),
@@ -219,12 +212,6 @@ class _ReviewSectionState extends State<ReviewSection> {
 class _ReviewCard extends StatelessWidget {
   static const double _overlayOpacity = 0.9;
 
-  /// 좁은 화면: 오버레이 PNG 세로 보정
-  static const double _overlayNudgeYNarrow = 0;
-  /// 가로 450 초과: 곡선 위치 맞추려 조금 더 아래로
-  static const double _overlayNudgeYWide = 60;
-  static const double _overlayNudgeWideBreakpoint = 450;
-
   final String titleLine;
   final String bodyLine;
   final String? imageUrl;
@@ -237,25 +224,20 @@ class _ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenW = MediaQuery.sizeOf(context).width;
-    final nudgeY = screenW > _overlayNudgeWideBreakpoint
-        ? _overlayNudgeYWide
-        : _overlayNudgeYNarrow;
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Stack(
         fit: StackFit.expand,
         children: [
+          // 배경 이미지
           Positioned.fill(
             child: imageUrl != null && imageUrl!.isNotEmpty
                 ? Image.network(
                     imageUrl!,
                     fit: BoxFit.cover,
                     alignment: Alignment.center,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: const Color(0xFFE0E0E0),
-                    ),
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: const Color(0xFFE0E0E0)),
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
@@ -269,24 +251,21 @@ class _ReviewCard extends StatelessWidget {
                       );
                     },
                   )
-                : Container(
-                    color: const Color(0xFFE0E0E0),
-                  ),
+                : Container(color: const Color(0xFFE0E0E0)),
           ),
+
+          // 핑크 오버레이
           Positioned.fill(
             child: Opacity(
               opacity: _overlayOpacity,
-              child: Transform.translate(
-                offset: Offset(0, nudgeY),
-                child: Image.asset(
-                  AppAssets.reviewCardOverlay,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.bottomCenter,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
+              child: ClipPath(
+                clipper: BottomCurveClipper(),
+                child: const ColoredBox(color: Color(0xFFFF8EAC)),
               ),
             ),
           ),
+
+          // 텍스트
           Positioned(
             left: 0,
             right: 0,
@@ -318,9 +297,8 @@ class _ReviewCard extends StatelessWidget {
                             height: 1.5,
                             shadows: [
                               Shadow(
-                                blurRadius: 4,
-                                color: Color(0x66000000),
-                              ),
+                                  blurRadius: 4,
+                                  color: Color(0x66000000)),
                             ],
                           ),
                         ),
@@ -338,10 +316,7 @@ class _ReviewCard extends StatelessWidget {
                       fontWeight: FontWeight.w400,
                       height: 1.45,
                       shadows: [
-                        Shadow(
-                          blurRadius: 4,
-                          color: Color(0x66000000),
-                        ),
+                        Shadow(blurRadius: 4, color: Color(0x66000000)),
                       ],
                     ),
                   ),
@@ -353,4 +328,45 @@ class _ReviewCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 이미지2 기준:
+/// - 핑크가 하단을 차지
+/// - 경계선: x=0 에서 가장 높이 올라와 있고(왼쪽 상단 꼭짓점)
+///   오른쪽으로 곡선을 그리며 내려오다가 수평이 됨
+/// - 곡선은 concave(오목): 핑크 영역 안쪽으로 파임
+///
+/// Path 논리 (size = 클리퍼에 주어진 전체 크기):
+///   시작: (0, topY)          ← 왼쪽, 가장 높은 지점
+///   베지어 제어점: (0, flatY) ← 왼쪽 벽을 따라 아래로
+///   베지어 끝점: (curveEndX, flatY) ← 수평선과 만나는 지점
+///   직선: (width, flatY)     ← 오른쪽 수평
+///   직선: (width, height)    ← 오른쪽 하단
+///   직선: (0, height)        ← 왼쪽 하단
+class BottomCurveClipper extends CustomClipper<Path> {
+  // 수평 기준선 y (카드 상단에서 얼마나 아래인가 — 고정값)
+  // 카드높이 185 기준, 핑크가 약 40% = 74px → topY = 185 - 74 = 111
+  static const double flatY = 111.0;
+
+  // 왼쪽 꼭짓점이 flatY보다 얼마나 위로 올라가는가
+  static const double riseAmount = 36.0;
+
+  // 곡선이 수평선(flatY)에 닿는 x 위치
+  static const double curveEndX = 56.0;
+
+  @override
+  Path getClip(Size size) {
+    final double topY = flatY - riseAmount; // 왼쪽 꼭짓점 y
+
+    return Path()
+      ..moveTo(0, topY)                          // 왼쪽 상단 꼭짓점 (가장 높은 점)
+      ..quadraticBezierTo(0, flatY, curveEndX, flatY) // 오목 곡선: 왼쪽 벽 타고 내려옴
+      ..lineTo(size.width, flatY)                // 오른쪽으로 수평
+      ..lineTo(size.width, size.height)          // 오른쪽 하단
+      ..lineTo(0, size.height)                   // 왼쪽 하단
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
