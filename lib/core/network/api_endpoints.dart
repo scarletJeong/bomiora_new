@@ -34,7 +34,9 @@ class ApiEndpoints {
   static const String addToWish = '/api/wish/toggle';
   static const String removeFromWish = '/api/wish/remove';
   
-  // 리뷰 관련 (기존 Cafe24 서버)
+  // 리뷰 관련 — 메인 홈 베스트 리뷰는 Node `bomiora_main_review` (쿼리: ?size=8)
+  static const String mainHomeReviews = '/api/user/reviews/main';
+  /// @deprecated Cafe24 구 경로. 메인 홈은 [mainHomeReviews] 사용.
   static const String mainReviews = '/api/reviews/main';
   static const String productReviews = '/api/reviews/product';
   static const String addReview = '/api/reviews/add';

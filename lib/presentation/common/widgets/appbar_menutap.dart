@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../shopping/utils/get_product.dart';
 import 'confirm_dialog.dart';
 
 /// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
@@ -27,6 +28,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   static const Color _brandPink = Color(0xFFFF5A8D);
 
   UserModel? _user;
+  bool _isTelemedicineExpanded = true;
 
   @override
   void initState() {
@@ -65,7 +67,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     }
   }
 
-  void _popAndPushNamed(BuildContext context, String route, {Object? arguments}) {
+  void _popAndPushNamed(BuildContext context, String route,
+      {Object? arguments}) {
     Navigator.pop(context);
     Navigator.pushNamed(context, route, arguments: arguments);
   }
@@ -111,7 +114,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             cell(_DrawerShortcutData(
               icon: Icons.shopping_cart_outlined,
               label: '장바구니',
-              onTap: () {},
+              onTap: () => _popAndPushNamed(context, '/cart'),
             )),
           ],
         ),
@@ -184,81 +187,75 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 data: theme.copyWith(dividerColor: Colors.transparent),
                 child: Column(
                   children: [
-                    ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      initiallyExpanded: true,
-                      iconColor: _inkTitle,
-                      collapsedIconColor: _inkTitle,
-                      title: const Text(
-                        '비대면 치료',
-                        style: TextStyle(
-                          color: _inkTitle,
-                          fontSize: 16,
-                          fontFamily: _fontFamily,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -1.44,
-                        ),
-                      ),
-                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                    Column(
                       children: [
-                        _ExpansionSubmenuWithRail(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _SubLink(
-                                label: '다이어트',
-                                onTap: () => _popAndPushNamed(
-                                  context,
-                                  '/product-list',
-                                  arguments: {
-                                    'categoryId': '10',
-                                    'categoryName': '다이어트',
-                                    'productKind': 'prescription',
-                                  },
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () =>
+                                    _popAndPushNamed(context, '/product-main'),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(
+                                    '비대면 치료',
+                                    style: TextStyle(
+                                      color: _inkTitle,
+                                      fontSize: 16,
+                                      fontFamily: _fontFamily,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: -1.44,
+                                    ),
+                                  ),
                                 ),
                               ),
-                              _SubLink(
-                                label: '디톡스',
-                                onTap: () => _popAndPushNamed(
-                                  context,
-                                  '/product-list',
-                                  arguments: {
-                                    'categoryId': '20',
-                                    'categoryName': '디톡스',
-                                    'productKind': 'prescription',
-                                  },
-                                ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isTelemedicineExpanded =
+                                      !_isTelemedicineExpanded;
+                                });
+                              },
+                              icon: Icon(
+                                _isTelemedicineExpanded
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                color: _inkTitle,
                               ),
-                              _SubLink(
-                                label: '건강/면역',
-                                onTap: () => _popAndPushNamed(
-                                  context,
-                                  '/product-list',
-                                  arguments: {
-                                    'categoryId': '50',
-                                    'categoryName': '건강/면역',
-                                    'productKind': 'prescription',
-                                  },
-                                ),
+                            ),
+                          ],
+                        ),
+                        AnimatedCrossFade(
+                          firstChild: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _ExpansionSubmenuWithRail(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ...productPrescriptionCategoryList.map(
+                                    (item) => _SubLink(
+                                      label: item.label.replaceAll('환', ''),
+                                      onTap: () => _popAndPushNamed(
+                                        context,
+                                        '/product/',
+                                        arguments: {
+                                          'categoryId': item.categoryId,
+                                          'categoryName': item.label,
+                                          'productKind': 'prescription',
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              _SubLink(
-                                label: '심신안정',
-                                onTap: () => _popAndPushNamed(
-                                  context,
-                                  '/product-list',
-                                  arguments: {
-                                    'categoryId': '80',
-                                    'categoryName': '심신안정',
-                                    'productKind': 'prescription',
-                                  },
-                                ),
-                              ),
-                              _SubLink(
-                                label: '문진표',
-                                onTap: () => _popAndPushNamed(context, '/profile'),
-                              ),
-                            ],
+                            ),
                           ),
+                          secondChild: const SizedBox.shrink(),
+                          crossFadeState: _isTelemedicineExpanded
+                              ? CrossFadeState.showFirst
+                              : CrossFadeState.showSecond,
+                          duration: const Duration(milliseconds: 180),
                         ),
                       ],
                     ),
@@ -282,14 +279,22 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                         _ExpansionSubmenuWithRail(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _SubLink(label: '다이어트', onTap: () {}),
-                              _SubLink(label: '디톡스', onTap: () {}),
-                              _SubLink(label: '건강/면역', onTap: () {}),
-                              _SubLink(label: '뷰티/코스메틱', onTap: () {}),
-                              _SubLink(label: '헤어/탈모', onTap: () {}),
-                              _SubLink(label: '헬스케어 웨어러블', onTap: () {}),
-                            ],
+                            children: productGeneralCategoryList
+                                .map(
+                                  (item) => _SubLink(
+                                    label: item.label,
+                                    onTap: () => _popAndPushNamed(
+                                      context,
+                                      '/product-general/',
+                                      arguments: {
+                                        'categoryId': item.categoryId,
+                                        'categoryName': item.label,
+                                        'productKind': 'general',
+                                      },
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                           ),
                         ),
                       ],
@@ -387,7 +392,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   style: FilledButton.styleFrom(
                     backgroundColor: _brandPink,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                     minimumSize: const Size(0, 36),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
@@ -419,7 +425,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     backgroundColor: Colors.white,
                     foregroundColor: _brandPink,
                     side: const BorderSide(color: _brandPink, width: 1),
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                     minimumSize: const Size(0, 36),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
@@ -479,7 +486,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             minimumSize: const Size(84, 32),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             side: const BorderSide(color: _logoutBorder, width: 1),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             foregroundColor: const Color(0xFF898686),
           ),
           child: const Text(
@@ -584,7 +592,8 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _highlight ? _DrawerShortcut._hoverPink : _DrawerShortcut._muted;
+    final color =
+        _highlight ? _DrawerShortcut._hoverPink : _DrawerShortcut._muted;
     final labelStyle = TextStyle(
       color: color,
       fontSize: 9.5,
@@ -635,7 +644,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                             'P',
                             style: TextStyle(
                               color: color,
-                          fontSize: 16,
+                              fontSize: 16,
                               fontFamily: _DrawerShortcut._fontFamily,
                               fontWeight: FontWeight.w700,
                             ),
@@ -694,7 +703,8 @@ class _SectionRow extends StatelessWidget {
             ),
             Transform.rotate(
               angle: -1.5708,
-              child: const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF1A1A1A)),
+              child: const Icon(Icons.keyboard_arrow_down,
+                  size: 20, color: Color(0xFF1A1A1A)),
             ),
           ],
         ),
@@ -841,7 +851,8 @@ class _RecentProductCard extends StatelessWidget {
                     height: 100,
                     color: const Color(0xFFE8E8E8),
                     alignment: Alignment.center,
-                    child: Icon(Icons.image_outlined, color: Colors.grey.shade500, size: 32),
+                    child: Icon(Icons.image_outlined,
+                        color: Colors.grey.shade500, size: 32),
                   ),
                 ),
                 Positioned(
@@ -854,7 +865,8 @@ class _RecentProductCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.6),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.favorite_border, size: 12, color: Color(0xFF898686)),
+                    child: const Icon(Icons.favorite_border,
+                        size: 12, color: Color(0xFF898686)),
                   ),
                 ),
               ],
