@@ -39,4 +39,14 @@ abstract final class AppAssets {
 
   // 아이디/비밀번호 찾기 실패 아이콘
   static const String loginFail = '${_img}login_fail.png';
+
+  // 비대면처방 제품 메인 페이지
+  static const String productMain = '${_img}product_main_1.jpg';
+  static const String productMainBottom1 = '${_img}product_main_bottom_1.png';
+  static const String productMainBottom2 = '${_img}product_main_bottom_2.png';
+  static const String productMainBottom3 = '${_img}product_main_bottom_3.png';
+  static const String productMainBottom4 = '${_img}product_main_bottom_4.png';
+  static const String productMainIcon1 = '${_img}product_main_icon1.svg';
+  static const String productMainIcon2 = '${_img}product_main_icon2.svg';
+  static const String productMainIcon3 = '${_img}product_main_icon3.svg';
 }
