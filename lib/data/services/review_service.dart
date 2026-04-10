@@ -167,27 +167,35 @@ class ReviewService {
   /// [itId] 상품 ID
   /// [rvkind] 리뷰 종류 ('general', 'supporter', null=전체)
   /// [page] 페이지 번호 (0부터 시작)
-  /// [size] 페이지 크기
+  /// [size] 페이지 크기 ([fetchAll]이 true면 무시)
+  /// [fetchAll] true면 Node API `all=1` — 승인 리뷰를 한 번에 최대한 로드 (서버 상한 내)
   static Future<Map<String, dynamic>> getProductReviews({
     required String itId,
     String? rvkind,
     int page = 0,
     int size = 20,
+    bool fetchAll = false,
   }) async {
     try {
       print('📖 [상품 리뷰 목록 조회] 요청');
       print('  - itId: $itId');
       print('  - rvkind: $rvkind');
-      print('  - page: $page, size: $size');
+      print('  - page: $page, size: $size, fetchAll: $fetchAll');
 
       // 쿼리 파라미터 구성 (rvkind만 사용)
-      String queryString = 'page=$page&size=$size';
-      if (rvkind != null && rvkind.isNotEmpty) {
-        queryString += '&rvkind=$rvkind';
+      final String queryString;
+      if (fetchAll) {
+        // all=1: 최신 Node API. 구버전은 all 무시될 수 있어 size도 크게 넣음.
+        queryString = 'page=0&all=1&size=100000';
+      } else {
+        queryString = 'page=$page&size=$size';
       }
+      final String withRvkind = (rvkind != null && rvkind.isNotEmpty)
+          ? '$queryString&rvkind=$rvkind'
+          : queryString;
       
       final response = await ApiClient.get(
-        '/api/user/reviews/product/$itId?$queryString',
+        '/api/user/reviews/product/$itId?$withRvkind',
       );
 
       print('📡 [상품 리뷰 목록 조회] 응답 상태: ${response.statusCode}');

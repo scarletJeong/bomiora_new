@@ -1,8 +1,31 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
+
+/// 메인 리뷰 `mr_img` — `it_id/파일` 형태가 아니면 `itId`를 붙여 상품 리뷰와 같은 itemuse URL 생성
+String? _mainHomeReviewCardImageUrl(MainHomeReviewModel r) {
+  if (r.images.isEmpty) return null;
+  var raw = r.images.first.trim();
+  if (raw.isEmpty) return null;
+  if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
+    raw = raw.replaceAll('\\', '/');
+    while (raw.startsWith('/')) {
+      raw = raw.substring(1);
+    }
+    const prefix = 'data/itemuse/';
+    if (raw.startsWith(prefix)) {
+      raw = raw.substring(prefix.length);
+    }
+    if (!raw.contains('/') && (r.itId?.trim().isNotEmpty ?? false)) {
+      raw = '${r.itId!.trim()}/$raw';
+    }
+  }
+  return ImageUrlHelper.getReviewImageUrl(raw);
+}
 
 class ReviewSection extends StatefulWidget {
   const ReviewSection({super.key});
@@ -196,9 +219,7 @@ class _ReviewSectionState extends State<ReviewSection> {
       itemCount: _reviews.length,
       itemBuilder: (context, index) {
         final r = _reviews[index];
-        final thumb = r.images.isNotEmpty
-            ? ImageUrlHelper.getReviewImageUrl(r.images.first)
-            : null;
+        final thumb = _mainHomeReviewCardImageUrl(r);
         return _ReviewCard(
           titleLine: r.headline,
           bodyLine: r.bodyText,
@@ -265,16 +286,19 @@ class _ReviewCard extends StatelessWidget {
             ),
           ),
 
-          // 텍스트
+          // 텍스트 — `bottom:0`만 쓰면 블록이 카드 맨 아래에 붙어 위쪽 핑크가 빈 것처럼 보임.
+          // 핑크 수평 경계(flatY)부터 영역을 잡아 제목이 핑크 상단에 붙도록 함.
           Positioned(
             left: 0,
             right: 0,
+            top: BottomCurveClipper.flatY,
             bottom: 0,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.max,
                 children: [
                   Row(
                     children: [
@@ -283,7 +307,7 @@ class _ReviewCard extends StatelessWidget {
                         height: 14,
                         color: Colors.white70,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           titleLine,
@@ -294,7 +318,7 @@ class _ReviewCard extends StatelessWidget {
                             fontSize: 12,
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w700,
-                            height: 1.5,
+                            height: 1.25,
                             shadows: [
                               Shadow(
                                   blurRadius: 4,
@@ -305,6 +329,7 @@ class _ReviewCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
                   Text(
                     bodyLine,
                     maxLines: 2,
@@ -340,7 +365,7 @@ class _ReviewCard extends StatelessWidget {
 ///   시작: (0, topY)          ← 왼쪽, 가장 높은 지점
 ///   베지어 제어점: (0, flatY) ← 왼쪽 벽을 따라 아래로
 ///   베지어 끝점: (curveEndX, flatY) ← 수평선과 만나는 지점
-///   직선: (width, flatY)     ← 오른쪽 수평
+///   직선: (width - r, flatY) … (width, flatY+r) ← 오른쪽 상단 모서리 라운드
 ///   직선: (width, height)    ← 오른쪽 하단
 ///   직선: (0, height)        ← 왼쪽 하단
 class BottomCurveClipper extends CustomClipper<Path> {
@@ -354,17 +379,44 @@ class BottomCurveClipper extends CustomClipper<Path> {
   // 곡선이 수평선(flatY)에 닿는 x 위치
   static const double curveEndX = 56.0;
 
+  /// 수평선과 오른쪽 변이 만나는 꼭짓점을 둥글게 (카드 오른쪽 상단 느낌과 맞춤)
+  static const double topRightCornerRadius = 12.0;
+
   @override
   Path getClip(Size size) {
-    final double topY = flatY - riseAmount; // 왼쪽 꼭짓점 y
+    const double topY = flatY - riseAmount; // 왼쪽 꼭짓점 y
+    final path = Path()..moveTo(0, topY);
 
-    return Path()
-      ..moveTo(0, topY)                          // 왼쪽 상단 꼭짓점 (가장 높은 점)
-      ..quadraticBezierTo(0, flatY, curveEndX, flatY) // 오목 곡선: 왼쪽 벽 타고 내려옴
-      ..lineTo(size.width, flatY)                // 오른쪽으로 수평
-      ..lineTo(size.width, size.height)          // 오른쪽 하단
-      ..lineTo(0, size.height)                   // 왼쪽 하단
+    path.quadraticBezierTo(0, flatY, curveEndX, flatY);
+
+    final maxR = math.min(
+      topRightCornerRadius,
+      math.min(
+        (size.width - curveEndX) * 0.5,
+        (size.height - flatY).clamp(0.0, double.infinity),
+      ),
+    );
+    var r = maxR.clamp(0.0, topRightCornerRadius);
+    if (r > 0 && size.width - r < curveEndX) {
+      r = math.max(0.0, size.width - curveEndX - 0.5);
+    }
+
+    if (r <= 0) {
+      path
+        ..lineTo(size.width, flatY)
+        ..lineTo(size.width, size.height);
+    } else {
+      path
+        ..lineTo(size.width - r, flatY)
+        ..quadraticBezierTo(size.width, flatY, size.width, flatY + r)
+        ..lineTo(size.width, size.height);
+    }
+
+    path
+      ..lineTo(0, size.height)
       ..close();
+
+    return path;
   }
 
   @override

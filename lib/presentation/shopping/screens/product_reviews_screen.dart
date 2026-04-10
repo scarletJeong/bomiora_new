@@ -51,8 +51,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
     try {
       final result = await ReviewService.getProductReviews(
         itId: widget.productId,
-        page: 0,
-        size: 100,
+        fetchAll: true,
       );
 
       if (result['success'] == true) {
