@@ -21,7 +21,9 @@ import 'data/services/kakao_auth_service.dart';
 import 'presentation/common/widgets/mobile_layout_wrapper.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
+import 'presentation/shopping/screens/product_main_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
+import 'presentation/shopping/screens/temp_cart_screen.dart';
 import 'presentation/shopping/showcase/screens/showcase_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
@@ -37,7 +39,7 @@ import 'presentation/health/dashboard/screens/health_dashboard_screen.dart';
 void main() async {
   // Flutter 바인딩 초기화
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // TODO: 웹 개발 완료 후 Firebase 주석 해제 필요
   // 웹이 아닌 환경에서만 Firebase 초기화
   // if (!kIsWeb) {
@@ -45,7 +47,7 @@ void main() async {
   //     // Firebase 초기화
   //     await Firebase.initializeApp();
   //     print('✅ Firebase 초기화 완료');
-  //     
+  //
   //     // FCM 서비스 초기화
   //     await FCMService().initialize();
   //     print('✅ FCM 서비스 초기화 완료');
@@ -56,12 +58,12 @@ void main() async {
   // } else {
   //   print('⚠️ 웹 환경에서는 Firebase를 초기화하지 않습니다.');
   // }
-  
+
   print('⚠️ Firebase/FCM은 현재 비활성화되어 있습니다. (웹 개발 중)');
-  
+
   // 카카오 SDK 초기화
   await KakaoAuthService.initialize();
-  
+
   runApp(const BomioraApp());
 }
 
@@ -96,28 +98,28 @@ class BomioraApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/find-account': (context) {
-          final args =
-              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           return FindAccountScreen(
             initialTab: (args?['tab'] ?? 'id').toString(),
             prefillEmail: args?['prefillEmail']?.toString(),
           );
         },
         '/find-account-result': (context) {
-          final args =
-              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           return FindAccountResultScreen(
             certInfo: Map<String, dynamic>.from(args ?? const {}),
           );
         },
         '/find-account-not-found': (context) {
-          final args =
-              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           return FindAccountNotFoundScreen(findAccountInfo: args);
         },
         '/find-password-reset': (context) {
-          final args =
-              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           return FindPasswordResetScreen(resetInfo: args);
         },
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
@@ -128,6 +130,8 @@ class BomioraApp extends StatelessWidget {
         '/health': (context) => const HealthDashboardScreen(),
         // (임시) 장바구니 페이지 접근 차단
         '/cart': (context) => const CartScreen(),
+        '/temp-cart': (context) => const TempCartScreen(),
+        '/product-main': (context) => const ProductMainScreen(),
         '/coupon': (context) => const CouponScreen(),
         '/review': (context) => const AllReviewsScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
@@ -136,8 +140,8 @@ class BomioraApp extends StatelessWidget {
         '/cancel-member': (context) => const CancelMemberScreen(),
         '/customer-service': (context) => const ContactListScreen(),
         '/kcp-cert': (context) {
-          final args =
-              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           return KcpCertWebViewScreen(
             flow: (args?['flow'] ?? 'signup').toString(),
             email: args?['email']?.toString(),
@@ -146,7 +150,8 @@ class BomioraApp extends StatelessWidget {
         '/point': (context) => const PointScreen(),
         '/order': (context) => const DeliveryListScreen(),
         '/signup': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           return SignupScreen(certInfo: args);
         },
       },
@@ -154,9 +159,10 @@ class BomioraApp extends StatelessWidget {
         // 동적 라우트 처리
         final routeName = settings.name ?? '';
         final uri = Uri.parse(routeName);
-        
-        // 제품 목록 페이지: /product-list 여리
-        if (uri.pathSegments.length == 1 && uri.pathSegments[0] == 'product-list') {
+
+        // 제품 목록 페이지: /product-list (레거시)
+        if (uri.pathSegments.length == 1 &&
+            uri.pathSegments[0] == 'product-list') {
           // (임시) 상품 목록 페이지 접근 차단
           final arguments = settings.arguments as Map<String, dynamic>? ?? {};
           return MaterialPageRoute(
@@ -167,20 +173,83 @@ class BomioraApp extends StatelessWidget {
             ),
           );
         }
-        
-        // 제품 상세 페이지: /product/:it_id
-        if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'product') {
+
+        // 제품 목록 페이지: /product/, /product/
+        final isProductListRoute = uri.pathSegments.isNotEmpty &&
+            uri.pathSegments[0] == 'product' &&
+            (uri.pathSegments.length == 1 ||
+                (uri.pathSegments.length == 2 &&
+                    uri.pathSegments[1].trim().isEmpty));
+        if (isProductListRoute) {
+          final rawArguments =
+              settings.arguments as Map<String, dynamic>? ?? {};
+          final arguments = <String, dynamic>{
+            'categoryId': '10',
+            'categoryName': '다이어트',
+            'productKind': 'prescription',
+            ...rawArguments,
+          };
+          return MaterialPageRoute(
+            builder: (context) => ProductListScreen.fromArguments(arguments),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
+        }
+
+        // 제품 목록 페이지: /product-general/, /product-general/
+        final isProductGeneralListRoute = uri.pathSegments.isNotEmpty &&
+            uri.pathSegments[0] == 'product-general' &&
+            (uri.pathSegments.length == 1 ||
+                (uri.pathSegments.length == 2 &&
+                    uri.pathSegments[1].trim().isEmpty));
+        if (isProductGeneralListRoute) {
+          final rawArguments =
+              settings.arguments as Map<String, dynamic>? ?? {};
+          final arguments = <String, dynamic>{
+            'categoryId': '11',
+            'categoryName': '다이어트 제품',
+            'productKind': 'general',
+            ...rawArguments,
+          };
+          return MaterialPageRoute(
+            builder: (context) => ProductListScreen.fromArguments(arguments),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
+        }
+
+        // 제품 상세 페이지: /product/:it_id, /product-general/:it_id
+        if (uri.pathSegments.length == 2 &&
+            uri.pathSegments[0] == 'product' &&
+            uri.pathSegments[1].trim().isNotEmpty) {
           // (임시) 상품 상세 페이지 접근 차단
           final productId = uri.pathSegments[1];
           return MaterialPageRoute(
             builder: (context) => ProductDetailScreen(productId: productId),
             settings: RouteSettings(
-              name: routeName, // URL 업데이트를 위해 route name 설정 (예: /product/1691479590)
+              name:
+                  routeName, // URL 업데이트를 위해 route name 설정 (예: /product/1691479590)
               arguments: settings.arguments,
             ),
           );
         }
-        
+        if (uri.pathSegments.length == 2 &&
+            uri.pathSegments[0] == 'product-general' &&
+            uri.pathSegments[1].trim().isNotEmpty) {
+          final productId = uri.pathSegments[1];
+          return MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(productId: productId),
+            settings: RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            ),
+          );
+        }
+
         return null;
       },
       debugShowCheckedModeBanner: false,
