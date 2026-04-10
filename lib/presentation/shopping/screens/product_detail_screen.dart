@@ -30,7 +30,6 @@ import '../widgets/producrt_normal_review.dart';
 import '../widgets/recommend_product.dart';
 import '../utils/get_review.dart';
 import 'webview_screen.dart';
-import '../../review/screens/review_detail_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
@@ -142,12 +141,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             _pageController?.dispose();
             _pageController = PageController();
           }
-
-          // 상품 종류 로그 출력
-          print('✅ [상품 상세 로드 완료]');
-          print('  - productId: ${product.id}');
-          print('  - productKind: ${product.productKind}');
-          print('  - ctKind (getter): ${product.ctKind}');
         }
       });
 
@@ -324,14 +317,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     try {
       final options =
           await ProductOptionRepository.getProductOptions(widget.productId);
-      print('📦 [옵션] 로드된 옵션 개수: ${options.length}');
-      for (var option in options) {
-        print('  - 옵션 ID: ${option.id}');
-        print('    상위 옵션: ${option.step}');
-        print('    하위 옵션: ${option.subOption}');
-        print('    표시명: ${option.displayText}');
-        print('    가격: ${option.price}원');
-      }
       setState(() {
         _productOptions = options;
       });
@@ -721,15 +706,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _visibleSupporterReviewCount += 8;
         });
       },
-      onReviewTap: (review) {
-        // 리뷰 카드 탭 → [ReviewDetailScreen] 리뷰 상세 페이지
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReviewDetailScreen(review: review),
-          ),
-        );
-      },
+      onReviewTap: (_) {},
     );
   }
 
@@ -745,15 +722,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _visibleNormalReviewCount += 8;
         });
       },
-      onReviewTap: (review) {
-        // 리뷰 카드 탭 → [ReviewDetailScreen] 리뷰 상세 페이지
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReviewDetailScreen(review: review),
-          ),
-        );
-      },
+      onReviewTap: (_) {},
     );
   }
 

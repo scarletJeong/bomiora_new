@@ -264,10 +264,10 @@ class _ReviewGridCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 96,
-              width: double.infinity,
+            Expanded(
+              flex: 2,
               child: Container(
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
                   borderRadius:
@@ -281,7 +281,7 @@ class _ReviewGridCard extends StatelessWidget {
                           ImageUrlHelper.getReviewImageUrl(review.images.first),
                           fit: BoxFit.cover,
                           width: double.infinity,
-                          height: 96,
+                          height: double.infinity,
                           errorBuilder: (context, error, stackTrace) {
                             return Center(
                               child: Icon(
@@ -303,6 +303,7 @@ class _ReviewGridCard extends StatelessWidget {
               ),
             ),
             Expanded(
+              flex: 1,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                 child: Column(

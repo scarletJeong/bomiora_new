@@ -9,6 +9,7 @@ class ProductMainScreen extends StatelessWidget {
   const ProductMainScreen({super.key});
 
   static const _sectionGap = SizedBox(height: 24);
+  static const _quoteToCheckpointGap = SizedBox(height: 25);
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +48,7 @@ class ProductMainScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const ProductMainQuoteSection(),
-                _sectionGap,
+                _quoteToCheckpointGap,
                 const ProductMainCheckpointSection(),
                 _sectionGap,
                 const ProductMainTrustSection(),

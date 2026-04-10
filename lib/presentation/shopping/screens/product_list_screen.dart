@@ -50,6 +50,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   late List<_CategoryTab> _baseTabOrder;
 
   static const Color _brandPink = Color(0xFFFF5A8D);
+  static const String _gmarket = 'Gmarket Sans TTF';
 
   @override
   void initState() {
@@ -216,6 +217,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
+                fontFamily: _gmarket,
               ),
               textAlign: TextAlign.center,
             ),
@@ -265,6 +267,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[600],
+                              fontFamily: _gmarket,
                             ),
                           ),
                         ],
@@ -318,6 +321,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: Colors.black,
+                fontFamily: _gmarket,
               ),
               child: Text(selected.label),
             ),
@@ -340,6 +344,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey[500],
+                        fontFamily: _gmarket,
                       ),
                       child: Text(tab.label),
                     ),
@@ -415,7 +420,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         final priceFs = (13.5 * tScale).clamp(12.0, 16.0);
 
         final imageHeight = itemConstraints.hasBoundedHeight
-            ? itemConstraints.maxHeight * 0.58
+            ? itemConstraints.maxHeight * 2 / 3
             : 220.0;
 
         return GestureDetector(
@@ -488,6 +493,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 style: TextStyle(
                                   fontSize: nameFs,
                                   fontWeight: FontWeight.w500,
+                                  fontFamily: _gmarket,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -501,6 +507,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                     fontSize: origFs,
                                     color: Colors.grey[600],
                                     decoration: TextDecoration.lineThrough,
+                                    fontFamily: _gmarket,
                                   ),
                                 ),
                               ],
@@ -517,6 +524,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   fontSize: discFs,
                                   color: _brandPink,
                                   fontWeight: FontWeight.w800,
+                                  fontFamily: _gmarket,
                                 ),
                               ),
                             if (product.discountRate != null)
@@ -528,6 +536,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   fontSize: priceFs,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,
+                                  fontFamily: _gmarket,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

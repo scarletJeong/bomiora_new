@@ -6,7 +6,7 @@ import '../../../data/models/product/product_model.dart';
 
 enum _RecommendGroup { diet, detox, calm }
 
-class RecommendProductSection extends StatelessWidget {
+class RecommendProductSection extends StatefulWidget {
   final List<String> excludedProductNames;
   final List<Product> products;
   final ValueChanged<Product> onProductTap;
@@ -22,6 +22,19 @@ class RecommendProductSection extends StatelessWidget {
     this.showLeadingBar = true,
   });
 
+  @override
+  State<RecommendProductSection> createState() => _RecommendProductSectionState();
+}
+
+class _RecommendProductSectionState extends State<RecommendProductSection> {
+  final ScrollController _horizontalScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalScroll.dispose();
+    super.dispose();
+  }
+
   _RecommendGroup? _groupFromName(String name) {
     final normalized = name.replaceAll(' ', '');
     if (normalized.contains('다이어트')) return _RecommendGroup.diet;
@@ -32,7 +45,7 @@ class RecommendProductSection extends StatelessWidget {
 
   List<Product> _buildOrderedRecommendations() {
     final selectedGroups = <_RecommendGroup>{};
-    for (final productName in excludedProductNames) {
+    for (final productName in widget.excludedProductNames) {
       final group = _groupFromName(productName);
       if (group != null) {
         selectedGroups.add(group);
@@ -46,7 +59,7 @@ class RecommendProductSection extends StatelessWidget {
     ];
 
     final byGroup = <_RecommendGroup, List<Product>>{};
-    for (final product in products) {
+    for (final product in widget.products) {
       final group = _groupFromName(product.name);
       if (group == null) continue;
       if (selectedGroups.contains(group)) continue;
@@ -69,7 +82,7 @@ class RecommendProductSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            if (showLeadingBar)
+            if (widget.showLeadingBar)
               const Text(
                 '|',
                 style: TextStyle(
@@ -80,7 +93,7 @@ class RecommendProductSection extends StatelessWidget {
               ),
             const SizedBox(width: 6),
             Text(
-              title,
+              widget.title,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -108,13 +121,15 @@ class RecommendProductSection extends StatelessWidget {
               : ScrollConfiguration(
                   behavior: const _HorizontalDragScrollBehavior(),
                   child: Scrollbar(
+                    controller: _horizontalScroll,
                     thumbVisibility: true,
                     child: ListView.separated(
+                      controller: _horizontalScroll,
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       itemBuilder: (context, index) => _RecommendCard(
                         product: recommended[index],
-                        onTap: () => onProductTap(recommended[index]),
+                        onTap: () => widget.onProductTap(recommended[index]),
                       ),
                       separatorBuilder: (_, __) => const SizedBox(width: 10),
                       itemCount: recommended.length,

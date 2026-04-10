@@ -1,3 +1,6 @@
+import 'dart:math' show max;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -6,32 +9,141 @@ import 'product_main_category_icon_row.dart';
 
 const _sectionLineColor = Color(0xFFD9D9D9);
 
-/// 약력 / 대외활동 — 양옆 동일 길이 회색선
-Widget _titleWithSideLines(String title) {
+/// 원장 소개 이미지
+/// - **웹**: `web/img/product_main_intro.png` → 요청 URL은 `{현재 문서 기준}/img/product_main_intro.png`
+///   (`Image.asset`은 Flutter 웹에서 `assets/assets/img/...`로 이중 `assets`가 붙어 404가 나기 쉬움)
+/// - **모바일/데스크톱 앱**: `pubspec` 에셋 `assets/img/product_main_intro.png`
+Widget _productMainIntroPhoto({
+  required double width,
+  double? height,
+  BoxFit fit = BoxFit.contain,
+  Alignment alignment = Alignment.bottomCenter,
+  FilterQuality filterQuality = FilterQuality.medium,
+}) {
+  Widget fallback() => Icon(
+        Icons.person_outline,
+        size: 72,
+        color: Colors.grey[400],
+      );
+
+  if (kIsWeb) {
+    final src = Uri.base.resolve('img/product_main_intro.png').toString();
+    return Image.network(
+      src,
+      width: width.isFinite ? width : null,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      filterQuality: filterQuality,
+      errorBuilder: (_, __, ___) => fallback(),
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return const Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      },
+    );
+  }
+
+  return Image.asset(
+    AppAssets.productIntro,
+    width: width.isFinite ? width : null,
+    height: height,
+    fit: fit,
+    alignment: alignment,
+    filterQuality: filterQuality,
+    errorBuilder: (_, __, ___) => fallback(),
+  );
+}
+
+/// 약력/대외활동 — 제목 줄(짧은 양쪽 선) 가운데 정렬, 본문 시작점 = 왼쪽 선 시작점
+Widget _bioTitleWithLinesAndAlignedBody({
+  required BuildContext context,
+  required String title,
+  required List<String> lines,
+  required double maxWidth,
+}) {
   const titleStyle = TextStyle(
     color: Colors.black,
     fontSize: 11.76,
     fontFamily: 'Gmarket Sans TTF',
     fontWeight: FontWeight.w300,
   );
-  return Row(
+  const bodyStyle = TextStyle(
+    color: Colors.black,
+    fontSize: 11.70,
+    fontFamily: 'Gmarket Sans TTF',
+    fontWeight: FontWeight.w300,
+  );
+  const titleHPad = 16.0;
+
+  final tp = TextPainter(
+    text: TextSpan(text: title, style: titleStyle),
+    textDirection: Directionality.of(context),
+    maxLines: 1,
+  )..layout();
+  final titleW = tp.size.width;
+  final fullW = maxWidth;
+  final halfSide = ((fullW - titleW - titleHPad * 2) / 2) * 0.5;
+  final lineW = halfSide.clamp(20.0, fullW);
+  final rowWidth = 2 * lineW + titleW + 2 * titleHPad;
+  final leftInset = ((fullW - rowWidth) / 2).clamp(0.0, fullW);
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Expanded(
-        child: Divider(
-          height: 1,
-          thickness: 1,
-          color: _sectionLineColor,
+      SizedBox(
+        width: fullW,
+        child: Align(
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: lineW,
+                child: const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: _sectionLineColor,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: titleHPad),
+                child: Text(title, style: titleStyle),
+              ),
+              SizedBox(
+                width: lineW,
+                child: const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: _sectionLineColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+      const SizedBox(height: 12),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Text(title, style: titleStyle),
-      ),
-      const Expanded(
-        child: Divider(
-          height: 1,
-          thickness: 1,
-          color: _sectionLineColor,
+        padding: EdgeInsets.only(left: leftInset),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: lines
+              .map(
+                (t) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    t,
+                    textAlign: TextAlign.left,
+                    style: bodyStyle,
+                  ),
+                ),
+              )
+              .toList(),
         ),
       ),
     ],
@@ -45,174 +157,330 @@ Widget _titleWithSideLines(String title) {
 /// 다이어트는 처음부터 ~ (히어로 이미지 + 인용 + 소개 + 핑크 문구)
 class ProductMainQuoteSection extends StatelessWidget {
   const ProductMainQuoteSection({super.key});
+  static const _blendBg = Color(0xFFF2ECEA);
 
   @override
   Widget build(BuildContext context) {
     final extend = MediaQuery.paddingOf(context).top + kToolbarHeight;
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        return Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.topCenter,
-          children: [
-            Transform.translate(
-              offset: Offset(0, -extend),
-              child: SizedBox(
-                width: w,
-                child: Stack(
-                  fit: StackFit.passthrough,
-                  children: [
-                    Image.asset(
-                      AppAssets.productMain,
-                      width: w,
-                      fit: BoxFit.fitWidth,
-                      alignment: Alignment.topCenter,
-                      errorBuilder: (_, __, ___) =>
-                          ColoredBox(color: Colors.grey[200]!),
+        return _ProductMainQuoteStack(
+          width: constraints.maxWidth,
+          extend: extend,
+          blendBg: _blendBg,
+        );
+      },
+    );
+  }
+}
+
+/// 히어로 이미지는 `Positioned`라 레이아웃 높이에 안 잡힘 → 실제 이미지 높이만큼
+/// 하단 여백을 두어 다음 섹션(Check Point)이 이미지 하단에서 이어지게 함.
+class _ProductMainQuoteStack extends StatefulWidget {
+  const _ProductMainQuoteStack({
+    required this.width,
+    required this.extend,
+    required this.blendBg,
+  });
+
+  final double width;
+  final double extend;
+  final Color blendBg;
+
+  static const double _heroTopLift = 20;
+
+  @override
+  State<_ProductMainQuoteStack> createState() => _ProductMainQuoteStackState();
+}
+
+class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
+  final GlobalKey _textColumnKey = GlobalKey();
+  ImageStream? _imageStream;
+  late final ImageStreamListener _imageListener;
+
+  double? _heroDisplayHeight;
+  double _extraBottom = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageListener = ImageStreamListener(_onHeroImageLoaded);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncExtraBottom());
+  }
+
+  @override
+  void dispose() {
+    _imageStream?.removeListener(_imageListener);
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _listenHeroImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProductMainQuoteStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.width != widget.width) {
+      _listenHeroImage();
+    }
+  }
+
+  void _listenHeroImage() {
+    if (!mounted) return;
+    final w = widget.width;
+    if (!w.isFinite || w <= 0) return;
+
+    final provider = AssetImage(AppAssets.productMain);
+    final config = createLocalImageConfiguration(
+      context,
+      size: Size(w, 1),
+    );
+    final stream = provider.resolve(config);
+    if (identical(stream, _imageStream)) return;
+    _imageStream?.removeListener(_imageListener);
+    _imageStream = stream;
+    _imageStream!.addListener(_imageListener);
+  }
+
+  void _onHeroImageLoaded(ImageInfo info, bool synchronousCall) {
+    if (!mounted) return;
+    final iw = info.image.width.toDouble();
+    final ih = info.image.height.toDouble();
+    if (iw <= 0) return;
+    final h = widget.width * ih / iw;
+    if (_heroDisplayHeight == h) {
+      _scheduleSyncExtraBottom();
+      return;
+    }
+    setState(() => _heroDisplayHeight = h);
+    _scheduleSyncExtraBottom();
+  }
+
+  void _scheduleSyncExtraBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncExtraBottom();
+    });
+  }
+
+  void _syncExtraBottom() {
+    if (!mounted || _heroDisplayHeight == null) return;
+    final ctx = _textColumnKey.currentContext;
+    final box = ctx?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      _scheduleSyncExtraBottom();
+      return;
+    }
+    final textH = box.size.height;
+    final extend = widget.extend;
+    const lift = _ProductMainQuoteStack._heroTopLift;
+    final extra = max(
+      0.0,
+      _heroDisplayHeight! - 2 * extend - lift - textH,
+    );
+    if ((extra - _extraBottom).abs() > 0.5) {
+      setState(() => _extraBottom = extra);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget.width;
+    final extend = widget.extend;
+    final blendBg = widget.blendBg;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Positioned(
+          left: 0,
+          right: 0,
+          top: -extend - _ProductMainQuoteStack._heroTopLift,
+          child: SizedBox(
+            width: w,
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                Image.asset(
+                  AppAssets.productMain,
+                  width: w,
+                  fit: BoxFit.fitWidth,
+                  alignment: Alignment.topCenter,
+                  filterQuality: FilterQuality.high,
+                  errorBuilder: (_, __, ___) =>
+                      ColoredBox(color: Colors.grey[200]!),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: const Alignment(0, 0.58),
+                        colors: [
+                          Colors.white.withValues(alpha: 1.0),
+                          Colors.white.withValues(alpha: 1.0),
+                          Colors.white.withValues(alpha: 0.62),
+                          blendBg.withValues(alpha: 0.26),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.20, 0.34, 0.48, 0.58],
+                      ),
                     ),
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.06),
-                              Colors.transparent,
-                              Colors.white.withOpacity(0.42),
-                            ],
-                            stops: const [0.0, 0.4, 1.0],
-                          ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.03),
+                          Colors.transparent,
+                          Colors.white.withValues(alpha: 0.30),
+                        ],
+                        stops: const [0.0, 0.45, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        RepaintBoundary(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, extend, 20, 0),
+                child: Column(
+                  key: _textColumnKey,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      '" 다이어트는 처음부터 쉬워야 해요. "',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '정대진 │ 대표원장',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 11.57,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    const Text(
+                      '정대진 대표원장이 수년간 직접 몸을 관리하며',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 15.59,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      '쌓은 다이어트 노하우와 다수의 임상례를 바탕으로',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 15.59,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text.rich(
+                      TextSpan(
+                        style: const TextStyle(
+                          fontSize: 15.59,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          color: Colors.black,
                         ),
+                        children: const [
+                          TextSpan(text: '마침내 만들어진 '),
+                          TextSpan(
+                            text: '[보미 다이어트 솔루션]',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    Text.rich(
+                      const TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '보미 다이어트 솔루션',
+                            style: TextStyle(
+                              color: Color(0xFFFF5A8D),
+                              fontSize: 15.43,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '으로',
+                            style: TextStyle(
+                              color: Color(0xFFFF5A8D),
+                              fontSize: 16,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      '당신의 아름다운 봄을',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFFFF5A8D),
+                        fontSize: 15.43,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      '보미오라와 함께 만나보세요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFFFF5A8D),
+                        fontSize: 15.43,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    '" 다이어트는 처음부터 쉬워야 해요. "',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    '정대진 │ 대표원장',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 11.57,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  const Text(
-                    '정대진 대표원장이 수년간 직접 몸을 관리하며',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 15.59,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    '쌓은 다이어트 노하우와 다수의 임상례를 바탕으로',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 15.59,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text.rich(
-                    TextSpan(
-                      style: const TextStyle(
-                        fontSize: 15.59,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        color: Colors.black,
-                      ),
-                      children: const [
-                        TextSpan(text: '마침내 만들어진 '),
-                        TextSpan(
-                          text: '[보미 다이어트 솔루션]',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  Text.rich(
-                    const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '보미 다이어트 솔루션',
-                          style: TextStyle(
-                            color: Color(0xFFFF5A8D),
-                            fontSize: 15.43,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '으로',
-                          style: TextStyle(
-                            color: Color(0xFFFF5A8D),
-                            fontSize: 16,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    '당신의 아름다운 봄을',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFFFF5A8D),
-                      fontSize: 15.43,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    '보미오라와 함께 만나보세요.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFFFF5A8D),
-                      fontSize: 15.43,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+              SizedBox(height: _extraBottom),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -243,7 +511,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -382,15 +650,6 @@ class ProductMainTrustSection extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         const ProductMainCategoryIconRow(),
-        const SizedBox(height: 20),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Divider(
-            height: 1,
-            thickness: 1,
-            color: Color(0xFFD9D9D9),
-          ),
-        ),
         const SizedBox(height: 28),
         const Text(
           '믿을 수 있는 든든한 주치의가',
@@ -430,18 +689,33 @@ class ProductMainPhotoBioSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(maxWidth: 304),
-              height: 280,
-              color: const Color(0xFFF0F0F0),
-              alignment: Alignment.center,
-              child: Icon(Icons.person_outline, size: 72, color: Colors.grey[400]),
+          SizedBox(
+            width: double.infinity,
+            height: 248,
+            child: Center(
+              child: SizedBox(
+                width: 228,
+                height: 228,
+                child: ClipOval(
+                  clipBehavior: Clip.hardEdge,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const ColoredBox(color: Color(0xFFDDE5ED)),
+                      _productMainIntroPhoto(
+                        width: 228,
+                        height: 228,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.center,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           const Text(
             '보미오라한의원│대표원장',
             textAlign: TextAlign.center,
@@ -453,60 +727,38 @@ class ProductMainPhotoBioSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _titleWithSideLines('약력'),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: _cvLines
-                  .map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        t,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 11.70,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final blockW = constraints.maxWidth.clamp(280.0, 380.0);
+              return Align(
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: blockW,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _bioTitleWithLinesAndAlignedBody(
+                        context: context,
+                        title: '약력',
+                        lines: _cvLines,
+                        maxWidth: blockW,
                       ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-          const SizedBox(height: 20),
-          _titleWithSideLines('대외활동'),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: _activityLines
-                  .map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        t,
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 11.70,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
+                      const SizedBox(height: 20),
+                      _bioTitleWithLinesAndAlignedBody(
+                        context: context,
+                        title: '대외활동',
+                        lines: _activityLines,
+                        maxWidth: blockW,
                       ),
-                    ),
-                  )
-                  .toList(),
-            ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 60),
           _StaggeredBottomGrid(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 60),
         ],
       ),
     );
