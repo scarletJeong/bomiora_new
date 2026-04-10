@@ -66,7 +66,7 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 600,
+      height: 440,
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -89,14 +89,14 @@ class _MainBannerSliderState extends State<MainBannerSlider> {
             itemBuilder: (context, index) {
               final banner = banners[index];
               return GestureDetector(
-                onTap: () {   
-                    if (banner.productId != null) {
-                    // 상품 상세 페이지로 이동 (URL 업데이트)
-                    Navigator.pushNamed(
-                      context,
-                      '/product/${banner.productId}',
-                    );
-                  } 
+                onTap: () {
+                  // 배너 탭 시 상품 상세 이동 — 필요 시 아래 주석 해제
+                  // if (banner.productId != null) {
+                  //   Navigator.pushNamed(
+                  //     context,
+                  //     '/product/${banner.productId}',
+                  //   );
+                  // }
                 },
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(0),

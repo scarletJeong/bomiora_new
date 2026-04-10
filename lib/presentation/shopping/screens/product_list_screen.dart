@@ -6,7 +6,6 @@ import '../../common/widgets/appbar_menutap.dart';
 import '../utils/get_product.dart';
 import '../widgets/product_banner_slider.dart';
 import '../../../core/constants/app_assets.dart';
-import 'product_detail_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   final String categoryId;
@@ -276,7 +275,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      // 카드가 너무 길어 보여 약간 더 납작하게 조정
+                      // 세로 여유 (하단 텍스트 오버플로 방지)
                       childAspectRatio: 0.66,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 16,
@@ -408,8 +407,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget _buildProductCard(Product product) {
     return LayoutBuilder(
       builder: (context, itemConstraints) {
+        final screenW = MediaQuery.sizeOf(context).width;
+        final tScale = (screenW / 390.0).clamp(0.88, 1.18);
+        final nameFs = (12.5 * tScale).clamp(11.0, 15.0);
+        final origFs = (10.5 * tScale).clamp(9.5, 12.5);
+        final discFs = (11.5 * tScale).clamp(10.5, 14.0);
+        final priceFs = (13.5 * tScale).clamp(12.0, 16.0);
+
         final imageHeight = itemConstraints.hasBoundedHeight
-            ? itemConstraints.maxHeight * 0.62
+            ? itemConstraints.maxHeight * 0.58
             : 220.0;
 
         return GestureDetector(
@@ -460,30 +466,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 },
                               )
                             : _buildPlaceholderImage(product),
-                        if (product.isNew || product.isBest)
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    product.isNew ? Colors.blue : Colors.orange,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                product.isNew ? 'NEW' : 'BEST',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -492,51 +474,63 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   child: Container(
                     width: double.infinity,
                     color: Colors.white,
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          product.name,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: TextStyle(
+                                  fontSize: nameFs,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (product.originalPrice != null &&
+                                  product.originalPrice! > product.price) ...[
+                                SizedBox(height: 3 * tScale),
+                                Text(
+                                  product.formattedOriginalPrice ?? '',
+                                  style: TextStyle(
+                                    fontSize: origFs,
+                                    color: Colors.grey[600],
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        if (product.originalPrice != null &&
-                            product.originalPrice! > product.price)
-                          Text(
-                            product.formattedOriginalPrice ?? '',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        const SizedBox(height: 2),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             if (product.discountRate != null)
                               Text(
                                 '${product.discountRate!.toStringAsFixed(0)}%',
-                                style: const TextStyle(
-                                  fontSize: 12,
+                                style: TextStyle(
+                                  fontSize: discFs,
                                   color: _brandPink,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
                             if (product.discountRate != null)
-                              const SizedBox(width: 6),
-                            Text(
-                              product.formattedPrice,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                              SizedBox(width: 5 * tScale),
+                            Expanded(
+                              child: Text(
+                                product.formattedPrice,
+                                style: TextStyle(
+                                  fontSize: priceFs,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

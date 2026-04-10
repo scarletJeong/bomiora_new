@@ -1,5 +1,50 @@
 import 'package:flutter/material.dart';
 
+/// 섹션 하단 회색 구분선 (화면 대비 짧게, 가운데)
+Widget _sectionBottomDivider(BuildContext context) {
+  final screenW = MediaQuery.sizeOf(context).width;
+  final lineW = (screenW * 0.9).clamp(200.0, screenW - 24);
+  return Center(
+    child: SizedBox(
+      width: lineW,
+      child: Divider(
+        height: 1,
+        thickness: 0.5,
+        color: Colors.grey.shade300,
+      ),
+    ),
+  );
+}
+
+/// 접이식 섹션 제목 앞 세로 구분 표시 (`| 배송` 형태)
+Widget _expandableSectionTitle(String title) {
+  return Row(
+    children: [
+      const Text(
+        '|',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: Colors.black87,
+        ),
+      ),
+      const SizedBox(width: 2),
+      Flexible(
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
+}
+
 /// 제품 상세페이지 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
 class ProductTailInfoSection extends StatelessWidget {
   final bool initialExpanded;
@@ -12,7 +57,7 @@ class ProductTailInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final result = Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 20),
       child: Column(
         children: [
           // 배송 정보
@@ -257,14 +302,7 @@ class _DeliverySectionState extends State<_DeliverySection> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  '배송',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+                Expanded(child: _expandableSectionTitle('배송')),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
@@ -296,7 +334,7 @@ class _DeliverySectionState extends State<_DeliverySection> {
                 )
               : const SizedBox.shrink(),
         ),
-        const Divider(height: 1, thickness: 0.5),
+        _sectionBottomDivider(context),
       ],
     );
   }
@@ -383,14 +421,7 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    widget.title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
+                  child: _expandableSectionTitle(widget.title),
                 ),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -418,7 +449,7 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
                 )
               : const SizedBox.shrink(),
         ),
-        const Divider(height: 1, thickness: 0.5),
+        _sectionBottomDivider(context),
       ],
     );
   }
@@ -495,14 +526,7 @@ class _PrescriptionProcessSectionState
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  '처방 프로세스',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+                Expanded(child: _expandableSectionTitle('처방 프로세스')),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
@@ -554,7 +578,7 @@ class _PrescriptionProcessSectionState
                 )
               : const SizedBox.shrink(),
         ),
-        const Divider(height: 1, thickness: 0.5),
+        _sectionBottomDivider(context),
       ],
     );
   }
@@ -653,14 +677,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  '교환/환불',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+                Expanded(child: _expandableSectionTitle('교환/환불')),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
@@ -731,7 +748,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
                 )
               : const SizedBox.shrink(),
         ),
-        const Divider(height: 1, thickness: 0.5),
+        _sectionBottomDivider(context),
       ],
     );
   }

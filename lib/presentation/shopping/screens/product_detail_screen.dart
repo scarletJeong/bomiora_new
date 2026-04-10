@@ -19,6 +19,7 @@ import '../../../data/services/wish_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../data/models/user/user_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -31,6 +32,8 @@ import '../utils/get_review.dart';
 import 'webview_screen.dart';
 import '../../review/screens/review_detail_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
+
+const _kGmarketSans = 'Gmarket Sans TTF';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -67,6 +70,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   bool? _isDetailExpanded = false;
   int _visibleSupporterReviewCount = 4;
   int _visibleNormalReviewCount = 4;
+  UserModel? _loggedInUser;
 
   // 옵션 관련 상태
   List<ProductOption> _productOptions = [];
@@ -88,8 +92,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _loadReviews();
     });
     _loadUserPoint();
+    _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
+  }
+
+  Future<void> _loadAuthUser() async {
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    setState(() => _loggedInUser = user);
+  }
+
+  bool get _isReviewLoginOk =>
+      _loggedInUser != null && _loggedInUser!.id.trim().isNotEmpty;
+
+  Future<void> _onGuestReviewLoginTap() async {
+    await Navigator.pushNamed(context, '/login');
+    if (!mounted) return;
+    await _loadAuthUser();
   }
 
   @override
@@ -424,27 +444,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final baseTheme = Theme.of(context);
+    final detailTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: _kGmarketSans),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: _kGmarketSans),
+    );
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            DefaultTextStyle.merge(
-              style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _hasError
-                      ? _buildErrorState()
-                      : _product == null
-                          ? _buildErrorState()
-                          : _buildProductDetail(),
+      child: Theme(
+        data: detailTheme,
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: _kGmarketSans),
+          child: Scaffold(
+            backgroundColor: Colors.white,
+            body: Stack(
+              children: [
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _hasError
+                        ? _buildErrorState()
+                        : _product == null
+                            ? _buildErrorState()
+                            : _buildProductDetail(),
+                if (!_isLoading && !_hasError && _product != null)
+                  _buildFloatingTransparentAppBar(),
+              ],
             ),
-            if (!_isLoading && !_hasError && _product != null)
-              _buildFloatingTransparentAppBar(),
-          ],
+            bottomNavigationBar:
+                _product == null ? null : _buildBottomActionBar(),
+          ),
         ),
-        bottomNavigationBar: _product == null ? null : _buildBottomActionBar(),
       ),
     );
   }
@@ -500,23 +530,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 indicatorWeight: 3,
                 labelColor: const Color(0xFFFF4081),
                 unselectedLabelColor: Colors.grey[600],
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontFamily: _kGmarketSans,
+                ),
                 tabs: [
                   const Tab(
                     child: Text(
                       '처방약 소개',
-                      style: TextStyle(fontSize: 14),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: _kGmarketSans,
+                      ),
                     ),
                   ),
                   Tab(
                     child: Text(
                       '서포터리뷰 $supporterReviewCount',
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontFamily: _kGmarketSans,
+                      ),
                     ),
                   ),
                   Tab(
                     child: Text(
                       '일반리뷰 $generalReviewCount',
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontFamily: _kGmarketSans,
+                      ),
                     ),
                   ),
                 ],
@@ -550,36 +598,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: dynamicTopSpacing),
-            // 제품 태그
-            if (_product!.categoryName != null)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  _product!.categoryName!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+            // 제품명 (앞 세로 막대)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 3, right: 8),
+                  child: Container(
+                    width: 2,
+                    height: 20,
+                    color: Colors.black87,
                   ),
                 ),
-              ),
-            if (_product!.categoryName != null) const SizedBox(height: 12),
-
-            // 제품명
-            Text(
-              _product!.name,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+                Expanded(
+                  child: Text(
+                    _product!.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
 
@@ -588,12 +629,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             if (isPrescription)
               Align(
                 alignment: Alignment.centerRight,
-                child: Text(
-                  '한의약품',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w300,
-                    color: const Color(0xFFFF5A95),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: const Color(0xFFFF5A95),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Text(
+                    '한의약품',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFFFF5A95),
+                    ),
                   ),
                 ),
               ),
@@ -609,7 +661,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             const Divider(
               height: 32,
               thickness: 1,
-              color: Colors.grey,
+              color: Color(0xFFD9D9D9),
             ),
 
             // 제품 스펙
@@ -648,7 +700,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           if (_product?.ctKind == 'prescription') _buildRecommendedSection(),
 
           // 하단 여백
-          const SizedBox(height: 100),
+          const SizedBox(height: 56),
 
           // Footer
           // const AppFooter(),
@@ -662,12 +714,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       reviews: _supporterReviews,
       isLoading: _isLoadingReviews,
       visibleCount: _visibleSupporterReviewCount,
+      guestLoginLocked: !_isReviewLoginOk,
+      onGuestLoginTap: _onGuestReviewLoginTap,
       onLoadMore: () {
         setState(() {
           _visibleSupporterReviewCount += 8;
         });
       },
       onReviewTap: (review) {
+        // 리뷰 카드 탭 → [ReviewDetailScreen] 리뷰 상세 페이지
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -683,12 +738,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       reviews: _generalReviews,
       isLoading: _isLoadingReviews,
       visibleCount: _visibleNormalReviewCount,
+      guestLoginLocked: !_isReviewLoginOk,
+      onGuestLoginTap: _onGuestReviewLoginTap,
       onLoadMore: () {
         setState(() {
           _visibleNormalReviewCount += 8;
         });
       },
       onReviewTap: (review) {
+        // 리뷰 카드 탭 → [ReviewDetailScreen] 리뷰 상세 페이지
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -703,7 +761,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     // 화면 크기에 따라 동적으로 조절
     final screenWidth = MediaQuery.of(context).size.width;
     // 높이: 화면 너비에 비례 (최소 200px, 최대 550px)
-    final imageHeight = (screenWidth * 1.0).clamp(200.0, 600.0);
+    final imageHeight = (screenWidth * 0.88).clamp(200.0, 420.0);
     // 너비: 화면 너비에서 패딩을 뺀 값 (최대 600px)
     final maxWidth = (screenWidth).clamp(200.0, 600.0);
 
@@ -1010,7 +1068,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       child: Column(
         children: specs.map((spec) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
+            padding: const EdgeInsets.symmetric(vertical: 3.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1162,6 +1220,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
+  /// 홈 화면 AppBar와 동일하게 배경·블러 없이 투명 (뒤로가기만)
   Widget _buildFloatingTransparentAppBar() {
     return Positioned(
       top: 0,
@@ -1169,32 +1228,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       right: 0,
       child: SafeArea(
         bottom: false,
-        child: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-            child: Container(
-              height: kToolbarHeight,
-              color: Colors.black.withOpacity(0.06),
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.chevron_left,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                    onPressed: () {
-                      if (Navigator.of(context).canPop()) {
-                        Navigator.of(context).pop();
-                      } else {
-                        Navigator.of(context).pushReplacementNamed('/home');
-                      }
-                    },
-                  ),
-                ],
+        child: SizedBox(
+          height: kToolbarHeight,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.chevron_left,
+                  color: Colors.black,
+                  size: 28,
+                ),
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    Navigator.of(context).pushReplacementNamed('/home');
+                  }
+                },
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -1232,6 +1284,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         'body': Style(
           margin: Margins.zero,
           padding: HtmlPaddings.zero,
+          fontFamily: _kGmarketSans,
         ),
         'img': Style(
           width: Width(imageWidth),
@@ -1241,12 +1294,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         'div': Style(
           margin: Margins.zero,
           padding: HtmlPaddings.zero,
+          fontFamily: _kGmarketSans,
         ),
         'p': Style(
           margin: Margins.zero,
           padding: HtmlPaddings.zero,
           display: Display.block,
+          fontFamily: _kGmarketSans,
         ),
+        'span': Style(fontFamily: _kGmarketSans),
+        'li': Style(fontFamily: _kGmarketSans),
+        'h1': Style(fontFamily: _kGmarketSans),
+        'h2': Style(fontFamily: _kGmarketSans),
+        'h3': Style(fontFamily: _kGmarketSans),
+        'h4': Style(fontFamily: _kGmarketSans),
+        'a': Style(fontFamily: _kGmarketSans),
       },
     );
   }
@@ -1333,6 +1395,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
+                    fontFamily: _kGmarketSans,
                   ),
                 ),
               ),
@@ -1350,7 +1413,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         excludedProductNames: [_product?.name ?? ''],
         products: _recommendedProducts,
         title: '추천 상품',
-        showLeadingBar: false,
+        showLeadingBar: true,
         onProductTap: (product) {
           Navigator.pushNamed(context, '/product/${product.id}');
         },
@@ -1411,6 +1474,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    fontFamily: _kGmarketSans,
                   ),
                 ),
               ),
@@ -1591,200 +1655,222 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        final screenWidth = MediaQuery.of(context).size.width;
+      builder: (sheetContext) {
+        final sheetTheme = Theme.of(sheetContext).copyWith(
+          textTheme: Theme.of(sheetContext).textTheme.apply(
+                fontFamily: _kGmarketSans,
+              ),
+          primaryTextTheme: Theme.of(sheetContext).primaryTextTheme.apply(
+                fontFamily: _kGmarketSans,
+              ),
+        );
+        final screenWidth = MediaQuery.of(sheetContext).size.width;
         final constrainedWidth = math.min(screenWidth - 12, 600.0);
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final totalPrice = _product!.price * quantity;
-            return Align(
-              alignment: Alignment.bottomCenter,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: constrainedWidth),
-                child: ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Container(
-                    color: Colors.white,
-                    child: SafeArea(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  _product!.name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+        return Theme(
+          data: sheetTheme,
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: _kGmarketSans),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                final totalPrice = _product!.price * quantity;
+                return Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: constrainedWidth),
+                    child: ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(20)),
+                      child: Container(
+                        color: Colors.white,
+                        child: SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
-                                    const Text(
-                                      '수량',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
+                                    Text(
+                                      _product!.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    _buildGeneralQuantityControl(
-                                      quantity: quantity,
-                                      onDecrease: quantity > 1
-                                          ? () =>
-                                              setModalState(() => quantity--)
-                                          : null,
-                                      onIncrease: () =>
-                                          setModalState(() => quantity++),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text(
+                                          '수량',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        _buildGeneralQuantityControl(
+                                          quantity: quantity,
+                                          onDecrease: quantity > 1
+                                              ? () => setModalState(
+                                                  () => quantity--)
+                                              : null,
+                                          onIncrease: () =>
+                                              setModalState(() => quantity++),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.12),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, -2),
-                                ),
-                              ],
-                            ),
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        '총 결제금액',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${PriceFormatter.format(totalPrice)}원',
-                                        style: const TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFFFF4081),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        '보유 포인트 ${PriceFormatter.format(_userPoint ?? 0)}P',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[700],
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Divider(height: 1),
-                                  const SizedBox(height: 14),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed: () async {
-                                            Navigator.of(context).pop();
-                                            final success =
-                                                await _addGeneralProductToCart(
-                                              quantity: quantity,
-                                            );
-                                            if (!mounted || !success) return;
-                                            Navigator.pushNamed(
-                                              this.context,
-                                              '/cart',
-                                              arguments: const {
-                                                'initialTabIndex': 1,
-                                              },
-                                            );
-                                          },
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: Colors.black87,
-                                            side: BorderSide(
-                                              color: Colors.grey[400]!,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 14,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            '장바구니',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () async {
-                                            Navigator.of(context).pop();
-                                            final success =
-                                                await _addGeneralProductToCart(
-                                              quantity: quantity,
-                                            );
-                                            if (!mounted || !success) return;
-                                            _navigateToCheckoutPage();
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0xFFFF4081),
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 14,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            '구매하기',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
                               ),
-                            ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.12),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, -2),
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text(
+                                            '총 결제금액',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${PriceFormatter.format(totalPrice)}원',
+                                            style: const TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFFFF4081),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '보유 포인트 ${PriceFormatter.format(_userPoint ?? 0)}P',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[700],
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 14),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: OutlinedButton(
+                                              onPressed: () async {
+                                                Navigator.of(context).pop();
+                                                final success =
+                                                    await _addGeneralProductToCart(
+                                                  quantity: quantity,
+                                                );
+                                                if (!mounted || !success)
+                                                  return;
+                                                Navigator.pushNamed(
+                                                  this.context,
+                                                  '/cart',
+                                                  arguments: const {
+                                                    'initialTabIndex': 1,
+                                                  },
+                                                );
+                                              },
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.black87,
+                                                side: BorderSide(
+                                                  color: Colors.grey[400]!,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 14,
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                '장바구니',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: () async {
+                                                Navigator.of(context).pop();
+                                                final success =
+                                                    await _addGeneralProductToCart(
+                                                  quantity: quantity,
+                                                );
+                                                if (!mounted || !success)
+                                                  return;
+                                                _navigateToCheckoutPage();
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0xFFFF4081),
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 14,
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                '구매하기',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         );
       },
     );

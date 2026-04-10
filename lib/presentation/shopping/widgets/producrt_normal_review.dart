@@ -9,6 +9,8 @@ class ProductNormalReview extends StatelessWidget {
   final int visibleCount;
   final VoidCallback onLoadMore;
   final ValueChanged<ReviewModel> onReviewTap;
+  final bool guestLoginLocked;
+  final VoidCallback? onGuestLoginTap;
 
   const ProductNormalReview({
     super.key,
@@ -17,6 +19,8 @@ class ProductNormalReview extends StatelessWidget {
     required this.visibleCount,
     required this.onLoadMore,
     required this.onReviewTap,
+    this.guestLoginLocked = false,
+    this.onGuestLoginTap,
   });
 
   @override
@@ -51,22 +55,12 @@ class ProductNormalReview extends StatelessWidget {
             if (visibleReviews.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                child: _GuestAwareReviewGridNormal(
+                  guestLoginLocked: guestLoginLocked,
+                  onGuestLoginTap: onGuestLoginTap,
                   itemCount: visibleReviews.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.75,
-                  ),
-                  itemBuilder: (context, index) {
-                    return _ReviewGridCard(
-                      review: visibleReviews[index],
-                      onTap: () => onReviewTap(visibleReviews[index]),
-                    );
-                  },
+                  onReviewTap: onReviewTap,
+                  visibleReviews: visibleReviews,
                 ),
               ),
             if (cappedCount < sorted.length)
@@ -95,7 +89,7 @@ class ProductNormalReview extends StatelessWidget {
                 ),
               ),
           ],
-          const SizedBox(height: 100),
+          const SizedBox(height: 56),
         ],
       ),
     );
@@ -270,91 +264,223 @@ class _ReviewGridCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
+            SizedBox(
+              height: 96,
               width: double.infinity,
-              height: 140,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(10)),
-              ),
-              child: review.images.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(10)),
-                      child: Image.network(
-                        ImageUrlHelper.getReviewImageUrl(review.images.first),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Icon(
-                              Icons.rate_review,
-                              size: 32,
-                              color: Colors.grey[400],
-                            ),
-                          );
-                        },
-                      ),
-                    )
-                  : Center(
-                      child: Icon(
-                        Icons.rate_review,
-                        size: 32,
-                        color: Colors.grey[400],
-                      ),
-                    ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          review.isName ?? '익명',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(10)),
+                ),
+                child: review.images.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(10)),
+                        child: Image.network(
+                          ImageUrlHelper.getReviewImageUrl(review.images.first),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 96,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(
+                                Icons.rate_review,
+                                size: 32,
+                                color: Colors.grey[400],
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : Center(
+                        child: Icon(
+                          Icons.rate_review,
+                          size: 32,
+                          color: Colors.grey[400],
                         ),
                       ),
-                      Row(
-                        children: List.generate(5, (index) {
-                          final rating = review.averageScore ?? 0;
-                          return Icon(
-                            index < rating.round()
-                                ? Icons.star
-                                : Icons.star_border,
-                            size: 12,
-                            color: Colors.amber,
-                          );
-                        }),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  if (review.isPositiveReviewText != null &&
-                      review.isPositiveReviewText!.isNotEmpty)
-                    Text(
-                      review.isPositiveReviewText!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            review.isName ?? '익명',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(5, (index) {
+                            final rating = review.averageScore ?? 0;
+                            return Icon(
+                              index < rating.round()
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              size: 12,
+                              color: Colors.amber,
+                            );
+                          }),
+                        ),
+                      ],
                     ),
-                ],
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: review.isPositiveReviewText != null &&
+                                review.isPositiveReviewText!.isNotEmpty
+                            ? Text(
+                                review.isPositiveReviewText!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _GuestAwareReviewGridNormal extends StatelessWidget {
+  final bool guestLoginLocked;
+  final VoidCallback? onGuestLoginTap;
+  final int itemCount;
+  final ValueChanged<ReviewModel> onReviewTap;
+  final List<ReviewModel> visibleReviews;
+
+  const _GuestAwareReviewGridNormal({
+    required this.guestLoginLocked,
+    required this.onGuestLoginTap,
+    required this.itemCount,
+    required this.onReviewTap,
+    required this.visibleReviews,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final grid = GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: itemCount,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.74,
+      ),
+      itemBuilder: (context, index) {
+        return _ReviewGridCard(
+          review: visibleReviews[index],
+          onTap: () => onReviewTap(visibleReviews[index]),
+        );
+      },
+    );
+
+    if (!guestLoginLocked) return grid;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AbsorbPointer(absorbing: true, child: grid),
+        Positioned.fill(
+          child: Material(
+            color: Colors.white.withValues(alpha: 0.72),
+            child: Center(
+              child: SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '의료법에 의거하여 의약품 후기는',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.45,
+                        color: Colors.grey[800],
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF5A8D),
+                        ),
+                        child: const Text(
+                          '로그인 후 확인이 가능합니다',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.45,
+                            color: Colors.white,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: SizedBox(
+                        width: 200,
+                        child: ElevatedButton(
+                          onPressed: onGuestLoginTap,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF4081),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            '로그인 하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Gmarket Sans TTF',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

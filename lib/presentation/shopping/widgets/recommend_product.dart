@@ -91,7 +91,7 @@ class RecommendProductSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 255,
+          height: 198,
           child: recommended.isEmpty
               ? Container(
                   width: double.infinity,
@@ -169,18 +169,18 @@ class _RecommendCard extends StatelessWidget {
               child: Image.network(
                 product.imageUrl ?? '',
                 width: 156,
-                height: 185,
+                height: 128,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   width: 156,
-                  height: 185,
+                  height: 128,
                   color: Colors.grey[200],
                   child: const Icon(Icons.image_not_supported),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
+              padding: const EdgeInsets.fromLTRB(6, 5, 6, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
