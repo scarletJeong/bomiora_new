@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/app_bar.dart';
+import '../../common/widgets/confirm_dialog.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/cart_service.dart';
@@ -256,25 +257,15 @@ class _CartScreenState extends State<CartScreen> {
     if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('삭제 확인'),
-        content: const Text('장바구니에서 이 상품을 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '삭제 확인',
+      message: '장바구니에서 이 상품을 /n삭제하시겠습니까?',
+      cancelText: '취소',
+      confirmText: '삭제',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       final result = await CartService.removeCartItem(ctId);
       if (!mounted) return;
 
@@ -303,26 +294,16 @@ class _CartScreenState extends State<CartScreen> {
     final selectedDisplayedItems = _selectedDisplayedItemIds;
     if (selectedDisplayedItems.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('삭제 확인'),
-        content:
-            Text('선택한 ${selectedDisplayedItems.length}개 상품을 장바구니에서 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '삭제 확인',
+      message:
+          '선택한 ${selectedDisplayedItems.length}개 상품을 장바구니에서 삭제하시겠습니까?',
+      cancelText: '취소',
+      confirmText: '삭제',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       // 선택된 아이템들을 순차적으로 삭제
       final itemsToDelete = List<int>.from(selectedDisplayedItems);
       int successCount = 0;
@@ -608,79 +589,80 @@ class _CartScreenState extends State<CartScreen> {
                                     ),
                                     const SizedBox(height: 18),
 
-                                    // 추가 상품 구매하기 섹션 라벨
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: const [
-                                            Text(
-                                              '|',
-                                              style: TextStyle(
-                                                color: Color(0xFF1A1A1A),
-                                                fontSize: 16,
-                                                fontFamily: 'Gmarket Sans TTF',
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: -1.44,
+                                    if (_recommendedProducts.isNotEmpty) ...[
+                                      // 추가 상품 구매하기 섹션 라벨
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16),
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: const [
+                                              Text(
+                                                '|',
+                                                style: TextStyle(
+                                                  color: Color(0xFF1A1A1A),
+                                                  fontSize: 16,
+                                                  fontFamily: 'Gmarket Sans TTF',
+                                                  fontWeight: FontWeight.w700,
+                                                  letterSpacing: -1.44,
+                                                ),
                                               ),
-                                            ),
-                                            SizedBox(width: 6),
-                                            Text(
-                                              '추가 상품 구매하기',
-                                              style: TextStyle(
-                                                color: Color(0xFF1A1A1A),
-                                                fontSize: 16,
-                                                fontFamily: 'Gmarket Sans TTF',
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: -1.44,
+                                              SizedBox(width: 6),
+                                              Text(
+                                                '추가 상품 구매하기',
+                                                style: TextStyle(
+                                                  color: Color(0xFF1A1A1A),
+                                                  fontSize: 16,
+                                                  fontFamily: 'Gmarket Sans TTF',
+                                                  fontWeight: FontWeight.w700,
+                                                  letterSpacing: -1.44,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 16),
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          '함께 구매하면 좋은 상품을 확인해보세요 !',
-                                          style: TextStyle(
-                                            color: Color(0xFF898686),
-                                            fontSize: 12,
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.32,
+                                            ],
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 10),
-
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      child: RecommendProductSection(
-                                        excludedProductNames:
-                                            _displayedCartItems
-                                                .map((e) => e.itName)
-                                                .toList(),
-                                        products: _recommendedProducts,
-                                        title: '추가 상품 구매하기',
-                                        showLeadingBar: false,
-                                        onProductTap: (product) {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/product/${product.id}',
-                                          );
-                                        },
+                                      const SizedBox(height: 6),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 16),
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            '함께 구매하면 좋은 상품을 확인해보세요 !',
+                                            style: TextStyle(
+                                              color: Color(0xFF898686),
+                                              fontSize: 12,
+                                              fontFamily: 'Gmarket Sans TTF',
+                                              fontWeight: FontWeight.w500,
+                                              height: 1.32,
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(height: 10),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16),
+                                        child: RecommendProductSection(
+                                          excludedProductNames:
+                                              _displayedCartItems
+                                                  .map((e) => e.itName)
+                                                  .toList(),
+                                          products: _recommendedProducts,
+                                          title: '추가 상품 구매하기',
+                                          showLeadingBar: false,
+                                          onProductTap: (product) {
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/product/${product.id}',
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -897,8 +879,151 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  static const TextStyle _kCartOptionMuted = TextStyle(
+    color: Color(0xFF898383),
+    fontSize: 10,
+    fontFamily: 'Gmarket Sans TTF',
+    fontWeight: FontWeight.w500,
+    letterSpacing: -0.90,
+  );
+
+  bool _isPrescriptionKind(CartItem item) =>
+      item.ctKind.trim().toLowerCase() == 'prescription';
+
+  /// 처방: 기존 옵션 줄 뒤에 `| 수량 : N개` (이미지 열은 그대로)
+  Widget _buildPrescriptionOptionRowWithQty(CartItem item) {
+    final opt = _buildCartItemOptionRow(item);
+    final qtyText = Text(
+      '수량 : ${item.ctQty}개',
+      style: _kCartOptionMuted,
+    );
+    if (opt == null) {
+      return qtyText;
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Flexible(
+          fit: FlexFit.loose,
+          child: opt,
+        ),
+        Container(
+          width: 0.5,
+          height: 10,
+          color: const Color(0xFF898686),
+        ),
+        const SizedBox(width: 5),
+        qtyText,
+      ],
+    );
+  }
+
+  static const TextStyle _kPrescriptionMetaLine = TextStyle(
+    color: Color(0xFF1A1A1A),
+    fontSize: 12,
+    fontFamily: 'Gmarket Sans TTF',
+    fontWeight: FontWeight.w500,
+    height: 1.35,
+  );
+
+  String _formatCartReservationDate(CartItem item) {
+    final d = item.reservationDate;
+    if (d == null) return '-';
+    return DateDisplayFormatter.formatYmd(d);
+  }
+
+  /// 옵션/규격 줄 — `ct_option`의 ` / ` 또는 `it_subject` + `ct_option` 조합
+  Widget? _buildCartItemOptionRow(CartItem item) {
+    final opt = item.ctOption.trim();
+    final sub = item.itSubject?.trim() ?? '';
+
+    if (opt.contains(' / ')) {
+      final parts = opt
+          .split(' / ')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parts.length >= 2) {
+        final left = parts.first;
+        final right = parts.sublist(1).join(' / ');
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$left ', style: _kCartOptionMuted),
+            Container(
+              width: 0.5,
+              height: 10,
+              color: const Color(0xFF898686),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                right,
+                style: _kCartOptionMuted,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        );
+      }
+    }
+    if (sub.isNotEmpty && opt.isNotEmpty) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              '$sub ',
+              style: _kCartOptionMuted,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            width: 0.5,
+            height: 10,
+            color: const Color(0xFF898686),
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              opt,
+              style: _kCartOptionMuted,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      );
+    }
+    if (opt.isNotEmpty) {
+      return Text(
+        opt,
+        style: _kCartOptionMuted,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+    if (sub.isNotEmpty) {
+      return Text(
+        sub,
+        style: _kCartOptionMuted,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+    return null;
+  }
+
   Widget _buildCartItemCard(CartItem item) {
     final isSelected = selectedItems.contains(item.ctId);
+    final isPrescription = _isPrescriptionKind(item);
+    final categoryLabel = (item.productType != null &&
+            item.productType!.trim().isNotEmpty)
+        ? item.productType!.trim()
+        : (item.isPrescription ? '한의약품' : null);
+    final optionRow = _buildCartItemOptionRow(item);
 
     return Container(
       width: double.infinity,
@@ -910,7 +1035,7 @@ class _CartScreenState extends State<CartScreen> {
             width: 1,
             color: Color(0x7FD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
       child: Column(
@@ -918,35 +1043,39 @@ class _CartScreenState extends State<CartScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               SizedBox(
-                width: 16,
-                height: 16,
-                child: _lightCheckbox(
-                  value: isSelected,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      if (value ?? false) {
-                        selectedItems.add(item.ctId);
-                      } else {
-                        selectedItems.remove(item.ctId);
-                      }
-                      selectAll = _displayedCartItems.isNotEmpty &&
-                          _displayedItemIds.difference(selectedItems).isEmpty;
-                    });
-                  },
+                width: 20,
+                height: 20,
+                child: Center(
+                  child: _lightCheckbox(
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value ?? false) {
+                          selectedItems.add(item.ctId);
+                        } else {
+                          selectedItems.remove(item.ctId);
+                        }
+                        selectAll = _displayedCartItems.isNotEmpty &&
+                            _displayedItemIds.difference(selectedItems).isEmpty;
+                      });
+                    },
+                  ),
                 ),
               ),
-              IconButton(
-                onPressed: () => _deleteCartItem(item.ctId),
-                icon: const Icon(Icons.close, size: 18),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              const Spacer(),
+              InkWell(
+                onTap: () => _deleteCartItem(item.ctId),
+                borderRadius: BorderRadius.circular(10),
+                child: const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Icon(Icons.close, size: 18, color: Color(0xFF1A1A1A)),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
@@ -968,8 +1097,10 @@ class _CartScreenState extends State<CartScreen> {
                         width: 87,
                         height: 87,
                         color: Colors.grey[200],
-                        child: const Icon(Icons.image_not_supported,
-                            color: Colors.grey),
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
@@ -979,6 +1110,18 @@ class _CartScreenState extends State<CartScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (categoryLabel != null) ...[
+                        Text(
+                          categoryLabel,
+                          style: const TextStyle(
+                            color: Color(0xFF898686),
+                            fontSize: 8,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                      ],
                       Text(
                         item.itName,
                         style: const TextStyle(
@@ -988,71 +1131,107 @@ class _CartScreenState extends State<CartScreen> {
                           fontWeight: FontWeight.w700,
                           letterSpacing: -1.26,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 5),
-                      if (item.itSubject != null && item.itSubject!.isNotEmpty)
+                      if (isPrescription) ...[
+                        const SizedBox(height: 5),
+                        _buildPrescriptionOptionRowWithQty(item),
+                        const SizedBox(height: 10),
                         Text(
-                          item.itSubject!,
+                          '${PriceFormatter.format(item.ctPrice)}원',
                           style: const TextStyle(
-                            color: Color(0xFF898383),
-                            fontSize: 10,
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 16,
                             fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: -0.90,
+                            fontWeight: FontWeight.w700,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          const Text(
-                            '수량',
-                            style: TextStyle(
-                              color: Color(0xFF1A1A1A),
-                              fontSize: 14,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          _buildFigmaQtyControl(
-                            quantity: item.ctQty,
-                            onDecrease: item.ctQty > 1
-                                ? () =>
-                                    _updateQuantity(item.ctId, item.ctQty - 1)
-                                : null,
-                            onIncrease: () =>
-                                _updateQuantity(item.ctId, item.ctQty + 1),
-                          ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          height: 0.5,
+                          color: const Color(0x7FD2D2D2),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          '담당 한의사 정대진',
+                          style: _kPrescriptionMetaLine,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '예약 일자 ${_formatCartReservationDate(item)}',
+                          style: _kPrescriptionMetaLine,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '예약 시간 ${item.reservationTime?.trim().isNotEmpty == true ? item.reservationTime!.trim() : '-'}',
+                          style: _kPrescriptionMetaLine,
+                        ),
+                      ] else ...[
+                        if (optionRow != null) ...[
+                          const SizedBox(height: 5),
+                          optionRow,
                         ],
-                      ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const Text(
+                              '수량',
+                              style: TextStyle(
+                                color: Color(0xFF1A1A1A),
+                                fontSize: 14,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            _buildFigmaQtyControl(
+                              quantity: item.ctQty,
+                              onDecrease: item.ctQty > 1
+                                  ? () =>
+                                      _updateQuantity(item.ctId, item.ctQty - 1)
+                                  : null,
+                              onIncrease: () =>
+                                  _updateQuantity(item.ctId, item.ctQty + 1),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 15),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFD2D2D2)),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(
-                '${PriceFormatter.format(item.ctPrice)}원',
-                style: const TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
+          if (!isPrescription)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.only(top: 15),
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    width: 0.5,
+                    color: Color(0x7FD2D2D2),
+                  ),
                 ),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    '${PriceFormatter.format(item.ctPrice)}원',
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 16,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

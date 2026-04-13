@@ -12,6 +12,10 @@ class RecommendProductSection extends StatefulWidget {
   final ValueChanged<Product> onProductTap;
   final String title;
   final bool showLeadingBar;
+  /// true이면 정렬·제외 후 노출할 상품이 없을 때 제목·리스트 전체를 그리지 않음
+  final bool hideWhenEmpty;
+  /// 섹션 표시 시 상단 여백 (hideWhenEmpty로 숨길 때는 적용 안 함)
+  final double topSpacingBefore;
 
   const RecommendProductSection({
     super.key,
@@ -20,6 +24,8 @@ class RecommendProductSection extends StatefulWidget {
     required this.onProductTap,
     this.title = '추가 상품 구매하기',
     this.showLeadingBar = true,
+    this.hideWhenEmpty = false,
+    this.topSpacingBefore = 0,
   });
 
   @override
@@ -43,6 +49,19 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
     return null;
   }
 
+  _RecommendGroup? _groupFromCategoryId(String? categoryId) {
+    if (categoryId == null || categoryId.isEmpty) return null;
+    if (categoryId.startsWith('10')) return _RecommendGroup.diet;
+    if (categoryId.startsWith('20')) return _RecommendGroup.detox;
+    if (categoryId.startsWith('80')) return _RecommendGroup.calm;
+    return null;
+  }
+
+  _RecommendGroup? _groupFromProduct(Product product) {
+    // 이름 기반 매칭 누락 케이스를 막기 위해 카테고리 ID를 우선 사용
+    return _groupFromCategoryId(product.categoryId) ?? _groupFromName(product.name);
+  }
+
   List<Product> _buildOrderedRecommendations() {
     final selectedGroups = <_RecommendGroup>{};
     for (final productName in widget.excludedProductNames) {
@@ -60,7 +79,7 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
 
     final byGroup = <_RecommendGroup, List<Product>>{};
     for (final product in widget.products) {
-      final group = _groupFromName(product.name);
+      final group = _groupFromProduct(product);
       if (group == null) continue;
       if (selectedGroups.contains(group)) continue;
       byGroup.putIfAbsent(group, () => <Product>[]).add(product);
@@ -77,9 +96,14 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
   @override
   Widget build(BuildContext context) {
     final recommended = _buildOrderedRecommendations();
+    if (widget.hideWhenEmpty && recommended.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.topSpacingBefore > 0)
+          SizedBox(height: widget.topSpacingBefore),
         Row(
           children: [
             if (widget.showLeadingBar)
