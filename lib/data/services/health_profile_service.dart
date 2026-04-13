@@ -25,7 +25,6 @@ class HealthProfileService {
         throw Exception('건강프로필 조회 실패: ${response.statusCode}');
       }
     } catch (e) {
-      print('건강프로필 조회 중 오류 발생: $e');
       throw Exception('건강프로필 조회 중 오류 발생: $e');
     }
   }
@@ -48,18 +47,11 @@ class HealthProfileService {
   
   // 건강프로필 수정
   static Future<bool> updateHealthProfile(HealthProfileModel profile) async {
-    try {
-      print('=== HealthProfileService.updateHealthProfile 호출 ===');
-      print('pfNo: ${profile.pfNo}');
-      print('요청 URL: ${ApiClient.baseUrl}/api/healthprofile/${profile.pfNo}');
-      
+    try {    
       // PUT 대신 POST로 변경 (pfNo를 포함하여 전송)
       // 백엔드에서 pfNo가 있으면 업데이트, 없으면 생성하도록 처리
       final response = await ApiClient.post('/api/healthprofile', profile.toJson());
-      
-      print('HTTP 응답 상태 코드: ${response.statusCode}');
-      print('HTTP 응답 본문: ${response.body}');
-      
+            
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return data is Map && data['success'] == true;
@@ -67,7 +59,6 @@ class HealthProfileService {
         throw Exception('건강프로필 수정 실패: ${response.statusCode}');
       }
     } catch (e) {
-      print('건강프로필 수정 중 오류 발생: $e');
       throw Exception('건강프로필 수정 중 오류 발생: $e');
     }
   }
