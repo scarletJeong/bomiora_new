@@ -1,1472 +1,1703 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
+import '../../../user/healthprofile/health_profile_questionnaire_options.dart';
+import '../../../user/healthprofile/health_profile_payload_codec.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 import 'prescription_time_screen.dart';
 
-/// 프로필 작성 화면 (5개 서브 페이지)
+/// `HealthProfileFormScreen._Answer6MenuLine` 과 동일 스타일 (다이어트 기간 오버레이 메뉴)
+class _PrescriptionDietPeriodMenuLine extends StatelessWidget {
+  const _PrescriptionDietPeriodMenuLine({
+    required this.label,
+    required this.showBottomDivider,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool showBottomDivider;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: showBottomDivider
+              ? const Border(
+                  bottom: BorderSide(
+                    width: 0.3,
+                    color: Color(0x7FD2D2D2),
+                  ),
+                )
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 처방 예약 — 문진·프로필 (한 화면 스크롤, 선택지는 마이페이지 문진과 동일 소스)
 class PrescriptionProfileScreen extends StatefulWidget {
   final String productId;
   final String productName;
-  final dynamic selectedOptions; // List<Map<String, dynamic>> 또는 Map<String, dynamic>? (하위 호환성)
-  
+  final dynamic selectedOptions;
+  final List<int>? tempCartCtIdsToClearOnSuccess;
+
   const PrescriptionProfileScreen({
     super.key,
     required this.productId,
     required this.productName,
     this.selectedOptions,
+    this.tempCartCtIdsToClearOnSuccess,
   });
 
   @override
-  State<PrescriptionProfileScreen> createState() => _PrescriptionProfileScreenState();
+  State<PrescriptionProfileScreen> createState() =>
+      _PrescriptionProfileScreenState();
 }
 
 class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
-  final PageController _pageController = PageController();
-  
+  static const Color _kAccent = Color(0xFFFF5A8D);
+  static const Color _kBorderGrey = Color(0x7FD2D2D2);
+  static const Color _kMutedText = Color(0xFF898383);
+  static const TextStyle _kBasicInfoLabelStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    fontFamily: 'Gmarket Sans TTF',
+  );
+  static const double _kTabTextSize = 15;
+  /// 기본정보 라벨 칸 폭 (작을수록 오른쪽 입력칸이 넓어짐)
+  static const double _kBasicInfoLabelWidth = 60;
+
+  /// 선택 시 연한 핑크 배경 (피그마 0x0CFF3787 계열, 앱 악센트에 맞춤)
+  static const Color _kSelectedFill = Color(0x0CFF5A8D);
+
+  /// 다이어트 기간 오버레이: 한 번에 보이는 최대 줄 수 · 줄 간격 · 줄 높이(패딩+16px 글자 기준)
+  static const int _kDietPeriodMenuMaxVisibleRows = 4;
+  static const double _kDietPeriodMenuRowGap = 5;
+  static const double _kDietPeriodMenuRowExtent =
+      44; // vertical padding 10*2 + ~24 (font 16)
+
   UserModel? _currentUser;
   HealthProfileModel? _existingProfile;
-  int _currentPage = 0; // 0~4 (5개 서브 페이지)
-  bool _isLoading = false;
-  bool _showWizard = true;
+  bool _loadingInitial = true;
+  bool _saving = false;
 
-  static const Color _kAccentBar = Color(0xFFFF5A8D);
-  static const Color _kCardBg = Color(0xFFF8F9FA);
-  static const Color _kInkTitle = Color(0xFF191C1D);
-  static const Color _kLabelBrown = Color(0xFF584045);
-  static const Color _kBorderLight = Color(0xFFF1F5F9);
-  
-  // 폼 데이터
   final Map<String, dynamic> _formData = {};
-  
+
+  final TextEditingController _birthDate = TextEditingController();
+  final GlobalKey _dietPeriodFieldKey = GlobalKey();
+  OverlayEntry? _dietPeriodMenuOverlay;
+  ScrollController? _dietPeriodMenuScrollController;
+  final TextEditingController _height = TextEditingController();
+  final TextEditingController _currentWeight = TextEditingController();
+  final TextEditingController _targetWeight = TextEditingController();
+  final List<TextEditingController> _mealControllers =
+      List.generate(4, (_) => TextEditingController());
+  final TextEditingController _dietMedicine = TextEditingController();
+  final TextEditingController _dietPeriodMonths = TextEditingController();
+  final TextEditingController _dietDosage = TextEditingController();
+  final TextEditingController _dietSideEffect = TextEditingController();
+  final TextEditingController _medicationsEtc = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _formData['eatingHabits'] = <String>[];
+    _formData['foodPreference'] = <String>[];
+    _formData['exerciseTypes'] = <String>[];
+    _formData['diseases'] = <String>[];
+    _formData['medications'] = <String>[];
     _loadUserAndProfile();
   }
-  
+
   @override
   void dispose() {
-    _pageController.dispose();
+    _removeDietPeriodMenuOverlay();
+    _birthDate.dispose();
+    _height.dispose();
+    _currentWeight.dispose();
+    _targetWeight.dispose();
+    for (final c in _mealControllers) {
+      c.dispose();
+    }
+    _dietMedicine.dispose();
+    _dietPeriodMonths.dispose();
+    _dietDosage.dispose();
+    _dietSideEffect.dispose();
+    _medicationsEtc.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadUserAndProfile() async {
-    setState(() => _isLoading = true);
-    
+    setState(() => _loadingInitial = true);
     try {
       final user = await AuthService.getUser();
       if (!mounted) return;
-      
       setState(() => _currentUser = user);
-      
+
       if (user != null) {
         final profile = await HealthProfileService.getHealthProfile(user.id);
         if (!mounted) return;
-        
-        if (profile != null) {
-          setState(() => _existingProfile = profile);
-          _loadExistingData(profile);
-          setState(() => _showWizard = false);
-        } else {
-          setState(() => _showWizard = true);
-        }
+        setState(() {
+          _existingProfile = profile;
+          if (profile != null) {
+            _applyProfileToForm(profile);
+          }
+        });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 로드 실패: $e')),
-        );
-      }
+      // ignored
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _loadingInitial = false);
     }
   }
-  
-  void _loadExistingData(HealthProfileModel profile) {
-    setState(() {
-      _formData['birthDate'] = profile.answer1;
-      // 성별 변환: "여성" -> "F", "남성" -> "M"
-      if (profile.answer2 == '여성' || profile.answer2 == 'F') {
-        _formData['gender'] = 'F';
-      } else if (profile.answer2 == '남성' || profile.answer2 == 'M') {
-        _formData['gender'] = 'M';
-      }
-      _formData['height'] = profile.answer4;
-      _formData['currentWeight'] = profile.answer5;
-      _formData['targetWeight'] = profile.answer3;
-      _formData['dietPeriod'] = profile.answer6;
-      _formData['mealsPerDay'] = profile.answer7;
-      _formData['mealTimes'] = profile.answer71;
-      _formData['eatingHabits'] = profile.answer8?.split('|') ?? [];
-      _formData['foodPreference'] = profile.answer9?.split('|') ?? [];
-      _formData['exerciseFrequency'] = profile.answer10;
-      _formData['diseases'] = profile.answer11?.split('|') ?? [];
-      _formData['medications'] = profile.answer12?.split('|') ?? [];
-      _formData['dietExperience'] = profile.answer13;
-      _formData['dietMedicine'] = profile.answer13Medicine;
-      _formData['dietPeriodMonths'] = profile.answer13Period;
-      _formData['dietDosage'] = profile.answer13Dosage;
-      _formData['dietSideEffect'] = profile.answer13Sideeffect;
-    });
-  }
-  
-  void _nextPage() {
-    if (_currentPage < 4) {
-      if (_validateCurrentPage()) {
-        setState(() => _currentPage++);
-        _pageController.nextPage(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
+
+  void _applyProfileToForm(HealthProfileModel p) {
+    final a1 = p.answer1.trim().replaceAll(RegExp(r'\D'), '');
+    if (a1.length >= 8) {
+      _birthDate.text = a1.substring(0, 8);
+      _formData['birthDate'] = a1.substring(0, 8);
+    } else if (a1.isNotEmpty) {
+      _birthDate.text = a1;
+    }
+
+    final g = p.answer2.trim();
+    if (g == '여성' || g == 'F' || g.toUpperCase() == 'F') {
+      _formData['gender'] = 'F';
+    } else if (g == '남성' || g == 'M' || g.toUpperCase() == 'M') {
+      _formData['gender'] = 'M';
     } else {
-      _goToTimeSelection();
+      _formData['gender'] = g.isEmpty ? null : g;
+    }
+
+    _height.text = p.answer4;
+    _currentWeight.text = p.answer5;
+    _targetWeight.text = p.answer3;
+    _formData['dietPeriod'] = p.answer6.isEmpty ? null : p.answer6;
+    _formData['mealsPerDay'] = p.answer7.isEmpty ? null : p.answer7;
+
+    final mealParts = p.answer71.split('|');
+    for (var i = 0; i < 4; i++) {
+      _mealControllers[i].text =
+          i < mealParts.length ? mealParts[i].trim() : '';
+    }
+    _formData['mealTimes'] = p.answer71;
+
+    _formData['eatingHabits'] = _splitPipeList(p.answer8);
+    _formData['foodPreference'] = _splitPipeList(p.answer9);
+
+    HealthProfilePayloadCodec.parseAnswer10IntoFormData(
+      p.answer10,
+      (freq) => _formData['exerciseFrequency'] =
+          freq.isEmpty ? null : freq,
+      (types) => _formData['exerciseTypes'] = types,
+    );
+
+    _formData['diseases'] = _splitPipeList(p.answer11);
+    _applyMedicationsFromAnswer12(p.answer12);
+
+    if (p.answer13 == '1') {
+      _formData['dietExperience'] = '없음';
+    } else if (p.answer13 == '2') {
+      _formData['dietExperience'] = '있음';
+    } else {
+      _formData['dietExperience'] =
+          p.answer13.isEmpty ? null : p.answer13;
+    }
+
+    _dietMedicine.text = p.answer13Medicine;
+    _dietPeriodMonths.text = p.answer13Period;
+    _dietDosage.text = p.answer13Dosage;
+    _dietSideEffect.text = p.answer13Sideeffect;
+  }
+
+  List<String> _splitPipeList(String raw) {
+    if (raw.isEmpty) return [];
+    return raw
+        .split('|')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  void _applyMedicationsFromAnswer12(String answer12) {
+    final meds = <String>[];
+    String? etc;
+    for (final part in _splitPipeList(answer12)) {
+      if (part.startsWith('기타:')) {
+        meds.add('기타');
+        etc = part.substring(3).trim();
+      } else {
+        final normalized =
+            part == '없음' ? '해당 없음' : part;
+        meds.add(normalized);
+      }
+    }
+    _formData['medications'] = meds;
+    _medicationsEtc.text = etc ?? '';
+  }
+
+  void _syncBirthDate() {
+    final raw = _birthDate.text.replaceAll(RegExp(r'\D'), '');
+    if (raw.length == 8) {
+      _formData['birthDate'] = raw;
+    } else {
+      _formData['birthDate'] = null;
     }
   }
-  
-  void _previousPage() {
-    if (_currentPage > 0) {
-      setState(() => _currentPage--);
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
+
+  void _syncMealTimes() {
+    _formData['mealTimes'] =
+        _mealControllers.map((c) => c.text.trim()).join('|');
   }
-  
-  bool _validateCurrentPage() {
-    switch (_currentPage) {
-      case 0: // 기본 정보
-        if (_formData['birthDate'] == null || _formData['gender'] == null ||
-            _formData['height'] == null || _formData['currentWeight'] == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('모든 항목을 입력해주세요')),
-          );
-          return false;
-        }
-        return true;
-      case 1: // 다이어트 목표
-        if (_formData['targetWeight'] == null || _formData['dietPeriod'] == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('모든 항목을 입력해주세요')),
-          );
-          return false;
-        }
-        return true;
-      case 2: // 식습관
-        if (_formData['mealsPerDay'] == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('하루 끼니를 선택해주세요')),
-          );
-          return false;
-        }
-        return true;
-      case 3: // 운동 및 건강
-        if (_formData['exerciseFrequency'] == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('운동 습관을 선택해주세요')),
-          );
-          return false;
-        }
-        return true;
-      case 4: // 다이어트 경험
-        if (_formData['dietExperience'] == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('다이어트약 복용 경험을 선택해주세요')),
-          );
-          return false;
-        }
-        if (_formData['dietExperience'] == '있음') {
-          if (_formData['dietMedicine'] == null || _formData['dietPeriodMonths'] == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('다이어트약 정보를 입력해주세요')),
-            );
-            return false;
-          }
-        }
-        return true;
-      default:
-        return true;
-    }
+
+  void _syncScalarFields() {
+    _formData['height'] = _height.text.trim();
+    _formData['currentWeight'] = _currentWeight.text.trim();
+    _formData['targetWeight'] = _targetWeight.text.trim();
+    _formData['dietMedicine'] = _dietMedicine.text.trim();
+    _formData['dietPeriodMonths'] = _dietPeriodMonths.text.trim();
+    _formData['dietDosage'] = _dietDosage.text.trim();
+    _formData['dietSideEffect'] = _dietSideEffect.text.trim();
+    _formData['medicationsEtc'] = _medicationsEtc.text.trim();
   }
-  
-  void _goToTimeSelection() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PrescriptionTimeScreen(
-          productId: widget.productId,
-          productName: widget.productName,
-          selectedOptions: widget.selectedOptions,
-          formData: _formData,
-          existingProfile: _existingProfile,
-        ),
+
+  bool _validate() {
+    _syncBirthDate();
+    _syncMealTimes();
+    _syncScalarFields();
+
+    String? msg;
+    if (_formData['birthDate'] == null) {
+      msg = '생년월일을 입력해주세요';
+    } else if (_formData['gender'] == null) {
+      msg = '성별을 선택해주세요';
+    } else if ((_formData['height'] as String).isEmpty) {
+      msg = '키를 입력해주세요';
+    } else if ((_formData['currentWeight'] as String).isEmpty) {
+      msg = '현재 몸무게를 입력해주세요';
+    } else if ((_formData['targetWeight'] as String).isEmpty) {
+      msg = '목표 감량 체중을 입력해주세요';
+    } else if (_formData['dietPeriod'] == null) {
+      msg = '다이어트 예상 기간을 선택해주세요';
+    } else if (_formData['mealsPerDay'] == null) {
+      msg = '하루 끼니를 선택해주세요';
+    } else if (_formData['exerciseFrequency'] == null) {
+      msg = '운동 빈도를 선택해주세요';
+    } else if (_formData['dietExperience'] == null) {
+      msg = '다이어트약 복용 경험을 선택해주세요';
+    } else if (_formData['dietExperience'] == '있음') {
+      if ((_formData['dietMedicine'] as String).isEmpty ||
+          (_formData['dietPeriodMonths'] as String).isEmpty) {
+        msg = '다이어트약 정보를 입력해주세요';
+      }
+    }
+
+    final habits = List<String>.from(_formData['eatingHabits'] as List? ?? []);
+    if (habits.isEmpty) {
+      msg ??= '식습관을 한 가지 이상 선택해주세요';
+    }
+    final foods = List<String>.from(_formData['foodPreference'] as List? ?? []);
+    if (foods.isEmpty) {
+      msg ??= '자주 먹는 음식을 한 가지 이상 선택해주세요';
+    }
+    final dis = List<String>.from(_formData['diseases'] as List? ?? []);
+    if (dis.isEmpty) {
+      msg ??= '질병 항목을 선택해주세요';
+    }
+    final med = List<String>.from(_formData['medications'] as List? ?? []);
+    if (med.isEmpty) {
+      msg ??= '복용 중인 약을 선택해주세요';
+    }
+    if (med.contains('기타') &&
+        (_formData['medicationsEtc'] as String).isEmpty) {
+      msg ??= '기타 복용약 내용을 입력해주세요';
+    }
+
+    if (msg != null) {
+      return false;
+    }
+    return true;
+  }
+
+  HealthProfileModel _buildProfileModel() {
+    final user = _currentUser!;
+    final now = DateTime.now();
+    return HealthProfileModel(
+      pfNo: _existingProfile?.pfNo,
+      mbId: user.id,
+      answer1: _formData['birthDate']?.toString() ?? '',
+      answer2: _formData['gender']?.toString() ?? '',
+      answer3: _formData['targetWeight']?.toString() ?? '',
+      answer4: _formData['height']?.toString() ?? '',
+      answer5: _formData['currentWeight']?.toString() ?? '',
+      answer6: _formData['dietPeriod']?.toString() ?? '',
+      answer7: _formData['mealsPerDay']?.toString() ?? '',
+      answer71: _formData['mealTimes']?.toString() ?? '|||',
+      answer8: HealthProfilePayloadCodec.formatListToString(
+          _formData['eatingHabits']),
+      answer9: HealthProfilePayloadCodec.formatListToString(
+          _formData['foodPreference']),
+      answer10: HealthProfilePayloadCodec.composeAnswer10(
+        _formData['exerciseFrequency']?.toString(),
+        _formData['exerciseTypes'],
       ),
+      answer11:
+          HealthProfilePayloadCodec.formatListToString(_formData['diseases']),
+      answer12: HealthProfilePayloadCodec.formatAnswer12(
+        _formData['medications'],
+        _formData['medicationsEtc']?.toString(),
+      ),
+      answer13: HealthProfilePayloadCodec.encodeAnswer13ForApi(
+        _formData['dietExperience']?.toString(),
+      ),
+      answer13Medicine: _formData['dietMedicine']?.toString() ?? '',
+      answer13Period: _formData['dietPeriodMonths']?.toString() ?? '',
+      answer13Dosage: _formData['dietDosage']?.toString() ?? '',
+      answer13Sideeffect: _formData['dietSideEffect']?.toString() ?? '',
+      pfWdatetime: _existingProfile?.pfWdatetime ?? now,
+      pfMdatetime: now,
+      pfIp: _existingProfile?.pfIp ?? '0.0.0.0',
+      pfMemo: _existingProfile?.pfMemo ?? '',
     );
   }
-  
+
+  Future<void> _onNext() async {
+    if (!_validate()) return;
+    if (_currentUser == null) {
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final model = _buildProfileModel();
+      final ok = await HealthProfileService.saveHealthProfile(model);
+      if (!mounted) return;
+      if (!ok) {
+        return;
+      }
+
+      final refreshed =
+          await HealthProfileService.getHealthProfile(_currentUser!.id);
+      if (mounted) {
+        setState(() => _existingProfile = refreshed);
+      }
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrescriptionTimeScreen(
+            productId: widget.productId,
+            productName: widget.productName,
+            selectedOptions: widget.selectedOptions,
+            formData: Map<String, dynamic>.from(_formData),
+            existingProfile: refreshed ?? _existingProfile,
+            tempCartCtIdsToClearOnSuccess: widget.tempCartCtIdsToClearOnSuccess,
+          ),
+        ),
+      );
+    } catch (e) {
+      // ignored
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_loadingInitial) {
       return const MobileAppLayoutWrapper(
         appBar: null,
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    
-    final progress = ((_currentPage + 1) / 5 * 100).toInt();
-    
+
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: ''),
+      appBar: const HealthAppBar(title: '02 문진표 작성하기', centerTitle: true),
       child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInkTitle),
-        child: _showWizard ? _buildWizard(progress) : _buildSummary(),
+        style: const TextStyle(
+          fontFamily: 'Gmarket Sans TTF',
+          color: Color(0xFF191C1D),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(27, 16, 27, 8),
+                children: [
+                  const SizedBox(height: 10),
+                  _sectionTitleWithIcon('기본 정보', AppAssets.profile1),
+                  const SizedBox(height: 12),
+                  _labeledRow(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text('생년월일', style: _kBasicInfoLabelStyle),
+                    ),
+                    _numField(
+                      controller: _birthDate,
+                      hint: 'YYYYMMDD',
+                      maxLen: 8,
+                      dense: true,
+                      onChanged: (_) {
+                        _syncBirthDate();
+                        setState(() {});
+                      },
+                    ),
+                  ),
+                  _labeledRow(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text('성별', style: _kBasicInfoLabelStyle),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(child: _genderTile('M', '남성')),
+                        const SizedBox(width: 10),
+                        Expanded(child: _genderTile('F', '여성')),
+                      ],
+                    ),
+                  ),
+                  _labeledRow(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('키/', style: _kBasicInfoLabelStyle),
+                        Text('몸무게', style: _kBasicInfoLabelStyle),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _numField(
+                            controller: _height,
+                            hint: '',
+                            suffix: 'cm',
+                            maxLen: 3,
+                            dense: true,
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _numField(
+                            controller: _currentWeight,
+                            hint: '',
+                            suffix: 'kg',
+                            maxLen: 3,
+                            dense: true,
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _labeledRow(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('목표감량', style: _kBasicInfoLabelStyle),
+                        Text('체중', style: _kBasicInfoLabelStyle),
+                      ],
+                    ),
+                    _numField(
+                      controller: _targetWeight,
+                      hint: '',
+                      suffix: 'kg',
+                      maxLen: 3,
+                      dense: true,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  _labeledRow(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('다이어트', style: _kBasicInfoLabelStyle),
+                        Text('예상 기간', style: _kBasicInfoLabelStyle),
+                      ],
+                    ),
+                    _buildDietPeriodDropdown(),
+                  ),
+                  const SizedBox(height: 8),
+                  _sectionDivider(),
+                  const SizedBox(height: 16),
+                  _sectionTitleWithIcon('식습관', AppAssets.profile2),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '하루 끼니',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  _mealsPerDayCards(),
+                  const SizedBox(height: 16),
+                  _mealTimeLabelRow(),
+                  const SizedBox(height: 8),
+                  _mealTimeRow(),
+                  const SizedBox(height: 16),
+                  _labelWithHint('식습관', '*중복선택가능'),
+                  const SizedBox(height: 8),
+                  _multiGridFigma(
+                    HealthProfileQuestionnaireOptions.eatingHabits,
+                    List<String>.from(
+                        _formData['eatingHabits'] as List? ?? []),
+                    '해당없음',
+                    (next) => setState(() {
+                          _formData['eatingHabits'] =
+                              _withExclusiveNone(next, '해당없음');
+                        }),
+                  ),
+                  const SizedBox(height: 16),
+                  _labelWithHint('자주 먹는 음식', '*중복선택가능'),
+                  const SizedBox(height: 8),
+                  _multiGridFigma(
+                    HealthProfileQuestionnaireOptions.foodPreference,
+                    List<String>.from(
+                        _formData['foodPreference'] as List? ?? []),
+                    null,
+                    (next) =>
+                        setState(() => _formData['foodPreference'] = next),
+                  ),
+                  const SizedBox(height: 8),
+                  _sectionDivider(),
+                  const SizedBox(height: 16),
+                  _sectionTitleWithIcon('운동', AppAssets.profile3),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '운동 빈도',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  _twoColumnSingleChoice(
+                    HealthProfileQuestionnaireOptions.exerciseFrequency,
+                    _formData['exerciseFrequency'] as String?,
+                    (v) => setState(() => _formData['exerciseFrequency'] = v),
+                  ),
+                  const SizedBox(height: 16),
+                  _labelWithHint('운동 종목', '*중복선택가능'),
+                  const SizedBox(height: 8),
+                  _multiGridFigma(
+                    HealthProfileQuestionnaireOptions.exerciseTypes,
+                    List<String>.from(
+                        _formData['exerciseTypes'] as List? ?? []),
+                    null,
+                    (next) => setState(() => _formData['exerciseTypes'] = next),
+                  ),
+                  const SizedBox(height: 8),
+                  _sectionDivider(),
+                  const SizedBox(height: 16),
+                  _sectionTitleWithIcon('질병', AppAssets.profile4),
+                  const SizedBox(height: 12),
+                  _labelWithHint('질병', '*중복선택가능'),
+                  const SizedBox(height: 8),
+                  _multiGridFigma(
+                    HealthProfileQuestionnaireOptions.diseases,
+                    List<String>.from(_formData['diseases'] as List? ?? []),
+                    '해당 없음',
+                    (next) => setState(() {
+                      _formData['diseases'] =
+                          _withExclusiveNone(next, '해당 없음');
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  _labelWithHint('복용 중인 약', '*중복선택가능'),
+                  const SizedBox(height: 8),
+                  _multiGridFigma(
+                    HealthProfileQuestionnaireOptions.medications,
+                    List<String>.from(
+                        _formData['medications'] as List? ?? []),
+                    '해당 없음',
+                    (next) => setState(() {
+                      _formData['medications'] =
+                          _withExclusiveNone(next, '해당 없음');
+                    }),
+                  ),
+                  if (List<String>.from(_formData['medications'] as List? ?? [])
+                      .contains('기타')) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: _medicationsEtc,
+                        decoration: _fieldDecoration('기타 복용약을 입력해주세요'),
+                        maxLines: 1,
+                        maxLength: 100,
+                        buildCounter: _noCounter,
+                        style: const TextStyle(
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontSize: 15,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  _sectionDivider(),
+                  const SizedBox(height: 16),
+                  _sectionTitleWithIcon('다이어트 약', AppAssets.profile5),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '다이어트약 복용 경험',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _expTile(
+                          label: '있음',
+                          selected: _formData['dietExperience'] == '있음',
+                          onTap: () => setState(
+                              () => _formData['dietExperience'] = '있음'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _expTile(
+                          label: '없음',
+                          selected: _formData['dietExperience'] == '없음',
+                          onTap: () => setState(
+                              () => _formData['dietExperience'] = '없음'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_formData['dietExperience'] == '있음') ...[
+                    const SizedBox(height: 16),
+                    _buildDietDrugDetailCard(),
+                  ],
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+            SafeArea(
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 100,
+                      height: 40,
+                      child: FilledButton.tonal(
+                        onPressed: _saving ? null : () => Navigator.pop(context),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(100, 40),
+                          maximumSize: const Size(100, 40),
+                          padding: EdgeInsets.zero,
+                          backgroundColor: const Color(0x26D2D2D2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          '이전',
+                          style: TextStyle(
+                            color: Color(0xFF898686),
+                            fontSize: 20,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: _saving ? null : _onNext,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 40),
+                            maximumSize: const Size(double.infinity, 40),
+                            padding: EdgeInsets.zero,
+                            backgroundColor: _kAccent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            disabledBackgroundColor: Colors.grey[300],
+                          ),
+                          child: _saving
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  '다음',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildWizard(int progress) {
-    return Column(
+  static Widget? _noCounter(
+    BuildContext _, {
+    required int currentLength,
+    required bool isFocused,
+    required int? maxLength,
+  }) =>
+      null;
+
+  List<String> _withExclusiveNone(List<String> next, String noneToken) {
+    if (next.contains(noneToken)) {
+      return [noneToken];
+    }
+    return next.where((e) => e != noneToken).toList();
+  }
+
+  Widget _sectionTitleWithIcon(String title, String assetPath) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '프로필 작성',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: _kAccentBar,
-                      fontWeight: FontWeight.w700,
+        SvgPicture.asset(
+          assetPath,
+          width: 26,
+          height: 26,
+          fit: BoxFit.contain,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF584045),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionDivider() {
+    return Container(height: 1, color: _kBorderGrey);
+  }
+
+  /// 기본 정보: 라벨(고정폭) + 입력을 한 행에 배치
+  Widget _labeledRow(Widget label, Widget field) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(width: _kBasicInfoLabelWidth, child: label),
+          const SizedBox(width: 20),
+          Expanded(child: field),
+        ],
+      ),
+    );
+  }
+
+  Widget _mealTimeLabelRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text(
+          '식사 시간',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '*해당되는 입력란에만 입력하세요',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              height: 1.25,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _removeDietPeriodMenuOverlay() {
+    _dietPeriodMenuOverlay?.remove();
+    _dietPeriodMenuOverlay = null;
+    _dietPeriodMenuScrollController?.dispose();
+    _dietPeriodMenuScrollController = null;
+  }
+
+  void _openDietPeriodMenu({
+    required List<String> options,
+    required ValueChanged<String> onSelected,
+  }) {
+    _removeDietPeriodMenuOverlay();
+    _dietPeriodMenuScrollController = ScrollController();
+    final ctx = _dietPeriodFieldKey.currentContext;
+    if (ctx == null) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final pos = box.localToGlobal(Offset.zero);
+    final top = pos.dy + box.size.height + 4;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final menuWidth = box.size.width.clamp(160.0, screenWidth - 16.0);
+
+    const visibleRowCap = _kDietPeriodMenuMaxVisibleRows;
+    final menuScrolls = options.length > visibleRowCap;
+    final menuViewportHeight = menuScrolls
+        ? (visibleRowCap * _kDietPeriodMenuRowExtent +
+            (visibleRowCap - 1) * _kDietPeriodMenuRowGap)
+        : null;
+
+    _dietPeriodMenuOverlay = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _removeDietPeriodMenuOverlay,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Positioned(
+            left: pos.dx
+                .clamp(8.0, MediaQuery.sizeOf(context).width - menuWidth - 8),
+            top: top,
+            width: menuWidth,
+            child: Material(
+              color: Colors.transparent,
+              child: DefaultTextStyle(
+                style: const TextStyle(
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                  height: 1.2,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x19000000),
+                        blurRadius: 4,
+                        offset: Offset(0, 0),
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    height: menuViewportHeight,
+                    child: Scrollbar(
+                      controller: _dietPeriodMenuScrollController,
+                      thumbVisibility: menuScrolls,
+                      child: SingleChildScrollView(
+                        controller: _dietPeriodMenuScrollController,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < options.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 5),
+                              _PrescriptionDietPeriodMenuLine(
+                                label: options[i],
+                                showBottomDivider: i < options.length - 1,
+                                onTap: () {
+                                  onSelected(options[i]);
+                                  _removeDietPeriodMenuOverlay();
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  Text(
-                    '$progress%',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: _kAccentBar,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_dietPeriodMenuOverlay!);
+  }
+
+  /// `HealthProfileFormScreen._buildAnswer6Dropdown` 과 동일 패턴
+  Widget _buildDietPeriodDropdown() {
+    const options = HealthProfileQuestionnaireOptions.dietPeriod;
+    final current = _formData['dietPeriod']?.toString().trim() ?? '';
+    final selected = current.isEmpty || !options.contains(current)
+        ? null
+        : current;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          key: _dietPeriodFieldKey,
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(color: _kBorderGrey),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            shadows: const [
+              BoxShadow(
+                color: Color(0x19000000),
+                blurRadius: 4,
+                offset: Offset(0, 0),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: DefaultTextStyle(
+            style: TextStyle(
+              fontFamily: 'Gmarket Sans TTF',
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: selected == null
+                  ? const Color(0xFF898686)
+                  : const Color(0xFF1A1A1A),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => _openDietPeriodMenu(
+                options: options,
+                onSelected: (v) {
+                  setState(() => _formData['dietPeriod'] = v);
+                },
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selected ?? '선택',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: Colors.black87,
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: (_currentPage + 1) / 5,
-                  backgroundColor: const Color(0x7FE2E8F0),
-                  valueColor: const AlwaysStoppedAnimation<Color>(_kAccentBar),
-                  minHeight: 8,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-        Expanded(
-          child: PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            children: [
-              _buildPage1BasicInfo(),
-              _buildPage2DietGoal(),
-              _buildPage3EatingHabits(),
-              _buildPage4ExerciseHealth(),
-              _buildPage5DietExperience(),
-            ],
-          ),
-        ),
-        _buildBottomButtons(),
       ],
     );
   }
 
-  Widget _buildSummary() {
-    final profile = _existingProfile;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 672),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(top: 20, left: 16, right: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildFigmaSection(
-                title: '기본 정보',
-                onEdit: () => setState(() => _showWizard = true),
-                child: _buildKeyValueRows([
-                  ('생년월일', _formData['birthDate']?.toString() ?? '-'),
-                  ('성별', (_formData['gender'] == 'F') ? '여성' : (_formData['gender'] == 'M' ? '남성' : '-')),
-                  ('키', '${_formData['height'] ?? '-'} cm'),
-                  ('현재 체중', '${_formData['currentWeight'] ?? '-'} kg'),
-                ]),
-              ),
-              const SizedBox(height: 24),
-              _buildFigmaSection(
-                title: '목표',
-                onEdit: () {
-                  setState(() {
-                    _showWizard = true;
-                    _currentPage = 1;
-                  });
-                  _pageController.jumpToPage(1);
-                },
-                child: _buildKeyValueRows([
-                  ('목표 체중', '${_formData['targetWeight'] ?? '-'} kg'),
-                  ('예상 기간', _formData['dietPeriod']?.toString() ?? '-'),
-                ]),
-              ),
-              const SizedBox(height: 24),
-              _buildFigmaSection(
-                title: '식습관/운동/건강',
-                onEdit: () {
-                  setState(() {
-                    _showWizard = true;
-                    _currentPage = 2;
-                  });
-                  _pageController.jumpToPage(2);
-                },
-                child: _buildKeyValueRows([
-                  ('하루 끼니', _formData['mealsPerDay']?.toString() ?? '-'),
-                  ('운동', _formData['exerciseFrequency']?.toString() ?? '-'),
-                  ('질병', (_formData['diseases'] as List?)?.join(', ') ?? '-'),
-                  ('복용약', (_formData['medications'] as List?)?.join(', ') ?? '-'),
-                ]),
-              ),
-              const SizedBox(height: 24),
-              _buildFigmaSection(
-                title: '다이어트약 경험',
-                onEdit: () {
-                  setState(() {
-                    _showWizard = true;
-                    _currentPage = 4;
-                  });
-                  _pageController.jumpToPage(4);
-                },
-                child: _buildKeyValueRows([
-                  ('복용 경험', _formData['dietExperience']?.toString() ?? '-'),
-                  ('복용약명', _formData['dietMedicine']?.toString() ?? '-'),
-                  ('복용기간', _formData['dietPeriodMonths']?.toString() ?? '-'),
-                ]),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _goToTimeSelection,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF3787),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    profile == null ? '프로필 작성하기' : '이 프로필로 예약 진행',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 100),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFigmaSection({
-    required String title,
-    required VoidCallback onEdit,
-    required Widget child,
-    EdgeInsetsGeometry innerPadding = const EdgeInsets.all(16),
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _kCardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorderLight),
-      ),
-      child: Padding(
-        padding: innerPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _mealsPerDayCards() {
+    const opts = HealthProfileQuestionnaireOptions.mealsPerDay;
+    final selected = _formData['mealsPerDay'] as String?;
+    final rows = <Widget>[];
+    for (var i = 0; i < opts.length; i += 2) {
+      rows.add(
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: _kLabelBrown,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: onEdit,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    foregroundColor: _kAccentBar,
-                  ),
-                  child: const Text(
-                    '수정',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKeyValueRows(List<(String, String)> rows) {
-    return Column(
-      children: rows.map((r) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 92,
-                child: Text(
-                  r.$1,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: _kLabelBrown,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  r.$2,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _kInkTitle,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-  
-  /// 페이지 1: 기본 정보
-  Widget _buildPage1BasicInfo() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '기본 정보',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '개인 기본 정보를 입력해주세요',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 32),
-          
-          // 생년월일
-          const Text(
-            '생년월일',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildTextField(
-                  hint: '년',
-                  example: '1999',
-                  maxLength: 4,
-                  keyboardType: TextInputType.number,
-                  initialValue: _formData['birthDate']?.substring(0, 4),
-                  onChanged: (value) {
-                    _formData['birthYear'] = value;
-                    _updateBirthDate();
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTextField(
-                  hint: '월',
-                  example: '09',
-                  maxLength: 2,
-                  keyboardType: TextInputType.number,
-                  initialValue: _formData['birthDate']?.substring(4, 6),
-                  onChanged: (value) {
-                    _formData['birthMonth'] = value;
-                    _updateBirthDate();
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTextField(
-                  hint: '일',
-                  example: '09',
-                  maxLength: 2,
-                  keyboardType: TextInputType.number,
-                  initialValue: _formData['birthDate']?.substring(6, 8),
-                  onChanged: (value) {
-                    _formData['birthDay'] = value;
-                    _updateBirthDate();
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          
-          // 성별
-          const Text(
-            '성별',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildRadioButton(
-                  label: '남성',
-                  value: 'M',
-                  groupValue: _formData['gender'],
-                  onChanged: (value) => setState(() => _formData['gender'] = value),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildRadioButton(
-                  label: '여성',
-                  value: 'F',
-                  groupValue: _formData['gender'],
-                  onChanged: (value) => setState(() => _formData['gender'] = value),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          
-          // 키
-          const Text(
-            '키 (cm)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '예: 170',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildTextField(
-            hint: '155',
-            maxLength: 3,
-            keyboardType: TextInputType.number,
-            initialValue: _formData['height'],
-            onChanged: (value) => _formData['height'] = value,
-          ),
-          const SizedBox(height: 24),
-          
-          // 현재 몸무게
-          const Text(
-            '현재 몸무게 (kg)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '예: 70',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildTextField(
-            hint: '55',
-            maxLength: 3,
-            keyboardType: TextInputType.number,
-            initialValue: _formData['currentWeight'],
-            onChanged: (value) => _formData['currentWeight'] = value,
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _updateBirthDate() {
-    final year = _formData['birthYear'] ?? '';
-    final month = _formData['birthMonth'] ?? '';
-    final day = _formData['birthDay'] ?? '';
-    
-    if (year.length == 4 && month.length == 2 && day.length == 2) {
-      _formData['birthDate'] = '$year$month$day';
-    }
-  }
-  
-  /// 페이지 2: 다이어트 목표
-  Widget _buildPage2DietGoal() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '다이어트 목표',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '다이어트 목표를 설정해주세요',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 32),
-          
-          // 목표 감량 체중
-          const Text(
-            '목표 감량 체중 (kg)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '예: 10',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildTextField(
-            hint: '50',
-            maxLength: 3,
-            keyboardType: TextInputType.number,
-            initialValue: _formData['targetWeight'],
-            onChanged: (value) => _formData['targetWeight'] = value,
-          ),
-          const SizedBox(height: 24),
-          
-          // 다이어트 예상 기간
-          const Text(
-            '다이어트 예상 기간',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildOptionGrid([
-            '3일 이내',
-            '5일 이내',
-            '1주 이내',
-            '2주 이내',
-            '3주 이내',
-            '4주 이내',
-            '5주 이내',
-            '6주 이내',
-            '10주 이내',
-            '10주 이상',
-          ], _formData['dietPeriod'], (value) {
-            setState(() => _formData['dietPeriod'] = value);
-          }),
-        ],
-      ),
-    );
-  }
-  
-  /// 페이지 3: 식습관
-  Widget _buildPage3EatingHabits() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '식습관',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '현재 식습관에 대해 알려주세요',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 32),
-          
-          // 하루 끼니
-          const Text(
-            '하루 끼니',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildOptionGrid([
-            '하루 1식',
-            '하루 2식',
-            '하루 3식',
-            '하루 3식 이상',
-          ], _formData['mealsPerDay'], (value) {
-            setState(() => _formData['mealsPerDay'] = value);
-          }),
-          const SizedBox(height: 24),
-          
-          // 식사 시간
-          const Text(
-            '식사 시간',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _buildMealTimeField('1식', 0)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildMealTimeField('2식', 1)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildMealTimeField('3식', 2)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildMealTimeField('기타', 3)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '*해당되는 입력란에만 입력하세요.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 24),
-          
-          // 식습관
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                '식습관',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 1),
-                child: Text(
-                  '*중복선택가능',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildMultiSelectGrid([
-            '과식 주3회 이상',
-            '단 음식(구조식) 주 3회 이상',
-            '야식 주 3회 이상',
-            '카페인음료 1일3잔 이상',
-          ], _formData['eatingHabits'] ?? [], (values) {
-            setState(() => _formData['eatingHabits'] = values);
-          }),
-          const SizedBox(height: 24),
-          
-          // 자주먹는 음식
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                '자주먹는 음식',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 1),
-                child: Text(
-                  '*중복선택가능',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildMultiSelectGrid([
-            '한식',
-            '양식',
-            '중식',
-            '샐러드/다이어트식단',
-            '빵/떡',
-            '육식',
-            '해산물',
-            '튀김',
-            '과일',
-            '유제품',
-          ], _formData['foodPreference'] ?? [], (values) {
-            setState(() => _formData['foodPreference'] = values);
-          }),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildMealTimeField(String label, int index) {
-    final times = _formData['mealTimes']?.split('|') ?? ['', '', '', ''];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 4),
-        TextField(
-          decoration: InputDecoration(
-            hintText: '00:00',
-            hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          ),
-          style: const TextStyle(fontSize: 14),
-          keyboardType: TextInputType.number,
-          maxLength: 5,
-          buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-          controller: TextEditingController(text: times[index]),
-          onChanged: (value) {
-            times[index] = value;
-            _formData['mealTimes'] = times.join('|');
-          },
-        ),
-      ],
-    );
-  }
-  
-  /// 페이지 4: 운동 및 건강
-  Widget _buildPage4ExerciseHealth() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '운동 및 건강',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '운동 습관과 건강 상태를 알려주세요',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 32),
-          
-          // 운동 습관
-          const Text(
-            '운동 습관',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildOptionGrid([
-            '일주일 1회 이하',
-            '일주일 2~3회',
-            '일주일 4회 이상',
-          ], _formData['exerciseFrequency'], (value) {
-            setState(() => _formData['exerciseFrequency'] = value);
-          }),
-          const SizedBox(height: 24),
-          
-          // 질병
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                '질병',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 1),
-                child: Text(
-                  '*중복선택가능',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildMultiSelectGrid([
-            '간질환',
-            '폐/간질',
-            '심혈관',
-            '당뇨',
-            '소화계통',
-            '호흡계통',
-            '신경계통',
-            '비뇨생식계통',
-          ], _formData['diseases'] ?? [], (values) {
-            setState(() => _formData['diseases'] = values);
-          }),
-          const SizedBox(height: 24),
-          
-          // 복용 중인 약
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                '복용 중인 약',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 1),
-                child: Text(
-                  '*중복선택가능',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildMultiSelectGrid([
-            '혈압약',
-            '갑상선약',
-            '항생제',
-            '당뇨약',
-            '정신과약',
-            '특이질환',
-            '피부과약',
-            '스테로이드제',
-            '위산분비 억제제',
-            '항히스타민제',
-            '항혈전제',
-            '소염진통제',
-            '피임약',
-            '없음',
-            '기타',
-          ], _formData['medications'] ?? [], (values) {
-            setState(() => _formData['medications'] = values);
-          }),
-          if (_formData['medications'] != null && 
-              (_formData['medications'] as List<dynamic>).any((m) => m == '기타')) ...[
-            const SizedBox(height: 12),
-            _buildTextField(
-              hint: '기타 복용약을 입력해주세요',
-              maxLength: 100,
-              initialValue: _formData['medicationsEtc'],
-              onChanged: (value) => _formData['medicationsEtc'] = value,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-  
-  /// 페이지 5: 다이어트 경험
-  Widget _buildPage5DietExperience() {
-    final hasExperience = _formData['dietExperience'] == '있음';
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '다이어트 경험',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '과거 다이어트 경험에 대해 알려주세요',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 32),
-          
-          // 기존 다이어트 복용약 여부
-          const Text(
-            '기존 다이어트 복용약 여부',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildRadioButton(
-                  label: '있음',
-                  value: '있음',
-                  groupValue: _formData['dietExperience'],
-                  onChanged: (value) => setState(() => _formData['dietExperience'] = value),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildRadioButton(
-                  label: '없음',
-                  value: '없음',
-                  groupValue: _formData['dietExperience'],
-                  onChanged: (value) => setState(() => _formData['dietExperience'] = value),
-                ),
-              ),
-            ],
-          ),
-          
-          if (hasExperience) ...[
-            const SizedBox(height: 24),
-            
-            // 복용한 다이어트약명
-            const Text(
-              '복용한 다이어트약명',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildTextField(
-              hint: '다이어트약 이름',
-              maxLength: 50,
-              initialValue: _formData['dietMedicine'],
-              onChanged: (value) => _formData['dietMedicine'] = value,
-            ),
-            const SizedBox(height: 24),
-            
-            // 다이어트약 복용 기간
-            const Text(
-              '다이어트약 복용 기간',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              '예: 3개월 또는 11',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildTextField(
-              hint: '3개월',
-              maxLength: 20,
-              initialValue: _formData['dietPeriodMonths'],
-              onChanged: (value) => _formData['dietPeriodMonths'] = value,
-            ),
-            const SizedBox(height: 24),
-            
-            // 다이어트약 복용 횟수
-            const Text(
-              '다이어트약 복용 횟수',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              '예: 하루 3회',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildTextField(
-              hint: '하루 3회',
-              maxLength: 20,
-              initialValue: _formData['dietDosage'],
-              onChanged: (value) => _formData['dietDosage'] = value,
-            ),
-            const SizedBox(height: 24),
-            
-            // 부작용
-            const Text(
-              '부작용(불편했던 점)',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildTextField(
-              hint: '부작용을 입력해주세요',
-              maxLines: 3,
-              initialValue: _formData['dietSideEffect'],
-              onChanged: (value) => _formData['dietSideEffect'] = value,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-  
-  /// 하단 버튼
-  Widget _buildBottomButtons() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          if (_currentPage > 0)
             Expanded(
-              child: OutlinedButton(
-                onPressed: _previousPage,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  side: BorderSide(color: Colors.grey[300]!),
-                ),
-                child: const Text(
-                  '이전',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
+              child: _figmaChoiceCard(
+                opts[i],
+                opts[i] == selected,
+                () => setState(() => _formData['mealsPerDay'] = opts[i]),
               ),
             ),
-          if (_currentPage > 0) const SizedBox(width: 12),
-          Expanded(
-            flex: _currentPage > 0 ? 1 : 1,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _nextPage,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF3787),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                disabledBackgroundColor: Colors.grey[300],
+            const SizedBox(width: 10),
+            Expanded(
+              child: i + 1 < opts.length
+                  ? _figmaChoiceCard(
+                      opts[i + 1],
+                      opts[i + 1] == selected,
+                      () => setState(
+                          () => _formData['mealsPerDay'] = opts[i + 1]),
+                    )
+                  : const SizedBox(height: 40),
+            ),
+          ],
+        ),
+      );
+      if (i + 2 < opts.length) {
+        rows.add(const SizedBox(height: 10));
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
+  }
+
+  Widget _figmaChoiceCard(String label, bool selected, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          width: double.infinity,
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          clipBehavior: Clip.antiAlias,
+          decoration: ShapeDecoration(
+            color: selected ? _kSelectedFill : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: 1,
+                color: selected ? _kAccent : _kBorderGrey,
               ),
-              child: Text(
-                '다음',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              borderRadius: BorderRadius.circular(7),
             ),
           ),
-        ],
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selected
+                  ? const Color(0xFF1A1A1A)
+                  : _kMutedText,
+              fontSize: _kTabTextSize,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
-  
-  /// 공통 텍스트 필드
-  Widget _buildTextField({
-    required String hint,
-    String? example,
-    int? maxLength,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-    String? initialValue,
-    required Function(String) onChanged,
-  }) {
-    return TextField(
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+
+  Widget _figmaChoiceCardFullWidth(
+    String label,
+    bool selected,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          width: double.infinity,
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          clipBehavior: Clip.antiAlias,
+          decoration: ShapeDecoration(
+            color: selected ? _kSelectedFill : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: 1,
+                color: selected ? _kAccent : _kBorderGrey,
+              ),
+              borderRadius: BorderRadius.circular(7),
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected
+                  ? const Color(0xFF1A1A1A)
+                  : _kMutedText,
+              fontSize: _kTabTextSize,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFFF3787), width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
-      style: const TextStyle(fontSize: 14),
-      keyboardType: keyboardType,
-      maxLength: maxLength,
-      maxLines: maxLines,
-      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-      controller: TextEditingController(text: initialValue),
-      onChanged: onChanged,
     );
   }
-  
-  /// 라디오 버튼
-  Widget _buildRadioButton({
-    required String label,
-    required String value,
-    required String? groupValue,
-    required Function(String?) onChanged,
-  }) {
-    final isSelected = value == groupValue;
-    return InkWell(
-      onTap: () => onChanged(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+
+  void _toggleMultiSelection(
+    List<String> selected,
+    String option,
+    void Function(List<String>) onChanged,
+  ) {
+    final next = List<String>.from(selected);
+    if (next.contains(option)) {
+      next.remove(option);
+    } else {
+      if (option == '해당없음' || option == '해당 없음') {
+        onChanged([option]);
+        return;
+      }
+      next.remove('해당없음');
+      next.remove('해당 없음');
+      next.add(option);
+    }
+    onChanged(next);
+  }
+
+  /// 2열 카드 + (선택) 맨 아래 `fullWidthNoneToken` 전폭 행
+  Widget _multiGridFigma(
+    List<String> options,
+    List<String> selected,
+    String? fullWidthNoneToken,
+    void Function(List<String>) onChanged,
+  ) {
+    final regular = fullWidthNoneToken != null
+        ? options.where((e) => e != fullWidthNoneToken).toList()
+        : options;
+
+    final col = <Widget>[];
+    for (var i = 0; i < regular.length; i += 2) {
+      col.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? const Color(0xFFFF3787) : Colors.grey[400]!,
-                  width: 2,
+            Expanded(
+              child: _figmaChoiceCard(
+                regular[i],
+                selected.contains(regular[i]),
+                () => _toggleMultiSelection(
+                  selected,
+                  regular[i],
+                  onChanged,
                 ),
               ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFFFF3787),
-                        ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: i + 1 < regular.length
+                  ? _figmaChoiceCard(
+                      regular[i + 1],
+                      selected.contains(regular[i + 1]),
+                      () => _toggleMultiSelection(
+                        selected,
+                        regular[i + 1],
+                        onChanged,
                       ),
                     )
-                  : null,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFFFF3787) : Colors.black87,
-              ),
+                  : const SizedBox(height: 40),
             ),
           ],
+        ),
+      );
+      if (i + 2 < regular.length) {
+        col.add(const SizedBox(height: 10));
+      }
+    }
+
+    if (fullWidthNoneToken != null) {
+      if (col.isNotEmpty) {
+        col.add(const SizedBox(height: 10));
+      }
+      col.add(
+        _figmaChoiceCardFullWidth(
+          fullWidthNoneToken,
+          selected.contains(fullWidthNoneToken),
+          () => _toggleMultiSelection(
+            selected,
+            fullWidthNoneToken,
+            onChanged,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: col,
+    );
+  }
+
+  Widget _twoColumnSingleChoice(
+    List<String> options,
+    String? selected,
+    void Function(String) onSelect,
+  ) {
+    final rows = <Widget>[];
+    for (var i = 0; i < options.length; i += 2) {
+      rows.add(
+        Row(
+          children: [
+            Expanded(
+              child: _figmaChoiceCard(
+                options[i],
+                options[i] == selected,
+                () => onSelect(options[i]),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: i + 1 < options.length
+                  ? _figmaChoiceCard(
+                      options[i + 1],
+                      options[i + 1] == selected,
+                      () => onSelect(options[i + 1]),
+                    )
+                  : const SizedBox(height: 40),
+            ),
+          ],
+        ),
+      );
+      if (i + 2 < options.length) {
+        rows.add(const SizedBox(height: 10));
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
+  }
+
+  Widget _labelWithHint(String title, String hint) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          hint,
+          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _fieldDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: Colors.grey[400],
+        fontFamily: 'Gmarket Sans TTF',
+        fontSize: 14,
+      ),
+      isDense: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: _kBorderGrey),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: _kBorderGrey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: _kAccent, width: 2),
+      ),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    );
+  }
+
+  InputDecoration _compactNumDecoration(String hint, {String? suffix}) {
+    return InputDecoration(
+      hintText: hint.isEmpty ? null : hint,
+      hintStyle: TextStyle(
+        color: Colors.grey[400],
+        fontSize: 14,
+        fontFamily: 'Gmarket Sans TTF',
+      ),
+      suffixText: suffix,
+      suffixStyle: const TextStyle(
+        fontFamily: 'Gmarket Sans TTF',
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+        color: _kMutedText,
+      ),
+      isDense: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: _kBorderGrey),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: _kBorderGrey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: _kAccent, width: 2),
+      ),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+    );
+  }
+
+  Widget _numField({
+    required TextEditingController controller,
+    required String hint,
+    String? suffix,
+    required int maxLen,
+    bool dense = false,
+    required void Function(String) onChanged,
+  }) {
+    final field = TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      maxLength: maxLen,
+      buildCounter: _noCounter,
+      style: const TextStyle(
+        fontSize: 15,
+        fontFamily: 'Gmarket Sans TTF',
+      ),
+      decoration: dense
+          ? _compactNumDecoration(hint, suffix: suffix)
+          : _fieldDecoration(hint),
+      onChanged: onChanged,
+    );
+    if (dense) {
+      return SizedBox(height: 40, child: field);
+    }
+    return field;
+  }
+
+  Widget _genderTile(String value, String label) {
+    final sel = _formData['gender'] == value;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _formData['gender'] = value),
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: ShapeDecoration(
+            color: sel ? _kSelectedFill : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: 1,
+                color: sel ? _kAccent : _kBorderGrey,
+              ),
+              borderRadius: BorderRadius.circular(7),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: _kTabTextSize,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+              color: sel ? const Color(0xFF1A1A1A) : _kMutedText,
+            ),
+          ),
         ),
       ),
     );
   }
-  
-  /// 옵션 그리드 (단일 선택)
-  Widget _buildOptionGrid(
-    List<String> options,
-    String? selectedValue,
-    Function(String) onSelect,
-  ) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 2.5,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: options.length,
-      itemBuilder: (context, index) {
-        final option = options[index];
-        final isSelected = option == selectedValue;
-        
-        return InkWell(
-          onTap: () => onSelect(option),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFFFF0F5) : Colors.white,
-              border: Border.all(
-                color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300]!,
-                width: isSelected ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                option,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? const Color(0xFFFF3787) : Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
+
+  Widget _expTile({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFFFF0F5) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? _kAccent : Colors.grey[300]!,
+            width: selected ? 2 : 1,
           ),
-        );
-      },
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: _kTabTextSize,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? _kAccent : Colors.black87,
+          ),
+        ),
+      ),
     );
   }
-  
-  /// 옵션 그리드 (다중 선택)
-  Widget _buildMultiSelectGrid(
-    List<String> options,
-    List<String> selectedValues,
-    Function(List<String>) onSelect,
-  ) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 2.5,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+
+  Widget _buildDietDrugDetailCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: _kBorderGrey),
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
-      itemCount: options.length,
-      itemBuilder: (context, index) {
-        final option = options[index];
-        final isSelected = selectedValues.contains(option);
-        
-        return InkWell(
-          onTap: () {
-            final newValues = List<String>.from(selectedValues);
-            if (isSelected) {
-              newValues.remove(option);
-            } else {
-              newValues.add(option);
-            }
-            onSelect(newValues);
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFFFF0F5) : Colors.white,
-              border: Border.all(
-                color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300]!,
-                width: isSelected ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                option,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '다이어트약 상세 정보',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? const Color(0xFFFF3787) : Colors.black87,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1A1A1A),
+                  fontFamily: 'Gmarket Sans TTF',
                 ),
-                textAlign: TextAlign.center,
+              ),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    _dietMedicine.clear();
+                    _dietPeriodMonths.clear();
+                    _dietDosage.clear();
+                    _dietSideEffect.clear();
+                  });
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _kAccent,
+                  side: const BorderSide(color: _kAccent),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  '초기화',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Gmarket Sans TTF',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(color: _kBorderGrey),
+          const SizedBox(height: 8),
+          _dietDrugDetailRow(
+            label: '복용 약명',
+            controller: _dietMedicine,
+            hint: '약명',
+            maxLength: 50,
+          ),
+          _dietDrugDetailRow(
+            label: '복용 기간',
+            controller: _dietPeriodMonths,
+            hint: '예: 3개월',
+            maxLength: 20,
+          ),
+          _dietDrugDetailRow(
+            label: '복용 횟수',
+            controller: _dietDosage,
+            hint: '예: 1-2회',
+            maxLength: 20,
+          ),
+          _dietDrugDetailRow(
+            label: '부작용',
+            controller: _dietSideEffect,
+            hint: '예: 불면, 심장 두근거림',
+            maxLength: 500,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dietDrugDetailRow({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    required int maxLength,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              label,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'Gmarket Sans TTF',
               ),
             ),
           ),
-        );
-      },
+          const SizedBox(width: 8),
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: TextField(
+                controller: controller,
+                decoration: _fieldDecoration(hint),
+                maxLines: 1,
+                maxLength: maxLength,
+                buildCounter: _noCounter,
+                style: const TextStyle(
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontSize: 15,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// `HealthProfileFormScreen._buildFigmaMealtimeTable` 과 동일: 1행 헤더(1~4식) / 2행 입력 4열
+  Widget _mealTimeRow() {
+    const headerStyle = TextStyle(
+      color: Color(0xFF1A1A1A),
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      fontFamily: 'Gmarket Sans TTF',
+    );
+
+    TableCell headerCell(String label) {
+      return TableCell(
+        verticalAlignment: TableCellVerticalAlignment.middle,
+        child: SizedBox(
+          height: 36,
+          child: Center(
+            child: Text(
+              label,
+              style: headerStyle,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    TableCell fieldCell(int index, String hint) {
+      return TableCell(
+        verticalAlignment: TableCellVerticalAlignment.middle,
+        child: SizedBox(
+          height: 40,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: TextField(
+              controller: _mealControllers[index],
+              keyboardType: TextInputType.text,
+              textAlignVertical: TextAlignVertical.center,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
+                hintText: hint,
+                hintStyle: TextStyle(
+                  fontSize: 11,
+                  color: _kMutedText,
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                  fontFamily: 'Gmarket Sans TTF',
+                ),
+              ),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1A1A1A),
+                fontFamily: 'Gmarket Sans TTF',
+              ),
+              onChanged: (_) {
+                _syncMealTimes();
+                setState(() {});
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: _kBorderGrey),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Table(
+        border: TableBorder.all(color: _kBorderGrey, width: 1),
+        defaultColumnWidth: const FlexColumnWidth(1),
+        children: [
+          TableRow(
+            decoration: const BoxDecoration(color: Color(0xFFF9F9F9)),
+            children: [
+              headerCell('1식'),
+              headerCell('2식'),
+              headerCell('3식'),
+              headerCell('4식'),
+            ],
+          ),
+          TableRow(
+            children: [
+              fieldCell(0, '예: 8시'),
+              fieldCell(1, '예: 12시'),
+              fieldCell(2, '예: 19시'),
+              fieldCell(3, '예: 21시'),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
-

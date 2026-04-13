@@ -119,7 +119,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      '건강프로필가 없습니다',
+                      '문진표가 없습니다',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -128,7 +128,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '다이어트 상담을 위해\n건강프로필를 작성해주세요',
+                      '다이어트 상담을 위해\n문진표를 작성해주세요',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,

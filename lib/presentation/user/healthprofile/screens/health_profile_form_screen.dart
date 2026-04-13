@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../health_profile_questionnaire_options.dart';
+import '../health_profile_payload_codec.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
@@ -68,9 +70,10 @@ class _Answer6MenuLine extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.black,
-                  fontSize: 10,
+                  fontSize: 16,
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
                 ),
               ),
             ),
@@ -106,6 +109,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   static const Color _pfPink = Color(0xFFFF3787);
   static const Color _pfPinkSoft = Color(0x0CFF3787);
   static const Color _pfBorder = Color(0x7FD2D2D2);
+  static const int _answer6MenuMaxVisibleRows = 4;
+  static const double _answer6MenuRowGap = 5;
+  static const double _answer6MenuRowExtent =
+      46; // vertical padding 10*2 + fontSize 16 × height 1.2
   static const List<String> _stepLabels = [
     '기본정보',
     '식습관',
@@ -157,8 +164,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     
     // 전달받은 기존 건강프로필가 있으면 우선 사용
     if (widget.existingProfile != null) {
-      print('=== 전달받은 기존 건강프로필 사용 ===');
-      print('건강프로필 번호: ${widget.existingProfile!.pfNo}');
       setState(() {
         _existingProfile = widget.existingProfile;
       });
@@ -171,19 +176,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   void _checkExistingProfile() async {
     try {
-      print('=== 건강프로필 확인 시작 ===');
-      print('사용자 ID (mb_id): ${_currentUser!.id}');
-      
       final existingProfile = await HealthProfileService.getHealthProfile(_currentUser!.id);
       
-      print('API 응답 결과: $existingProfile');
-      
-      if (existingProfile != null) {
-        print('기존 건강프로필 발견!');
-        print('건강프로필 번호: ${existingProfile.pfNo}');
-        print('생년월일: ${existingProfile.answer1}');
-        print('성별: ${existingProfile.answer2}');
-        
+      if (existingProfile != null) {        
         // 기존 건강프로필 정보 저장
         setState(() {
           _existingProfile = existingProfile;
@@ -219,7 +214,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             id: 'answer_7',
             question: '하루 끼니',
             type: 'grid',
-            options: ['하루 1식', '하루 2식', '하루 3식', '하루 3식 이상'],
+            options: HealthProfileQuestionnaireOptions.mealsPerDay,
             columns: 2,
           ),
           HealthProfileQuestion(id: 'answer_7_1', question: '식사 시간', type: 'mealtime'),
@@ -227,13 +222,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             id: 'answer_8',
             question: '식습관',
             type: 'grid',
-            options: [
-              '과식 주3회 이상',
-              '단 음식(군것질) 주 3회 이상',
-              '야식 주 3회 이상',
-              '카페인음료 1일 3잔 이상',
-              '해당없음',
-            ],
+            options: HealthProfileQuestionnaireOptions.eatingHabits,
             columns: 2,
             allowMultiple: true,
           ),
@@ -241,18 +230,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             id: 'answer_9',
             question: '자주 먹는 음식',
             type: 'grid',
-            options: [
-              '한식',
-              '양식',
-              '중식',
-              '샐러드/다이어트식단',
-              '빵/떡',
-              '육식',
-              '해산물',
-              '튀김',
-              '과일',
-              '유제품',
-            ],
+            options: HealthProfileQuestionnaireOptions.foodPreference,
             columns: 2,
             allowMultiple: true,
           ),
@@ -266,25 +244,14 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             id: 'answer_10',
             question: '운동 습관',
             type: 'grid',
-            options: ['일주일 1회 이하', '일주일 2~3회', '일주일 4회 ~ 6회', '매일'],
+            options: HealthProfileQuestionnaireOptions.exerciseFrequency,
             columns: 2,
           ),
           HealthProfileQuestion(
             id: 'answer_10_types',
             question: '주로 하는 운동',
             type: 'grid',
-            options: [
-              '걷기/산책',
-              '등산',
-              '수영',
-              '웨이트 트레이닝',
-              '홈트레이닝',
-              '러닝/조깅',
-              '자전거 타기',
-              '요가/필라테스',
-              '구기 종목',
-              '기타',
-            ],
+            options: HealthProfileQuestionnaireOptions.exerciseTypes,
             columns: 2,
             allowMultiple: true,
           ),
@@ -298,21 +265,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             id: 'answer_11',
             question: '질병',
             type: 'grid',
-            options: [
-              '간질환',
-              '심혈증',
-              '뼈/관절',
-              '특이질환',
-              '소화계통',
-              '호흡계통',
-              '비뇨생식계통',
-              '신경계통',
-              '피부',
-              '정신/행동',
-              '내분비,영양,대사질환',
-              '당뇨',
-              '해당 없음',
-            ],
+            options: HealthProfileQuestionnaireOptions.diseases,
             columns: 2,
             allowMultiple: true,
           ),
@@ -320,23 +273,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             id: 'answer_12',
             question: '복용 중인 약',
             type: 'grid',
-            options: [
-              '혈압약',
-              '갑상선약',
-              '항생제',
-              '당뇨약',
-              '정신과약',
-              '다이어트약',
-              '피부과약',
-              '스테로이드제',
-              '위산분비 억제제',
-              '항히스타민제',
-              '항혈전제',
-              '소염진통제',
-              '피임약',
-              '기타',
-              '해당 없음',
-            ],
+            options: HealthProfileQuestionnaireOptions.medications,
             columns: 2,
             allowMultiple: true,
           ),
@@ -415,22 +352,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       _formData['answer_9'] = [];
     }
     
-    // answer_10: 빈도 + (선택) ###운동종목|...
-    final raw10 = profile.answer10;
-    if (raw10.contains('###')) {
-      final p = raw10.split('###');
-      _formData['answer_10'] = p[0].trim();
-      final rest = p.length > 1 ? p[1].trim() : '';
-      _formData['answer_10_types'] = rest.isEmpty
-          ? <String>[]
-          : rest.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-    } else {
-      _formData['answer_10'] = raw10;
-      _formData['answer_10_types'] = <String>[];
-    }
-    if (_formData['answer_10'] == '일주일 4회 이상') {
-      _formData['answer_10'] = '일주일 4회 ~ 6회';
-    }
+    HealthProfilePayloadCodec.parseAnswer10IntoFormData(
+      profile.answer10,
+      (f) => _formData['answer_10'] = f,
+      (t) => _formData['answer_10_types'] = t,
+    );
 
     // answer_11 (질병) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer11.isNotEmpty) {
@@ -501,15 +427,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     _backupAnswer13Fields['answer_13_period'] = profile.answer13Period;
     _backupAnswer13Fields['answer_13_dosage'] = profile.answer13Dosage;
     _backupAnswer13Fields['answer_13_sideeffect'] = profile.answer13Sideeffect;
-    
-    print('=== 다이어트약 복용경험 로드 ===');
-    print('answer_13 원본: ${profile.answer13}');
-    print('answer_13 변환: ${_formData['answer_13']}');
-    print('answer_13_medicine: ${profile.answer13Medicine}');
-    print('answer_13_period: ${profile.answer13Period}');
-    print('answer_13_dosage: ${profile.answer13Dosage}');
-    print('answer_13_sideeffect: ${profile.answer13Sideeffect}');
-    
+
     // UI 업데이트
     setState(() {});
   }
@@ -527,7 +445,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
-        title: isSubsetEdit ? '$appBarEditTitle 수정' : '문진표',
+        title: isSubsetEdit ? '$appBarEditTitle' : '문진표',
       ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
@@ -659,7 +577,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     );
   }
 
+  /// 신규 작성 45px, 기존 프로필 수정(전체 문진) 진입 시 40px
+  double get _wizardStepTabHeight =>
+      widget.existingProfile != null ? 40.0 : 45.0;
+
   Widget _buildWizardStepIndicator() {
+    final tabH = _wizardStepTabHeight;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: List.generate(_sections.length, (i) {
@@ -668,7 +591,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             padding: EdgeInsets.only(right: i < _sections.length - 1 ? 6 : 0),
             child: i == _currentPage
                 ? Container(
-                    height: 45,
+                    height: tabH,
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
@@ -694,7 +617,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => _jumpToWizardStep(i),
                     child: Container(
-                      height: 45,
+                      height: tabH,
                       decoration: BoxDecoration(
                         border: Border.all(color: _pfPink),
                         borderRadius: BorderRadius.circular(10),
@@ -1162,18 +1085,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   }
 
   Widget _buildAnswer6Dropdown() {
-    const options = [
-      '3일 이내',
-      '5일 이내',
-      '1주 이내',
-      '2주 이내',
-      '3주 이내',
-      '4주 이내',
-      '5주 이내',
-      '6주 이내',
-      '10주 이내',
-      '10주 이상',
-    ];
+    final options = HealthProfileQuestionnaireOptions.dietPeriod;
     final current = _formData['answer_6']?.toString().trim() ?? '';
     final selected = current.isEmpty || !options.contains(current) ? null : current;
     return FormField<String>(
@@ -1229,7 +1141,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                           color: selected == null
                               ? const Color(0xFF898686)
                               : const Color(0xFF1A1A1A),
-                          fontSize: 10,
+                          fontSize: 16,
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
@@ -1281,6 +1193,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     final top = pos.dy + box.size.height + 4;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final menuWidth = box.size.width.clamp(160.0, screenWidth - 16.0);
+    const visibleRowCap = _answer6MenuMaxVisibleRows;
+    final menuScrolls = options.length > visibleRowCap;
+    final menuViewportHeight = menuScrolls
+        ? (visibleRowCap * _answer6MenuRowExtent +
+            (visibleRowCap - 1) * _answer6MenuRowGap)
+        : null;
     
     _answer6MenuOverlay = OverlayEntry(
       builder: (context) => Stack(
@@ -1299,42 +1217,51 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             width: menuWidth,
             child: Material(
               color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x19000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 0),
-                    ),
-                  ],
+              child: DefaultTextStyle(
+                style: const TextStyle(
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                  height: 1.2,
                 ),
-                child: SizedBox(
-                  height: options.length > 4 ? 220 : null,
-                  child: Scrollbar(
-                    controller: _answer6MenuScrollController,
-                    thumbVisibility: options.length > 4,
-                    child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x19000000),
+                        blurRadius: 4,
+                        offset: Offset(0, 0),
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    height: menuViewportHeight,
+                    child: Scrollbar(
                       controller: _answer6MenuScrollController,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = 0; i < options.length; i++) ...[
-                            if (i > 0) const SizedBox(height: 5),
-                            _Answer6MenuLine(
-                              label: options[i],
-                              showBottomDivider: i < options.length - 1,
-                              onTap: () {
-                                onSelected(options[i]);
-                                _removeAnswer6MenuOverlay();
-                              },
-                            ),
+                      thumbVisibility: menuScrolls,
+                      child: SingleChildScrollView(
+                        controller: _answer6MenuScrollController,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < options.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 5),
+                              _Answer6MenuLine(
+                                label: options[i],
+                                showBottomDivider: i < options.length - 1,
+                                onTap: () {
+                                  onSelected(options[i]);
+                                  _removeAnswer6MenuOverlay();
+                                },
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -2208,8 +2135,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_existingProfile != null
-                  ? '건강프로필가 수정되었습니다'
-                  : '건강프로필가 저장되었습니다'),
+                  ? '문진표가 수정되었습니다'
+                  : '문진표가 저장되었습니다'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -2239,15 +2166,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   /// 운동 빈도 + 선택 운동 종목(복수) — API 한 필드에 `빈도###종목1|종목2` 형태로 저장
   String _composeAnswer10() {
-    final freq = (_formData['answer_10'] ?? '').toString().trim();
-    final typesRaw = _formData['answer_10_types'];
-    if (typesRaw is List && typesRaw.isNotEmpty) {
-      final types = typesRaw.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).join('|');
-      if (types.isNotEmpty) {
-        return freq.isEmpty ? '###$types' : '$freq###$types';
-      }
-    }
-    return freq;
+    return HealthProfilePayloadCodec.composeAnswer10(
+      (_formData['answer_10'] ?? '').toString(),
+      _formData['answer_10_types'],
+    );
   }
 
   Future<void> _saveHealthProfile() async {
@@ -2276,12 +2198,17 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       answer5: _formData['answer_5'] ?? '',
       answer6: _formData['answer_6'] ?? '',
       answer7: _formData['answer_7'] ?? '',
-      answer8: _formatListToString(_formData['answer_8']),
-      answer9: _formatListToString(_formData['answer_9']),
+      answer8: HealthProfilePayloadCodec.formatListToString(_formData['answer_8']),
+      answer9: HealthProfilePayloadCodec.formatListToString(_formData['answer_9']),
       answer10: _composeAnswer10(),
-      answer11: _formatListToString(_formData['answer_11']),
-      answer12: _formatAnswer12(_formData['answer_12'], _formData['answer_12_other']),
-      answer13: _formData['answer_13'] ?? '', // 1 또는 2로 저장됨
+      answer11: HealthProfilePayloadCodec.formatListToString(_formData['answer_11']),
+      answer12: HealthProfilePayloadCodec.formatAnswer12(
+        _formData['answer_12'],
+        _formData['answer_12_other']?.toString(),
+      ),
+      answer13: HealthProfilePayloadCodec.encodeAnswer13ForApi(
+        _formData['answer_13']?.toString(),
+      ),
       answer13Period: _formData['answer_13_period'] ?? '',
       answer13Dosage: _formData['answer_13_dosage'] ?? '',
       answer13Medicine: _formData['answer_13_medicine'] ?? '',
@@ -2295,11 +2222,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     
     if (_existingProfile != null && _existingProfile!.pfNo != null) {
       // 수정
-      print('기존 건강프로필 수정: pfNo=${_existingProfile!.pfNo}');
       await HealthProfileService.updateHealthProfile(profile);
     } else {
       // 새로 생성
-      print('새 건강프로필 생성');
       await HealthProfileService.saveHealthProfile(profile);
     }
   }
@@ -2594,39 +2519,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         ),
       ],
     );
-  }
-
-  /// List를 문자열로 변환 (allowMultiple 필드용) - 파이프(|)로 구분
-  String _formatListToString(dynamic value) {
-    if (value == null) return '';
-    if (value is List) {
-      return value.join('|');
-    }
-    return value.toString();
-  }
-
-  /// 복용중인 약(answer_12) 포맷팅 - 파이프(|)로 구분
-  String _formatAnswer12(dynamic answer12, String? otherValue) {
-    if (answer12 == null) return '';
-    
-    if (answer12 is List) {
-      final List<String> result = [];
-      for (final item in answer12) {
-        if (item == '기타' && otherValue != null && otherValue.isNotEmpty) {
-          result.add('기타: $otherValue');
-        } else {
-          result.add(item.toString());
-        }
-      }
-      return result.join('|');
-    }
-    
-    // List가 아닌 경우
-    final answer12Str = answer12.toString();
-    if (answer12Str == '기타' && otherValue != null && otherValue.isNotEmpty) {
-      return '기타: $otherValue';
-    }
-    return answer12Str;
   }
 
   @override
