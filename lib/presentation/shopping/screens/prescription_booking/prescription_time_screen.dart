@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/shop_default/reservation_settings_model.dart';
 import '../../../../data/services/shop_default_service.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
+import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import 'prescription_contact_screen.dart';
 
@@ -13,7 +13,8 @@ class PrescriptionTimeScreen extends StatefulWidget {
   final dynamic selectedOptions; // List<Map<String, dynamic>> 또는 Map<String, dynamic>? (하위 호환성)
   final Map<String, dynamic> formData;
   final HealthProfileModel? existingProfile;
-  
+  final List<int>? tempCartCtIdsToClearOnSuccess;
+
   const PrescriptionTimeScreen({
     super.key,
     required this.productId,
@@ -21,6 +22,7 @@ class PrescriptionTimeScreen extends StatefulWidget {
     this.selectedOptions,
     required this.formData,
     this.existingProfile,
+    this.tempCartCtIdsToClearOnSuccess,
   });
 
   @override
@@ -132,9 +134,6 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   
   void _nextStep() {
     if (_selectedDate == null || _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('진료 날짜와 시간을 선택해주세요')),
-      );
       return;
     }
     
@@ -149,9 +148,26 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
           existingProfile: widget.existingProfile,
           selectedDate: _selectedDate!,
           selectedTime: _selectedTime!,
+          tempCartCtIdsToClearOnSuccess: widget.tempCartCtIdsToClearOnSuccess,
         ),
       ),
     );
+  }
+
+  String _buildReservationGuideText() {
+    if (_selectedDate == null || _selectedTime == null) return '';
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final weekday = weekdays[_selectedDate!.weekday - 1];
+    final parts = _selectedTime!.split(':');
+    if (parts.length != 2) {
+      return '${_selectedDate!.month.toString().padLeft(2, '0')}월 ${_selectedDate!.day.toString().padLeft(2, '0')}일 ($weekday) $_selectedTime ';
+    }
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    final end = DateTime(2000, 1, 1, h, m).add(const Duration(minutes: 30));
+    final endText =
+        '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
+    return '${_selectedDate!.month.toString().padLeft(2, '0')}월 ${_selectedDate!.day.toString().padLeft(2, '0')}일 ($weekday) $_selectedTime ~ $endText ';
   }
   
   @override
@@ -170,180 +186,156 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     });
     
     // 선택된 날짜의 예약 가능한 시간
-    final availableTimes = _selectedDate != null ? _generateTimeSlots(_selectedDate!) : <String>[];
+    final availableTimes =
+        _selectedDate != null ? _generateTimeSlots(_selectedDate!) : <String>[];
+    final hasSelectedDateTime = _selectedDate != null && _selectedTime != null;
     
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text(
-          '처방예약하기',
-          style: TextStyle(
-            fontSize: 18,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+      appBar: const HealthAppBar(
+        title: '03 진료 시간 예약',
         centerTitle: true,
       ),
-      child: Column(
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          textTheme: Theme.of(context)
+              .textTheme
+              .apply(fontFamily: 'Gmarket Sans TTF'),
+          primaryTextTheme: Theme.of(context)
+              .primaryTextTheme
+              .apply(fontFamily: 'Gmarket Sans TTF'),
+        ),
+        child: Column(
         children: [
-          // 진행률 표시
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  '03 진료시간선택',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFFFF3787),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Row(
-                  children: List.generate(4, (index) {
-                    final stepIndex = index + 1;
-                    final isActive = stepIndex == 3; // 진료시간선택은 3번
-                    final isCompleted = stepIndex < 3; // 2번까지 완료
-                    return Row(
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isActive ? const Color(0xFFFF3787) : 
-                                   isCompleted ? const Color(0xFFFF3787) : Colors.grey[300],
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$stepIndex',
-                              style: TextStyle(
-                                color: (isActive || isCompleted) ? Colors.white : Colors.grey[600],
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (index < 3) const SizedBox(width: 8),
-                      ],
-                    );
-                  }),
-                ),
-              ],
-            ),
-          ),
-          // 페이지 컨텐츠
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. 가능한 날짜를 선택해주세요
                   const Text(
-                    '1. 가능한 날짜를 선택해주세요',
+                    '1. 가능한 날짜를 선택해주세요요',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 2.5,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: availableDates.length,
-                    itemBuilder: (context, index) {
-                      final date = availableDates[index];
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: availableDates.take(7).map((date) {
                       final isSelected = _selectedDate != null &&
                           _selectedDate!.year == date.year &&
                           _selectedDate!.month == date.month &&
                           _selectedDate!.day == date.day;
-                      
+                      final isToday = DateUtils.isSameDay(date, DateTime.now());
                       final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
                       final weekday = weekdays[date.weekday - 1];
-                      
                       return InkWell(
                         onTap: () => setState(() {
                           _selectedDate = date;
-                          _selectedTime = null; // 날짜 변경 시 시간 초기화
+                          _selectedTime = null;
                         }),
+                        borderRadius: BorderRadius.circular(18.33),
                         child: Container(
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFFFF0F5) : Colors.white,
-                            border: Border.all(
-                              color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300]!,
-                              width: isSelected ? 2 : 1,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${date.month}/${date.day}($weekday)',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                color: isSelected ? const Color(0xFFFF3787) : Colors.black,
+                          width: 40,
+                          height: 54.17,
+                          decoration: ShapeDecoration(
+                            color: isSelected
+                                ? const Color(0x0CFF5A8D)
+                                : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                width: isSelected ? 1 : 0.5,
+                                color: isSelected
+                                    ? const Color(0xFFFF5A8D)
+                                    : const Color(0xFFD2D2D2),
                               ),
+                              borderRadius: BorderRadius.circular(18.33),
                             ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (isToday)
+                                Text(
+                                  '오늘',
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? const Color(0xFFFF5A8D)
+                                        : const Color(0xFF1A1A1A),
+                                    fontSize: 10,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              if (isToday) const SizedBox(height: 2),
+                              Text(
+                                '${date.day}',
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? const Color(0xFFFF5A8D)
+                                      : const Color(0xFF1A1A1A),
+                                  fontSize: 12,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                weekday,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? const Color(0xFFFF5A8D)
+                                      : const Color(0xFF1A1A1A),
+                                  fontSize: 10,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
-                    },
+                    }).toList(),
                   ),
                   const SizedBox(height: 32),
-                  
-                  // 2. 시간을 선택해주세요
                   const Text(
-                    '2. 시간을 선택해주세요',
+                    '2. 시간을 선택해주세요요',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                      fontFamily: 'Gmarket Sans TTF',
                     ),
                   ),
                   const SizedBox(height: 12),
                   if (_selectedDate == null)
                     Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Center(
                         child: Text(
                           '먼저 날짜를 선택해주세요',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.grey, fontFamily: 'Gmarket Sans TTF'),
                         ),
                       ),
                     )
                   else if (availableTimes.isEmpty)
                     Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Center(
                         child: Text(
                           '예약 가능한 시간이 없습니다',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.grey, fontFamily: 'Gmarket Sans TTF'),
                         ),
                       ),
                     )
@@ -351,98 +343,262 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 2.5,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        mainAxisExtent: 42,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
                       ),
                       itemCount: availableTimes.length,
                       itemBuilder: (context, index) {
                         final time = availableTimes[index];
                         final isSelected = _selectedTime == time;
-                        
                         return InkWell(
                           onTap: () => setState(() => _selectedTime = time),
+                          borderRadius: BorderRadius.circular(10),
                           child: Container(
-                            decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFFFFF0F5) : Colors.white,
-                              border: Border.all(
-                                color: isSelected ? const Color(0xFFFF3787) : Colors.grey[300]!,
-                                width: isSelected ? 2 : 1,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 10,
                             ),
-                            child: Center(
-                              child: Text(
-                                time,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? const Color(0xFFFF3787) : Colors.black,
+                            decoration: ShapeDecoration(
+                              color: isSelected
+                                  ? const Color(0x0CFF5A8D)
+                                  : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(
+                                  width: 1,
+                                  color: isSelected
+                                      ? const Color(0xFFFF5A8D)
+                                      : const Color(0xFFD2D2D2),
                                 ),
+                                borderRadius: BorderRadius.circular(10),
                               ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  time,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? const Color(0xFFFF5A8D)
+                                        : const Color(0xFF1A1A1A),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
                       },
                     ),
+                  const SizedBox(height: 30),
+                  if (!hasSelectedDateTime)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 15,
+                      ),
+                      decoration: ShapeDecoration(
+                        shape: RoundedRectangleBorder(
+                          side: const BorderSide(
+                            width: 1,
+                            color: Color(0xFFD2D2D2),
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '날짜',
+                                  style: TextStyle(
+                                    color: Color(0xFFFF5A8D),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '와 ',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '시간',
+                                  style: TextStyle(
+                                    color: Color(0xFFFF5A8D),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '을 선택해 주세요.',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 15,
+                      ),
+                      decoration: ShapeDecoration(
+                        shape: RoundedRectangleBorder(
+                          side: const BorderSide(
+                            width: 1,
+                            color: Color(0xFFD2D2D2),
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '‘결제 완료’',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '를 하셔야 예약이 확정됩니다.',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                const TextSpan(
+                                  text: '상담전화는 ',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: _buildReservationGuideText(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF5A8D),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text: '사이에 \n드리겠습니다',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 12,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
-          // 하단 버튼
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+            color: Colors.white,
             child: Row(
               children: [
-                Expanded(
-                  child: OutlinedButton(
+                SizedBox(
+                  width: 100,
+                  height: 40,
+                  child: FilledButton.tonal(
                     onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0x26D2D2D2),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      side: BorderSide(color: Colors.grey[300]!),
                     ),
                     child: const Text(
                       '이전',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: Color(0xFF898686),
+                        fontSize: 20,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _nextStep,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF3787),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: _nextStep,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5A8D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      '다음',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      child: const Text(
+                        '다음',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -451,6 +607,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

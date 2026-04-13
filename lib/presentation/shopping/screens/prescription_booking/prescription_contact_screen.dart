@@ -4,8 +4,11 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
+import '../../../user/healthprofile/health_profile_payload_codec.dart';
+import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../data/services/cart_service.dart';
 import '../../../../main.dart'; // navigatorKey import
 
 /// 연락처 입력 화면 (개인정보)
@@ -17,7 +20,8 @@ class PrescriptionContactScreen extends StatefulWidget {
   final HealthProfileModel? existingProfile;
   final DateTime selectedDate;
   final String selectedTime;
-  
+  final List<int>? tempCartCtIdsToClearOnSuccess;
+
   const PrescriptionContactScreen({
     super.key,
     required this.productId,
@@ -27,6 +31,7 @@ class PrescriptionContactScreen extends StatefulWidget {
     this.existingProfile,
     required this.selectedDate,
     required this.selectedTime,
+    this.tempCartCtIdsToClearOnSuccess,
   });
 
   @override
@@ -36,6 +41,7 @@ class PrescriptionContactScreen extends StatefulWidget {
 class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
   UserModel? _currentUser;
   bool _isLoading = false;
+  bool _agreedRefundPolicy = false;
   Map<String, dynamic>? _reservationData; // 장바구니 데이터 임시 저장
   
   @override
@@ -52,52 +58,12 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
   
   Future<void> _submitBooking() async {
     if (_currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인이 필요합니다')),
-      );
       return;
     }
     
     setState(() => _isLoading = true);
     
     try {
-      print('========================================');
-      print('📝 [건강프로필 수정] 전송할 데이터 확인');
-      print('========================================');
-      print('기본 정보:');
-      print('  - 생년월일: ${widget.formData['birthDate']}');
-      print('  - 성별: ${widget.formData['gender']}');
-      print('  - 키: ${widget.formData['height']}cm');
-      print('  - 다이어트 기간: ${widget.formData['dietPeriod']}');
-      print('');
-      print('식습관:');
-      print('  - 하루 식사 횟수: ${widget.formData['mealsPerDay']}');
-      print('  - 식사 시간: ${widget.formData['mealTimes']}');
-      print('  - 식습관: ${widget.formData['eatingHabits']}');
-      print('  - 자주 먹는 음식: ${widget.formData['foodPreference']}');
-      print('');
-      print('운동/건강:');
-      print('  - 운동 빈도: ${widget.formData['exerciseFrequency']}');
-      print('  - 질병: ${widget.formData['diseases']}');
-      print('  - 복용 중인 약: ${widget.formData['medications']}');
-      if (widget.formData['medications'] != null && 
-          (widget.formData['medications'] as List).any((m) => m == '기타')) {
-        print('  - 복용약(기타): ${widget.formData['medicationsEtc']}');
-      }
-      print('');
-      print('다이어트 경험:');
-      print('  - 다이어트약 복용 경험: ${widget.formData['dietExperience']}');
-      if (widget.formData['dietExperience'] == '있음') {
-        print('  - 약 이름: ${widget.formData['dietMedicine']}');
-        print('  - 복용 기간: ${widget.formData['dietPeriodMonths']}');
-        print('  - 복용 횟수: ${widget.formData['dietDosage']}');
-        print('  - 부작용: ${widget.formData['dietSideEffect']}');
-      }
-      print('');
-      print('예약 정보:');
-      print('  - 날짜: ${widget.selectedDate}');
-      print('  - 시간: ${widget.selectedTime}');
-      print('');
       // 옵션 정보 처리 (리스트 또는 단일 Map)
       List<Map<String, dynamic>> optionsList = [];
       if (widget.selectedOptions is List) {
@@ -105,18 +71,6 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       } else if (widget.selectedOptions is Map) {
         optionsList = [Map<String, dynamic>.from(widget.selectedOptions as Map)];
       }
-      
-      print('옵션 정보:');
-      for (int i = 0; i < optionsList.length; i++) {
-        final option = optionsList[i];
-        print('  옵션 ${i + 1}:');
-        print('    - 옵션 ID: ${option['id']}');
-        print('    - 옵션명: ${option['name']}');
-        print('    - 옵션가: ${option['price']}원');
-        print('    - 수량: ${option['quantity']}');
-        print('    - 총 가격: ${option['totalPrice']}원');
-      }
-      print('========================================');
       
       // 1. 건강 프로필 저장
       final profile = HealthProfileModel(
@@ -130,12 +84,20 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
         answer6: widget.formData['dietPeriod'] ?? '',
         answer7: widget.formData['mealsPerDay'] ?? '',
         answer71: widget.formData['mealTimes'] ?? '|||',
-        answer8: (widget.formData['eatingHabits'] as List?)?.join('|') ?? '',
-        answer9: (widget.formData['foodPreference'] as List?)?.join('|') ?? '',
-        answer10: widget.formData['exerciseFrequency'] ?? '',
-        answer11: (widget.formData['diseases'] as List?)?.join('|') ?? '',
-        answer12: (widget.formData['medications'] as List?)?.join('|') ?? '',
-        answer13: widget.formData['dietExperience'] ?? '없음',
+        answer8: HealthProfilePayloadCodec.formatListToString(widget.formData['eatingHabits']),
+        answer9: HealthProfilePayloadCodec.formatListToString(widget.formData['foodPreference']),
+        answer10: HealthProfilePayloadCodec.composeAnswer10(
+          widget.formData['exerciseFrequency']?.toString(),
+          widget.formData['exerciseTypes'],
+        ),
+        answer11: HealthProfilePayloadCodec.formatListToString(widget.formData['diseases']),
+        answer12: HealthProfilePayloadCodec.formatAnswer12(
+          widget.formData['medications'],
+          widget.formData['medicationsEtc']?.toString(),
+        ),
+        answer13: HealthProfilePayloadCodec.encodeAnswer13ForApi(
+          widget.formData['dietExperience']?.toString(),
+        ),
         answer13Medicine: widget.formData['dietMedicine'] ?? '',
         answer13Period: widget.formData['dietPeriodMonths'] ?? '',
         answer13Dosage: widget.formData['dietDosage'] ?? '',
@@ -172,12 +134,20 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
         'answer6': widget.formData['dietPeriod'] ?? '',
         'answer7': widget.formData['mealsPerDay'] ?? '',
         'answer71': widget.formData['mealTimes'] ?? '|||',
-        'answer8': (widget.formData['eatingHabits'] as List?)?.join('|') ?? '',
-        'answer9': (widget.formData['foodPreference'] as List?)?.join('|') ?? '',
-        'answer10': widget.formData['exerciseFrequency'] ?? '',
-        'answer11': (widget.formData['diseases'] as List?)?.join('|') ?? '',
-        'answer12': (widget.formData['medications'] as List?)?.join('|') ?? '',
-        'answer13': widget.formData['dietExperience'] ?? '없음',
+        'answer8': HealthProfilePayloadCodec.formatListToString(widget.formData['eatingHabits']),
+        'answer9': HealthProfilePayloadCodec.formatListToString(widget.formData['foodPreference']),
+        'answer10': HealthProfilePayloadCodec.composeAnswer10(
+          widget.formData['exerciseFrequency']?.toString(),
+          widget.formData['exerciseTypes'],
+        ),
+        'answer11': HealthProfilePayloadCodec.formatListToString(widget.formData['diseases']),
+        'answer12': HealthProfilePayloadCodec.formatAnswer12(
+          widget.formData['medications'],
+          widget.formData['medicationsEtc']?.toString(),
+        ),
+        'answer13': HealthProfilePayloadCodec.encodeAnswer13ForApi(
+          widget.formData['dietExperience']?.toString(),
+        ),
         'answer13Period': widget.formData['dietPeriodMonths'] ?? '',
         'answer13Dosage': widget.formData['dietDosage'] ?? '',
         'answer13Medicine': widget.formData['dietMedicine'] ?? '',
@@ -197,11 +167,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       _showCompletionDialog();
       
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('예약 실패: $e')),
-        );
-      }
+      // ignored
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -209,632 +175,598 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
     }
   }
   
-  /// 네비게이션 실패 시 대체 방법 (SnackBar 표시)
-  void _showNavigationFallback() {
-    // mounted 체크 후 SnackBar 표시 시도
-    if (!mounted) return;
-    
-    try {
-      // 현재 context를 안전하게 가져오기
-      BuildContext? currentContext;
-      try {
-        if (mounted) {
-          currentContext = context;
-        }
-      } catch (e) {
-        print('⚠️ [context 접근 오류 in fallback]: $e');
-        return;
-      }
-      
-      if (currentContext != null && mounted) {
-        try {
-          ScaffoldMessenger.of(currentContext).showSnackBar(
-            const SnackBar(
-              content: Text('장바구니에 추가되었습니다. 장바구니로 이동하세요.'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        } catch (e) {
-          print('⚠️ [SnackBar 표시 오류]: $e');
-        }
-      }
-    } catch (e) {
-      print('⚠️ [SnackBar 표시 전체 오류]: $e');
-      // SnackBar도 실패하면 로그만 출력
+  void _showNavigationFallback() {}
+
+  String _formatPhoneForDialog(String? raw) {
+    final digits = (raw ?? '').replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 11) {
+      return '${digits.substring(0, 3)} - ${digits.substring(3, 7)} - ${digits.substring(7)}';
     }
+    if (digits.length == 10) {
+      return '${digits.substring(0, 3)} - ${digits.substring(3, 6)} - ${digits.substring(6)}';
+    }
+    if (raw != null && raw.trim().isNotEmpty) return raw.trim();
+    return '010 - 0000 - 0000';
   }
 
-  void _showCompletionDialog() {
-    showDialog(
+  Future<void> _showCompletionDialog() async {
+    final phoneDisplay = _formatPhoneForDialog(_currentUser?.phone);
+    final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.5),
-      builder: (context) => WillPopScope(
-        onWillPop: () async => false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Material(
-              color: Colors.transparent,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '연락처를 한번 더 확인해주세요',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '아래 기입하신 연락처가 맞으신가요?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                    ),
-                    child: Text(
-                      _currentUser?.phone ?? '010-0000-0000',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    '연락처를 잘못입력하시면 전화 처방이 어려울 수 있으며,\n이로 인한 책임은 고객님에게 있음을 안내드립니다.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black87,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            side: BorderSide(color: Colors.grey[400]!),
-                          ),
-                          child: const Text(
-                            '수정',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (_reservationData == null) return;
-                            
-                            // 1. 먼저 다이얼로그 닫기
-                            Navigator.of(context).pop();
-                            
-                            try {
-                              // 2. 로딩 표시
-                              if (mounted) {
-                                setState(() => _isLoading = true);
-                              }
-                              
-                              // 3. 여러 옵션을 각각 장바구니에 추가
-                              final optionsList = _reservationData!['options'] as List<Map<String, dynamic>>? ?? [];
-                              
-                              if (optionsList.isEmpty) {
-                                print('📦 [장바구니 추가 요청] 데이터: $_reservationData');
-                                final response = await ApiClient.post(
-                                  '/api/cart/healthprofile', 
-                                  _reservationData!
-                                );
-                                print('✅ [장바구니 추가 완료] 응답: $response');
-                              } else {
-                                // 각 옵션마다 별도로 장바구니에 추가
-                                int successCount = 0;
-                                int failCount = 0;
-                                
-                                for (int i = 0; i < optionsList.length; i++) {
-                                  if (!mounted) break;
-                                  
-                                  final option = optionsList[i];
-                                  final optionData = Map<String, dynamic>.from(_reservationData!);
-                                  
-                                  optionData['option_id'] = option['id'];
-                                  optionData['option_text'] = option['name'];
-                                  optionData['option_price'] = option['price'];
-                                  optionData['quantity'] = option['quantity'];
-                                  optionData['price'] = option['totalPrice'];
-                                  
-                                  print('📦 [장바구니 추가 요청 ${i + 1}/${optionsList.length}] 옵션: ${option['name']}');
-                                  
-                                  try {
-                                    final response = await ApiClient.post(
-                                      '/api/cart/healthprofile', 
-                                      optionData
-                                    );
-                                    
-                                    if (response.statusCode == 200 || response.statusCode == 201) {
-                                      try {
-                                        final responseData = json.decode(response.body) as Map<String, dynamic>?;
-                                        if (responseData != null && responseData['success'] == true) {
-                                          print('✅ [장바구니 추가 완료 ${i + 1}/${optionsList.length}]');
-                                          successCount++;
-                                        } else {
-                                          failCount++;
-                                        }
-                                      } catch (e) {
-                                        successCount++;
-                                      }
-                                    } else {
-                                      failCount++;
-                                    }
-                                  } catch (e) {
-                                    print('❌ [장바구니 추가 실패 ${i + 1}/${optionsList.length}]: $e');
-                                    failCount++;
-                                  }
-                                }
-                                
-                                print('📊 [장바구니 추가 결과] 성공: $successCount, 실패: $failCount');
-                                
-                                if (failCount > 0 && mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('일부 옵션이 추가되지 않았습니다. ($failCount개 실패)'),
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                  );
-                                }
-                              }
-                              
-                              // 4. 잠시 대기
-                              await Future.delayed(const Duration(milliseconds: 500));
-                              
-                              // 5. 장바구니로 이동
-                              if (!mounted) return;
-                              
-                              // 웹/모바일 공통: named route로 장바구니 화면 이동
-                              // 웹에서는 URL이 /cart 로 갱신됨
-                              Future.microtask(() {
-                                try {
-                                  final navigator = navigatorKey.currentState;
-                                  if (navigator != null) {
-                                    navigator.pushNamedAndRemoveUntil(
-                                      '/cart',
-                                      (route) => false,
-                                      arguments: {
-                                        'backToProductId': widget.productId,
-                                        'initialTabIndex': 0,
-                                      },
-                                    );
-                                  } else {
-                                    print('⚠️ [네비게이션] Navigator가 null입니다');
-                                  }
-                                } catch (e) {
-                                  print('⚠️ [네비게이션 오류]: $e');
-                                  _showNavigationFallback();
-                                }
-                              });
-                              
-                            } catch (e) {
-                              print('❌ [전체 오류]: $e');
-                              // 웹 환경에서는 context 사용하지 않음 (오류 방지)
-                              if (mounted) {
-                                try {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('장바구니에 추가되었습니다. 메뉴에서 확인하세요.'),
-                                      backgroundColor: Colors.green,
-                                      duration: Duration(seconds: 3),
-                                    ),
-                                  );
-                                } catch (e2) {
-                                  print('⚠️ [SnackBar 표시 오류]: $e2');
-                                }
-                              }
-                            } finally {
-                              if (mounted) {
-                                setState(() => _isLoading = false);
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF3787),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            '다음',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  @override
-  Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text(
-          '처방예약하기',
-          style: TextStyle(
-            fontSize: 18,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      child: Column(
-        children: [
-          // 진행률 표시
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  '04 개인정보',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFFFF3787),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Row(
-                  children: List.generate(4, (index) {
-                    final stepIndex = index + 1;
-                    final isActive = stepIndex == 4; // 개인정보는 4번
-                    final isCompleted = stepIndex < 4; // 3번까지 완료
-                    return Row(
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isActive ? const Color(0xFFFF3787) : 
-                                   isCompleted ? const Color(0xFFFF3787) : Colors.grey[300],
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$stepIndex',
-                              style: TextStyle(
-                                color: (isActive || isCompleted) ? Colors.white : Colors.grey[600],
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (index < 3) const SizedBox(width: 8),
-                      ],
-                    );
-                  }),
-                ),
-              ],
-            ),
-          ),
-          // 페이지 컨텐츠
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 예약 정보
-                  const Text(
-                    '예약 정보',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      () {
-                        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-                        final weekday = weekdays[widget.selectedDate.weekday - 1];
-                        return '${widget.selectedDate.year}.${widget.selectedDate.month}.${widget.selectedDate.day}($weekday)  ${widget.selectedTime}';
-                      }(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  
-                  // 연락처 입력
-                  const Text(
-                    '전화상담 받으실 연락처를 입력해 주세요',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // 성함
-                  const Text(
-                    '성함',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: '홍길동',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                    controller: TextEditingController(text: _currentUser?.name ?? ''),
-                    readOnly: true,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // 연락처
-                  const Text(
-                    '연락처',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: '010',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          ),
-                          controller: TextEditingController(
-                            text: () {
-                              final phone = _currentUser?.phone?.replaceAll('-', '') ?? '';
-                              return phone.length >= 3 ? phone.substring(0, 3) : '010';
-                            }(),
-                          ),
-                          readOnly: true,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('-', style: TextStyle(fontSize: 18)),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: '1000',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          ),
-                          controller: TextEditingController(
-                            text: () {
-                              final phone = _currentUser?.phone?.replaceAll('-', '') ?? '';
-                              return phone.length >= 7 ? phone.substring(3, 7) : '';
-                            }(),
-                          ),
-                          readOnly: true,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('-', style: TextStyle(fontSize: 18)),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: '5678',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          ),
-                          controller: TextEditingController(
-                            text: () {
-                              final phone = _currentUser?.phone?.replaceAll('-', '') ?? '';
-                              return phone.length >= 11 ? phone.substring(7, 11) : '';
-                            }(),
-                          ),
-                          readOnly: true,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  
-                  // 개인정보 취급 동의 (작은 글씨, 상자 없이)
-                  Center(
-                    child: Text(
-                      '개인정보로 취급 및 의뢰해 동의합니다',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Center(
-                    child: Text(
-                      '개인정보는 귀하의 정보를 안전하게 저장하기 위하여 관리합니다.\n수집된 개인정보는 더 나은 서비스 제공을 위해 사용될 수 있으며, 제3자에게 제공되지 않습니다.',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[500],
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 하단 버튼
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            width: 300,
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
               color: Colors.white,
-              boxShadow: [
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              shadows: const [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
+                  color: Color(0x19000000),
+                  blurRadius: 8.14,
+                  offset: Offset(0, 0),
+                  spreadRadius: 0,
                 ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 260,
+                        child: Text(
+                          '연락처를 한번 더\n확인해주세요',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 20,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        '아래 가입하신 연락처가 맞으신가요?',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF1A1A1A),
+                          fontSize: 12,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        phoneDisplay,
+                        style: const TextStyle(
+                          color: Color(0xFFFF5A8D),
+                          fontSize: 20,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const SizedBox(
+                        width: 260,
+                        child: Text(
+                          '연락처를 잘 못 입력하시면\n전화 처방이 어려울 수 있으며,\n이로 인한 책임은 고객님에게 있음을 안내드립니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 11.70,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                            height: 1.54,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: 300,
+                  height: 50,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Material(
+                          color: const Color(0xFFF7F7F7),
+                          child: InkWell(
+                            onTap: () => Navigator.of(ctx).pop(false),
+                            child: const Center(
+                              child: Text(
+                                '취소',
+                                style: TextStyle(
+                                  color: Color(0xFF898686),
+                                  fontSize: 16,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Material(
+                          color: const Color(0xFFFF5A8D),
+                          child: InkWell(
+                            onTap: () => Navigator.of(ctx).pop(true),
+                            child: const Center(
+                              child: Text(
+                                '확인',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (confirmed != true) return;
+    await _submitReservationToCart();
+  }
+
+  Future<void> _submitReservationToCart() async {
+    if (_reservationData == null) return;
+    try {
+      if (mounted) {
+        setState(() => _isLoading = true);
+      }
+
+      final optionsRaw = _reservationData!['options'] as List?;
+      final optionsList = optionsRaw == null
+          ? <Map<String, dynamic>>[]
+          : optionsRaw
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+      final requestData = Map<String, dynamic>.from(_reservationData!);
+      if (optionsList.isNotEmpty) {
+        requestData['items'] = optionsList
+            .map(
+              (option) => <String, dynamic>{
+                'it_id': option['it_id'] ?? requestData['it_id'],
+                'quantity': option['quantity'] ?? 1,
+                'price': option['totalPrice'] ?? option['price'] ?? 0,
+                'option_id': option['id'] ?? '',
+                'option_text': option['name'] ?? '',
+                'option_price': option['price'] ?? 0,
+                'ct_kind':
+                    option['ct_kind'] ?? requestData['ct_kind'] ?? 'prescription',
+              },
+            )
+            .toList();
+      }
+
+      final response =
+          await ApiClient.post('/api/cart/healthprofile', requestData);
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('healthprofile 요청 실패 (status=${response.statusCode})');
+      }
+
+      Map<String, dynamic>? responseData;
+      try {
+        responseData = json.decode(response.body) as Map<String, dynamic>?;
+      } catch (_) {}
+
+      if (responseData != null && responseData['success'] == false) {
+        return;
+      }
+
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final tempIds = widget.tempCartCtIdsToClearOnSuccess;
+      if (tempIds != null && tempIds.isNotEmpty) {
+        for (final ctId in tempIds) {
+          try {
+            await CartService.removeCartItem(ctId);
+          } catch (_) {}
+        }
+      }
+
+      if (!mounted) return;
+      Future.microtask(() {
+        try {
+          final navigator = navigatorKey.currentState;
+          if (navigator != null) {
+            navigator.pushNamedAndRemoveUntil(
+              '/cart',
+              (route) => false,
+              arguments: {
+                'backToProductId': widget.productId,
+                'initialTabIndex': 0,
+              },
+            );
+          } else {
+            _showNavigationFallback();
+          }
+        } catch (e) {
+          _showNavigationFallback();
+        }
+      });
+    } catch (e) {
+      // ignored
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Widget _buildReadonlyLabelField({
+    required String label,
+    required String value,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 13,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return MobileAppLayoutWrapper(
+      appBar: const HealthAppBar(
+        title: '04 상담 고객 연락처',
+        centerTitle: true,
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          textTheme: Theme.of(context)
+              .textTheme
+              .apply(fontFamily: 'Gmarket Sans TTF'),
+          primaryTextTheme: Theme.of(context)
+              .primaryTextTheme
+              .apply(fontFamily: 'Gmarket Sans TTF'),
+        ),
+        child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(27, 30, 27, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.center,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFFF7F7F7),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Center(
+                          child: Text(
+                            '전화받으실\n연락처를 입력해 주세요.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 20,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        _buildReadonlyLabelField(
+                          label: '성함',
+                          value: _currentUser?.name ?? '',
+                        ),
+                        const SizedBox(height: 10),
+                        _buildReadonlyLabelField(
+                          label: '연락처',
+                          value: _currentUser?.phone ?? '',
+                        ),
+                        const SizedBox(height: 5),
+                        const Divider(color: Color(0xFFD2D2D2)),
+                        const SizedBox(height: 5),
+                        const Center(
+                          child: Text(
+                            '개인정보를 위한 의료법 시행규칙',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Center(
+                          child: Text(
+                            '의료법 시행규칙 제 14조에 따라 진료를 받는 환자의\n성명, 연락처, 주소, 주민등록번호 등의 인적사항은\n진료 기록부에 의무 기록 기재사항입니다.\n주민등록번호는 환자의 신상정보/본인확인을 위해\n담당 한의사만 볼 수 있는 정보이니 개인정보 노출 우려는 없습니다.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 10,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Center(
+                          child: Text(
+                            '교환·환불 안내 확인 및 동의',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Center(
+                          child: Text(
+                            '본 상품은 처방 및 건강 관련 상품으로 교환 및 환불 기준과 절차가\n일반 다른 상품과 다르게 적용될 수 있습니다.\n구매 전 교환환불 조건, 상담 절차 및 처리 기준을\n반드시 확인해 주시기 바랍니다.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 10,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: () => setState(() {
+                            _agreedRefundPolicy = !_agreedRefundPolicy;
+                          }),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFE5E5E5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                const boxW = 16.0;
+                                const gap = 6.0;
+                                final textMaxW = (constraints.maxWidth - boxW - gap)
+                                    .clamp(80.0, constraints.maxWidth);
+                                return Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        width: boxW,
+                                        height: boxW,
+                                        decoration: ShapeDecoration(
+                                          color: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            side: const BorderSide(
+                                              width: 1,
+                                              color: Color(0xFFD2D2D2),
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                        ),
+                                        child: _agreedRefundPolicy
+                                            ? const Icon(
+                                                Icons.check,
+                                                size: 12,
+                                                color: Color(0xFFFF5A8D),
+                                              )
+                                            : null,
+                                      ),
+                                      const SizedBox(width: gap),
+                                      ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: textMaxW,
+                                        ),
+                                        child: const Text(
+                                          '교환환불 안내사항을 확인하였으며, 이에 동의합니다.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 12,
+                                            fontFamily: 'Gmarket Sans TTF',
+                                            fontWeight: FontWeight.w300,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Center(
+                          child: Text(
+                            '교환환불 안내보기 >',
+                            style: TextStyle(
+                              color: Color(0xFF898686),
+                              fontSize: 12,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+            color: Colors.white,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '결제를 완료하셔야 예약이 확정됩니다.',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
+                    SizedBox(
+                      width: 100,
+                      height: 40,
+                      child: FilledButton.tonal(
                         onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0x26D2D2D2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          side: BorderSide(color: Colors.grey[300]!),
                         ),
                         child: const Text(
                           '이전',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: Color(0xFF898686),
+                            fontSize: 20,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _submitBooking,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF3787),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  if (!_agreedRefundPolicy) {
+                                    return;
+                                  }
+                                  _submitBooking();
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF5A8D),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            disabledBackgroundColor: Colors.grey[300],
                           ),
-                          disabledBackgroundColor: Colors.grey[300],
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  '다음',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : const Text(
-                                '완료',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  '결제를 완료하셔야 예약이 확정됩니다.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
         ],
+        ),
       ),
     );
   }
