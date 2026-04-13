@@ -738,50 +738,20 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     );
   }
 
-  int _chartDataMax() {
-    final data = _buildPeriodChartData();
-    if (data.isEmpty) return 0;
-    return data.fold<int>(0, (a, b) => math.max(a, b.value));
-  }
-
-  int _defaultEmptyChartMax() {
-    if (selectedPeriod == '일') return 1000;
-    if (selectedPeriod == '주') return 8000;
-    return 50000;
-  }
-
-  int _niceYStep(int rough) {
-    if (rough <= 0) return 200;
-    final exp = (math.log(rough) / math.ln10).floor();
-    final pow10 = math.max(1, math.pow(10, exp).toInt());
-    for (final m in [1, 2, 5, 10]) {
-      final s = m * pow10;
-      if (rough <= s * 5) return s;
-    }
-    return 10 * pow10;
-  }
-
   int _chartMaxValue() {
-    final raw = _chartDataMax();
-    if (raw <= 0) return _defaultEmptyChartMax();
-    final target = (raw * 1.15).ceil();
-    final step = _niceYStep((target / 5).ceil());
-    var cap = ((target + step - 1) ~/ step) * step;
-    if (cap < target) cap += step;
-    final bands = (cap / step).round();
-    if (bands > 6) {
-      final step2 = step * ((bands / 6).ceil());
-      cap = ((target + step2 - 1) ~/ step2) * step2;
-    }
-    return math.max(cap, step * 2);
+    // 요청 스케일 고정
+    // - 시간대별(일): 0~5,000 (1,000 단위)
+    // - 일자별(주): 0~50,000 (10,000 단위)
+    // - 월별(월): 0~500,000 (100,000 단위)
+    if (selectedPeriod == '일') return 5000;
+    if (selectedPeriod == '주') return 50000;
+    return 500000;
   }
 
   List<int> _buildYAxisTicks() {
     final cap = _chartMaxValue();
-    return List<int>.generate(6, (i) {
-      final v = (cap * (5 - i) / 5).round();
-      return math.max(0, v);
-    });
+    final step = (cap / 5).round();
+    return List<int>.generate(6, (i) => math.max(0, cap - (step * i)));
   }
 
   List<String> _buildYAxisDisplayLabels() {
