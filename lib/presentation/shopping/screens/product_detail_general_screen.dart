@@ -1,6 +1,7 @@
 // TODO step2
 import 'dart:ui';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_html/flutter_html.dart';
@@ -9,6 +10,7 @@ import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/point_helper.dart';
+import '../../../core/utils/price_formatter.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/product_share.dart';
 import '../../../data/services/point_service.dart';
@@ -23,28 +25,27 @@ import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
-import '../widgets/producrt_support_review.dart';
 import '../widgets/producrt_normal_review.dart';
-import '../widgets/recommend_product.dart';
 import '../utils/get_review.dart';
 import 'webview_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
 
-class ProductDetailScreen extends StatefulWidget {
+class ProductDetailGeneralScreen extends StatefulWidget {
   final String productId;
 
-  const ProductDetailScreen({
+  const ProductDetailGeneralScreen({
     super.key,
     required this.productId,
   });
 
   @override
-  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  State<ProductDetailGeneralScreen> createState() =>
+      _ProductDetailGeneralScreenState();
 }
 
-class _ProductDetailScreenState extends State<ProductDetailScreen>
+class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     with SingleTickerProviderStateMixin {
   Product? _product;
   bool _isLoading = true;
@@ -57,15 +58,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   // 리뷰 관련 상태
   List<ReviewModel> _reviews = [];
-  List<ReviewModel> _supporterReviews = [];
   List<ReviewModel> _generalReviews = [];
-  List<Product> _recommendedProducts = [];
   Map<String, dynamic>? _reviewStats;
   bool _isLoadingReviews = false;
   int? _userPoint; // 현재 사용자 보유 포인트
   bool? _usePointConfig; // cf_use_point 설정값
   bool? _isDetailExpanded = false;
-  int _visibleSupporterReviewCount = 4;
   int _visibleNormalReviewCount = 4;
   UserModel? _loggedInUser;
 
@@ -77,7 +75,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void initState() {
     super.initState();
     // 상품정보, 리뷰 (일반 리뷰 탭은 step2에서 재검토)
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       // 탭 변경 시 UI 업데이트
       if (!_tabController.indexIsChanging) {
@@ -144,68 +142,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
       // 찜하기 상태 확인
       await _checkFavoriteStatus();
-      await _loadRecommendedProducts();
     } catch (e) {
       setState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = '제품 정보를 불러오는데 실패했습니다: $e';
-      });
-    }
-  }
-
-  Future<void> _loadRecommendedProducts() async {
-    if (_product == null) return;
-    if (_product!.ctKind != 'prescription') {
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = [];
-      });
-      return;
-    }
-
-    String normalize(String? value) => (value ?? '').trim();
-    final currentCategory = normalize(_product!.categoryId);
-    final currentName = normalize(_product!.name);
-
-    final isDiet = currentCategory == '10' || currentName.contains('다이어트');
-    final isDetox = currentCategory == '20' || currentName.contains('디톡스');
-    final isCalm = currentCategory == '80' || currentName.contains('심신안정');
-
-    List<String> targetCategoryIds;
-    if (isDiet) {
-      targetCategoryIds = ['20', '80'];
-    } else if (isDetox) {
-      targetCategoryIds = ['10', '80'];
-    } else if (isCalm) {
-      targetCategoryIds = ['10', '20'];
-    } else {
-      targetCategoryIds = ['10', '20', '80'];
-    }
-
-    try {
-      final categoryProducts = await Future.wait(
-        targetCategoryIds.map(
-          (categoryId) => ProductRepository.getProductsByCategory(
-            categoryId: categoryId,
-            productKind: 'prescription',
-            page: 1,
-            pageSize: 100,
-          ),
-        ),
-      );
-      final products = categoryProducts.expand((list) => list).toList();
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = products
-            .where((p) => p.ctKind == 'prescription')
-            .where((p) => p.id != _product?.id)
-            .toList();
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = [];
       });
     }
   }
@@ -254,9 +195,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       if (loaded != null) {
         setState(() {
           _reviews = loaded.allReviews;
-          _supporterReviews = loaded.supporterReviews;
           _generalReviews = loaded.generalReviews;
-          _visibleSupporterReviewCount = 4;
           _visibleNormalReviewCount = 4;
           _reviewStats = loaded.stats;
           _isLoadingReviews = false;
@@ -492,7 +431,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildProductDetail() {
-    final supporterReviewCount = _supporterReviews.length;
     final generalReviewCount = _generalReviews.length;
 
     return NestedScrollView(
@@ -525,17 +463,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 tabs: [
                   const Tab(
                     child: Text(
-                      '처방약 소개',
+                      '상품 소개',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontFamily: _kGmarketSans,
-                      ),
-                    ),
-                  ),
-                  Tab(
-                    child: Text(
-                      '서포터리뷰 $supporterReviewCount',
-                      style: const TextStyle(
                         fontSize: 14,
                         fontFamily: _kGmarketSans,
                       ),
@@ -559,9 +488,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // 상품정보 탭
           _buildProductInfoTab(),
-          _buildSupportReviewTab(),
           _buildNormalReviewTab(),
         ],
       ),
@@ -608,28 +535,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
             // 간단 설명 (it_basic)
             _buildBasicDescription(),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: const Color(0xFFFF5A95),
-                    width: 1,
-                  ),
-                ),
-                child: const Text(
-                  '한의약품',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFFFF5A95),
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: 16),
 
             _buildImageCarousel(_getProductImages()),
@@ -678,8 +583,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           const SizedBox(height: 16),
           const Divider(height: 1, thickness: 1),
 
-          _buildRecommendedSection(),
-
           // 하단 여백
           const SizedBox(height: 56),
 
@@ -687,22 +590,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           // const AppFooter(),
         ],
       ),
-    );
-  }
-
-  Widget _buildSupportReviewTab() {
-    return ProductSupportReview(
-      reviews: _supporterReviews,
-      isLoading: _isLoadingReviews,
-      visibleCount: _visibleSupporterReviewCount,
-      guestLoginLocked: !_isReviewLoginOk,
-      onGuestLoginTap: _onGuestReviewLoginTap,
-      onLoadMore: () {
-        setState(() {
-          _visibleSupporterReviewCount += 8;
-        });
-      },
-      onReviewTap: (_) {},
     );
   }
 
@@ -1371,21 +1258,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Widget _buildRecommendedSection() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-      child: RecommendProductSection(
-        excludedProductNames: [_product?.name ?? ''],
-        products: _recommendedProducts,
-        title: '추천 상품',
-        showLeadingBar: true,
-        onProductTap: (product) {
-          Navigator.pushNamed(context, '/product/${product.id}');
-        },
-      ),
-    );
-  }
-
   Widget _buildBottomActionBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1434,7 +1306,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   ),
                 ),
                 child: Text(
-                  '처방 예약하기',
+                  '구매하기',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -1459,8 +1331,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       options: _productOptions,
       selectedOptions: _selectedOptions,
       userPoint: _userPoint,
-      onNoOptionGeneral: () async {},
-      onNoOptionPrescription: _proceedWithReservation,
+      onNoOptionGeneral: _showGeneralQuantityBottomSheet,
+      onNoOptionPrescription: () async {},
       onOptionsChanged: (newOptions) {
         setState(() {
           _selectedOptions = newOptions;
@@ -1521,10 +1393,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           );
         }
       },
-      onReserve: () async {
-        Navigator.of(context).pop();
-        await _addPrescriptionItemsToTempCart();
-      },
+      onReserve: () async {},
       onBuyNow: () async {
         if (_product == null || _selectedOptions.isEmpty) return;
 
@@ -1563,6 +1432,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
+  Future<bool> _addGeneralProductToCart({required int quantity}) async {
+    if (_product == null) return false;
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty) {
+      if (!mounted) return false;
+      await showLoginRequiredDialog(
+        context,
+        message: '장바구니 담기와 구매는 로그인 후 이용할 수 있습니다.',
+      );
+      return false;
+    }
+    final result = await CartService.addToCart(
+      productId: _product!.id,
+      quantity: quantity,
+      price: _product!.price * quantity,
+      ctKind: _product!.ctKind,
+    );
+
+    if (!mounted) return false;
+
+    final success = result['success'] == true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? '장바구니에 추가되었습니다.'
+              : (result['message'] ?? '장바구니 추가에 실패했습니다.'),
+        ),
+        backgroundColor: success ? Colors.green : Colors.red,
+      ),
+    );
+    return success;
+  }
+
   void _navigateToCheckoutPage() {
     Navigator.push(
       context,
@@ -1576,96 +1479,314 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Future<void> _addPrescriptionItemsToTempCart() async {
-    if (_product == null || _selectedOptions.isEmpty) return;
+  Future<void> _showGeneralQuantityBottomSheet() async {
+    if (_product == null) return;
 
-    final user = await AuthService.getUser();
-    if (user == null || user.id.isEmpty) {
-      if (!mounted) return;
-      await showLoginRequiredDialog(
-        context,
-        message: '로그인 후 이용 가능합니다.',
-      );
-      return;
-    }
+    int quantity = 1;
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('임시 장바구니에 담는 중...'),
-        duration: Duration(seconds: 1),
-      ),
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final sheetTheme = Theme.of(sheetContext).copyWith(
+          textTheme: Theme.of(sheetContext).textTheme.apply(
+                fontFamily: _kGmarketSans,
+              ),
+          primaryTextTheme: Theme.of(sheetContext).primaryTextTheme.apply(
+                fontFamily: _kGmarketSans,
+              ),
+        );
+        final screenWidth = MediaQuery.of(sheetContext).size.width;
+        final constrainedWidth = math.min(screenWidth - 12, 600.0);
+        return Theme(
+          data: sheetTheme,
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: _kGmarketSans),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                final totalPrice = _product!.price * quantity;
+                return Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: constrainedWidth),
+                    child: ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(20)),
+                      child: Container(
+                        color: Colors.white,
+                        child: SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      _product!.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text(
+                                          '수량',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        _buildGeneralQuantityControl(
+                                          quantity: quantity,
+                                          onDecrease: quantity > 1
+                                              ? () => setModalState(
+                                                  () => quantity--)
+                                              : null,
+                                          onIncrease: () =>
+                                              setModalState(() => quantity++),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.12),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, -2),
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text(
+                                            '총 결제금액',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${PriceFormatter.format(totalPrice)}원',
+                                            style: const TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFFFF4081),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '보유 포인트 ${PriceFormatter.format(_userPoint ?? 0)}P',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[700],
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 14),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: OutlinedButton(
+                                              onPressed: () async {
+                                                Navigator.of(context).pop();
+                                                final success =
+                                                    await _addGeneralProductToCart(
+                                                  quantity: quantity,
+                                                );
+                                                if (!mounted || !success)
+                                                  return;
+                                                Navigator.pushNamed(
+                                                  this.context,
+                                                  '/cart',
+                                                  arguments: const {
+                                                    'initialTabIndex': 1,
+                                                  },
+                                                );
+                                              },
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.black87,
+                                                side: BorderSide(
+                                                  color: Colors.grey[400]!,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 14,
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                '장바구니',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: () async {
+                                                Navigator.of(context).pop();
+                                                final success =
+                                                    await _addGeneralProductToCart(
+                                                  quantity: quantity,
+                                                );
+                                                if (!mounted || !success)
+                                                  return;
+                                                _navigateToCheckoutPage();
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0xFFFF4081),
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 14,
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                '구매하기',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
-
-    final result = await CartService.addOptionsToCart(
-      product: _product!,
-      selectedOptions: _selectedOptions,
-      ctStatus: '임시',
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      setState(() {
-        _selectedOptions.clear();
-      });
-      Navigator.pushNamed(context, '/temp-cart');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? '임시 장바구니 추가 실패'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
-  /// 옵션 선택 후 예약 진행
-  void _proceedWithReservation() {
-    if (_selectedOptions.isEmpty || _product == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('옵션을 선택해주세요.'),
-          behavior: SnackBarBehavior.floating,
-          width: 568, // 600px - 32px (양쪽 16px 여백)
-          duration: Duration(seconds: 2),
+  Widget _buildGeneralQuantityControl({
+    required int quantity,
+    required VoidCallback? onDecrease,
+    required VoidCallback onIncrease,
+  }) {
+    return Container(
+      width: 59.5,
+      height: 20,
+      decoration: const BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 2.14,
+            offset: Offset(0, 0.54),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Row(
+              children: [
+                _buildGeneralQtyButton(
+                  icon: Icons.remove,
+                  onTap: onDecrease,
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '$quantity',
+                      style: const TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+                _buildGeneralQtyButton(
+                  icon: Icons.add,
+                  onTap: onIncrease,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeneralQtyButton({
+    required IconData icon,
+    required VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 20,
+        height: 20,
+        decoration: const ShapeDecoration(
+          color: Colors.white,
+          shape: OvalBorder(),
+          shadows: [
+            BoxShadow(
+              color: Color(0x0C000000),
+              blurRadius: 2.14,
+              offset: Offset(0, 0.54),
+              spreadRadius: 0,
+            ),
+          ],
         ),
-      );
-      return;
-    }
-
-    // 총 가격 계산
-    final basePrice = _product!.price;
-    int totalOptionPrice = 0;
-    int totalQuantity = 0;
-    _selectedOptions.forEach((option, quantity) {
-      totalOptionPrice += option.price * quantity;
-      totalQuantity += quantity;
-    });
-    final totalPrice = (basePrice * totalQuantity) + totalOptionPrice;
-
-    // 선택된 옵션 정보 표시
-    String message = '처방 예약 기능은 준비 중입니다.\n\n';
-    message += '선택된 옵션:\n';
-    _selectedOptions.forEach((option, quantity) {
-      final itemPrice = (basePrice + option.price) * quantity;
-      message +=
-          '  - ${option.displayText} x $quantity: ${itemPrice.toString().replaceAllMapped(
-                RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                (Match m) => '${m[1]},',
-              )}원\n';
-    });
-    message += '\n총 결제금액: ${totalPrice.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        )}원';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        width: 568, // 600px - 32px (양쪽 16px 여백)
-        duration: const Duration(seconds: 5),
+        child: Icon(
+          icon,
+          size: 13,
+          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
+        ),
       ),
     );
   }
