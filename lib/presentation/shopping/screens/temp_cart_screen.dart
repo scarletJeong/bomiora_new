@@ -11,6 +11,7 @@ import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/recommend_product.dart';
+import 'prescription_booking/prescription_profile_screen.dart';
 
 class TempCartScreen extends StatefulWidget {
   const TempCartScreen({super.key});
@@ -41,24 +42,41 @@ class _TempCartScreenState extends State<TempCartScreen> {
     try {
       final results = await Future.wait([
         CartService.getCart(ctStatus: '임시'),
-        ProductRepository.getPopularProducts(limit: 6),
+        ProductRepository.getProductsByCategory(
+          categoryId: '10',
+          productKind: 'prescription',
+          page: 1,
+          pageSize: 100,
+        ),
+        ProductRepository.getProductsByCategory(
+          categoryId: '20',
+          productKind: 'prescription',
+          page: 1,
+          pageSize: 100,
+        ),
+        ProductRepository.getProductsByCategory(
+          categoryId: '80',
+          productKind: 'prescription',
+          page: 1,
+          pageSize: 100,
+        ),
       ]);
 
       final tempResult = results[0] as Map<String, dynamic>;
-      final recommended = results[1] as List<Product>;
+      final diet = results[1] as List<Product>;
+      final detox = results[2] as List<Product>;
+      final calm = results[3] as List<Product>;
+      final recommended = <Product>[...diet, ...detox, ...calm];
 
       if (tempResult['success'] == true) {
         final rawItems = tempResult['data'];
         final items = (rawItems is List ? rawItems : [])
             .whereType<Map>()
             .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
-            .where((item) => item.ctKind == 'prescription')
             .toList();
         setState(() {
           _tempItems = items;
-          _recommendedProducts = recommended
-              .where((product) => product.ctKind == 'prescription')
-              .toList();
+          _recommendedProducts = recommended;
           _isLoading = false;
         });
       } else {
@@ -115,59 +133,106 @@ class _TempCartScreenState extends State<TempCartScreen> {
     );
   }
 
+  bool _isGeneralKind(String kind) =>
+      kind.trim().toLowerCase() == 'general';
+
+  List<Map<String, dynamic>> _selectedOptionsFromPrescItems(
+      List<CartItem> items) {
+    return items
+        .map(
+          (item) => <String, dynamic>{
+            'it_id': item.itId,
+            'it_name': item.itName,
+            'id': item.ioId ?? '',
+            'name': item.ctOption.isNotEmpty ? item.ctOption : item.itName,
+            'price': item.ioPrice ?? 0,
+            'quantity': item.ctQty,
+            'totalPrice': item.ctPrice,
+            'ct_kind': item.ctKind,
+          },
+        )
+        .toList();
+  }
+
   Future<void> _commitToCart() async {
     if (_tempItems.isEmpty || _isSubmitting) return;
 
-    setState(() {
-      _isSubmitting = true;
-    });
-    final isLoggedIn = await _ensureLoggedIn();
-    if (!isLoggedIn) {
+    setState(() => _isSubmitting = true);
+    try {
+      if (!await _ensureLoggedIn()) return;
+
+      final generalItems =
+          _tempItems.where((e) => _isGeneralKind(e.ctKind)).toList();
+      final prescItems =
+          _tempItems.where((e) => !_isGeneralKind(e.ctKind)).toList();
       if (!mounted) return;
-      setState(() {
-        _isSubmitting = false;
-      });
-      return;
-    }
 
-    int success = 0;
-    int fail = 0;
-
-    for (final item in _tempItems) {
-      final addResult = await CartService.addToCart(
-        productId: item.itId,
-        quantity: item.ctQty,
-        price: item.ctPrice,
-        optionId: item.ioId,
-        optionText: item.ctOption,
-        optionPrice: item.ioPrice,
-        odId: item.odId,
-        ctKind: item.ctKind,
-        ctStatus: '쇼핑',
-      );
-      if (addResult['success'] == true) {
-        success++;
-        await CartService.removeCartItem(item.ctId);
-      } else {
-        fail++;
+      if (prescItems.isNotEmpty) {
+        if (generalItems.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('처방 상품 예약을 먼저 진행합니다. 일반 상품은 임시 장바구니에 유지됩니다.'),
+            ),
+          );
+        }
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => PrescriptionProfileScreen(
+              productId: prescItems.first.itId,
+              productName: prescItems.first.itName,
+              selectedOptions: _selectedOptionsFromPrescItems(prescItems),
+              tempCartCtIdsToClearOnSuccess:
+                  prescItems.map((e) => e.ctId).toList(),
+            ),
+          ),
+        );
+        if (mounted) await _loadData();
+        return;
       }
-    }
 
-    if (!mounted) return;
-    setState(() {
-      _isSubmitting = false;
-    });
+      int genSuccess = 0;
+      int genFail = 0;
+      for (final item in generalItems) {
+        final addResult = await CartService.addToCart(
+          productId: item.itId,
+          quantity: item.ctQty,
+          price: item.ctPrice,
+          optionId: item.ioId,
+          optionText: item.ctOption,
+          optionPrice: item.ioPrice,
+          odId: item.odId,
+          ctKind: item.ctKind,
+          ctStatus: '쇼핑',
+        );
+        if (addResult['success'] == true) {
+          genSuccess++;
+          await CartService.removeCartItem(item.ctId);
+        } else {
+          genFail++;
+        }
+      }
 
-    if (fail == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('선택 항목을 장바구니에 담았습니다.')),
-      );
-      Navigator.pushReplacementNamed(context, '/cart');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$success개 성공, $fail개 실패')),
-      );
-      await _loadData();
+      if (!mounted) return;
+
+      if (genFail > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('일반 상품 $genFail개를 장바구니로 옮기지 못했습니다.'),
+          ),
+        );
+        await _loadData();
+        return;
+      }
+
+      if (genSuccess > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('선택 항목을 장바구니에 담았습니다.')),
+        );
+        Navigator.pushReplacementNamed(context, '/cart');
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -267,11 +332,12 @@ class _TempCartScreenState extends State<TempCartScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 22),
                       RecommendProductSection(
                         excludedProductNames:
                             _tempItems.map((item) => item.itName).toList(),
                         products: _recommendedProducts,
+                        hideWhenEmpty: true,
+                        topSpacingBefore: 22,
                         onProductTap: (product) async {
                           await Navigator.pushNamed(
                               context, '/product/${product.id}');
