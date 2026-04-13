@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -16,6 +18,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   static const int _stepMin = 0;
   static const int _stepMax = 20000;
   static const int _stepUnit = 100;
+  static const double _stepsItemExtent = 30;
+  static const int _wheelTickDebounceMs = 70;
 
   final TextEditingController _currentWeightController =
       TextEditingController();
@@ -26,6 +30,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   int _selectedSteps = 6000;
   bool _loading = true;
   bool _submitting = false;
+  int _lastStepsWheelTickMs = 0;
 
   int get _stepsItemCount => ((_stepMax - _stepMin) ~/ _stepUnit) + 1;
 
@@ -42,6 +47,20 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   }
 
   String _formatNumber(int value) => NumberFormat('#,###').format(value);
+
+  void _changeStepsIndexBy(int delta) {
+    final idx = _indexFromSteps(_selectedSteps);
+    final next = (idx + delta).clamp(0, _stepsItemCount - 1);
+    if (next == idx) return;
+    setState(() => _selectedSteps = _stepsFromIndex(next));
+    if (_stepsWheelController.hasClients) {
+      _stepsWheelController.animateToItem(
+        next,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -278,50 +297,64 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             border: Border.all(color: const Color(0x7FD2D2D2)),
             color: Colors.white,
           ),
-          child: ListWheelScrollView.useDelegate(
-            controller: _stepsWheelController,
-            itemExtent: 30,
-            diameterRatio: 2.6,
-            perspective: 0.003,
-            physics: const FixedExtentScrollPhysics(),
-            onSelectedItemChanged: (index) {
-              setState(() {
-                _selectedSteps = _stepsFromIndex(index);
-              });
+          child: Listener(
+            onPointerSignal: (event) {
+              if (!kIsWeb || event is! PointerScrollEvent) return;
+              final nowMs = DateTime.now().millisecondsSinceEpoch;
+              if (nowMs - _lastStepsWheelTickMs < _wheelTickDebounceMs) {
+                return;
+              }
+              _lastStepsWheelTickMs = nowMs;
+              final delta = event.scrollDelta.dy > 0 ? 1 : -1;
+              _changeStepsIndexBy(delta);
             },
-            childDelegate: ListWheelChildBuilderDelegate(
-              childCount: _stepsItemCount,
-              builder: (context, index) {
-                final value = _stepsFromIndex(index);
-                final distance = (value - _selectedSteps).abs() ~/ _stepUnit;
-
-                double fontSize;
-                Color color;
-
-                if (distance == 0) {
-                  fontSize = 30;
-                  color = const Color(0xFF1A1A1A);
-                } else if (distance == 1) {
-                  fontSize = 24;
-                  color = const Color(0xFF9A9A9A);
-                } else {
-                  fontSize = 14;
-                  color = const Color(0xFFBEBEBE);
-                }
-
-                return Center(
-                  child: Text(
-                    _formatNumber(value),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: fontSize,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      height: 1.0,
-                    ),
-                  ),
-                );
+            child: ListWheelScrollView.useDelegate(
+              controller: _stepsWheelController,
+              itemExtent: _stepsItemExtent,
+              diameterRatio: 2.6,
+              perspective: 0.003,
+              physics: kIsWeb
+                  ? const NeverScrollableScrollPhysics()
+                  : const FixedExtentScrollPhysics(),
+              onSelectedItemChanged: (index) {
+                final next = _stepsFromIndex(index);
+                if (next == _selectedSteps) return;
+                setState(() => _selectedSteps = next);
               },
+              childDelegate: ListWheelChildBuilderDelegate(
+                childCount: _stepsItemCount,
+                builder: (context, index) {
+                  final value = _stepsFromIndex(index);
+                  final distance = (value - _selectedSteps).abs() ~/ _stepUnit;
+
+                  double fontSize;
+                  Color color;
+
+                  if (distance == 0) {
+                    fontSize = 30;
+                    color = const Color(0xFF1A1A1A);
+                  } else if (distance == 1) {
+                    fontSize = 24;
+                    color = const Color(0xFF9A9A9A);
+                  } else {
+                    fontSize = 14;
+                    color = const Color(0xFFBEBEBE);
+                  }
+
+                  return Center(
+                    child: Text(
+                      _formatNumber(value),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: fontSize,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                        height: 1.0,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
