@@ -34,7 +34,7 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
           fontSize: 18,
         ),
       ),
-      centerTitle: false,
+      centerTitle: centerTitle,
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,

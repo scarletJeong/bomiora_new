@@ -19,7 +19,7 @@ class MobileLayoutWrapper extends StatelessWidget {
       backgroundColor: Colors.grey[100], // 외부 배경색
       body: Center(
         child: Container(
-          width: 600, // 모바일 화면 크기로 고정
+          width: 750, // 모바일 화면 크기로 고정
           height: double.infinity,
           decoration: BoxDecoration(
             color: backgroundColor ?? Colors.white, // 기본값: 하얀색
@@ -98,7 +98,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       backgroundColor: Colors.grey[100], // 외부 배경색
       body: Center(
         child: Container(
-          width: 600, // 모바일 화면 크기로 고정
+          width: 750, // 모바일 화면 크기로 고정
           height: double.infinity,
           decoration: BoxDecoration(
             color: backgroundColor ?? Colors.white, // 기본값: 하얀색
