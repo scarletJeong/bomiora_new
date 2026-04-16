@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// 체중 일별 툴팁과 동일: 5분 단위 반올림 후 `N시 MM분`
+/// 일별 툴팁 시간 표기: `N시`
 String bloodSugarFormatKoreanTime(DateTime dt) {
-  final rounded = ((dt.minute / 5).round()) * 5;
-  final hour = rounded == 60 ? (dt.hour + 1) % 24 : dt.hour;
-  final minute = rounded == 60 ? 0 : rounded;
-  return '$hour시 ${minute.toString().padLeft(2, '0')}분';
+  return '${dt.hour}시';
 }
 
 /// `M.d`(예: 3.24) → `3월 24일`
@@ -118,9 +115,7 @@ class BloodSugarTooltip extends StatelessWidget {
       final maxSugar = data['maxBloodSugar'] as int?;
       if (minSugar == null || maxSugar == null) return const SizedBox.shrink();
       final header = _headerLine(data);
-      final body = minSugar == maxSugar
-          ? '$minSugar'
-          : '최저 $minSugar ~ 최고 $maxSugar';
+      final body = minSugar == maxSugar ? '$minSugar' : '$minSugar ~ $maxSugar';
       return _positionedCard(
         minWidth: 120,
         estimatedHeight: 56,

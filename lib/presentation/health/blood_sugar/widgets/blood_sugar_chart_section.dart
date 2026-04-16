@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../common/chart_layout.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart'
     show buildBloodPressureYAxisStrip, bloodPressureYAxisUnitBandHeight;
@@ -203,6 +205,14 @@ class BloodSugarPeriodSelector extends StatelessWidget {
 }
 
 class BloodSugarChartSection extends StatefulWidget {
+  static const List<String> measurementFilters = [
+    '전체',
+    '공복',
+    '식전/식후',
+    '취침전',
+    '평상시',
+  ];
+
   final String selectedPeriod;
   final DateTime selectedDate;
   final double timeOffset;
@@ -214,12 +224,15 @@ class BloodSugarChartSection extends StatefulWidget {
   /// 확대 화면 등에서 범례를 더 작게 표시
   final bool compactLegend;
   final bool showExpandButton;
+  final bool showMeasurementFilter;
   final double chartHeight;
+  final String selectedMeasurementFilter;
   final List<Map<String, dynamic>> chartData;
   final List<double> yLabels;
   final bool hasActualDailyData;
   final VoidCallback? onExpand;
   final ValueChanged<String>? onPeriodChanged;
+  final ValueChanged<String>? onMeasurementFilterChanged;
   final void Function(double deltaX, double chartWidth) onDragUpdate;
   final void Function(int? index, Offset? position) onSelectionChanged;
 
@@ -240,9 +253,12 @@ class BloodSugarChartSection extends StatefulWidget {
     this.showLegend = true,
     this.compactLegend = false,
     this.showExpandButton = true,
+    this.showMeasurementFilter = true,
     this.chartHeight = ChartConstants.healthChartHeight,
+    this.selectedMeasurementFilter = '전체',
     this.onExpand,
     this.onPeriodChanged,
+    this.onMeasurementFilterChanged,
   });
 
   @override
@@ -251,6 +267,173 @@ class BloodSugarChartSection extends StatefulWidget {
 
 class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
   double? _dragStartX;
+  final GlobalKey _filterAnchorKey = GlobalKey();
+  OverlayEntry? _filterMenuEntry;
+  ScrollController? _filterScrollController;
+  String? _hoveredFilter;
+
+  List<Map<String, dynamic>> _filteredChartData(List<Map<String, dynamic>> source) {
+    final selected = widget.selectedMeasurementFilter.trim();
+    if (selected.isEmpty || selected == '전체') return source;
+    if (selected == '식전/식후') {
+      return source.where((row) {
+        final type = (row['measurementType']?.toString() ?? '').trim();
+        return type == '식전' || type == '식후';
+      }).toList();
+    }
+    return source
+        .where((row) => (row['measurementType']?.toString() ?? '').trim() == selected)
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    _closeMeasurementFilterMenu();
+    super.dispose();
+  }
+
+  void _closeMeasurementFilterMenu() {
+    _filterMenuEntry?.remove();
+    _filterMenuEntry = null;
+    _filterScrollController?.dispose();
+    _filterScrollController = null;
+    if (_hoveredFilter != null && mounted) {
+      setState(() => _hoveredFilter = null);
+    }
+  }
+
+  void _toggleMeasurementFilterMenu() {
+    if (_filterMenuEntry != null) {
+      _closeMeasurementFilterMenu();
+      return;
+    }
+    _openMeasurementFilterMenu();
+  }
+
+  void _openMeasurementFilterMenu() {
+    final anchorContext = _filterAnchorKey.currentContext;
+    final anchorBox = anchorContext?.findRenderObject() as RenderBox?;
+    if (anchorBox == null || !anchorBox.attached) return;
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+    final overlayBox = overlay.context.findRenderObject() as RenderBox?;
+    if (overlayBox == null) return;
+
+    const menuWidth = 153.0;
+    const rowHeight = 24.0;
+    const visibleRows = 3;
+    const menuPadTop = 10.0;
+    const menuPadBottom = 5.0;
+    final menuHeight = menuPadTop + menuPadBottom + (rowHeight * visibleRows);
+
+    final anchorTopLeft = anchorBox.localToGlobal(Offset.zero);
+    var left = anchorTopLeft.dx;
+    var top = anchorTopLeft.dy + anchorBox.size.height + 4;
+    left = left.clamp(8.0, overlayBox.size.width - menuWidth - 8.0);
+    top = top.clamp(8.0, overlayBox.size.height - menuHeight - 8.0);
+
+    final selectedIndex = BloodSugarChartSection.measurementFilters
+        .indexOf(widget.selectedMeasurementFilter);
+    final maxStartIndex =
+        (BloodSugarChartSection.measurementFilters.length - visibleRows)
+            .clamp(0, BloodSugarChartSection.measurementFilters.length);
+    final startIndex = (selectedIndex - 1).clamp(0, maxStartIndex);
+    _filterScrollController = ScrollController(initialScrollOffset: startIndex * rowHeight);
+
+    _filterMenuEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _closeMeasurementFilterMenu,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Positioned(
+            left: left,
+            top: top,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                width: menuWidth,
+                padding: const EdgeInsets.only(top: menuPadTop, bottom: menuPadBottom),
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    side: const BorderSide(width: 0.50, color: Color(0xFFD2D2D2)),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                ),
+                child: SizedBox(
+                  height: rowHeight * visibleRows,
+                  child: ListView.builder(
+                    controller: _filterScrollController,
+                    padding: EdgeInsets.zero,
+                    itemCount: BloodSugarChartSection.measurementFilters.length,
+                    itemBuilder: (context, index) {
+                      final label = BloodSugarChartSection.measurementFilters[index];
+                      final hovered = _hoveredFilter == label;
+                      final hasThinBorder =
+                          index < BloodSugarChartSection.measurementFilters.length - 1;
+                      return MouseRegion(
+                        onEnter: (_) {
+                          _hoveredFilter = label;
+                          _filterMenuEntry?.markNeedsBuild();
+                        },
+                        onExit: (_) {
+                          _hoveredFilter = null;
+                          _filterMenuEntry?.markNeedsBuild();
+                        },
+                        child: InkWell(
+                          onTap: () {
+                            _closeMeasurementFilterMenu();
+                            if (label == widget.selectedMeasurementFilter) return;
+                            widget.onSelectionChanged(null, null);
+                            widget.onMeasurementFilterChanged?.call(label);
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            height: rowHeight,
+                            padding: const EdgeInsets.all(5),
+                            decoration: ShapeDecoration(
+                              shape: RoundedRectangleBorder(
+                                side: hasThinBorder
+                                    ? const BorderSide(
+                                        width: 0.30,
+                                        color: Color(0x7FD2D2D2),
+                                      )
+                                    : BorderSide.none,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              label,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: hovered
+                                    ? const Color(0xFFFF5A8D)
+                                    : Colors.black,
+                                fontSize: 10,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    overlay.insert(_filterMenuEntry!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -310,50 +493,98 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
   Widget _buildChart(
       {bool showExpandButton = true,
       double chartHeight = ChartConstants.healthChartHeight}) {
+    final filteredData = _filteredChartData(widget.chartData);
+    final effectiveChartHeight =
+        chartHeight + (widget.showMeasurementFilter ? 40.0 : 0.0);
     Widget chartBody;
     if (widget.selectedPeriod == '일' && !widget.hasActualDailyData) {
-      chartBody = _buildNoDataMessage(chartHeight: chartHeight);
-    } else if (widget.chartData.isEmpty) {
+      chartBody = _buildNoDataMessage(chartHeight: effectiveChartHeight);
+    } else if (filteredData.isEmpty) {
       chartBody = _buildDraggableChart(
         [],
         widget.yLabels,
         isEmpty: true,
-        chartHeight: chartHeight,
+        chartHeight: effectiveChartHeight,
       );
     } else {
       chartBody = _buildDraggableChart(
-        widget.chartData,
+        filteredData,
         widget.yLabels,
         isEmpty: false,
-        chartHeight: chartHeight,
+        chartHeight: effectiveChartHeight,
       );
     }
 
-    if (!showExpandButton) return chartBody;
+    if (!showExpandButton && !widget.showMeasurementFilter) return chartBody;
 
     return Stack(
       children: [
         chartBody,
         Positioned(
-          right: 8,
+          right: 4,
           top: 8,
-          child: GestureDetector(
-            onTap: widget.onExpand,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: ShapeDecoration(
-                color: const Color(0x7FD2D2D2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (showExpandButton)
+                GestureDetector(
+                  onTap: widget.onExpand,
+                  behavior: HitTestBehavior.opaque,
+                  child: SvgPicture.asset(
+                    AppAssets.healthZoomin,
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.contain,
+                  ),
                 ),
-              ),
-              child: const Icon(
-                Icons.open_in_full,
-                size: 12,
-                color: Color(0xFF4B5563),
-              ),
-            ),
+              if (widget.showMeasurementFilter) ...[
+                const SizedBox(height: 6),
+                GestureDetector(
+                  key: _filterAnchorKey,
+                  onTap: _toggleMeasurementFilterMenu,
+                  child: Container(
+                    width: 164,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: ShapeDecoration(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(
+                          width: 0.50,
+                          color: Color(0x7FD2D2D2),
+                        ),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.selectedMeasurementFilter,
+                          style: const TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 10,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 16,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],
@@ -386,6 +617,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.showMeasurementFilter) const SizedBox(height: 34),
           Expanded(
             child: LayoutBuilder(
               builder: (context, outerConstraints) {
@@ -454,9 +686,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       behavior: HitTestBehavior.opaque,
       onPanStart: (widget.selectedPeriod == '일' || widget.selectedPeriod == '월')
           ? (details) {
-              if (widget.selectedPeriod == '월') {
-                widget.onSelectionChanged(null, null);
-              }
+              // 혈압 그래프와 동일하게: 드래그 시작 시 기존 툴팁 닫기
+              widget.onSelectionChanged(null, null);
               _dragStartX = details.localPosition.dx;
             }
           : null,
@@ -546,10 +777,22 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     double minDistance = double.infinity;
     Offset? closestPoint;
 
-    void considerPoint(double x, double y, int selectionIndex) {
+    void considerPoint(
+      double x,
+      double y,
+      int selectionIndex, {
+      required double maxDistanceSq,
+      double xHitSlop = 0,
+      double yHitSlop = 0,
+    }) {
       final dx = tapPosition.dx - x;
       final dy = tapPosition.dy - y;
+      if (xHitSlop > 0 && yHitSlop > 0) {
+        final inRect = dx.abs() <= xHitSlop && dy.abs() <= yHitSlop;
+        if (!inRect) return;
+      }
       final distance = dx * dx + dy * dy;
+      if (distance > maxDistanceSq) return;
       if (distance < minDistance) {
         minDistance = distance;
         closestIndex = selectionIndex;
@@ -566,7 +809,14 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         for (final di in c.dataIndices) {
           inOverlapDataIndex.add(di);
         }
-        considerPoint(c.centroid.dx, c.centroid.dy, -(ci + 1));
+        considerPoint(
+          c.centroid.dx,
+          c.centroid.dy,
+          -(ci + 1),
+          maxDistanceSq: 18 * 18,
+          xHitSlop: 18,
+          yHitSlop: 18,
+        );
       }
     }
 
@@ -575,14 +825,6 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         final minSugar = chartData[i]['minBloodSugar'] as int?;
         final maxSugar = chartData[i]['maxBloodSugar'] as int?;
         if (minSugar == null || maxSugar == null) continue;
-        final recordHour = chartData[i]['hour'] as int?;
-        if (recordHour != null) {
-          const maxStartHour = 18;
-          final startHour =
-              (widget.timeOffset * maxStartHour).clamp(0, maxStartHour).round();
-          final endHour = startHour + 6;
-          if (recordHour < startHour || recordHour > endHour) continue;
-        }
         final xPosition = (chartData[i]['xPosition'] as double?) ?? 0.5;
         final x = leftPadding + (effectiveWidth * xPosition);
         const double topPadding = 20.0;
@@ -607,14 +849,10 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
             tapPosition.dx <= x + halfW &&
             tapPosition.dy >= yTop - 10 &&
             tapPosition.dy <= yBottom + 10;
-        final distance = inBand
-            ? 0.0
-            : ((tapPosition.dx - x).abs() + (tapPosition.dy - yCenter).abs());
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestIndex = i;
-          closestPoint = Offset(x, yCenter);
-        }
+        if (!inBand) continue;
+        minDistance = 0.0;
+        closestIndex = i;
+        closestPoint = Offset(x, yCenter);
         continue;
       }
       if (chartData[i]['bloodSugar'] == null) continue;
@@ -639,10 +877,17 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
           (widget.yLabels.first - clamped) / (widget.yLabels.first - widget.yLabels.last);
       final double y = topPadding +
           (chartHeight - topPadding - bottomPadding) * normalizedValue;
-      considerPoint(x, y, i);
+      considerPoint(
+        x,
+        y,
+        i,
+        maxDistanceSq: 20 * 20,
+        xHitSlop: 20,
+        yHitSlop: 20,
+      );
     }
 
-    if (closestIndex != null && minDistance < 1000) {
+    if (closestIndex != null) {
       if (widget.selectedChartPointIndex == closestIndex) {
         widget.onSelectionChanged(null, null);
       } else {

@@ -36,6 +36,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   int? selectedChartPointIndex;
   Offset? tooltipPosition;
   double timeOffset = 0.0; // 통합된 드래그 오프셋
+  String selectedMeasurementFilter = '전체';
   VoidCallback? _refreshExpandedChart;
 
   void _setChartState(VoidCallback updates) {
@@ -89,35 +90,28 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   /// 일별 그래프: 기본 timeOffset이 6시간 창 밖에 기록이 있으면(오후 식후 등) 안 보임.
-  /// 해당 날 기록의 최소·최대 시각이 한 창에 들어가도록 timeOffset을 맞춘다.
+  /// 오늘은 현재 시각 기준(오른쪽에서 두번째), 과거 날짜는 마지막 기록이 오른쪽 끝에 오도록 맞춘다.
   void _syncTimeOffsetForSelectedDayRecords() {
     if (selectedPeriod != '일') return;
+
+    if (_isToday()) {
+      final now = DateTime.now();
+      final startHourTarget = (now.hour - 5).clamp(0, 18);
+      timeOffset = startHourTarget / 18.0;
+      return;
+    }
 
     final key = DateFormat('yyyy-MM-dd').format(selectedDate);
     final dayRecords = dailyRecordsCache[key] ?? [];
     if (dayRecords.isEmpty) return;
 
-    var minH = 24;
     var maxH = 0;
     for (final r in dayRecords) {
       final h = r.measuredAt.hour;
-      if (h < minH) minH = h;
       if (h > maxH) maxH = h;
     }
-
-    var start = minH.clamp(0, 18);
-    if (start + 6 < maxH) {
-      start = (maxH - 6).clamp(0, 18);
-    }
+    final start = (maxH - 6).clamp(0, 18);
     timeOffset = start / 18.0;
-
-    // 오늘은 드래그 상한(현재 시각 − 4시간)과 동일하게 맞춤
-    if (_isToday()) {
-      final now = DateTime.now();
-      final maxStartHour = (now.hour - 4).clamp(0, 18);
-      final maxOffset = maxStartHour / 18.0;
-      if (timeOffset > maxOffset) timeOffset = maxOffset;
-    }
   }
 
   // 드래그 범위 제한
@@ -128,7 +122,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     }
     if (selectedPeriod == '일' && _isToday()) {
       final now = DateTime.now();
-      final maxStartHour = (now.hour - 4).clamp(0, 18);
+      final maxStartHour = (now.hour - 5).clamp(0, 18);
       final maxOffset = maxStartHour / 18.0;
       return newOffset.clamp(0.0, maxOffset);
     }
@@ -186,7 +180,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     final minHourDiff = timeRange['min']!;
     final maxHourDiff = timeRange['max']!;
     final range = maxHourDiff - minHourDiff;
-    final windowStartHour = minHourDiff.round();
     if (range <= 0) return [];
 
     final byHour = <int, List<BloodSugarRecord>>{};
@@ -214,34 +207,14 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       for (final e in typeEntries) {
         final typed = List<BloodSugarRecord>.from(e.value)
           ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-        if (typed.length >= 2) {
-          final minSugar = typed
-              .map((r) => r.bloodSugar)
-              .reduce((a, b) => a < b ? a : b);
-          final maxSugar = typed
-              .map((r) => r.bloodSugar)
-              .reduce((a, b) => a > b ? a : b);
-          final xPosition = (hour - windowStartHour) / 6.0;
-          chartData.add({
-            'date': '${hour.toString().padLeft(2, '0')}:00',
-            'bloodSugar': null,
-            'minBloodSugar': minSugar,
-            'maxBloodSugar': maxSugar,
-            'barColor': _measurementTypeColor(e.key),
-            'hourSlotBar': true,
-            'hour': hour,
-            'measurementType': e.key,
-            'xPosition': xPosition.clamp(0.0, 1.0),
-            'record': typed.last,
-            'records': typed,
-            'count': typed.length,
-          });
-        } else {
-          final record = typed.single;
-          final recordHour = record.measuredAt.hour;
-          final recordMinute = record.measuredAt.minute;
-          final chartPoint = _createChartPoint(
-              record, recordHour, recordMinute, minHourDiff, maxHourDiff);
+        // 같은 시간·같은 측정유형 데이터가 여러 건이면 최댓값 1건만 그래프에 표시
+        final record = typed.reduce(
+          (a, b) => a.bloodSugar >= b.bloodSugar ? a : b,
+        );
+        final recordHour = record.measuredAt.hour;
+        final chartPoint =
+            _createChartPoint(record, recordHour, minHourDiff, maxHourDiff);
+        if (chartPoint != null) {
           chartData.add(chartPoint);
         }
       }
@@ -251,22 +224,21 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   // 차트 포인트 생성 (통합)
-  Map<String, dynamic> _createChartPoint(
+  Map<String, dynamic>? _createChartPoint(
       BloodSugarRecord record,
       int recordHour,
-      int recordMinute,
       double minHourDiff,
       double maxHourDiff) {
-    final normalizedMinute = (recordMinute / 5).floor() * 5;
-    final minuteRatio = normalizedMinute / 60.0;
+    const normalizedMinute = 0;
     final range = maxHourDiff - minHourDiff;
 
-    // 통합 로직: 시작 시간 기준으로 X축 위치 계산
-    double xPosition = (recordHour - minHourDiff + minuteRatio) / range;
-    xPosition = xPosition.clamp(0.0, 1.0);
+    // 단일 데이터도 분 단위가 아닌 해당 시간 정각 슬롯에 고정
+    final xPosition = (recordHour - minHourDiff) / range;
+    if (xPosition < 0.0 || xPosition > 1.0) {
+      return null;
+    }
 
-    String dateStr =
-        '${recordHour.toString().padLeft(2, '0')}:${recordMinute.toString().padLeft(2, '0')}';
+    final dateStr = '$recordHour시';
 
     return {
       'date': dateStr,
@@ -440,7 +412,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       _syncMonthlyTimeOffsetForSelectedDate();
     } else if (_isToday()) {
       final currentHour = now.hour;
-      final startHourTarget = (currentHour - 4).clamp(0, 18);
+      final startHourTarget = (currentHour - 5).clamp(0, 18);
       timeOffset = startHourTarget / 18.0;
     }
 
@@ -609,7 +581,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                               if (isSelectingToday) {
                                 final currentHour = now.hour;
                                 final startHourTarget =
-                                    (currentHour - 4).clamp(0, 18);
+                                    (currentHour - 5).clamp(0, 18);
                                 timeOffset = startHourTarget / 18.0;
                               } else {
                                 timeOffset = 0.0;
@@ -660,7 +632,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                                 final now = DateTime.now();
                                 final currentHour = now.hour;
                                 final startHourTarget =
-                                    (currentHour - 4).clamp(0, 18);
+                                    (currentHour - 5).clamp(0, 18);
                                 timeOffset = startHourTarget / 18.0;
                               } else {
                                 timeOffset = 0.0;
@@ -679,6 +651,14 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                           }
                         },
                         onDragUpdate: _handleDragUpdate,
+                        selectedMeasurementFilter: selectedMeasurementFilter,
+                        onMeasurementFilterChanged: (value) {
+                          _setChartState(() {
+                            selectedMeasurementFilter = value;
+                            selectedChartPointIndex = null;
+                            tooltipPosition = null;
+                          });
+                        },
                         onSelectionChanged: (index, position) {
                           _setChartState(() {
                             selectedChartPointIndex = index;
@@ -971,8 +951,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                   const SizedBox(width: 5),
                   Icon(
                     diffUp ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                    size: 10,
-                    color: const Color(0xFF1A1A1A),
+                    size: 16,
+                    color: diffUp ? const Color(0xFFE53935) : const Color(0xFF3B82F6),
                   ),
                 ],
               ),
@@ -1002,7 +982,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
               if (_isToday()) {
                 final now = DateTime.now();
                 final currentHour = now.hour;
-                final startHourTarget = (currentHour - 4).clamp(0, 18);
+                final startHourTarget = (currentHour - 5).clamp(0, 18);
                 timeOffset = startHourTarget / 18.0;
               } else {
                 timeOffset = 0.0;
@@ -1042,6 +1022,14 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
             showLegend: true,
             compactLegend: true,
             showExpandButton: false,
+            selectedMeasurementFilter: selectedMeasurementFilter,
+            onMeasurementFilterChanged: (value) {
+              _setChartState(() {
+                selectedMeasurementFilter = value;
+                selectedChartPointIndex = null;
+                tooltipPosition = null;
+              });
+            },
             chartHeight: safeHeight,
             onDragUpdate: _handleDragUpdate,
             onSelectionChanged: (index, position) {
