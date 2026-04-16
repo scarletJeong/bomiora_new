@@ -5,8 +5,6 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
-import '../../../data/models/product/product_model.dart';
-import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
@@ -15,7 +13,6 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../core/network/api_client.dart';
 import 'payment_screen.dart';
-import '../widgets/recommend_product.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;
@@ -33,7 +30,6 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   List<CartItem> cartItems = [];
-  List<Product> _recommendedProducts = [];
   bool isLoading = true;
   bool isRefreshing = false; // 새로고침 중인지 (캐시된 데이터 표시 중)
   String? errorMessage;
@@ -43,8 +39,8 @@ class _CartScreenState extends State<CartScreen> {
   bool selectAll = false; // 현재 탭의 전체 선택 상태
 
   List<CartItem> get _displayedCartItems {
-    // 탭 제거: 처방상품 장바구니만 노출
-    return cartItems.where((item) => item.isPrescription).toList();
+    // 일반상품 장바구니 화면: 일반상품만 노출
+    return cartItems.where((item) => !item.isPrescription).toList();
   }
 
   Set<int> get _displayedItemIds {
@@ -59,42 +55,6 @@ class _CartScreenState extends State<CartScreen> {
   void initState() {
     super.initState();
     _loadCart();
-    _loadRecommendedProductsForCart();
-  }
-
-  Future<void> _loadRecommendedProductsForCart() async {
-    try {
-      final results = await Future.wait([
-        ProductRepository.getProductsByCategory(
-          categoryId: '10',
-          productKind: 'prescription',
-          page: 1,
-          pageSize: 100,
-        ),
-        ProductRepository.getProductsByCategory(
-          categoryId: '20',
-          productKind: 'prescription',
-          page: 1,
-          pageSize: 100,
-        ),
-        ProductRepository.getProductsByCategory(
-          categoryId: '80',
-          productKind: 'prescription',
-          page: 1,
-          pageSize: 100,
-        ),
-      ]);
-      final merged = results.expand((e) => e).toList();
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = merged;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = [];
-      });
-    }
   }
 
   Future<bool> _ensureLoggedIn({
@@ -394,7 +354,7 @@ class _CartScreenState extends State<CartScreen> {
         builder: (context) => PaymentScreen(
           cartItems: selectedCartItems,
           shippingCost: selectedShippingCost,
-          sourceTitle: '처방상품 장바구니',
+          sourceTitle: '일반상품 장바구니',
         ),
       ),
     );
@@ -428,7 +388,7 @@ class _CartScreenState extends State<CartScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
-          title: '처방상품 장바구니',
+          title: '일반상품 장바구니',
           centerTitle: true,
           onBack: _handleBackNavigation,
           actions: const [],
@@ -511,41 +471,6 @@ class _CartScreenState extends State<CartScreen> {
                                         ),
                                       ),
 
-                                    const SizedBox(height: 16),
-
-                                    // 안내 문구
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          const Text(
-                                            '*진료예약자와 시간을 다시 한번 확인해주세요.',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.black87,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          const Text(
-                                            '결제가 완료되셔야 예약이 확정됩니다.',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFFFF3787),
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
                                     const SizedBox(height: 18),
 
                                     // 결제 요약(하단 고정 제거 → 본문으로 이동)
@@ -554,80 +479,6 @@ class _CartScreenState extends State<CartScreen> {
                                     ),
                                     const SizedBox(height: 18),
 
-                                    if (_recommendedProducts.isNotEmpty) ...[
-                                      // 추가 상품 구매하기 섹션 라벨
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              Text(
-                                                '|',
-                                                style: TextStyle(
-                                                  color: Color(0xFF1A1A1A),
-                                                  fontSize: 16,
-                                                  fontFamily: 'Gmarket Sans TTF',
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: -1.44,
-                                                ),
-                                              ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                '추가 상품 구매하기',
-                                                style: TextStyle(
-                                                  color: Color(0xFF1A1A1A),
-                                                  fontSize: 16,
-                                                  fontFamily: 'Gmarket Sans TTF',
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: -1.44,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            '함께 구매하면 좋은 상품을 확인해보세요 !',
-                                            style: TextStyle(
-                                              color: Color(0xFF898686),
-                                              fontSize: 12,
-                                              fontFamily: 'Gmarket Sans TTF',
-                                              fontWeight: FontWeight.w500,
-                                              height: 1.32,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: RecommendProductSection(
-                                          excludedProductNames:
-                                              _displayedCartItems
-                                                  .map((e) => e.itName)
-                                                  .toList(),
-                                          products: _recommendedProducts,
-                                          title: '추가 상품 구매하기',
-                                          showLeadingBar: false,
-                                          onProductTap: (product) {
-                                            Navigator.pushNamed(
-                                              context,
-                                              '/product/${product.id}',
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
                                   ],
                                 ),
                               ),
@@ -883,16 +734,8 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  static const TextStyle _kPrescriptionMetaLabel = TextStyle(
+  static const TextStyle _kPrescriptionMetaLine = TextStyle(
     color: Color(0xFF1A1A1A),
-    fontSize: 12,
-    fontFamily: 'Gmarket Sans TTF',
-    fontWeight: FontWeight.w500,
-    height: 1.35,
-  );
-
-  static const TextStyle _kPrescriptionMetaValue = TextStyle(
-    color: Color(0xFFFF5A8D),
     fontSize: 12,
     fontFamily: 'Gmarket Sans TTF',
     fontWeight: FontWeight.w500,
@@ -903,12 +746,6 @@ class _CartScreenState extends State<CartScreen> {
     final d = item.reservationDate;
     if (d == null) return '-';
     return DateDisplayFormatter.formatYmd(d);
-  }
-
-  String _formatCartReservationTime(CartItem item) {
-    final raw = item.reservationTime?.trim() ?? '';
-    if (raw.isEmpty) return '-';
-    return raw;
   }
 
   /// 옵션/규격 줄 — `ct_option`의 ` / ` 또는 `it_subject` + `ct_option` 조합
@@ -1133,49 +970,19 @@ class _CartScreenState extends State<CartScreen> {
                           color: const Color(0x7FD2D2D2),
                         ),
                         const SizedBox(height: 10),
-                        RichText(
-                          text: const TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '담당 한의사 ',
-                                style: _kPrescriptionMetaLabel,
-                              ),
-                              TextSpan(
-                                text: '정대진',
-                                style: _kPrescriptionMetaValue,
-                              ),
-                            ],
-                          ),
+                        const Text(
+                          '담당 한의사 정대진',
+                          style: _kPrescriptionMetaLine,
                         ),
                         const SizedBox(height: 4),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              const TextSpan(
-                                text: '예약 일자 ',
-                                style: _kPrescriptionMetaLabel,
-                              ),
-                              TextSpan(
-                                text: _formatCartReservationDate(item),
-                                style: _kPrescriptionMetaValue,
-                              ),
-                            ],
-                          ),
+                        Text(
+                          '예약 일자 ${_formatCartReservationDate(item)}',
+                          style: _kPrescriptionMetaLine,
                         ),
                         const SizedBox(height: 4),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              const TextSpan(
-                                text: '예약 시간 ',
-                                style: _kPrescriptionMetaLabel,
-                              ),
-                              TextSpan(
-                                text: _formatCartReservationTime(item),
-                                style: _kPrescriptionMetaValue,
-                              ),
-                            ],
-                          ),
+                        Text(
+                          '예약 시간 ${item.reservationTime?.trim().isNotEmpty == true ? item.reservationTime!.trim() : '-'}',
+                          style: _kPrescriptionMetaLine,
                         ),
                       ] else ...[
                         if (optionRow != null) ...[
