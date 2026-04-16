@@ -143,10 +143,9 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 
     return records.map((record) {
       final h = record.measuredAt.hour;
-      final m = (record.measuredAt.minute / 5).floor() * 5;
-      final xPosition = ((h - minHour) + m / 60.0) / range;
+      final xPosition = (h - minHour) / range;
       return {
-        'date': DateFormat('HH:mm').format(record.measuredAt),
+        'date': '$h시',
         'hour': h,
         'bloodSugar': record.heartRate, // 공통 차트 위젯과 키 호환
         'measurementType': record.sourceType,

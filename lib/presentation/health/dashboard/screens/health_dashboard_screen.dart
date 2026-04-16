@@ -480,7 +480,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         ? weightTowardGoalRatio(currentWeight, goalTgt, anchor)
         : 0.0;
     final int diff = goalTgt != null
-        ? (currentWeight - goalTgt).round()
+        ? (leftLabelWeight - currentWeight).round()
         : 0;
     final String rightLabel = goalTgt != null
         ? (goalTgt == goalTgt.roundToDouble()

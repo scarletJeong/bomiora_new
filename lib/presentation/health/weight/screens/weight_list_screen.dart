@@ -91,7 +91,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     if (selectedPeriod == '일' && _isToday()) {
       final now = DateTime.now();
       final currentHour = now.hour;
-      final maxStartHour = (currentHour - 4).clamp(0, 18);
+      final maxStartHour = (currentHour - 5).clamp(0, 18);
       final maxOffset = maxStartHour / 18.0;
       return newOffset.clamp(0.0, maxOffset);
     }
@@ -133,6 +133,50 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return allRecords.any(
       (r) => DateFormat('yyyy-MM-dd').format(r.measuredAt) == key,
     );
+  }
+
+  double _dailyOffsetForDate(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (day == today) {
+      final startHourTarget = (now.hour - 5).clamp(0, 18);
+      return startHourTarget / 18.0;
+    }
+
+    final recordsForDay = allRecords.where((record) {
+      final measured = record.measuredAt;
+      return measured.year == day.year &&
+          measured.month == day.month &&
+          measured.day == day.day;
+    }).toList();
+
+    if (recordsForDay.isEmpty) {
+      return 0.0;
+    }
+
+    recordsForDay.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+    final firstHour = recordsForDay.first.measuredAt.hour;
+    final startHourTarget = (firstHour - 1).clamp(0, 18);
+    return startHourTarget / 18.0;
+  }
+
+  double? _latestWeight() {
+    if (allRecords.isEmpty) return null;
+    final sorted = List<WeightRecord>.from(allRecords)
+      ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
+    return sorted.last.weight;
+  }
+
+  double? _selectedMonthAverageWeight() {
+    final list = allRecords.where((record) {
+      return record.measuredAt.year == selectedDate.year &&
+          record.measuredAt.month == selectedDate.month;
+    }).toList();
+    if (list.isEmpty) return null;
+    final sum = list.fold<double>(0, (acc, e) => acc + e.weight);
+    return sum / list.length;
   }
 
   // 차트 데이터 생성
@@ -181,7 +225,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
             .reduce((a, b) => a > b ? a : b);
         final xPosition = (hour - windowStartHour) / 6.0;
         chartData.add({
-          'date': '${hour.toString().padLeft(2, '0')}:00',
+          'date': '$hour시',
           'weight': null,
           'minWeight': minW,
           'maxWeight': maxW,
@@ -196,14 +240,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
       } else {
         final record = hourRecords.single;
         final recordHour = record.measuredAt.hour;
-        final recordMinute = record.measuredAt.minute;
-        final normalizedMinute = (recordMinute / 5).floor() * 5;
-        final minuteRatio = normalizedMinute / 60.0;
-        double xPosition = (recordHour - minHourDiff + minuteRatio) / range;
+        final normalizedMinute = 0;
+        double xPosition = (recordHour - minHourDiff) / range;
         xPosition = xPosition.clamp(0.0, 1.0);
 
         chartData.add({
-          'date': DateFormat('HH:mm').format(record.measuredAt),
+          'date': '$recordHour시',
           'weight': record.weight,
           'record': record,
           'hour': recordHour,
@@ -319,118 +361,38 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return chartData;
   }
 
-  /// 메인 체중 그래프 Y축: 정수 중심 c 기준 c-2 ~ c+2 (5개 숫자 눈금, 위→아래).
-  /// 데이터가 한눈에 들어오면 c를 조정해 [c-2, c+2] 안에 모두 포함.
+  /// 메인 체중 그래프 Y축: 총 5개 숫자 눈금(위→아래).
+  /// - 시간대별/일자별: 최근 체중 기준 1kg 간격
+  /// - 월별: 선택 월 평균 체중 기준 3kg 간격
   List<double> getYAxisLabelsMain() {
-    final chartData = getChartData();
-    const fallback = <double>[67, 66, 65, 64, 63];
-
-    if (chartData.isEmpty) return fallback;
-
-    final weights = <double>[];
-    for (final data in chartData) {
-      if (selectedPeriod == '주' || selectedPeriod == '월') {
-        final minW = data['minWeight'] as double?;
-        final maxW = data['maxWeight'] as double?;
-        if (minW != null) weights.add(minW);
-        if (maxW != null) weights.add(maxW);
-      } else {
-        if (data['hourSlotBar'] == true) {
-          final minW = data['minWeight'] as double?;
-          final maxW = data['maxWeight'] as double?;
-          if (minW != null) weights.add(minW);
-          if (maxW != null) weights.add(maxW);
-        } else {
-          final w = data['weight'] as double?;
-          if (w != null) weights.add(w);
-        }
-      }
+    if (selectedPeriod == '월') {
+      final monthAvg = _selectedMonthAverageWeight() ?? _latestWeight() ?? 65.0;
+      final center = monthAvg.roundToDouble();
+      final top = center + 6.0;
+      return List<double>.generate(5, (i) => top - (i * 3.0));
     }
 
-    if (weights.isEmpty) return fallback;
-
-    final minW = weights.reduce((a, b) => a < b ? a : b);
-    final maxW = weights.reduce((a, b) => a > b ? a : b);
-    final sum = weights.fold<double>(0, (a, b) => a + b);
-    final avg = sum / weights.length;
-    int c = avg.round();
-
-    if (maxW - minW <= 4) {
-      final cMin = (maxW - 2).ceil();
-      final cMax = (minW + 2).floor();
-      if (cMin <= cMax) {
-        c = c.clamp(cMin, cMax);
-      } else {
-        c = ((minW + maxW) / 2).round();
-      }
-
-      return [
-        (c + 2).toDouble(),
-        (c + 1).toDouble(),
-        c.toDouble(),
-        (c - 1).toDouble(),
-        (c - 2).toDouble(),
-      ];
-    }
-
-    // 범위가 넓을 때도 눈금선은 정수(.0) 기준으로 고정
-    final span = maxW - minW;
-    final stepInt = (span / 4.0).ceil().clamp(1, 100);
-    int topInt = ((maxW / stepInt).ceil()) * stepInt;
-    while ((topInt - 4 * stepInt) > minW) {
-      topInt -= stepInt;
-    }
-    return List<double>.generate(5, (i) => (topInt - i * stepInt).toDouble());
+    final latest = _latestWeight() ?? 65.0;
+    final center = latest.roundToDouble();
+    final top = center + 2.0;
+    return List<double>.generate(5, (i) => top - i);
   }
 
-  /// 확대 화면 전용: 현재 그래프에 쓰인 체중들의 평균을 가운데(4번째 눈금)로,
-  /// ±3kg 간격으로 Y축 라벨 7개 (상단 avg+3 → 하단 avg-3).
+  /// 확대 체중 그래프 Y축: 총 7개 숫자 눈금(위→아래).
+  /// - 시간대별/일자별: 최근 체중 기준 1kg 간격(±3kg)
+  /// - 월별: 선택 월 평균 체중 기준 3kg 간격(근사 ±10kg)
   List<double> getYAxisLabelsExpanded() {
-    final chartData = getChartData();
-    const fallback = <double>[69, 68, 67, 66, 65, 64, 63];
-
-    if (chartData.isEmpty) return fallback;
-
-    final weights = <double>[];
-    for (final data in chartData) {
-      if (selectedPeriod == '주' || selectedPeriod == '월') {
-        final minW = data['minWeight'] as double?;
-        final maxW = data['maxWeight'] as double?;
-        if (minW != null) weights.add(minW);
-        if (maxW != null) weights.add(maxW);
-      } else {
-        if (data['hourSlotBar'] == true) {
-          final minW = data['minWeight'] as double?;
-          final maxW = data['maxWeight'] as double?;
-          if (minW != null) weights.add(minW);
-          if (maxW != null) weights.add(maxW);
-        } else {
-          final w = data['weight'] as double?;
-          if (w != null) weights.add(w);
-        }
-      }
+    if (selectedPeriod == '월') {
+      final monthAvg = _selectedMonthAverageWeight() ?? _latestWeight() ?? 65.0;
+      final center = monthAvg.roundToDouble();
+      final top = center + 9.0;
+      return List<double>.generate(7, (i) => top - (i * 3.0));
     }
 
-    if (weights.isEmpty) return fallback;
-
-    final minW = weights.reduce((a, b) => a < b ? a : b);
-    final maxW = weights.reduce((a, b) => a > b ? a : b);
-
-    if (maxW - minW > 6) {
-      // 확대 그래프도 정수(.0) 눈금 기준
-      final span = maxW - minW;
-      final stepInt = (span / 6.0).ceil().clamp(1, 100);
-      int topInt = ((maxW / stepInt).ceil()) * stepInt;
-      while ((topInt - 6 * stepInt) > minW) {
-        topInt -= stepInt;
-      }
-      return List<double>.generate(7, (i) => (topInt - i * stepInt).toDouble());
-    }
-
-    final sum = weights.fold<double>(0, (a, b) => a + b);
-    final avg = sum / weights.length;
-    final center = avg.round();
-    return List<double>.generate(7, (i) => (center + (3 - i)).toDouble());
+    final latest = _latestWeight() ?? 65.0;
+    final center = latest.roundToDouble();
+    final top = center + 3.0;
+    return List<double>.generate(7, (i) => top - i);
   }
 
   @override
@@ -449,9 +411,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     }
 
     if (_isToday()) {
-      final now = DateTime.now();
-      final startHourTarget = (now.hour - 4).clamp(0, 18);
-      timeOffset = startHourTarget / 18.0;
+      timeOffset = _dailyOffsetForDate(selectedDate);
     }
 
     _loadData();
@@ -502,6 +462,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
         setState(() {
           latestHealthGoal = goal;
+          if (selectedPeriod == '일') {
+            timeOffset = _dailyOffsetForDate(selectedDate);
+          }
           isLoading = false;
         });
       } else {
@@ -568,18 +531,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                           selectedChartPointIndex = null;
                           tooltipPosition = null;
 
-                          final now = DateTime.now();
-                          final today = DateTime(now.year, now.month, now.day);
-                          final isSelectingToday = newDate.year == today.year &&
-                              newDate.month == today.month &&
-                              newDate.day == today.day;
-
-                          if (isSelectingToday) {
-                            final startHourTarget = (now.hour - 4).clamp(0, 18);
-                            timeOffset = startHourTarget / 18.0;
-                          } else {
-                            timeOffset = 0.0;
-                          }
+                          timeOffset = _dailyOffsetForDate(newDate);
                         });
                         _notifyExpandedChart();
                         _loadData();
@@ -765,7 +717,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                   title: '감량 몸무게',
                   value: lostWeight != 0
                       ? '${lostWeight > 0 ? '+' : '-'}${lostWeight.abs().toStringAsFixed(1)}'
-                      : '-',
+                      : '0',
                   unit: 'kg',
                   valueColor: const Color(0xFFFF5A8D),
                 ),
@@ -1189,14 +1141,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
           } else if (period == '주') {
             timeOffset = 0.0;
           } else if (period == '일') {
-            if (_isToday()) {
-              final now = DateTime.now();
-              final currentHour = now.hour;
-              final startHourTarget = (currentHour - 4).clamp(0, 18);
-              timeOffset = startHourTarget / 18.0;
-            } else {
-              timeOffset = 0.0;
-            }
+            timeOffset = _dailyOffsetForDate(selectedDate);
           }
         });
         _notifyExpandedChart();
@@ -1236,8 +1181,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
         timeOffset: timeOffset,
         selectedDate: selectedDate,
         showYAxisKgHeader: true,
-        // 메인에서도 월/주는 범위 밖 잘림 없이 표시(확대와 동일 동작)
-        omitOutOfRangeWeights: selectedPeriod == '일' ? !expandedChartView : false,
+        // 월별은 Y축 범위로 클램프하여 표시(실제값은 툴팁에 유지)
+        omitOutOfRangeWeights: selectedPeriod == '일'
+            ? !expandedChartView
+            : selectedPeriod == '월',
         onTimeOffsetChanged: (newOffset) {
           setState(() {
             timeOffset = newOffset;
@@ -1322,39 +1269,22 @@ class _WeightListScreenState extends State<WeightListScreen> {
           chartData,
           yLabels.last,
           yLabels.first,
-          constraints.maxWidth - ChartConstants.weightChartYAxisStripWidth,
+          constraints.maxWidth,
           constraints.maxHeight,
           omitOutOfRangeWeights: omitOutOfRangeWeights,
         );
       },
-      onLongPressStart: (details) {
+      onPanDown: (details) {
+        // 길게 누르지 않아도 바로 툴팁 표시
         _handleChartHover(
           details.localPosition,
           chartData,
           yLabels.last,
           yLabels.first,
-          constraints.maxWidth - ChartConstants.weightChartYAxisStripWidth,
+          constraints.maxWidth,
           constraints.maxHeight,
           omitOutOfRangeWeights: omitOutOfRangeWeights,
         );
-      },
-      onLongPressMoveUpdate: (details) {
-        _handleChartHover(
-          details.localPosition,
-          chartData,
-          yLabels.last,
-          yLabels.first,
-          constraints.maxWidth - ChartConstants.weightChartYAxisStripWidth,
-          constraints.maxHeight,
-          omitOutOfRangeWeights: omitOutOfRangeWeights,
-        );
-      },
-      onLongPressEnd: (details) {
-        setState(() {
-          selectedChartPointIndex = null;
-          tooltipPosition = null;
-        });
-        _notifyExpandedChart();
       },
       // 드래그: 일별(6시간 창)·월별
       onPanStart: (details) {
@@ -1367,8 +1297,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
           final deltaX = details.localPosition.dx - (_dragStartX ?? 0);
           _handleDragUpdate(
               deltaX,
-              constraints.maxWidth -
-                  ChartConstants.weightChartYAxisStripWidth);
+              constraints.maxWidth);
           _dragStartX = details.localPosition.dx;
         }
       },
@@ -1389,8 +1318,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 omitOutOfRangeWeights: omitOutOfRangeWeights,
               ),
               size: Size(
-                constraints.maxWidth -
-                    ChartConstants.weightChartYAxisStripWidth,
+                constraints.maxWidth,
                 constraints.maxHeight,
               ),
             ),
@@ -1451,7 +1379,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 120,
+        height: 160,
         decoration: BoxDecoration(
           color: hasImage ? Colors.grey[100] : Colors.grey[200],
           borderRadius: BorderRadius.circular(12),
@@ -1471,7 +1399,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                             imagePath,
                             width: double.infinity,
                             height: double.infinity,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return _buildImagePlaceholder(label);
                             },
@@ -1480,7 +1408,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                             File(imagePath),
                             width: double.infinity,
                             height: double.infinity,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return _buildImagePlaceholder(label);
                             },
@@ -1703,13 +1631,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
             (maxW < minWeight || minW > maxWeight)) {
           continue;
         }
-        final timeRange = _calculateTimeRange();
-        final minHour = timeRange['min']!;
-        final maxHour = timeRange['max']!;
-        final recordHour = data['hour'] as int;
-        if (recordHour < minHour.round() || recordHour > maxHour.round()) {
-          continue;
-        }
         final xPosition = (data['xPosition'] as double?) ?? 0.5;
         const leftPad = ChartConstants.weightDailyChartInnerPadH;
         const rightPad = ChartConstants.weightDailyChartInnerPadH +
@@ -1749,17 +1670,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
       if (omitOutOfRangeWeights) {
         final w = (weight as num).toDouble();
         if (w < minWeight || w > maxWeight) continue;
-      }
-
-      if (selectedPeriod == '일') {
-        final timeRange = _calculateTimeRange();
-        final minHour = timeRange['min']!;
-        final maxHour = timeRange['max']!;
-        final recordHour = data['hour'] as int?;
-        if (recordHour != null &&
-            (recordHour < minHour.round() || recordHour > maxHour.round())) {
-          continue;
-        }
       }
 
       double x;
@@ -1818,8 +1728,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
       }
     }
 
-    // 가장 가까운 점이 있고, 거리가 20px 이내면 툴팁 표시, 아니면 숨기기
-    if (closestIndex != null && minDistance < 400) {
+    // 탭 허용 범위를 넓혀 더 빠르고 정확하게 선택
+    if (closestIndex != null && minDistance < 1600) {
       setState(() {
         selectedChartPointIndex = closestIndex;
         tooltipPosition = closestPoint;
@@ -1862,13 +1772,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
             (maxW < minWeight || minW > maxWeight)) {
           continue;
         }
-        final timeRange = _calculateTimeRange();
-        final minHour = timeRange['min']!;
-        final maxHour = timeRange['max']!;
-        final recordHour = data['hour'] as int;
-        if (recordHour < minHour.round() || recordHour > maxHour.round()) {
-          continue;
-        }
         final xPosition = (data['xPosition'] as double?) ?? 0.5;
         const leftPad = ChartConstants.weightDailyChartInnerPadH;
         const rightPad = ChartConstants.weightDailyChartInnerPadH +
@@ -1909,17 +1812,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
       if (omitOutOfRangeWeights) {
         final w = (weight as num).toDouble();
         if (w < minWeight || w > maxWeight) continue;
-      }
-
-      if (selectedPeriod == '일') {
-        final timeRange = _calculateTimeRange();
-        final minHour = timeRange['min']!;
-        final maxHour = timeRange['max']!;
-        final recordHour = data['hour'] as int?;
-        if (recordHour != null &&
-            (recordHour < minHour.round() || recordHour > maxHour.round())) {
-          continue;
-        }
       }
 
       double x;
@@ -1978,8 +1870,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
       }
     }
 
-    // 가장 가까운 점이 있으면 툴팁 표시 (거리 제한 더 넓게: 50px = 2500)
-    if (closestIndex != null && minDistance < 2500) {
+    // hover/드래그 중에도 즉시 따라오도록 허용 반경 확장
+    if (closestIndex != null && minDistance < 4900) {
       setState(() {
         selectedChartPointIndex = closestIndex;
         tooltipPosition = closestPoint;
@@ -2006,10 +1898,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
       final minW = (data['minWeight'] as num).toDouble();
       final maxW = (data['maxWeight'] as num).toDouble();
       final hour = data['hour'] as int;
-      timeLabel = '${hour.toString().padLeft(2, '0')}:00';
+      timeLabel = '$hour시';
       weightLine = minW == maxW
           ? '${minW.toStringAsFixed(1)} kg'
-          : '최저 ${minW.toStringAsFixed(1)} ~ 최고 ${maxW.toStringAsFixed(1)} kg';
+          : '${minW.toStringAsFixed(1)} ~ ${maxW.toStringAsFixed(1)} kg';
     } else {
       final weight = data['weight'];
       final record = data['record'];
@@ -2019,10 +1911,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
       final weightRecord = record as WeightRecord;
 
       String formatKoreanTime(DateTime dt) {
-        final rounded = ((dt.minute / 5).round()) * 5;
-        final hour = rounded == 60 ? (dt.hour + 1) % 24 : dt.hour;
-        final minute = rounded == 60 ? 0 : rounded;
-        return '$hour시 ${minute.toString().padLeft(2, '0')}분';
+        return '${dt.hour}시';
       }
 
       timeLabel = selectedPeriod == '일'

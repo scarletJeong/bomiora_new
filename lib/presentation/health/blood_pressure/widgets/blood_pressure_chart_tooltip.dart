@@ -205,11 +205,11 @@ Widget buildBloodPressureChartTooltip({
       }
     } else if (record != null) {
       final d = record.measuredAt;
-      headerText = '${d.hour}시 ${d.minute.toString().padLeft(2, '0')}분';
+      headerText = '${d.hour}시';
     } else {
       final slot = data['date']?.toString() ?? '';
       final h = int.tryParse(slot) ?? 0;
-      headerText = '$h시 00분';
+      headerText = '$h시';
     }
   } else if (selectedPeriod == '주') {
     if (record != null) {

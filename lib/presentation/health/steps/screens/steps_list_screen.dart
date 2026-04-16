@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
@@ -125,7 +127,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     const maxStartSlot = 36;
     final now = DateTime.now();
     final currentSlot = now.hour * 2 + (now.minute >= 30 ? 1 : 0);
-    final startSlot = (currentSlot - 8).clamp(0, maxStartSlot);
+    final startSlot = (currentSlot - 10).clamp(0, maxStartSlot);
     return startSlot / maxStartSlot;
   }
 
@@ -138,7 +140,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         const maxStartSlot = 36;
         final now = DateTime.now();
         final currentSlot = now.hour * 2 + (now.minute >= 30 ? 1 : 0);
-        final maxOffset = ((currentSlot - 8).clamp(0, maxStartSlot)) / maxStartSlot;
+        final maxOffset = ((currentSlot - 10).clamp(0, maxStartSlot)) / maxStartSlot;
         return next.clamp(0.0, maxOffset);
       }
       return next.clamp(0.0, 1.0);
@@ -522,23 +524,15 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         if (showExpandButton)
           Positioned(
             top: 8,
-            right: 8,
+            right: 4,
             child: GestureDetector(
               onTap: _openExpandedChartPage,
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: ShapeDecoration(
-                  color: const Color(0x7FD2D2D2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.open_in_full,
-                  size: 12,
-                  color: Color(0xFF4B5563),
-                ),
+              behavior: HitTestBehavior.opaque,
+              child: SvgPicture.asset(
+                AppAssets.healthZoomin,
+                width: 20,
+                height: 20,
+                fit: BoxFit.contain,
               ),
             ),
           ),

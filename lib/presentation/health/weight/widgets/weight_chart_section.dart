@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../common/chart_layout.dart';
 
 const double _weightYAxisUnitBandHeight = 16.0;
@@ -160,24 +162,16 @@ class WeightChartContent extends StatelessWidget {
       children: [
         chartBody,
         Positioned(
-          right: 8,
-          top: 8,
+          right: 20,
+          top: 13,
           child: GestureDetector(
             onTap: onExpand,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: ShapeDecoration(
-                color: const Color(0x7FD2D2D2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              child: const Icon(
-                Icons.open_in_full,
-                size: 12,
-                color: Color(0xFF4B5563),
-              ),
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              AppAssets.healthZoomin,
+              width: 20,
+              height: 20,
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -816,15 +810,17 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
       final count = (data['count'] as int?) ?? (weight != null ? 1 : 0);
       if (minWeight == null || maxWeight == null || count <= 0) continue;
 
-      if (omitOutOfRangeWeights &&
-          (maxWeight > maxYWeight || minWeight < minYWeight)) {
-        continue;
-      }
+      final visibleMin = omitOutOfRangeWeights
+          ? minWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : minWeight;
+      final visibleMax = omitOutOfRangeWeights
+          ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : maxWeight;
 
       final slotWidth = chartWidth / _visibleMonths;
       final x = leftPadding + slotWidth * (v + 0.5);
-      final yMin = toY(minWeight);
-      final yMax = toY(maxWeight);
+      final yMin = toY(visibleMin);
+      final yMax = toY(visibleMax);
       final yCenter = (yMin + yMax) / 2;
 
       final dx = (tap.dx - x).abs();
@@ -991,16 +987,18 @@ class _WeightMonthlyRangePainter extends CustomPainter {
         continue;
       }
 
-      if (omitOutOfRangeWeights &&
-          (maxWeight > maxYWeight || minWeight < minYWeight)) {
-        continue;
-      }
+      final visibleMin = omitOutOfRangeWeights
+          ? minWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : minWeight;
+      final visibleMax = omitOutOfRangeWeights
+          ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : maxWeight;
 
       final slotWidth = chartWidth / _visibleMonths;
       final x = leftPadding + slotWidth * (v + 0.5);
 
-      final yMin = toY(minWeight);
-      final yMax = toY(maxWeight);
+      final yMin = toY(visibleMin);
+      final yMax = toY(visibleMax);
 
       // 월별은 "해당 월 측정 2건 이상"이면 높이가 작아도 막대로 유지
       if (count == 1) {
@@ -1196,15 +1194,17 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
       final dayCount = (data['count'] as int?) ?? (weight != null ? 1 : 0);
       if (minWeight == null || maxWeight == null || dayCount <= 0) continue;
 
-      if (omitOutOfRangeWeights &&
-          (maxWeight > maxYWeight || minWeight < minYWeight)) {
-        continue;
-      }
+      final visibleMin = omitOutOfRangeWeights
+          ? minWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : minWeight;
+      final visibleMax = omitOutOfRangeWeights
+          ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : maxWeight;
 
       final slotWidth = count > 0 ? chartWidth / count : chartWidth;
       final x = leftPadding + slotWidth * (i + 0.5);
-      final yMin = toY(minWeight);
-      final yMax = toY(maxWeight);
+      final yMin = toY(visibleMin);
+      final yMax = toY(visibleMax);
       final yCenter = (yMin + yMax) / 2;
 
       final dx = (tap.dx - x).abs();
@@ -1375,16 +1375,18 @@ class _WeightWeeklyRangePainter extends CustomPainter {
         continue;
       }
 
-      if (omitOutOfRangeWeights &&
-          (maxWeight > maxYWeight || minWeight < minYWeight)) {
-        continue;
-      }
+      final visibleMin = omitOutOfRangeWeights
+          ? minWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : minWeight;
+      final visibleMax = omitOutOfRangeWeights
+          ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
+          : maxWeight;
 
       final slotWidth = count > 0 ? chartWidth / count : chartWidth;
       final x = leftPadding + slotWidth * (i + 0.5);
 
-      final yMin = toY(minWeight);
-      final yMax = toY(maxWeight);
+      final yMin = toY(visibleMin);
+      final yMax = toY(visibleMax);
 
       if (dayCount == 1 || (yMin - yMax).abs() < 2) {
         final radius = selectedIndex == i ? 6.5 : 5.0;
