@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/utils/get_product.dart';
 import 'confirm_dialog.dart';
 
@@ -82,6 +83,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             icon: d.icon,
             label: d.label,
             onTap: d.onTap,
+            onCartPrescriptionTap: d.onCartPrescriptionTap,
+            onCartShoppingTap: d.onCartShoppingTap,
           ),
         ),
       );
@@ -114,7 +117,17 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             cell(_DrawerShortcutData(
               icon: Icons.shopping_cart_outlined,
               label: '장바구니',
-              onTap: () => _popAndPushNamed(context, '/cart'),
+              onTap: () {},
+              onCartPrescriptionTap: () => _popAndPushNamed(context, '/cart'),
+              onCartShoppingTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const cart_general.CartScreen(),
+                  ),
+                );
+              },
             )),
           ],
         ),
@@ -556,11 +569,15 @@ class _DrawerShortcutData {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final VoidCallback? onCartPrescriptionTap;
+  final VoidCallback? onCartShoppingTap;
 
   const _DrawerShortcutData({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.onCartPrescriptionTap,
+    this.onCartShoppingTap,
   });
 }
 
@@ -573,11 +590,15 @@ class _DrawerShortcut extends StatefulWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final VoidCallback? onCartPrescriptionTap;
+  final VoidCallback? onCartShoppingTap;
 
   const _DrawerShortcut({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.onCartPrescriptionTap,
+    this.onCartShoppingTap,
   });
 
   @override
@@ -587,8 +608,103 @@ class _DrawerShortcut extends StatefulWidget {
 class _DrawerShortcutState extends State<_DrawerShortcut> {
   bool _hover = false;
   bool _pressed = false;
+  bool _showCartDropdown = false;
+  final GlobalKey _cartAnchorKey = GlobalKey();
+  OverlayEntry? _cartDropdownEntry;
 
   bool get _highlight => _hover || _pressed;
+  bool get _isCartShortcut =>
+      widget.label == '장바구니' &&
+      widget.onCartPrescriptionTap != null &&
+      widget.onCartShoppingTap != null;
+
+  void _toggleCartDropdown() {
+    if (_showCartDropdown) {
+      _closeCartDropdown();
+    } else {
+      _openCartDropdown();
+    }
+  }
+
+  void _onShortcutTap() {
+    if (_isCartShortcut) {
+      _openCartDropdown();
+      return;
+    }
+    widget.onTap();
+  }
+
+  void _openCartDropdown() {
+    if (_showCartDropdown) return;
+
+    final anchorContext = _cartAnchorKey.currentContext;
+    final anchorBox = anchorContext?.findRenderObject() as RenderBox?;
+    if (anchorBox == null || !anchorBox.attached) return;
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+    final overlayBox = overlay.context.findRenderObject() as RenderBox?;
+    final anchorTopLeft = anchorBox.localToGlobal(Offset.zero);
+
+    double left = anchorTopLeft.dx + anchorBox.size.width - 82;
+    double top = anchorTopLeft.dy + anchorBox.size.height + 6;
+    if (overlayBox != null) {
+      left = left.clamp(8, overlayBox.size.width - 82 - 8);
+      top = top.clamp(8, overlayBox.size.height - 90);
+    }
+
+    _cartDropdownEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _closeCartDropdown,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          Positioned(
+            left: left,
+            top: top,
+            child: Material(
+              color: Colors.transparent,
+              child: _CartShortcutDropdown(
+                onPrescriptionTap: () =>
+                    _onSelectCartOption(widget.onCartPrescriptionTap),
+                onShoppingTap: () =>
+                    _onSelectCartOption(widget.onCartShoppingTap),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    overlay.insert(_cartDropdownEntry!);
+    setState(() {
+      _showCartDropdown = true;
+    });
+  }
+
+  void _closeCartDropdown() {
+    _cartDropdownEntry?.remove();
+    _cartDropdownEntry = null;
+    if (mounted && _showCartDropdown) {
+      setState(() {
+        _showCartDropdown = false;
+      });
+    }
+  }
+
+  void _onSelectCartOption(VoidCallback? onTap) {
+    if (onTap == null) return;
+    _closeCartDropdown();
+    onTap();
+  }
+
+  @override
+  void dispose() {
+    _closeCartDropdown();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +730,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
           onPointerUp: (_) => setState(() => _pressed = false),
           onPointerCancel: (_) => setState(() => _pressed = false),
           child: InkWell(
-            onTap: widget.onTap,
+            onTap: _onShortcutTap,
             borderRadius: BorderRadius.circular(12),
             splashColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.18),
             highlightColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.08),
@@ -625,35 +741,80 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
+                    key: _cartAnchorKey,
                     width: 46,
                     height: 46,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x19000000),
-                          blurRadius: 4,
-                          offset: Offset(0, 0),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x19000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 0),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: isPoint
+                              ? Text(
+                                  'P',
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 16,
+                                    fontFamily: _DrawerShortcut._fontFamily,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                              : Icon(
+                                  widget.icon,
+                                  size: 22,
+                                  color: color,
+                                ),
                         ),
+                        if (_isCartShortcut)
+                          Positioned(
+                            right: -4,
+                            bottom: -4,
+                            child: GestureDetector(
+                              onTap: _toggleCartDropdown,
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFFFF5A8D),
+                                    width: 1,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x19000000),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 0),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  _showCartDropdown
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  size: 16,
+                                  color: const Color(0xFFFF5A8D),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                    alignment: Alignment.center,
-                    child: isPoint
-                        ? Text(
-                            'P',
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 16,
-                              fontFamily: _DrawerShortcut._fontFamily,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          )
-                        : Icon(
-                            widget.icon,
-                            size: 22,
-                            color: color,
-                          ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -707,6 +868,106 @@ class _SectionRow extends StatelessWidget {
                   size: 20, color: Color(0xFF1A1A1A)),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CartShortcutDropdown extends StatelessWidget {
+  final VoidCallback onPrescriptionTap;
+  final VoidCallback onShoppingTap;
+
+  const _CartShortcutDropdown({
+    required this.onPrescriptionTap,
+    required this.onShoppingTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 82,
+      padding: const EdgeInsets.all(10),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x19000000),
+            blurRadius: 4,
+            offset: Offset(0, 0),
+            spreadRadius: 0,
+          )
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _CartDropdownItem(
+            label: '진료담기',
+            onTap: onPrescriptionTap,
+          ),
+          const SizedBox(height: 5),
+          _CartDropdownItem(
+            label: '구매담기',
+            onTap: onShoppingTap,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CartDropdownItem extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _CartDropdownItem({
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  State<_CartDropdownItem> createState() => _CartDropdownItemState();
+}
+
+class _CartDropdownItemState extends State<_CartDropdownItem> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(6),
+        hoverColor: Colors.transparent,
+        splashColor: const Color(0xFFFF5A8D).withValues(alpha: 0.12),
+        highlightColor: const Color(0xFFFF5A8D).withValues(alpha: 0.08),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          decoration: BoxDecoration(
+            color: _hover ? const Color(0xFFFFF1F6) : Colors.white,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Center(
+            child: Text(
+              widget.label,
+              style: TextStyle(
+                color: _hover ? const Color(0xFFFF5A8D) : Colors.black,
+                fontSize: 10,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ),
         ),
       ),
     );
