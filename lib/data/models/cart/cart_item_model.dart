@@ -103,6 +103,18 @@ class CartItem {
         NodeValueParser.asString(normalized['ctKind']) ??
         'general';
     final normalizedCtKind = _normalizeKind(rawCtKind);
+    final hpReservationDate =
+        NodeValueParser.asString(normalized['hp_rsvt_date'])?.trim();
+    final hpReservationStart =
+        NodeValueParser.asString(normalized['hp_rsvt_stime'])?.trim();
+    final hpReservationEnd =
+        NodeValueParser.asString(normalized['hp_rsvt_etime'])?.trim();
+    final parsedReservationDate = reservationDate ??
+        _parseReservationDateCandidates([
+          NodeValueParser.asString(normalized['reservation_date']),
+          NodeValueParser.asString(normalized['reservationDate']),
+          hpReservationDate,
+        ]);
 
     return CartItem(
       ctId: _parseInt(normalized['ct_id'] ?? normalized['ctId']),
@@ -146,15 +158,17 @@ class CartItem {
       ctTime: ctTime,
       doctorName:
           doctorName ??
+          NodeValueParser.asString(normalized['hp_doc_name']) ??
           NodeValueParser.asString(normalized['doctor_name']) ??
           NodeValueParser.asString(normalized['doctorName']),
-      reservationDate: reservationDate ?? 
-                      (normalized['reservation_date'] != null 
-                          ? DateTime.tryParse(NodeValueParser.asString(normalized['reservation_date']) ?? '') 
-                          : null),
+      reservationDate: parsedReservationDate,
       reservationTime: reservationTime ?? 
                        NodeValueParser.asString(normalized['reservation_time']) ?? 
-                       NodeValueParser.asString(normalized['reservationTime']),
+                       NodeValueParser.asString(normalized['reservationTime']) ??
+                       _composeReservationTimeRange(
+                         hpReservationStart,
+                         hpReservationEnd,
+                       ),
       imageUrl: NodeValueParser.asString(normalized['image_url']) ?? 
                 NodeValueParser.asString(normalized['imageUrl']) ?? 
                 NodeValueParser.asString(normalized['it_img']) ?? 
@@ -204,6 +218,34 @@ class CartItem {
         .toLowerCase();
     if (cleaned.isEmpty) return 'general';
     return cleaned;
+  }
+
+  static String? _composeReservationTimeRange(String? start, String? end) {
+    final safeStart = start?.trim() ?? '';
+    final safeEnd = end?.trim() ?? '';
+    if (safeStart.isEmpty && safeEnd.isEmpty) return null;
+    if (safeStart.isNotEmpty && safeEnd.isNotEmpty) {
+      return '$safeStart ~ $safeEnd';
+    }
+    return safeStart.isNotEmpty ? safeStart : safeEnd;
+  }
+
+  static final RegExp _isoDateInString = RegExp(r'(\d{4}-\d{2}-\d{2})');
+
+  static DateTime? _parseReservationDateCandidates(List<String?> candidates) {
+    for (final raw in candidates) {
+      final safe = (raw ?? '').trim();
+      if (safe.isEmpty) continue;
+      final embedded = _isoDateInString.firstMatch(safe);
+      if (embedded != null) {
+        final parsed = DateTime.tryParse(embedded.group(1)!);
+        if (parsed != null) return parsed;
+      }
+      final normalized = safe.length >= 10 ? safe.substring(0, 10) : safe;
+      final parsed = DateTime.tryParse(normalized);
+      if (parsed != null) return parsed;
+    }
+    return null;
   }
 
   String get formattedPrice {

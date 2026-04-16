@@ -49,24 +49,16 @@ class CartService {
       // ct_kind가 있으면 추가 (상품 종류)
       if (ctKind != null && ctKind.isNotEmpty) {
         requestData['ct_kind'] = ctKind;
-        print('📦 [장바구니 추가] ct_kind 전달: $ctKind');
-      } else {
-        print('⚠️ [장바구니 추가] ct_kind가 없습니다!');
       }
 
       if (ctStatus != null && ctStatus.isNotEmpty) {
         requestData['ct_status'] = ctStatus;
       }
 
-      print('📥 [API POST] 요청 데이터: $requestData');
-
       final response = await ApiClient.post(
         ApiEndpoints.addToCart,
         requestData,
       );
-
-      print('📥 [API POST] 응답 상태: ${response.statusCode}');
-      print('📥 [API POST] 응답 본문: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
