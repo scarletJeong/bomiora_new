@@ -50,4 +50,7 @@ abstract final class AppAssets {
   static const String productMainBottom2 = '${_img}product_main_bottom_2.png';
   static const String productMainBottom3 = '${_img}product_main_bottom_3.png';
   static const String productMainBottom4 = '${_img}product_main_bottom_4.png';
+
+  // 건강대시보드 그래프 확대 아이콘
+  static const String healthZoomin = '${_img}graph_zoomin.svg';
 }

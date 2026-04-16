@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
@@ -54,7 +56,7 @@ Widget buildBloodPressureYAxisStrip({
       }
 
       return SizedBox(
-        width: ChartConstants.weightChartYAxisWidth,
+        width: math.max(ChartConstants.weightChartYAxisWidth, 46.0),
         child: showYAxisHeader && yLabels.length > 1
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -63,13 +65,15 @@ Widget buildBloodPressureYAxisStrip({
                     height: unitBand,
                     child: Align(
                       alignment: Alignment.bottomCenter,
-                      child: Text(
-                        unitLabel,
-                        style: TextStyle(
-                          // 그래프 mmHg 단위 표시
-                          fontSize: 8,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          unitLabel,
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),

@@ -193,13 +193,23 @@ Widget buildBloodPressureChartTooltip({
 
   String headerText;
   if (selectedPeriod == '일') {
-    if (record != null) {
+    if (isRange) {
+      final slot = data['date']?.toString() ?? '';
+      final h = int.tryParse(slot);
+      if (h != null) {
+        headerText = '$h시';
+      } else if (record != null) {
+        headerText = '${record.measuredAt.hour}시';
+      } else {
+        headerText = slot;
+      }
+    } else if (record != null) {
       final d = record.measuredAt;
-      headerText = '${d.hour}시 ${d.minute}분';
+      headerText = '${d.hour}시 ${d.minute.toString().padLeft(2, '0')}분';
     } else {
       final slot = data['date']?.toString() ?? '';
       final h = int.tryParse(slot) ?? 0;
-      headerText = '$h시 0분';
+      headerText = '$h시 00분';
     }
   } else if (selectedPeriod == '주') {
     if (record != null) {

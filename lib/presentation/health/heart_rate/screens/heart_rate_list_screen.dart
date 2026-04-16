@@ -2,8 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
@@ -63,7 +65,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           )
         : DateTime(now.year, now.month, now.day);
     if (_isToday()) {
-      timeOffset = (now.hour - 4).clamp(0, 18) / 18.0;
+      timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
     }
     _loadData();
   }
@@ -256,7 +258,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   double _clampDragOffset(double newOffset) {
     if (_isToday()) {
       final now = DateTime.now();
-      final maxStartHour = (now.hour - 4).clamp(0, 18);
+      final maxStartHour = (now.hour - 5).clamp(0, 18);
       return newOffset.clamp(0.0, maxStartHour / 18.0);
     }
     if (selectedPeriod == '월') {
@@ -409,7 +411,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            DateFormat('HH:mm').format(r.measuredAt),
+            '${r.measuredAt.hour}시',
             textAlign: TextAlign.center,
             style: headerStyle,
           ),
@@ -437,21 +439,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     final range = (endHour - minHour).toDouble();
     if (range <= 0) return [];
 
-    double xNorm(HeartRateRecord r) {
-      final h = r.measuredAt.hour +
-          r.measuredAt.minute / 60.0 +
-          r.measuredAt.second / 3600.0;
-      return ((h - minHour) / range).clamp(0.0, 1.0);
-    }
-
     final records = _recordsForSelectedDate();
-    final hourTotalCount = <int, int>{};
-    for (final r in records) {
-      final calHour = r.measuredAt.hour;
-      if (calHour < startHour || calHour > endHour) continue;
-      hourTotalCount[calHour] = (hourTotalCount[calHour] ?? 0) + 1;
-    }
-
     final groups = <String, List<HeartRateRecord>>{};
     for (final r in records) {
       final calHour = r.measuredAt.hour;
@@ -475,9 +463,6 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       /// X축 정수 시 라벨(10시)과 동일: 해당 시각 0분 위치 (평균 시각 아님)
       final hourTickX =
           (bucketHour - minHour) / range.clamp(0.001, double.infinity);
-      final snapToHourTick =
-          (hourTotalCount[bucketHour] ?? 0) >= 2;
-
       if (list.length >= 2) {
         final bpms = list.map((r) => r.heartRate).toList();
         final minB = bpms.reduce(math.min);
@@ -491,7 +476,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         ));
       } else {
         final r = list.single;
-        final x = snapToHourTick ? hourTickX.clamp(0.0, 1.0) : xNorm(r);
+        // 단일 데이터도 분 단위가 아닌 해당 시간 정각 슬롯에 고정
+        final x = hourTickX.clamp(0.0, 1.0);
         out.add(_HeartDailyVisual.point(x, r.heartRate, color, r));
       }
     }
@@ -539,7 +525,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                           if (_isToday()) {
                             final now = DateTime.now();
                             timeOffset =
-                                (now.hour - 4).clamp(0, 18) / 18.0;
+                                (now.hour - 5).clamp(0, 18) / 18.0;
                           } else {
                             timeOffset = 0.0;
                           }
@@ -577,7 +563,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                           } else if (_isToday()) {
                             final now = DateTime.now();
                             timeOffset =
-                                (now.hour - 4).clamp(0, 18) / 18.0;
+                                (now.hour - 5).clamp(0, 18) / 18.0;
                           } else {
                             timeOffset = 0.0;
                           }
@@ -798,24 +784,16 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       children: [
         chartBody,
         Positioned(
-          right: 8,
+          right: 4,
           top: 8,
           child: GestureDetector(
             onTap: _openExpandedChartPage,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: ShapeDecoration(
-                color: const Color(0x7FD2D2D2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              child: const Icon(
-                Icons.open_in_full,
-                size: 12,
-                color: Color(0xFF4B5563),
-              ),
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              AppAssets.healthZoomin,
+              width: 20,
+              height: 20,
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -1018,7 +996,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
             timeOffset = 0.0;
           } else if (_isToday()) {
             final now = DateTime.now();
-            timeOffset = (now.hour - 4).clamp(0, 18) / 18.0;
+            timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
           } else {
             timeOffset = 0.0;
           }

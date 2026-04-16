@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
@@ -10,6 +11,7 @@ import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
@@ -102,7 +104,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       // 오늘: 현재 시간 - 4시간까지만
       final now = DateTime.now();
       final currentHour = now.hour;
-      final maxStartHour = (currentHour - 4).clamp(0, 18);
+      final maxStartHour = (currentHour - 5).clamp(0, 18);
       final maxOffset = maxStartHour / 18.0;
       return newOffset.clamp(0.0, maxOffset);
     } else {
@@ -448,7 +450,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     // 오늘 날짜일 경우: 현재 시간 - 4시간을 시작점으로 초기 timeOffset 설정
     if (_isToday()) {
       final currentHour = now.hour;
-      final startHourTarget = (currentHour - 4).clamp(0, 18);
+      final startHourTarget = (currentHour - 5).clamp(0, 18);
       timeOffset = startHourTarget / 18.0;
     }
 
@@ -602,7 +604,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                             if (isSelectingToday) {
                               final currentHour = now.hour;
                               final startHourTarget =
-                                  (currentHour - 4).clamp(0, 18);
+                                  (currentHour - 5).clamp(0, 18);
                               timeOffset = startHourTarget / 18.0;
                             } else {
                               timeOffset = 0.0;
@@ -1019,7 +1021,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             if (_isToday()) {
               final now = DateTime.now();
               final currentHour = now.hour;
-              final startHourTarget = (currentHour - 4).clamp(0, 18);
+              final startHourTarget = (currentHour - 5).clamp(0, 18);
               timeOffset = startHourTarget / 18.0;
             } else {
               timeOffset = 0.0;
@@ -1059,24 +1061,16 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       children: [
         chartBody,
         Positioned(
-          right: 8,
+          right: 4,
           top: 8,
           child: GestureDetector(
             onTap: _openExpandedChartPage,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: ShapeDecoration(
-                color: const Color(0x7FD2D2D2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              child: const Icon(
-                Icons.open_in_full,
-                size: 12,
-                color: Color(0xFF4B5563),
-              ),
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              AppAssets.healthZoomin,
+              width: 20,
+              height: 20,
+              fit: BoxFit.contain,
             ),
           ),
         ),

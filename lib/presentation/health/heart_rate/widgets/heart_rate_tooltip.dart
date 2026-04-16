@@ -197,8 +197,9 @@ class HeartRateTooltip extends StatelessWidget {
     required double estimatedHeight,
   }) {
     const margin = 6.0;
-    /// 배지+`NNN ~ NNN` 한 줄에 필요한 최소 너비(오른쪽 슬롯에서 142 cap 제거)
-    const minTooltipWidth = 124.0;
+    final bool isWeekly = selectedPeriod == '주';
+    final minTooltipWidth = isWeekly ? 74.0 : 124.0;
+    final minCardWidth = isWeekly ? 74.0 : 88.0;
 
     double tooltipX = tooltipPosition!.dx;
     double tooltipY = tooltipPosition!.dy - 60;
@@ -209,7 +210,7 @@ class HeartRateTooltip extends StatelessWidget {
     if (tooltipX < margin) tooltipX = margin;
 
     var maxTooltipWidth = chartWidth - tooltipX - margin;
-    maxTooltipWidth = maxTooltipWidth.clamp(88.0, 240.0);
+    maxTooltipWidth = maxTooltipWidth.clamp(minCardWidth, 240.0);
 
     if (tooltipY < 0) tooltipY = tooltipPosition!.dy + 20;
     if (tooltipY > chartHeight - estimatedHeight) {
@@ -221,7 +222,7 @@ class HeartRateTooltip extends StatelessWidget {
       top: tooltipY,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          minWidth: 88,
+          minWidth: minCardWidth,
           maxWidth: maxTooltipWidth,
         ),
         child: Container(
