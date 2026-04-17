@@ -7,6 +7,7 @@ class DropdownBtn extends StatefulWidget {
   final double buttonHeight;
   final double panelMaxHeight;
   final String emptyText;
+  final bool enabled;
 
   const DropdownBtn({
     super.key,
@@ -16,6 +17,7 @@ class DropdownBtn extends StatefulWidget {
     this.buttonHeight = 36,
     this.panelMaxHeight = 260,
     this.emptyText = '선택',
+    this.enabled = true,
   });
 
   @override
@@ -47,6 +49,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
   }
 
   void _toggle() {
+    if (!widget.enabled || widget.items.isEmpty) return;
     if (_open) {
       _closeAndRebuild();
       return;
@@ -149,44 +152,53 @@ class _DropdownBtnState extends State<DropdownBtn> {
   Widget build(BuildContext context) {
     final hasValue = widget.value.trim().isNotEmpty;
     final display = hasValue ? widget.value : widget.emptyText;
+    final canOpen = widget.enabled && widget.items.isNotEmpty;
+    final displayColor = !widget.enabled
+        ? const Color(0xFFBDBDBD)
+        : (hasValue ? const Color(0xFF1A1A1A) : const Color(0xFF898686));
 
     return SizedBox(
       height: widget.buttonHeight,
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: _toggle,
-        child: Container(
-          key: _anchorKey,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: ShapeDecoration(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-              borderRadius: BorderRadius.circular(10),
+        onTap: canOpen ? _toggle : null,
+        child: Opacity(
+          opacity: widget.enabled ? 1 : 0.55,
+          child: Container(
+            key: _anchorKey,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  display,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 14,
-                    fontFamily: _fontFamily,
-                    fontWeight: FontWeight.w500,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    display,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: displayColor,
+                      fontSize: 14,
+                      fontFamily: _fontFamily,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-              Icon(
-                _open
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: const Color(0xFF898686),
-              ),
-            ],
+                Icon(
+                  _open
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: canOpen
+                      ? const Color(0xFF898686)
+                      : const Color(0xFFBDBDBD),
+                ),
+              ],
+            ),
           ),
         ),
       ),
