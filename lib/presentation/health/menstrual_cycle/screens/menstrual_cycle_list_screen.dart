@@ -290,6 +290,14 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         (scaledRingStroke * 3.5 * chartScale).clamp(17.0, 21.0);
     final ovulationX = center + markerRadius * cos(ovulationAngle);
     final ovulationY = center + markerRadius * sin(ovulationAngle);
+    final fertileStartDayIndex0 =
+        _currentRecord!.fertileWindowStart.difference(_currentRecord!.lastPeriodStart).inDays;
+    final fertileStartAngle = -pi / 2 - (daySweep * fertileStartDayIndex0);
+    final fertileTextAngle = (fertileStartAngle + ovulationAngle) / 2;
+    // 가임기 라벨은 원형차트의 가임기 호 중심선 위에 정렬
+    final fertileTextRadius = markerRadius;
+    final fertileTextX = center + fertileTextRadius * cos(fertileTextAngle);
+    final fertileTextY = center + fertileTextRadius * sin(fertileTextAngle);
 
     final ovulation = _currentRecord!.ovulationDate;
     final selectedIsOvulationDay =
@@ -389,6 +397,24 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                         ),
                       ),
                     ),
+                  Positioned(
+                    left: fertileTextX - 16,
+                    top: fertileTextY - 7,
+                    child: IgnorePointer(
+                      child: Transform.rotate(
+                        angle: fertileTextAngle + (pi / 2) + pi,
+                        child: const Text(
+                          '가임기',
+                          style: TextStyle(
+                            color: Color(0xFFCC946A),
+                            fontSize: 11,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   Positioned(
                     left: markerX - (markerDotSize / 2),
                     top: markerY - (markerDotSize / 2),
@@ -876,17 +902,18 @@ class MenstrualCyclePainter extends CustomPainter {
         },
       );
 
-      _drawSegments(
-        canvas: canvas,
-        rect: rect,
-        daySweep: daySweep,
-        paint: stroke,
-        color: const Color(0xFFFFDFC3),
-        shouldPaintDay: (dayDate) =>
-            !_isBeforeDate(dayDate, fertileWindowStart) &&
-            !_isAfterDate(dayDate, fertileWindowEnd),
-      );
     }
+
+    // 선택 날짜와 무관하게 가임기 기간은 항상 링에 표시한다.
+    _drawDateWindow(
+      canvas: canvas,
+      rect: rect,
+      daySweep: daySweep,
+      paint: stroke,
+      color: const Color(0xFFFFDFC3),
+      startDate: fertileWindowStart,
+      endDate: fertileWindowEnd,
+    );
 
     // 가임기 시작일 위치 표시선
     _drawPhaseMarker(
@@ -1031,16 +1058,45 @@ class MenstrualCyclePainter extends CustomPainter {
     }
   }
 
-  bool _isBeforeDate(DateTime a, DateTime b) {
-    final aa = DateTime(a.year, a.month, a.day);
-    final bb = DateTime(b.year, b.month, b.day);
-    return aa.isBefore(bb);
-  }
+  void _drawDateWindow({
+    required Canvas canvas,
+    required Rect rect,
+    required double daySweep,
+    required Paint paint,
+    required Color color,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    final normalizedStart = DateTime(
+      cycleStartDate.year,
+      cycleStartDate.month,
+      cycleStartDate.day,
+    );
+    final s = DateTime(startDate.year, startDate.month, startDate.day)
+        .difference(normalizedStart)
+        .inDays;
+    final e = DateTime(endDate.year, endDate.month, endDate.day)
+        .difference(normalizedStart)
+        .inDays;
+    if (s > e) return;
+    final startIndex = s.clamp(0, cycleLength - 1);
+    final endIndex = e.clamp(0, cycleLength - 1);
+    if (endIndex < 0 || startIndex >= cycleLength || startIndex > endIndex) {
+      return;
+    }
+    final segmentLength = endIndex - startIndex + 1;
+    if (segmentLength <= 0) return;
 
-  bool _isAfterDate(DateTime a, DateTime b) {
-    final aa = DateTime(a.year, a.month, a.day);
-    final bb = DateTime(b.year, b.month, b.day);
-    return aa.isAfter(bb);
+    paint.color = color;
+    final startAngle = -pi / 2 - (daySweep * startIndex);
+    final sweep = -(daySweep * segmentLength);
+    canvas.drawArc(
+      rect,
+      startAngle,
+      sweep,
+      false,
+      paint,
+    );
   }
 
   @override

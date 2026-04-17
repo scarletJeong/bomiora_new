@@ -82,8 +82,10 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   // 시간 범위 계산 (통합 로직)
   Map<String, double> _calculateTimeRange() {
     const maxStartHour = 18; // 24시 - 6시간 = 18시 (7개 라벨)
-    final startHour =
-        (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
+    // X축 라벨(startHour round)과 동일한 기준을 사용해 점 위치 오차를 제거한다.
+    final startHour = (timeOffset * maxStartHour)
+        .clamp(0.0, maxStartHour.toDouble())
+        .roundToDouble();
     final endHour = (startHour + 6.0).clamp(6.0, 24.0);
 
     return {'min': startHour, 'max': endHour};
