@@ -144,6 +144,10 @@ class ApiEndpoints {
   static const String getFaqList = '/api/faq/list';
   static const String getFaqDetail = '/api/faq';
 
+  // 콘텐츠 관련
+  static const String getContentList = '/api/content/list';
+  static const String getContentDetail = '/api/content';
+
   // 공통 카테고리 관련
   static const String getCategoryList = '/api/get-category/list';
 }

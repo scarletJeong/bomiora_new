@@ -12,6 +12,25 @@ import 'package:flutter/foundation.dart';
 /// 
 /// 2. 또는 Flutter 앱을 XAMPP를 통해 서빙 (포트 80)
 class ImageUrlHelper {
+  static String _localProxyBaseUrl() => 'http://localhost:9000';
+
+  /// HTML 조각에서 첫 번째 img src를 추출.
+  /// - 리뷰 데이터가 URL 대신 `<img src="...">` 형태로 올 때 대응.
+  static String? _extractFirstImageSrc(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return null;
+
+    final imgSrcPattern = RegExp(
+      r'''<img[^>]*\bsrc\s*=\s*["']([^"']+)["']''',
+      caseSensitive: false,
+    );
+    final match = imgSrcPattern.firstMatch(text);
+    if (match == null) return null;
+    final src = match.group(1)?.trim();
+    if (src == null || src.isEmpty) return null;
+    return src;
+  }
+
   /// 이미지 베이스 URL을 반환
   static String get imageBaseUrl {
     if (kIsWeb) {
@@ -21,7 +40,7 @@ class ImageUrlHelper {
         
         // localhost인 경우 로컬 웹 서버 사용 (XAMPP)
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-          return 'https://localhost/bomiora/www';
+          return 'https://bomiora0.mycafe24.com';
         }
         // Cafe24 개발 서버 환경 - 같은 도메인 사용 (CORS 해결)
         else if (currentHost.contains('mycafe24.com')) {
@@ -79,11 +98,6 @@ class ImageUrlHelper {
         return result;
       }
       
-      // 로컬 환경
-      if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-        final result = '$imageBaseUrl$normalizedPath';
-        return result;
-      }
     }
     
     final result = '${imageBaseUrl}$normalizedPath';
@@ -182,13 +196,8 @@ class ImageUrlHelper {
         
         // 로컬 개발 환경 - 로컬 경로 사용
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-          // 상세/리뷰 이미지는 CORS 이슈가 잦아 프록시로 우회
-          if (path.contains('/data/editor/') || path.contains('/data/itemuse/')) {
-            return 'https://bomiora.net/api/proxy/image?url=${Uri.encodeComponent(url)}';
-          }
-          // 모든 경로를 직접 로컬 경로로 변환 (프록시 사용 안 함)
-          final result = '$imageBaseUrl$path';
-          return result;
+          final target = canonicalUpstreamUrl;
+          return '${_localProxyBaseUrl()}/api/proxy/image?url=${Uri.encodeComponent(target)}';
         }
         
         // Cafe24 프로덕션 환경 - 같은 도메인 사용 (CORS 해결!)
@@ -237,55 +246,100 @@ class ImageUrlHelper {
     return normalizeImageUrl(imageUrl);
   }
 
+  /// `data/itemuse/` 상대경로 정리 — 선행 `/`, 중복 `data/itemuse/` 제거
+  static String _normalizeReviewItemuseRelativePath(String raw) {
+    var path = raw.trim().replaceAll('\\', '/');
+    while (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    const prefix = 'data/itemuse/';
+    if (path.startsWith(prefix)) {
+      path = path.substring(prefix.length);
+    }
+    return path;
+  }
+
   /// 리뷰 이미지 URL 변환 (data/itemuse/ 경로 사용)
   /// 예: 1686290723/IMG_6466.jpeg -> /data/itemuse/1686290723/IMG_6466.jpeg
   static String getReviewImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
     }
-    
-    // 이미 전체 URL인 경우
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return convertToLocalUrl(imageUrl);
+
+    final extractedSrc = _extractFirstImageSrc(imageUrl);
+    final trimmed = (extractedSrc ?? imageUrl).trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return convertToLocalUrl(trimmed);
     }
-    
+
+    final path = _normalizeReviewItemuseRelativePath(trimmed);
+    if (path.isEmpty) {
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
+
     // 웹 환경에서 처리
     if (kIsWeb) {
       final currentHost = Uri.base.host;
-      
-      // 로컬 개발 환경 - 로컬 경로 사용
-      if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-        String path = imageUrl;
-        if (path.startsWith('/')) {
-          path = path.substring(1);
-        }
-        return '$imageBaseUrl/data/itemuse/$path';
-      }
-      
+
       // Cafe24 프로덕션 환경 - 같은 도메인 사용 (CORS 없음!)
       if (currentHost.contains('mycafe24.com')) {
-        String path = imageUrl;
-        if (path.startsWith('/')) {
-          path = path.substring(1);
-        }
-        // 같은 도메인의 경로 사용
         return 'https://$currentHost/data/itemuse/$path';
       }
-      
-      // 기타 프로덕션 환경 (bomiora.kr 등) - 프록시 사용
-      String path = imageUrl;
-      if (path.startsWith('/')) {
-        path = path.substring(1);
-      }
-      final fullUrl = 'https://bomiora.kr/data/itemuse/$path';
-      return 'https://bomiora.net/api/proxy/image?url=${Uri.encodeComponent(fullUrl)}';
+
+      // bomiora.net 등 — 상대경로만 오는 경우 여기로 오는데,
+      // 수동으로 bomiora.kr 을 넣으면 프록시 대상이 [convertToLocalUrl] 과 달라져 502 등이 날 수 있음.
+      // 항상 bomiora.kr URL 을 넘겨 [convertToLocalUrl] 이 mycafe24 canonical + 동일 프록시 규칙 적용.
+      return convertToLocalUrl('https://bomiora.kr/data/itemuse/$path');
     }
-    
+
     // 모바일 앱 - bomiora.kr 경로 사용
-    String path = imageUrl;
-    if (path.startsWith('/')) {
-      path = path.substring(1);
-    }
     return 'https://bomiora.kr/data/itemuse/$path';
+  }
+
+  /// 메인 홈 리뷰 이미지 URL 변환 (data/mainreview 경로 사용)
+  /// 입력 예:
+  /// - 1686290723/7KO864Sk66W0_01.gif
+  /// - /bomiora0/www/data/mainreview/1686290723/7KO864Sk66W0_01.gif
+  /// - https://bomiora0.mycafe24.com/www/data/mainreview/...
+  static String getMainReviewImageUrl(String? imageUrl) {
+    const fallbackPath = '/data/item/no_img.png';
+    if (imageUrl == null || imageUrl.trim().isEmpty) {
+      return convertToLocalUrl('${imageBaseUrl}$fallbackPath');
+    }
+
+    final extractedSrc = _extractFirstImageSrc(imageUrl);
+    var raw = (extractedSrc ?? imageUrl).trim().replaceAll('\\', '/');
+    if (raw.isEmpty) {
+      return convertToLocalUrl('${imageBaseUrl}$fallbackPath');
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return convertToLocalUrl(raw);
+    }
+
+    // 절대/상대 경로 혼재 정리
+    raw = raw
+        .replaceFirst(RegExp(r'^/bomiora0/www/data/mainreview/', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'^bomiora0/www/data/mainreview/', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'^/data/mainreview/', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'^data/mainreview/', caseSensitive: false), '');
+
+    while (raw.startsWith('/')) {
+      raw = raw.substring(1);
+    }
+
+    if (raw.isEmpty) {
+      return convertToLocalUrl('${imageBaseUrl}$fallbackPath');
+    }
+
+    if (kIsWeb) {
+      final currentHost = Uri.base.host;
+      if (currentHost.contains('mycafe24.com')) {
+        return 'https://$currentHost/data/mainreview/$raw';
+      }
+      return convertToLocalUrl('https://bomiora.kr/data/mainreview/$raw');
+    }
+
+    return 'https://bomiora.kr/data/mainreview/$raw';
   }
 }

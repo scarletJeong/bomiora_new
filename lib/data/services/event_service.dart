@@ -74,45 +74,23 @@ class EventService {
     return out;
   }
 
-  static void _logParsedList(String logLabel, List<EventModel> list) {
-    debugPrint('[EventService][$logLabel] parsed count=${list.length}');
-    for (final e in list) {
-      debugPrint(
-        '[EventService][$logLabel]  wr_id=${e.wrId} wr_num=${e.wrNum} '
-        'ca=${e.caName} subject=${e.wrSubject} wr_1=${e.wr1} wr_2=${e.wr2} '
-        'isActive=${e.isActive} datetime=${e.wrDatetime}',
-      );
-    }
-  }
-
   /// 진행중인 이벤트 목록 조회
   static Future<List<EventModel>> getActiveEvents() async {
     const label = 'active';
     final path = _withNoCacheParam(ApiEndpoints.getActiveEvents);
     try {
-      debugPrint('[EventService][$label] GET ${_fullUrl(path)}');
       final response = await ApiClient.get(
         path,
         additionalHeaders: _noCacheHeaders,
       );
 
-      debugPrint(
-        '[EventService][$label] status=${response.statusCode} bodyLen=${response.body.length}',
-      );
-
       // 웹 환경 캐시로 304가 올 수 있음: 목록 로드 실패로 간주하지 않고 빈 목록 처리
       if (response.statusCode == 304 || response.body.trim().isEmpty) {
-        debugPrint(
-          '[EventService][$label] ⚠️ 304 or empty body → []. preview=${_bodyPreview(response.body, max: 200)}',
-        );
         return [];
       }
 
-      debugPrint('[EventService][$label] body preview: ${_bodyPreview(response.body)}');
-
       final responseData = json.decode(response.body);
       final list = _parseEventList(responseData, logLabel: label);
-      _logParsedList(label, list);
       return list;
     } catch (e, st) {
       debugPrint('[EventService][$label] exception: $e');
@@ -146,9 +124,7 @@ class EventService {
       debugPrint('[EventService][$label] body preview: ${_bodyPreview(response.body)}');
 
       final responseData = json.decode(response.body);
-      final list = _parseEventList(responseData, logLabel: label);
-      _logParsedList(label, list);
-      return list;
+      return _parseEventList(responseData, logLabel: label);
     } catch (e, st) {
       debugPrint('[EventService][$label] exception: $e');
       debugPrint('$st');
@@ -188,9 +164,6 @@ class EventService {
         final data = responseData['data'];
         if (data is Map) {
           final m = EventModel.fromJson(Map<String, dynamic>.from(data));
-          debugPrint(
-            '[EventService][$label] ok wr_id=${m.wrId} subject=${m.wrSubject} wr_1=${m.wr1} wr_2=${m.wr2} isActive=${m.isActive}',
-          );
           return m;
         }
       }
