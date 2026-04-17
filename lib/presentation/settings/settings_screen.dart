@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
-import 'notification_settings_screen.dart';
+import '../common/widgets/app_bar.dart';
+import '../common/widgets/confirm_dialog.dart';
+import 'notification_center_screen.dart';
 import 'policy/screens/terms_of_service_screen.dart';
 import 'policy/screens/privacy_policy_screen.dart';
+import '../customer_service/screens/contact_list_screen.dart';
 import '../../data/services/auth_service.dart';
 
 /// 설정 화면
@@ -14,171 +18,205 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _appVersion = '1.0.0'; // TODO: package_info_plus로 실제 버전 가져오기
+  static const String _appVersion = '26.01.0';
+  static const Color _kBorder = Color(0xFFD2D2D2);
+  static const Color _kText = Color(0xFF1A1A1A);
+  static const Color _kMuted = Color(0xFF898686);
+  static const Color _kPink = Color(0xFFFF5A8D);
 
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: AppBar(
-        title: const Text(
-          '설정',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+      appBar: const HealthAppBar(
+        title: '설정',
         centerTitle: true,
       ),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
         children: [
-          // 알림 섹션
-          _buildSectionTitle('알림'),
-          _buildMenuItem(
-            icon: Icons.notifications_outlined,
-            title: '알림 설정',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationSettingsScreen(),
+          _buildCard(
+            children: [
+              _buildRowItem(
+                title: '알림 설정',
+                icon: Icons.notifications_none_rounded,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationCenterScreen(),
+                  ),
                 ),
-              );
-            },
+                isLast: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildCard(
+            children: [
+              _buildRowItem(
+                title: '공지사항',
+                icon: Icons.campaign_outlined,
+                onTap: () => Navigator.pushNamed(context, '/announcement'),
+              ),
+              _buildRowItem(
+                title: '이벤트',
+                icon: Icons.local_activity_outlined,
+                onTap: () => Navigator.pushNamed(context, '/evnt'),
+                isLast: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildCard(
+            children: [
+              _buildRowItem(
+                title: '서비스 이용약관',
+                icon: Icons.description_outlined,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => TermsOfServiceScreen()),
+                ),
+              ),
+              _buildRowItem(
+                title: '개인정보처리방침',
+                icon: Icons.privacy_tip_outlined,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const PrivacyPolicyScreen()),
+                ),
+                isLast: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildCard(
+            children: [
+              _buildRowItem(
+                title: '앱정보',
+                icon: Icons.info_outline_rounded,
+                onTap: _showAppInfoDialog,
+                isLast: false,
+                trailing: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFF6F3F2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: const Text(
+                    _appVersion,
+                    style: TextStyle(
+                      color: _kMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              _buildRowItem(
+                title: 'FAQ',
+                icon: Icons.help_outline_rounded,
+                onTap: () => Navigator.pushNamed(context, '/faq'),
+              ),
+              _buildRowItem(
+                title: '1:1 문의',
+                icon: Icons.support_agent_outlined,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ContactListScreen()),
+                ),
+              ),
+              _buildRowItem(
+                title: '카카오톡 상담',
+                icon: Icons.chat_bubble_outline_rounded,
+                onTap: _openKakaoChannel,
+                isLast: true,
+              ),
+            ],
           ),
           const SizedBox(height: 24),
-
-          // 약관 및 정책 섹션
-          _buildSectionTitle('약관 및 정책'),
-          _buildMenuItem(
-            icon: Icons.description_outlined,
-            title: '서비스 이용약관',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TermsOfServiceScreen(),
+          SizedBox(
+            height: 40,
+            child: ElevatedButton(
+              onPressed: _handleLogout,
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor: _kPink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildMenuItem(
-            icon: Icons.privacy_tip_outlined,
-            title: '개인정보 처리방침',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PrivacyPolicyScreen(),
+              ),
+              child: const Text(
+                '로그아웃',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-
-          // 앱 정보 섹션
-          _buildSectionTitle('앱 정보'),
-          _buildMenuItem(
-            icon: Icons.info_outlined,
-            title: '버전 정보',
-            trailing: Text(
-              'v$_appVersion',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
               ),
             ),
-            onTap: () {
-              _showAppInfoDialog();
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildMenuItem(
-            icon: Icons.help_outline,
-            title: 'FAQ',
-            onTap: () {
-              // FAQ 화면으로 이동 (고객센터의 FAQ 탭)
-              Navigator.pushNamed(context, '/customer-service');
-            },
-          ),
-          const SizedBox(height: 24),
-
-          // 계정 섹션
-          _buildSectionTitle('계정'),
-          _buildMenuItem(
-            icon: Icons.logout,
-            title: '로그아웃',
-            textColor: Colors.red[700],
-            iconColor: Colors.red[700],
-            onTap: _handleLogout,
           ),
         ],
       ),
     );
   }
 
-  /// 섹션 제목 위젯
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey[600],
-          letterSpacing: 0.5,
+  Widget _buildCard({required List<Widget> children}) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 0.5, color: _kBorder),
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
+      child: Column(children: children),
     );
   }
 
-  /// 메뉴 아이템 위젯
-  Widget _buildMenuItem({
-    required IconData icon,
+  Widget _buildRowItem({
     required String title,
-    Widget? trailing,
-    Color? textColor,
-    Color? iconColor,
+    required IconData icon,
     required VoidCallback onTap,
+    bool isLast = false,
+    Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[200]!),
+          border: isLast
+              ? null
+              : const Border(
+                  bottom: BorderSide(width: 0.5, color: _kBorder),
+                ),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(
-              icon,
-              color: iconColor ?? const Color(0xFFFF3787),
-              size: 24,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: textColor ?? Colors.black87,
+            Row(
+              children: [
+                Icon(icon, size: 20, color: _kMuted),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _kText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w300,
+                  ),
                 ),
-              ),
+              ],
             ),
             trailing ??
-                Icon(
-                  Icons.chevron_right,
-                  color: Colors.grey[400],
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _kMuted,
+                  size: 18,
                 ),
           ],
         ),
@@ -204,19 +242,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               '버전: $_appVersion',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: _kMuted),
             ),
             const SizedBox(height: 16),
             Text(
               '건강한 삶을 위한 스마트한 선택\n보미오라와 함께하세요.',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[700],
+                color: Colors.grey[800],
               ),
             ),
           ],
@@ -231,31 +266,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _openKakaoChannel() async {
+    final uri = Uri.parse('https://pf.kakao.com/_NdxgAG');
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('카카오톡 상담 페이지를 열 수 없습니다.')),
+      );
+    }
+  }
+
+  void _showPreparingSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('준비 중인 메뉴입니다.')),
+    );
+  }
+
   /// 로그아웃 처리
   Future<void> _handleLogout() async {
-    // 확인 다이얼로그 표시
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('정말 로그아웃하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(
-              '로그아웃',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '로그아웃',
+      message: '정말 로그아웃하시겠습니까?',
+      confirmText: '로그아웃',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         await AuthService.logout();
 
@@ -287,4 +323,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 }
-

@@ -4,6 +4,7 @@ import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/utils/get_product.dart';
+import '../../settings/settings_screen.dart';
 import 'confirm_dialog.dart';
 
 /// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
@@ -376,10 +377,10 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
+              const Expanded(
                 child: Text(
                   '로그인을 하세요.',
                   style: TextStyle(
@@ -390,7 +391,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   ),
                 ),
               ),
-              _DrawerSettingsIcon(),
+              _DrawerSettingsIcon(context),
             ],
           ),
           const SizedBox(height: 16),
@@ -489,7 +490,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 ),
               ),
             ),
-            const _DrawerSettingsIcon(),
+            _DrawerSettingsIcon(context),
           ],
         ),
         const SizedBox(height: 12),
@@ -517,25 +518,43 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   }
 }
 
-/// 표시만 하며 탭해도 동작 없음
 class _DrawerSettingsIcon extends StatelessWidget {
-  const _DrawerSettingsIcon();
+  final BuildContext drawerContext;
+
+  const _DrawerSettingsIcon(this.drawerContext);
+
+  void _onTap() {
+    Navigator.pop(drawerContext);
+    Navigator.push(
+      drawerContext,
+      MaterialPageRoute<void>(
+        builder: (_) => const SettingsScreen(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      width: 30,
-      height: 30,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Color(0xFFF3F3F3),
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.settings_outlined,
-            size: 18,
-            color: Color(0xFF898686),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: const SizedBox(
+          width: 30,
+          height: 30,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Color(0xFFF3F3F3),
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.settings_outlined,
+                size: 18,
+                color: Color(0xFF898686),
+              ),
+            ),
           ),
         ),
       ),
