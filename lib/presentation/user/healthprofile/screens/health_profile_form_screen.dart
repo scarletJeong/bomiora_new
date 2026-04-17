@@ -142,10 +142,17 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     if (widget.initialSectionIndices != null &&
         widget.initialSectionIndices!.isNotEmpty) {
       final subs = widget.initialSectionIndices!;
-      _currentPage = subs.first;
-      _pageController = subs.length == 1
-          ? PageController()
-          : PageController(initialPage: 0);
+      final mergeDietExercise =
+          subs.length == 2 && subs[0] == 1 && subs[1] == 2;
+      if (mergeDietExercise) {
+        _currentPage = 1;
+        _pageController = PageController();
+      } else {
+        _currentPage = subs.first;
+        _pageController = subs.length == 1
+            ? PageController()
+            : PageController(initialPage: 0);
+      }
     } else {
       final initialPage = widget.initialWizardIndex?.clamp(0, 4) ?? 0;
       _pageController = PageController(initialPage: initialPage);
@@ -358,54 +365,79 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       (t) => _formData['answer_10_types'] = t,
     );
 
-    // answer_11 (질병) - 파이프(|)로 구분된 문자열을 List로 변환
-    if (profile.answer11.isNotEmpty) {
-      _formData['answer_11'] = profile.answer11
-          .split('|')
+    bool rawMeansNoHealth(String raw) {
+      final t = raw.trim();
+      if (t.isEmpty) return true;
+      const noneTokens = {'없음', '해당없음', '해당 없음'};
+      if (noneTokens.contains(t)) return true;
+      final parts =
+          t.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      return parts.isNotEmpty && parts.every(noneTokens.contains);
+    }
+
+    List<String> normalizeDiseaseMedicationParts(Iterable<String> parts) {
+      return parts
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
-          .map((e) => e == '심혈관' ? '심혈증' : (e == '없음' ? '해당 없음' : e))
+          .map((e) {
+            if (e == '없음' || e == '해당없음') return '해당 없음';
+            if (e == '심혈관') return '심혈증';
+            return e;
+          })
           .toList();
-    } else {
-      _formData['answer_11'] = [];
     }
-    
-    // 복용중인 약 처리 (기타 항목 파싱) - 파이프(|)로 구분
+
+    // answer_11 (질병)
+    if (rawMeansNoHealth(profile.answer11)) {
+      _formData['answer_11'] = <String>['해당 없음'];
+    } else if (profile.answer11.isNotEmpty) {
+      _formData['answer_11'] = normalizeDiseaseMedicationParts(
+        profile.answer11.split('|'),
+      );
+    } else {
+      _formData['answer_11'] = <String>['해당 없음'];
+    }
+
+    // 복용중인 약 (기타 파싱 유지)
     if (profile.answer12.isNotEmpty) {
-      // answer_12가 문자열인 경우 List로 변환
       if (profile.answer12.contains('|')) {
         final parts = profile.answer12.split('|');
-        final List<String> answer12List = [];
+        final answer12List = <String>[];
         String? otherValue;
-        
+
         for (final part in parts) {
           final trimmed = part.trim();
           if (trimmed.startsWith('기타:')) {
-            // "기타: 약물명" 형식 파싱
             otherValue = trimmed.substring(3).trim();
             answer12List.add('기타');
           } else {
             answer12List.add(trimmed);
           }
         }
-        
-        _formData['answer_12'] = answer12List
-            .map((e) => e == '없음' ? '해당 없음' : e)
-            .toList();
-        if (otherValue != null && otherValue.isNotEmpty) {
-          _formData['answer_12_other'] = otherValue;
+
+        final normalized = normalizeDiseaseMedicationParts(answer12List);
+        if (normalized.isEmpty ||
+            (normalized.length == 1 && normalized.first == '해당 없음')) {
+          _formData['answer_12'] = <String>['해당 없음'];
+          _formData.remove('answer_12_other');
+        } else {
+          _formData['answer_12'] = normalized;
+          if (otherValue != null && otherValue.isNotEmpty) {
+            _formData['answer_12_other'] = otherValue;
+          }
         }
       } else {
-        // 단일 값인 경우
         if (profile.answer12 == '기타') {
           _formData['answer_12'] = ['기타'];
+        } else if (rawMeansNoHealth(profile.answer12)) {
+          _formData['answer_12'] = <String>['해당 없음'];
         } else {
           final v = profile.answer12 == '없음' ? '해당 없음' : profile.answer12;
           _formData['answer_12'] = [v];
         }
       }
     } else {
-      _formData['answer_12'] = [];
+      _formData['answer_12'] = <String>['해당 없음'];
     }
     
     // 다이어트약 복용경험 변환 (1 = 없음, 2 = 있음)
@@ -463,6 +495,46 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   /// 식습관+운동처럼 여러 단계를 스와이프로 넘기되, 이전/다음 바는 숨기고 `수정하기`만 표시
   Widget _buildMultiSubsetFormMode() {
     final subs = widget.initialSectionIndices!;
+    final mergeDietExercise =
+        subs.length == 2 && subs[0] == 1 && subs[1] == 2;
+
+    Widget body;
+    if (mergeDietExercise) {
+      body = SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(27, 20, 27, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _wizardStepQuestionsColumn(_sections[1], 1),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Divider(height: 1, thickness: 1, color: _pfBorder),
+            ),
+            _wizardStepQuestionsColumn(_sections[2], 2),
+          ],
+        ),
+      );
+    } else {
+      body = PageView.builder(
+        controller: _pageController,
+        clipBehavior: Clip.hardEdge,
+        onPageChanged: (page) {
+          setState(() {
+            _currentPage = subs[page];
+          });
+        },
+        itemCount: subs.length,
+        itemBuilder: (context, i) {
+          final secIndex = subs[i];
+          return RepaintBoundary(
+            child: _buildWizardStepScrollable(
+              _sections[secIndex],
+              secIndex,
+            ),
+          );
+        },
+      );
+    }
 
     return ColoredBox(
       color: Colors.white,
@@ -473,25 +545,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               Expanded(
                 child: Form(
                   key: _formKey,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    clipBehavior: Clip.hardEdge,
-                    onPageChanged: (page) {
-                      setState(() {
-                        _currentPage = subs[page];
-                      });
-                    },
-                    itemCount: subs.length,
-                    itemBuilder: (context, i) {
-                      final secIndex = subs[i];
-                      return RepaintBoundary(
-                        child: _buildWizardStepScrollable(
-                          _sections[secIndex],
-                          secIndex,
-                        ),
-                      );
-                    },
-                  ),
+                  child: body,
                 ),
               ),
               Padding(
@@ -577,9 +631,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     );
   }
 
-  /// 신규 작성 45px, 기존 프로필 수정(전체 문진) 진입 시 40px
-  double get _wizardStepTabHeight =>
-      widget.existingProfile != null ? 40.0 : 45.0;
+  /// 전체/부분 수정 모두 동일한 탭 높이
+  double get _wizardStepTabHeight => 45.0;
 
   Widget _buildWizardStepIndicator() {
     final tabH = _wizardStepTabHeight;
@@ -649,27 +702,35 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     );
   }
 
+  Widget _wizardStepQuestionsColumn(
+    HealthProfileSection section,
+    int stepIndex,
+  ) {
+    final visible =
+        section.questions.where((q) => _shouldShowQuestion(q)).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < visible.length; i++) ...[
+          _buildFigmaQuestionBlock(visible[i], stepIndex),
+          if (i < visible.length - 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 16),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: _pfBorder,
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildWizardStepScrollable(HealthProfileSection section, int stepIndex) {
-    final visible = section.questions.where((q) => _shouldShowQuestion(q)).toList();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(27, 20, 27, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < visible.length; i++) ...[
-            _buildFigmaQuestionBlock(visible[i], stepIndex),
-            if (i < visible.length - 1)
-              Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 16),
-                child: Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: _pfBorder,
-                ),
-              ),
-          ],
-        ],
-      ),
+      child: _wizardStepQuestionsColumn(section, stepIndex),
     );
   }
 
@@ -747,7 +808,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     if (q.type == 'wizard_basic') return false;
     if (q.type == 'radio' && q.id == 'answer_13') return false;
     if (q.type == 'mealtime') return true;
-    if (_isFirstVisibleInStep(stepIndex, q.id)) {
+    // 전체 마법사: 섹션 첫 그리드는 단계 제목과 중복되면 캡션 생략(운동 습관만).
+    // 부분 수정·식습관+운동 병합: 단계 제목이 없으므로 answer_10(운동 습관) 캡션도 표시.
+    final isFullWizard = widget.initialSectionIndices == null ||
+        widget.initialSectionIndices!.isEmpty;
+    if (isFullWizard && _isFirstVisibleInStep(stepIndex, q.id)) {
       if (q.type == 'grid' && q.id != 'answer_10_types') return false;
     }
     return true;
@@ -1315,9 +1380,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               child: GestureDetector(
                 onTap: () {
                   setState(() {
-                    final oldValue = _formData['answer_13'];
+                    final oldValue = _formData['answer_13']?.toString();
                     _formData['answer_13'] = '2';
-                    if (oldValue == '1' || oldValue == '없음') {
+                    final wasNoOrUnset = oldValue == null ||
+                        oldValue.isEmpty ||
+                        oldValue == '1' ||
+                        oldValue == '없음';
+                    if (wasNoOrUnset) {
                       _formData['answer_13_medicine'] =
                           _backupAnswer13Fields['answer_13_medicine'] ?? '';
                       _formData['answer_13_period'] =
@@ -1326,6 +1395,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                           _backupAnswer13Fields['answer_13_dosage'] ?? '';
                       _formData['answer_13_sideeffect'] =
                           _backupAnswer13Fields['answer_13_sideeffect'] ?? '';
+                      _dietDetailResetTick++;
                     }
                   });
                 },
@@ -1348,19 +1418,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               child: GestureDetector(
                 onTap: () {
                   setState(() {
-                    _backupAnswer13Fields['answer_13_medicine'] =
-                        _formData['answer_13_medicine']?.toString() ?? '';
-                    _backupAnswer13Fields['answer_13_period'] =
-                        _formData['answer_13_period']?.toString() ?? '';
-                    _backupAnswer13Fields['answer_13_dosage'] =
-                        _formData['answer_13_dosage']?.toString() ?? '';
-                    _backupAnswer13Fields['answer_13_sideeffect'] =
-                        _formData['answer_13_sideeffect']?.toString() ?? '';
                     _formData['answer_13'] = '1';
-                    _formData['answer_13_medicine'] = '';
-                    _formData['answer_13_period'] = '';
-                    _formData['answer_13_dosage'] = '';
-                    _formData['answer_13_sideeffect'] = '';
                   });
                 },
                 child: Container(
@@ -1586,6 +1644,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     );
   }
 
+  String _canonicalHealthNoneGridOption(String questionId, String opt) {
+    if (questionId != 'answer_11' && questionId != 'answer_12') return opt;
+    final o = opt.trim();
+    if (o == '해당없음' || o == '없음' || o == '해당 없음') return '해당 없음';
+    return opt;
+  }
+
   Widget _buildFigmaGrid(HealthProfileQuestion question) {
     final options = question.options ?? [];
     final isMulti = question.allowMultiple;
@@ -1596,21 +1661,41 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     } else {
       if (raw != null) selected = [raw.toString()];
     }
+    if (isMulti &&
+        (question.id == 'answer_11' || question.id == 'answer_12')) {
+      selected = selected
+          .map((e) => _canonicalHealthNoneGridOption(question.id, e))
+          .toList();
+    }
+
+    bool cellSelected(String label) {
+      final c = _canonicalHealthNoneGridOption(question.id, label);
+      if (isMulti) {
+        return selected
+            .map((e) => _canonicalHealthNoneGridOption(question.id, e))
+            .contains(c);
+      }
+      return selected.isNotEmpty &&
+          _canonicalHealthNoneGridOption(question.id, selected.first) == c;
+    }
 
     void toggle(String opt) {
       setState(() {
+        final optC = _canonicalHealthNoneGridOption(question.id, opt);
         if (question.id == 'answer_11' || question.id == 'answer_12') {
-          if (opt == '해당 없음') {
+          if (optC == '해당 없음') {
             _formData[question.id] = isMulti ? <String>['해당 없음'] : '해당 없음';
             return;
           }
           if (isMulti) {
-            final list = List<String>.from(selected);
+            final list = selected
+                .map((e) => _canonicalHealthNoneGridOption(question.id, e))
+                .toList();
             list.remove('해당 없음');
-            if (list.contains(opt)) {
-              list.remove(opt);
+            if (list.contains(optC)) {
+              list.remove(optC);
             } else {
-              list.add(opt);
+              list.add(optC);
             }
             _formData[question.id] = list;
             return;
@@ -1632,9 +1717,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
     final rows = <Widget>[];
     var gridOptions = List<String>.from(options);
-    final fullWidthNone =
-        (question.id == 'answer_11' || question.id == 'answer_12') &&
-            gridOptions.remove('해당 없음');
+    String? fullWidthNoneLabel;
+    for (final candidate in const ['해당 없음', '해당없음', '없음']) {
+      final hit = gridOptions.firstWhere(
+        (e) => e.trim() == candidate,
+        orElse: () => '',
+      );
+      if (hit.isNotEmpty) {
+        fullWidthNoneLabel = hit;
+        gridOptions.remove(hit);
+        break;
+      }
+    }
 
     for (var i = 0; i < gridOptions.length; i += 2) {
       rows.add(
@@ -1644,9 +1738,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             Expanded(
               child: _figmaOptionCell(
                 gridOptions[i],
-                isMulti
-                    ? selected.contains(gridOptions[i])
-                    : selected.isNotEmpty && selected.first == gridOptions[i],
+                cellSelected(gridOptions[i]),
                 () => toggle(gridOptions[i]),
               ),
             ),
@@ -1655,9 +1747,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               Expanded(
                 child: _figmaOptionCell(
                   gridOptions[i + 1],
-                  isMulti
-                      ? selected.contains(gridOptions[i + 1])
-                      : selected.isNotEmpty && selected.first == gridOptions[i + 1],
+                  cellSelected(gridOptions[i + 1]),
                   () => toggle(gridOptions[i + 1]),
                 ),
               )
@@ -1669,14 +1759,21 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       if (i + 2 < gridOptions.length) rows.add(const SizedBox(height: 10));
     }
 
-    if (fullWidthNone) {
+    if (fullWidthNoneLabel != null) {
+      final noneLabel = fullWidthNoneLabel;
       rows.add(const SizedBox(height: 10));
       rows.add(
-        _figmaOptionCell(
-          '해당 없음',
-          isMulti ? selected.contains('해당 없음') : selected.isNotEmpty && selected.first == '해당 없음',
-          () => toggle('해당 없음'),
-          stretchWidth: true,
+        Row(
+          children: [
+            Expanded(
+              child: _figmaOptionCell(
+                noneLabel,
+                cellSelected(noneLabel),
+                () => toggle(noneLabel),
+                stretchWidth: true,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -1690,12 +1787,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     VoidCallback onTap, {
     bool stretchWidth = false,
   }) {
+    final bool compactLabel = label.contains('\n') || label.length >= 10;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: stretchWidth ? double.infinity : null,
-        constraints: const BoxConstraints(minHeight: 50),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        constraints: const BoxConstraints(minHeight: 45, maxHeight: 45),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: selected ? _pfPinkSoft : Colors.transparent,
@@ -1707,11 +1805,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         child: Text(
           label,
           textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898383),
-            fontSize: 16,
+            fontSize: compactLabel ? 13 : 16,
             fontWeight: FontWeight.w500,
-            height: 1.2,
+            height: compactLabel ? 1.05 : 1.2,
           ),
         ),
       ),
@@ -1955,33 +2055,27 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   } else if (question.id == 'answer_13') {
                     // 다이어트약 복용경험 저장 시 1/2로 변환 (없음=1, 있음=2)
                     final newValue = value == '없음' ? '1' : (value == '있음' ? '2' : value ?? '');
-                    final oldValue = _formData[question.id];
+                    final oldValue = _formData[question.id]?.toString();
                     _formData[question.id] = newValue;
-                    
+
                     if (value == '없음') {
-                      // "없음" 선택 시 관련 필드 초기화
-                      _formData['answer_13_medicine'] = '';
-                      _formData['answer_13_period'] = '';
-                      _formData['answer_13_dosage'] = '';
-                      _formData['answer_13_sideeffect'] = '';
+                      // answer_13만 1(없음)으로 저장하고 상세 필드는 유지한다.
                     } else if (value == '있음') {
-                      // "있음" 선택 시 기존 백업 데이터가 있으면 복원
-                      if (oldValue == '1' || oldValue == '없음') {
-                        // 없음에서 있음으로 변경한 경우, 백업 데이터 복원
-                        if (_backupAnswer13Fields['answer_13_medicine'] != null) {
-                          _formData['answer_13_medicine'] = _backupAnswer13Fields['answer_13_medicine'] ?? '';
-                        }
-                        if (_backupAnswer13Fields['answer_13_period'] != null) {
-                          _formData['answer_13_period'] = _backupAnswer13Fields['answer_13_period'] ?? '';
-                        }
-                        if (_backupAnswer13Fields['answer_13_dosage'] != null) {
-                          _formData['answer_13_dosage'] = _backupAnswer13Fields['answer_13_dosage'] ?? '';
-                        }
-                        if (_backupAnswer13Fields['answer_13_sideeffect'] != null) {
-                          _formData['answer_13_sideeffect'] = _backupAnswer13Fields['answer_13_sideeffect'] ?? '';
-                        }
+                      final wasNoOrUnset = oldValue == null ||
+                          oldValue.isEmpty ||
+                          oldValue == '1' ||
+                          oldValue == '없음';
+                      if (wasNoOrUnset) {
+                        _formData['answer_13_medicine'] =
+                            _backupAnswer13Fields['answer_13_medicine'] ?? '';
+                        _formData['answer_13_period'] =
+                            _backupAnswer13Fields['answer_13_period'] ?? '';
+                        _formData['answer_13_dosage'] =
+                            _backupAnswer13Fields['answer_13_dosage'] ?? '';
+                        _formData['answer_13_sideeffect'] =
+                            _backupAnswer13Fields['answer_13_sideeffect'] ?? '';
+                        _dietDetailResetTick++;
                       }
-                      // 이미 있음이었거나 데이터가 입력되어 있는 경우는 그대로 유지
                     }
                     
                     // UI 업데이트를 위해 강제 리빌드
@@ -2000,7 +2094,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         );
         
       case 'grid':
-        return _buildGridWidget(question);
+        return _buildFigmaGrid(question);
         
       default:
         return const SizedBox();

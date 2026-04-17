@@ -17,18 +17,19 @@ class HealthProfileListScreen extends StatefulWidget {
 }
 
 class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
-  static const Color _kAccentBar = Color(0xFFFF5A8D);
-  static const Color _kCardBg = Color(0xFFF8F9FA);
-  static const Color _kInkTitle = Color(0xFF191C1D);
-  static const Color _kLabelBrown = Color(0xFF584045);
-  static const Color _kBorderLight = Color(0xFFF1F5F9);
-  static const Color _kSegmentTrack = Color(0x7FE2E8F0);
+  static const Color _kPink = Color(0xFFFF5A8D);
+  static const Color _kInk = Color(0xFF1A1A1A);
+  static const Color _kMuted = Color(0xFF898686);
+  static const Color _kBorderField = Color(0x7FD2D2D2);
+  static const Color _kGenderTrack = Color(0xFFF9F9F9);
+  static const String _kFont = 'Gmarket Sans TTF';
 
   static const TextStyle _listSubsectionStyle = TextStyle(
-    color: _kLabelBrown,
-    fontSize: 11,
-    fontWeight: FontWeight.w700,
-    height: 1.5,
+    color: _kInk,
+    fontSize: 16,
+    fontFamily: _kFont,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
   );
 
   UserModel? _currentUser;
@@ -85,7 +86,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '건강프로필'),
+      appBar: const HealthAppBar(title: '문진표'),
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildContent(),
@@ -139,7 +140,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     ElevatedButton.icon(
                       onPressed: _navigateToForm,
                       icon: const Icon(Icons.add),
-                      label: const Text('건강프로필 작성하기'),
+                      label: const Text('문진표 작성하기'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5A8D),
                         foregroundColor: Colors.white,
@@ -164,68 +165,73 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
     return DefaultTextStyle.merge(
       style: const TextStyle(
-        fontFamily: 'Gmarket Sans TTF',
-        color: _kInkTitle,
+        fontFamily: _kFont,
+        color: _kInk,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 672),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 20, left: 16, right: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildFigmaSection(
-                  title: '기본 정보',
-                  onEdit: () => _openSectionForEdit([0], screenTitle: '기본 정보'),
-                  innerPadding: const EdgeInsets.all(12),
-                  child: _buildBasicInfoBody(profile),
-                ),
-                const SizedBox(height: 24),
-                _buildFigmaSection(
-                  title: '식습관 및 운동',
-                  onEdit: () => _openSectionForEdit(
-                    [1, 2],
-                    screenTitle: '식습관 및 운동',
+      child: ColoredBox(
+        color: Colors.white,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildFigmaSection(
+                    title: '기본정보',
+                    onEdit: () => _openSectionForEdit([0], screenTitle: '기본 정보'),
+                    innerPadding: EdgeInsets.zero,
+                    showBottomDivider: true,
+                    child: _buildBasicInfoBody(profile),
                   ),
-                  innerPadding: const EdgeInsets.all(16),
-                  child: _buildDietAndExerciseBody(profile),
-                ),
-                const SizedBox(height: 24),
-                _buildFigmaSection(
-                  title: '건강 상태',
-                  onEdit: () => _openSectionForEdit([3], screenTitle: '건강 상태'),
-                  innerPadding: const EdgeInsets.all(16),
-                  child: _buildHealthBody(profile),
-                ),
-                const SizedBox(height: 24),
-                _buildDietExperienceSection(profile),
-                const SizedBox(height: 24),
-                _buildMetaCard(profile),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _navigateToEditForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF3787),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 0,
+                  const SizedBox(height: 34),
+                  _buildFigmaSection(
+                    title: '식습관 및 운동',
+                    onEdit: () => _openSectionForEdit(
+                      [1, 2],
+                      screenTitle: '식습관 및 운동',
                     ),
-                    child: const Text(
-                      '건강프로필 전체 수정',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    innerPadding: EdgeInsets.zero,
+                    showBottomDivider: true,
+                    child: _buildDietAndExerciseBody(profile),
+                  ),
+                  const SizedBox(height: 34),
+                  _buildFigmaSection(
+                    title: '건강 상태',
+                    onEdit: () => _openSectionForEdit([3], screenTitle: '건강 상태'),
+                    innerPadding: EdgeInsets.zero,
+                    showBottomDivider: true,
+                    child: _buildHealthBody(profile),
+                  ),
+                  const SizedBox(height: 34),
+                  _buildDietExperienceSection(profile),
+                  const SizedBox(height: 34),
+                  _buildMetaCard(profile),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: _navigateToEditForm,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _kPink,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                      child: const Text(
+                        '문진표 전체 수정',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontFamily: _kFont,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 100),
-                // const AppFooter(),
-              ],
-            ),
+              const SizedBox(height: 100),
+            ],
           ),
         ),
       ),
@@ -236,69 +242,72 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     required String title,
     required VoidCallback onEdit,
     required Widget child,
-    EdgeInsetsGeometry innerPadding = const EdgeInsets.all(16),
+    EdgeInsetsGeometry innerPadding = EdgeInsets.zero,
+    bool showBottomDivider = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Row(
                 children: [
                   Container(
-                    width: 4,
-                    height: 16,
+                    width: 5,
+                    height: 24,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: _kAccentBar,
+                      borderRadius: BorderRadius.circular(7),
+                      color: _kPink,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: _kInkTitle,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      height: 1.43,
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: _kInk,
+                        fontSize: 20,
+                        fontFamily: _kFont,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const Spacer(),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onEdit,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                  child: Text(
-                    '수정',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _kAccentBar,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      height: 1.5,
-                    ),
+            ),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onEdit,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                child: Text(
+                  '수정',
+                  style: TextStyle(
+                    color: _kPink,
+                    fontSize: 16,
+                    fontFamily: _kFont,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
+        const SizedBox(height: 20),
+        Padding(
           padding: innerPadding,
-          decoration: BoxDecoration(
-            color: _kCardBg,
-            borderRadius: BorderRadius.circular(16),
-          ),
           child: child,
         ),
+        if (showBottomDivider) ...[
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            height: 1,
+            color: _kBorderField,
+          ),
+        ],
       ],
     );
   }
@@ -307,135 +316,141 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Row(
                 children: [
                   Container(
-                    width: 4,
-                    height: 16,
+                    width: 5,
+                    height: 24,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: _kAccentBar,
+                      borderRadius: BorderRadius.circular(7),
+                      color: _kPink,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    '다이어트 경험',
-                    style: TextStyle(
-                      color: _kInkTitle,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      height: 1.43,
+                  const Expanded(
+                    child: Text(
+                      '다이어트 경험',
+                      style: TextStyle(
+                        color: _kInk,
+                        fontSize: 20,
+                        fontFamily: _kFont,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const Spacer(),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _openSectionForEdit(
-                  [4],
-                  screenTitle: '다이어트 경험',
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                  child: Text(
-                    '수정',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _kAccentBar,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      height: 1.5,
-                    ),
+            ),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _openSectionForEdit(
+                [4],
+                screenTitle: '다이어트 경험',
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                child: Text(
+                  '수정',
+                  style: TextStyle(
+                    color: _kPink,
+                    fontSize: 16,
+                    fontFamily: _kFont,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorderLight),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0C000000),
-                blurRadius: 2,
-                offset: Offset(0, 1),
-              ),
-            ],
+          padding: const EdgeInsets.all(20),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: _kBorderField),
+              borderRadius: BorderRadius.circular(7),
+            ),
           ),
           child: _buildDietDrugBody(profile),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          width: double.infinity,
+          height: 1,
+          color: _kBorderField,
         ),
       ],
     );
   }
 
   Widget _buildMetaCard(HealthProfileModel profile) {
+    final written = DateDisplayFormatter.formatYmdDash(profile.pfWdatetime);
+    final modified = DateDisplayFormatter.formatYmdDash(profile.pfMdatetime);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _kCardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorderLight),
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorderField),
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '건강프로필 정보',
+            '프로필 정보',
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _kInkTitle,
+              fontSize: 16,
+              fontFamily: _kFont,
+              fontWeight: FontWeight.w500,
+              color: _kInk,
             ),
           ),
-          const SizedBox(height: 10),
-          _metaRow('작성일', DateDisplayFormatter.formatYmdDash(profile.pfWdatetime)),
-          _metaRow('수정일', DateDisplayFormatter.formatYmdDash(profile.pfMdatetime)),
+          const SizedBox(height: 12),
+          Container(height: 1, color: _kBorderField),
+          const SizedBox(height: 12),
+          _metaRow('작성일', written),
+          const SizedBox(height: 8),
+          _metaRow('수정일', modified),
         ],
       ),
     );
   }
 
   Widget _metaRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 56,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: _kLabelBrown,
-                fontWeight: FontWeight.w600,
-              ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontFamily: _kFont,
+            fontWeight: FontWeight.w500,
+            color: _kInk,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 16,
+              fontFamily: _kFont,
+              fontWeight: FontWeight.w300,
+              color: _kInk,
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: _kInkTitle,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -457,177 +472,175 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   static const TextStyle _listLabelStyle = TextStyle(
-    color: _kLabelBrown,
-    fontSize: 10,
-    fontWeight: FontWeight.w700,
-    height: 1.5,
+    color: _kInk,
+    fontSize: 16,
+    fontFamily: _kFont,
+    fontWeight: FontWeight.w500,
+    height: 1.35,
   );
 
-  Widget _whiteReadBox(Widget child) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildBasicInfoBody(HealthProfileModel profile) {
-    final g = profile.answer2;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _basicInfoLabeledRow({
+    required String label,
+    required Widget child,
+    double labelWidth = 72,
+    Color? labelColor,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('생년월일', style: _listLabelStyle),
-                  const SizedBox(height: 6),
-                  _whiteReadBox(
-                    Text(
-                      _birthDots(profile.answer1),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        height: 1.33,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('성별', style: _listLabelStyle),
-                  const SizedBox(height: 6),
-                  _genderReadSegment(g == 'M', g == 'F'),
-                ],
-              ),
-            ),
-          ],
+        SizedBox(
+          width: labelWidth,
+          child: Text(
+            label,
+            textAlign: TextAlign.right,
+            style: _listLabelStyle.copyWith(color: labelColor ?? _kInk),
+          ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _metricCompactColumn(
-                label: '키',
-                value: profile.answer4,
-                unit: 'cm',
-                emphasize: false,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: _metricCompactColumn(
-                label: '체중',
-                value: profile.answer5,
-                unit: 'kg',
-                emphasize: false,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: _metricCompactColumn(
-                label: '목표',
-                value: profile.answer3,
-                unit: 'kg',
-                emphasize: true,
-              ),
-            ),
-          ],
-        ),
+        const SizedBox(width: 16),
+        Expanded(child: child),
       ],
     );
   }
 
-  Widget _metricCompactColumn({
-    required String label,
-    required String value,
-    required String unit,
-    required bool emphasize,
-  }) {
+  Widget _readMetricBox(String value, String unit) {
     final v = value.trim().isEmpty ? '-' : value.trim();
-    final labelColor = emphasize ? _kAccentBar : _kLabelBrown;
-    final valueColor = emphasize ? _kAccentBar : _kInkTitle;
-    final borderColor =
-        emphasize ? const Color(0x33FF5A8D) : _kBorderLight;
-
     return Container(
-      width: double.infinity,
-      height: 30.5,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: ShapeDecoration(
-        color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: BorderSide(width: 1, color: borderColor),
-          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(width: 1, color: _kBorderField),
+          borderRadius: BorderRadius.circular(7),
         ),
       ),
-      alignment: Alignment.center,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            label,
-            style: TextStyle(
-              color: labelColor,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              height: 1.5,
+            v,
+            style: const TextStyle(
+              color: _kInk,
+              fontSize: 16,
+              fontFamily: _kFont,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+          if (v != '-')
             Text(
-              v,
-              style: TextStyle(
-                color: valueColor,
-                fontSize: 11,
-                fontWeight: FontWeight.w400,
-                height: 1.5,
+              unit,
+              style: const TextStyle(
+                color: _kInk,
+                fontSize: 16,
+                fontFamily: _kFont,
+                fontWeight: FontWeight.w300,
               ),
             ),
-              if (v != '-') ...[
-                const SizedBox(width: 2),
-                Text(
-                  unit,
-                  style: TextStyle(
-                    color: valueColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w300,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ],
-          ),
         ],
       ),
     );
   }
 
+  Widget _buildBasicInfoBody(HealthProfileModel profile) {
+    final g = profile.answer2;
+    final goal = profile.answer3.trim().isEmpty ? '-' : profile.answer3.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _basicInfoLabeledRow(
+          label: '생년월일',
+          child: Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.centerLeft,
+            decoration: ShapeDecoration(
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(width: 1, color: _kBorderField),
+                borderRadius: BorderRadius.circular(7),
+              ),
+            ),
+            child: Text(
+              _birthDots(profile.answer1),
+              style: const TextStyle(
+                color: _kInk,
+                fontSize: 16,
+                fontFamily: _kFont,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _basicInfoLabeledRow(
+          label: '성별',
+          labelWidth: 56,
+          child: _genderReadSegment(g == 'M', g == 'F'),
+        ),
+        const SizedBox(height: 24),
+        _basicInfoLabeledRow(
+          label: '목표',
+          labelWidth: 56,
+          labelColor: _kPink,
+          child: Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: ShapeDecoration(
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(width: 1, color: _kBorderField),
+                borderRadius: BorderRadius.circular(7),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  goal,
+                  style: const TextStyle(
+                    color: _kPink,
+                    fontSize: 16,
+                    fontFamily: _kFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (goal != '-')
+                  const Text(
+                    'kg',
+                    style: TextStyle(
+                      color: _kPink,
+                      fontSize: 16,
+                      fontFamily: _kFont,
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _basicInfoLabeledRow(
+          label: '키/\n몸무게',
+          labelWidth: 56,
+          child: Row(
+            children: [
+              Expanded(child: _readMetricBox(profile.answer4, 'cm')),
+              const SizedBox(width: 10),
+              Expanded(child: _readMetricBox(profile.answer5, 'kg')),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _genderReadSegment(bool male, bool female) {
     return Container(
-      padding: const EdgeInsets.all(2),
+      height: 50,
       decoration: BoxDecoration(
-        color: _kSegmentTrack,
-        borderRadius: BorderRadius.circular(8),
+        color: _kGenderTrack,
+        borderRadius: BorderRadius.circular(10),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Row(
         children: [
           Expanded(child: _genderReadSide('남성', male)),
@@ -638,50 +651,49 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   Widget _genderReadSide(String label, bool selected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      margin: const EdgeInsets.all(4),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: selected
-            ? const [
-                BoxShadow(
-                  color: Color(0x0C000000),
-                  blurRadius: 2,
-                  offset: Offset(0, 1),
-                ),
-              ]
-            : null,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: selected ? const Color(0x7F898686) : Colors.transparent,
+          width: 0.5,
+        ),
       ),
-      alignment: Alignment.center,
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          height: 1.5,
-          color: selected ? _kAccentBar : _kLabelBrown.withValues(alpha: 0.5),
+          fontSize: 16,
+          fontFamily: _kFont,
+          fontWeight: FontWeight.w500,
+          color: selected ? _kPink : _kMuted,
         ),
       ),
     );
   }
 
   /// 식습관·음식 등: 흰 배경 + 흰 테두리(카드 위에서 은은히 구분), 글자 검정
-  Widget _chipWhitePlain(String text, {FontWeight fontWeight = FontWeight.w400}) {
+  Widget _chipWhitePlain(String text, {FontWeight fontWeight = FontWeight.w500}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorderField),
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
       child: Text(
         text,
+        textAlign: TextAlign.center,
         style: TextStyle(
-          color: Colors.black,
-          fontSize: 11,
+          color: _kInk,
+          fontSize: 16,
+          fontFamily: _kFont,
           fontWeight: fontWeight,
-          height: 1.5,
+          height: 1.25,
         ),
       ),
     );
@@ -690,19 +702,22 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   /// 운동 빈도(일주일 …)만 연한 테두리
   Widget _chipLightBorder(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorderLight),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorderField),
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
       child: Text(
         text,
+        textAlign: TextAlign.center,
         style: const TextStyle(
-          color: Colors.black,
-          fontSize: 11,
-          fontWeight: FontWeight.w400,
-          height: 1.5,
+          color: _kInk,
+          fontSize: 16,
+          fontFamily: _kFont,
+          fontWeight: FontWeight.w500,
+          height: 1.25,
         ),
       ),
     );
@@ -832,32 +847,37 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     Widget slot(String tag, String time) {
       return Expanded(
         child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white),
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: _kBorderField),
+              borderRadius: BorderRadius.circular(7),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 tag,
                 style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w400,
-                  color: _kLabelBrown,
-                  height: 1.5,
+                  fontSize: 12,
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF898383),
+                  height: 1.3,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 time,
                 style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.black,
-                  height: 1.5,
+                  fontSize: 16,
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w500,
+                  color: _kInk,
+                  height: 1.25,
                 ),
               ),
             ],
@@ -923,10 +943,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         t == '해당 없음' ||
         t == '해당없음';
     if (isNone) {
-      return Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [_healthDataChip('없음')],
+      return SizedBox(
+        width: double.infinity,
+        child: _healthDataChip('해당 없음'),
       );
     }
     final parts = _pipeParts(t);
@@ -940,19 +959,21 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   Widget _healthDataChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorderField),
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w400,
-          color: Colors.black,
-          height: 1.5,
+          fontSize: 16,
+          fontFamily: _kFont,
+          fontWeight: FontWeight.w500,
+          color: _kInk,
+          height: 1.25,
         ),
       ),
     );
@@ -988,7 +1009,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         style: TextStyle(
           fontSize: compact ? 10 : 12,
           fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-          color: selected ? Colors.black : _kLabelBrown.withValues(alpha: 0.55),
+          color: selected ? Colors.black : _kMuted.withValues(alpha: 0.55),
           height: 1.33,
         ),
       ),
@@ -1013,7 +1034,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: _kInkTitle,
+                  color: _kInk,
                   height: 1.33,
                 ),
               ),
@@ -1024,7 +1045,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               child: Container(
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  color: _kBorderLight,
+                  color: _kBorderField,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
@@ -1055,7 +1076,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           Container(
             padding: const EdgeInsets.only(top: 8),
             decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: _kBorderLight)),
+              border: Border(top: BorderSide(color: _kBorderField)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1121,7 +1142,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             child: Text(
               label,
               style: const TextStyle(
-                color: _kLabelBrown,
+                color: _kMuted,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 height: 1.5, // line ~15px
@@ -1143,7 +1164,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _kInkTitle,
+                  color: _kInk,
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
                   height: 16 / 12,
