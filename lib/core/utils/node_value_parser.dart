@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'date_formatter.dart';
+
 /// Node.js Buffer 응답({type: "Buffer", data: [...]})을 앱에서 사용할 값으로 정규화한다.
 class NodeValueParser {
   static dynamic normalize(dynamic value) {
@@ -57,7 +59,8 @@ class NodeValueParser {
   static DateTime? asDateTime(dynamic value) {
     final stringValue = asString(value);
     if (stringValue == null || stringValue.isEmpty) return null;
-    return DateTime.tryParse(stringValue);
+    return DateTime.tryParse(stringValue) ??
+        DateDisplayFormatter.tryParseJavaScriptLocaleDateString(stringValue);
   }
 
   static bool _isBufferMap(Map<dynamic, dynamic> value) {

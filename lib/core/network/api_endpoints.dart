@@ -9,33 +9,38 @@ class ApiEndpoints {
   static const String withdraw = '/api/auth/withdraw';
   static const String forgotPassword = '/api/auth/forgot-password';
   static const String verifyToken = '/api/auth/verify';
-  
+
   // 상품 관련 (기존 Cafe24 서버)
   static const String popularProducts = '/api/products/popular';
   static const String newProducts = '/api/products/new';
   static const String productDetail = '/api/products/detail';
-  static String productListByCategory(String categoryId, {String? productKind}) {
+  static String productListByCategory(String categoryId,
+      {String? productKind}) {
     String endpoint = '/api/products/list?ca_id=$categoryId';
     if (productKind != null && productKind.isNotEmpty) {
       endpoint += '&it_kind=$productKind';
     }
     return endpoint;
   }
-  
+
   // 장바구니 관련 (기존 Cafe24 서버)
   static const String addToCart = '/api/cart/add';
   static const String getCart = '/api/cart';
   static const String updateCartItem = '/api/cart/update';
   static const String removeCartItem = '/api/cart/remove';
   static const String generateOrderId = '/api/cart/generate-order-id';
-  
+  static const String kcpPayRequest = '/api/kcp-pay/request';
+  static String kcpPayResult(String token) =>
+      '/api/kcp-pay/result/${Uri.encodeComponent(token)}';
+
   // 찜 관련 (기존 Cafe24 서버)
   static const String getWishList = '/api/wish/list';
   static const String addToWish = '/api/wish/toggle';
   static const String removeFromWish = '/api/wish/remove';
-  
+
   // 리뷰 관련 — 메인 홈 베스트 리뷰는 Node `bomiora_main_review` (쿼리: ?size=8)
   static const String mainHomeReviews = '/api/user/reviews/main';
+
   /// @deprecated Cafe24 구 경로. 메인 홈은 [mainHomeReviews] 사용.
   static const String mainReviews = '/api/reviews/main';
   static const String productReviews = '/api/reviews/product';
@@ -47,21 +52,22 @@ class ApiEndpoints {
     }
     return endpoint;
   }
-  
+
   // 체험단 관련 (기존 Cafe24 서버)
   static const String testerItems = '/api/tester/items';
   static const String applyTester = '/api/tester/apply';
-  
+
   // 사용자 관련 (Spring Boot 서버)
   static const String userProfile = '/api/user/profile';
   static const String userOrders = '/api/user/orders';
-  
+
   // 건강 관리 관련 (향후 확장용)
   static const String bloodSugarRecords = '/api/health/blood-sugar';
   static const String bloodPressureRecords = '/api/health/blood-pressure';
   static const String heartRateRecords = '/api/health/heart-rate';
   static const String weightRecords = '/api/health/weight';
   static const String menstrualCycleRecords = '/api/health/menstrual-cycle';
+
   /// 목표설정 (현재/목표 체중, 일일 목표 걸음) — Node: POST/GET latest
   static const String healthGoal = '/api/health/health-goal';
   static String healthGoalLatest(String mbId) =>
@@ -69,7 +75,8 @@ class ApiEndpoints {
   static const String stepsRecords = '/api/health/steps';
 
   /// Node 걸음 API — 일별 총 걸음 (`bomiora_back`: GET /api/steps/daily-total)
-  static String stepsDailyTotal({required String mbId, required String dateYyyyMmDd}) =>
+  static String stepsDailyTotal(
+          {required String mbId, required String dateYyyyMmDd}) =>
       '/api/steps/daily-total?mb_id=${Uri.encodeComponent(mbId)}&date=${Uri.encodeComponent(dateYyyyMmDd)}';
 
   static String stepsDailyRange({
@@ -97,20 +104,25 @@ class ApiEndpoints {
 
   // 포인트 관련
   static String userPoint(String userId) => '/api/user/point?mb_id=$userId';
-  static String pointHistory(String userId) => '/api/user/point/history?mb_id=$userId';
+  static String pointHistory(String userId) =>
+      '/api/user/point/history?mb_id=$userId';
   static const String config = '/api/config';
-  
+
   // 쿠폰 관련
   static String userCoupons(String userId) => '/api/user/coupons?mb_id=$userId';
-  static String availableCoupons(String userId) => '/api/user/coupons/available?mb_id=$userId';
-  static String usedCoupons(String userId) => '/api/user/coupons/used?mb_id=$userId';
-  static String expiredCoupons(String userId) => '/api/user/coupons/expired?mb_id=$userId';
+  static String availableCoupons(String userId) =>
+      '/api/user/coupons/available?mb_id=$userId';
+  static String usedCoupons(String userId) =>
+      '/api/user/coupons/used?mb_id=$userId';
+  static String expiredCoupons(String userId) =>
+      '/api/user/coupons/expired?mb_id=$userId';
   static const String registerCoupon = '/api/user/coupons/register';
   static const String downloadHelpCoupon = '/api/user/coupons/help-coupon';
-  
+
   // 상품 옵션 관련
-  static String productOptions(String productId) => '/api/products/$productId/options';
-  
+  static String productOptions(String productId) =>
+      '/api/products/$productId/options';
+
   // 문의 관련
   static const String getMyContacts = '/api/contact/list';
   static const String getContactDetail = '/api/contact';
@@ -118,9 +130,20 @@ class ApiEndpoints {
   static const String createContact = '/api/contact/create';
   static String updateContact(int wrId) => '/api/contact/$wrId';
   static String deleteContact(int wrId) => '/api/contact/$wrId';
-  
+
   // 이벤트 관련
   static const String getActiveEvents = '/api/event/active';
   static const String getEndedEvents = '/api/event/ended';
   static const String getEventDetail = '/api/event';
+
+  // 공지사항 관련
+  static const String getAnnouncementList = '/api/announcement/list';
+  static const String getAnnouncementDetail = '/api/announcement';
+
+  // FAQ 관련
+  static const String getFaqList = '/api/faq/list';
+  static const String getFaqDetail = '/api/faq';
+
+  // 공통 카테고리 관련
+  static const String getCategoryList = '/api/get-category/list';
 }

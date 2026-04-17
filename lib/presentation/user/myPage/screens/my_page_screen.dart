@@ -7,6 +7,9 @@ import '../../../../data/services/delivery_service.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/services/point_service.dart';
 import '../../../../data/models/user/user_model.dart';
+import '../../../settings/settings_screen.dart';
+import '../../../settings/notification_center_screen.dart';
+import '../../../common/widgets/appbar_menutap.dart';
 import 'profile_settings_screen.dart';
 import '../../../customer_service/screens/contact_list_screen.dart';
 import 'address_management_screen.dart';
@@ -202,12 +205,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 Container(
                                   width: double.infinity,
                                   height: 40,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10),
                                   decoration: ShapeDecoration(
                                     shape: RoundedRectangleBorder(
                                       side: BorderSide(
                                         width: 1,
-                                        color: mismatch ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
+                                        color: mismatch
+                                            ? const Color(0xFFEF4444)
+                                            : const Color(0xFFD2D2D2),
                                       ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -217,7 +223,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     controller: controller,
                                     obscureText: true,
                                     onChanged: (_) {
-                                      if (mismatch) setLocalState(() => mismatch = false);
+                                      if (mismatch)
+                                        setLocalState(() => mismatch = false);
                                     },
                                     decoration: const InputDecoration(
                                       border: InputBorder.none,
@@ -262,7 +269,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             child: Material(
                               color: const Color(0xFFF7F7F7),
                               child: InkWell(
-                                onTap: submitting ? null : () => Navigator.of(context).pop(),
+                                onTap: submitting
+                                    ? null
+                                    : () => Navigator.of(context).pop(),
                                 child: const Center(
                                   child: Text(
                                     '취소',
@@ -281,7 +290,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             child: Material(
                               color: const Color(0xFFFF5A8D),
                               child: InkWell(
-                                onTap: submitting ? null : () => submit(setLocalState),
+                                onTap: submitting
+                                    ? null
+                                    : () => submit(setLocalState),
                                 child: Center(
                                   child: Text(
                                     submitting ? '확인 중...' : '확인',
@@ -337,6 +348,57 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
+      drawer: AppBarMenuTapDrawer(
+        onHealthDashboardTap: () {
+          Navigator.pop(context);
+          Navigator.pushNamed(context, '/health');
+        },
+      ),
+      appBar: AppBar(
+        title: Image.asset(
+          AppAssets.bomioraLogo,
+          height: 40,
+        ),
+        centerTitle: true,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            tooltip: '알림 설정',
+            icon: const Icon(Icons.notifications_none_rounded,
+                color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationCenterScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: '설정',
+            icon: const Icon(Icons.settings_outlined, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: ColoredBox(
@@ -344,109 +406,117 @@ class _MyPageScreenState extends State<MyPageScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
             child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 60),
-                      if (_currentUser == null)
-                        _buildGuestHeader()
-                      else
-                      _buildProfileHeader(),
-                      const SizedBox(height: 40),
-                      _buildStatsRow(),
-                      const SizedBox(height: 30),
-                      MyPageLineMenuItem(
-                        title: '찜 목록',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const WishListScreen()),
-                          );
-                        },
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                if (_currentUser == null)
+                  _buildGuestHeader()
+                else
+                  _buildProfileHeader(),
+                const SizedBox(height: 40),
+                _buildStatsRow(),
+                const SizedBox(height: 30),
+                MyPageLineMenuItem(
+                  title: '찜 목록',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const WishListScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                MyPageLineMenuItem(
+                  title: '배송지 관리',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              const AddressManagementScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                MyPageLineMenuItem(
+                  title: '환불 계좌 등록',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const RefundAccountScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                MyPageLineMenuItem(
+                  title: '내 리뷰 활동',
+                  onTap: () => Navigator.pushNamed(context, '/my_reviews'),
+                ),
+                const SizedBox(height: 10),
+                MyPageLineMenuItem(
+                  title: '1:1 문의',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ContactListScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                MyPageLineMenuItem(
+                  title: '건강프로필 관리',
+                  isLast: true,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const HealthProfileListScreen()),
+                  ),
+                ),
+                if (_currentUser != null) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: InkWell(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const CancelMemberScreen()),
                       ),
-                      const SizedBox(height: 10),
-                      MyPageLineMenuItem(
-                        title: '배송지 관리',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const AddressManagementScreen()),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      MyPageLineMenuItem(
-                        title: '환불 계좌 등록',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const RefundAccountScreen()),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      MyPageLineMenuItem(
-                        title: '내 리뷰 활동',
-                        onTap: () => Navigator.pushNamed(context, '/my_reviews'),
-                      ),
-                      const SizedBox(height: 10),
-                      MyPageLineMenuItem(
-                        title: '1:1 문의',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const ContactListScreen()),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      MyPageLineMenuItem(
-                        title: '건강프로필 관리',
-                        isLast: true,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const HealthProfileListScreen()),
-                        ),
-                      ),
-                      if (_currentUser != null) ...[
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: InkWell(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const CancelMemberScreen()),
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '회원탈퇴',
-                                    style: TextStyle(
-                                      color: Color(0xFF898686),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  SizedBox(width: 2),
-                                  Icon(
-                                    Icons.chevron_right,
-                                    size: 18,
-                                    color: Color(0xFF898686),
-                                  ),
-                                ],
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '회원탈퇴',
+                              style: TextStyle(
+                                color: Color(0xFF898686),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ),
+                            SizedBox(width: 2),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: Color(0xFF898686),
+                            ),
+                          ],
                         ),
-                      ],
-                      const SizedBox(height: 24),
-                      // Footer 숨김
-                      // const AppFooter(),
-                    ],
+                      ),
+                    ),
                   ),
+                ],
+                const SizedBox(height: 24),
+                // Footer 숨김
+                // const AppFooter(),
+              ],
+            ),
           ),
         ),
       ),
@@ -576,7 +646,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Widget _buildStatsRow() {
     final orderVal = _statsLoading ? '…' : '$_orderCount';
     final couponVal = _statsLoading ? '…' : '$_couponCount';
-    final pointVal = _statsLoading ? '…' : PointService.formatPoint(_pointBalance);
+    final pointVal =
+        _statsLoading ? '…' : PointService.formatPoint(_pointBalance);
 
     Widget statCard({
       required String icon,
@@ -594,7 +665,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // 카드 너비에 맞춰 아이콘/높이를 함께 유동 스케일
-                final iconSize = (constraints.maxWidth * 0.27).clamp(20.0, 34.0);
+                final iconSize =
+                    (constraints.maxWidth * 0.27).clamp(20.0, 34.0);
                 final cardHeight = constraints.maxHeight;
                 final iconTop = (cardHeight * -0.10).clamp(-12.0, -6.0);
                 final contentTop = (iconSize * 0.95).clamp(18.0, 30.0);
@@ -620,7 +692,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                     ),
                     Padding(
-                      padding: EdgeInsets.fromLTRB(10, contentTop, 10, contentBottom),
+                      padding: EdgeInsets.fromLTRB(
+                          10, contentTop, 10, contentBottom),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -700,5 +773,4 @@ class _MyPageScreenState extends State<MyPageScreen> {
       ],
     );
   }
-
 }
