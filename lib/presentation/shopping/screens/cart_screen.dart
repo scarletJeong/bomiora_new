@@ -12,7 +12,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'payment_screen.dart';
 import '../widgets/recommend_product.dart';
-import '../widgets/cart_item_thumbnail.dart';
+import '../widgets/get_cartImage.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;

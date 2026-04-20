@@ -1,12 +1,18 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:convert';
 
 import '../../common/widgets/app_bar.dart';
+import '../../common/widgets/dropdown_btn.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../user/myPage/screens/address_management_screen.dart';
+import '../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
+import '../../../core/utils/web_kcp_popup.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/coupon/coupon_model.dart';
 import '../../../data/services/address_service.dart';
@@ -36,25 +42,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
   static const _muted = Color(0xFF898686);
   static const _border = Color(0xFFD2D2D2);
 
-  final GlobalKey _couponDropdownAnchorKey = GlobalKey();
   final TextEditingController _pointController = TextEditingController();
   final TextEditingController _addressNameController = TextEditingController();
   final TextEditingController _receiverController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _zipController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _detailAddressController = TextEditingController();
+  final TextEditingController _detailAddressController =
+      TextEditingController();
   final TextEditingController _memoController = TextEditingController();
 
   bool _loading = true;
+  bool _submitting = false;
   bool _useDefaultAddress = true;
   bool _syncingPoint = false;
   bool _useAllPoints = false;
   bool _useEscrow = false;
+  bool _webPopupGuideAcknowledged = false;
+  String? _lastWebKcpLaunchUrl;
+  Object? _lastWebKcpPopup;
 
   int _paymentMethodIndex = 0; // 0 card, 1 bank transfer, 2 virtual account
   int _myPoint = 0;
   int _usedPoint = 0;
+  static const int _minPayableAmount = 3000;
 
   List<Coupon> _applicableCoupons = [];
   List<Coupon> _selectedCoupons = [];
@@ -100,14 +111,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final point = (results[2] as int?) ?? 0;
     final defaultAddress = addresses.firstWhere(
       (e) => e['adDefault'] == 1,
-      orElse: () => addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
+      orElse: () =>
+          addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
     );
 
     if (!mounted) return;
     setState(() {
       _defaultAddress = defaultAddress.isEmpty ? null : defaultAddress;
       _myPoint = point;
-      _applicableCoupons = coupons.where(_isCouponApplicable).toList();
+      _applicableCoupons = _couponPointDisabled
+          ? []
+          : coupons.where(_isCouponApplicable).toList();
+      if (_couponPointDisabled) {
+        _selectedCoupons = [];
+        _usedPoint = 0;
+        _pointController.clear();
+      }
       _loading = false;
     });
     _applyAddressMode();
@@ -123,8 +142,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         if (coupon.target.trim().isEmpty) return true;
         final target = coupon.target.trim().toLowerCase();
         return widget.cartItems.any((item) {
-          final source = '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
-              .toLowerCase();
+          final source =
+              '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
+                  .toLowerCase();
           return source.contains(target);
         });
       case 3:
@@ -136,9 +156,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   int get _purchaseAmount =>
       widget.cartItems.fold(0, (sum, item) => sum + item.ctPrice);
+  bool get _isInfluencerOnly =>
+      widget.cartItems.isNotEmpty &&
+      widget.cartItems.every((item) => item.ctMbInf.trim().isNotEmpty);
+  bool get _couponPointDisabled => _purchaseAmount <= 0 || _isInfluencerOnly;
 
   int _discountForCoupon(Coupon coupon) {
-    final base = coupon.method == 3 ? widget.shippingCost : _purchaseAmount;
+    final base = _baseAmountForCoupon(coupon);
     if (base <= 0 || base < coupon.minimum) return 0;
     if (coupon.maximum > 0) {
       final discount = (base * coupon.price / 100).floor();
@@ -147,20 +171,52 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return coupon.price > base ? base : coupon.price;
   }
 
-  int get _couponDiscount =>
-      _selectedCoupons.fold(0, (sum, c) => sum + _discountForCoupon(c));
+  int get _couponDiscount => _couponPointDisabled
+      ? 0
+      : _selectedCoupons.fold(0, (sum, c) => sum + _discountForCoupon(c));
 
-  int get _maxUsablePoint {
-    final available = _purchaseAmount + widget.shippingCost - _couponDiscount;
-    if (available <= 0) return 0;
-    return _myPoint > available ? available : _myPoint;
+  int get _pointEligibleBaseAmount {
+    final base = _purchaseAmount - _couponDiscount;
+    return base < 0 ? 0 : base;
   }
 
-  int get _pointDiscount => _usedPoint > _maxUsablePoint ? _maxUsablePoint : _usedPoint;
+  int get _maxPointByRate {
+    final eligibleBase = _pointEligibleBaseAmount;
+    if (eligibleBase <= 0 || _purchaseAmount <= 0) return 0;
+
+    var total = 0;
+    for (final item in widget.cartItems) {
+      final share = (eligibleBase * item.ctPrice / _purchaseAmount).floor();
+      final rate = _pointRateForItem(item);
+      total += (share * rate / 100).floor();
+    }
+    return total < 0 ? 0 : total;
+  }
+
+  int get _maxPointByMinimumPayable {
+    final maxByMinimum = _purchaseAmount - _couponDiscount - _minPayableAmount;
+    return maxByMinimum < 0 ? 0 : maxByMinimum;
+  }
+
+  int get _maxUsablePoint {
+    if (_couponPointDisabled) return 0;
+    final candidates = [
+      _myPoint,
+      _maxPointByRate,
+      _maxPointByMinimumPayable,
+    ];
+    final v = candidates.reduce((a, b) => a < b ? a : b);
+    return v < 0 ? 0 : v;
+  }
+
+  int get _pointDiscount =>
+      _usedPoint > _maxUsablePoint ? _maxUsablePoint : _usedPoint;
 
   int get _finalAmount {
-    final amount =
-        _purchaseAmount + widget.shippingCost - _couponDiscount - _pointDiscount;
+    final amount = _purchaseAmount +
+        widget.shippingCost -
+        _couponDiscount -
+        _pointDiscount;
     return amount < 0 ? 0 : amount;
   }
 
@@ -170,13 +226,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_syncingPoint) return;
     final raw = _pointController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final value = int.tryParse(raw) ?? 0;
-    final snapped = (value ~/ 100) * 100;
-    final safe = snapped > _maxUsablePoint ? _maxUsablePoint : snapped;
+    final safe = value > _maxUsablePoint ? _maxUsablePoint : value;
     if (safe != _usedPoint || raw != safe.toString()) {
       _syncingPoint = true;
       _pointController.value = TextEditingValue(
         text: safe == 0 ? '' : '$safe',
-        selection: TextSelection.collapsed(offset: safe == 0 ? 0 : '$safe'.length),
+        selection:
+            TextSelection.collapsed(offset: safe == 0 ? 0 : '$safe'.length),
       );
       _syncingPoint = false;
       setState(() {
@@ -214,74 +270,496 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   String _safe(dynamic value) => (value ?? '').toString().trim();
 
-  Future<void> _openCouponMenu() async {
-    final renderBox =
-        _couponDropdownAnchorKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        renderBox.localToGlobal(Offset.zero, ancestor: overlay),
-        renderBox.localToGlobal(
-          renderBox.size.bottomRight(Offset.zero),
-          ancestor: overlay,
-        ),
-      ),
-      Offset.zero & overlay.size,
-    );
+  String get _paymentMethodCode {
+    switch (_paymentMethodIndex) {
+      case 1:
+        return 'bank';
+      case 2:
+        return 'vbank';
+      default:
+        return 'card';
+    }
+  }
 
-    final candidates = _applicableCoupons
-        .where((c) => !_selectedCoupons.any((s) => s.no == c.no))
-        .toList();
-    if (candidates.isEmpty) return;
+  String _kcpMobileUserAgent() {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+    }
+    return 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36';
+  }
 
-    final picked = await showMenu<Coupon>(
-      context: context,
-      position: position,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      items: candidates
-          .map((c) => PopupMenuItem<Coupon>(
-                value: c,
-                child: Text('${c.subject} (${c.discountText})'),
-              ))
-          .toList(),
-    );
-
-    if (!mounted || picked == null) return;
-    if (_selectedCoupons.length >= 2) {
+  bool _validateBeforePay() {
+    if (_receiverController.text.trim().isEmpty ||
+        _phoneController.text.trim().isEmpty ||
+        _zipController.text.trim().isEmpty ||
+        _addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('쿠폰은 최대 2개까지 선택할 수 있습니다.')),
+        const SnackBar(content: Text('배송지 필수 항목을 입력해 주세요.')),
+      );
+      return false;
+    }
+    if (_finalAmount < _minPayableAmount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('최소 결제 금액은 3,000원입니다.')),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  int _pointRateForItem(CartItem item) {
+    final influencer = item.ctMbInf.trim().isNotEmpty;
+    if (influencer) return 0;
+    if (item.ctKind.toLowerCase() == 'prescription') return 100;
+    final rate = item.pointUsageRate;
+    if (rate <= 0) return 0;
+    if (rate > 100) return 100;
+    return rate;
+  }
+
+  int _baseAmountForCoupon(Coupon coupon) {
+    switch (coupon.method) {
+      case 0:
+        if (coupon.target.trim().isEmpty) return _purchaseAmount;
+        return widget.cartItems
+            .where((item) => item.itId == coupon.target.trim())
+            .fold<int>(0, (sum, item) => sum + item.ctPrice);
+      case 1:
+        // 카테고리 정보가 API에 없는 경우 기존 텍스트 매칭 방식 유지
+        if (coupon.target.trim().isEmpty) return _purchaseAmount;
+        final target = coupon.target.trim().toLowerCase();
+        return widget.cartItems.where((item) {
+          final source =
+              '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
+                  .toLowerCase();
+          return source.contains(target);
+        }).fold<int>(0, (sum, item) => sum + item.ctPrice);
+      case 2:
+        return _purchaseAmount;
+      case 3:
+        return widget.shippingCost;
+      default:
+        return _purchaseAmount;
+    }
+  }
+
+  Future<void> _requestKcpPayment() async {
+    if (_submitting) return;
+    if (!_validateBeforePay()) return;
+
+    if (kIsWeb && !_webPopupGuideAcknowledged) {
+      final proceed = await _showWebKcpGuideDialog();
+      if (!proceed) return;
+    }
+
+    final webPendingPopup = kIsWeb ? openPendingKcpPopup() : null;
+    if (kIsWeb && webPendingPopup == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해 주세요.')),
       );
       return;
     }
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인해 주세요.')),
+      );
+      return;
+    }
+
+    final cartIds = widget.cartItems.map((e) => e.ctId).toList();
+    if (cartIds.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('결제할 장바구니 항목이 없습니다.')),
+      );
+      return;
+    }
+
     setState(() {
-      _selectedCoupons.add(picked);
-      if (_usedPoint > _maxUsablePoint) {
-        _usedPoint = _maxUsablePoint;
-        _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
-      }
+      _submitting = true;
     });
+
+    try {
+      if (kIsWeb) {
+        _lastWebKcpPopup = webPendingPopup;
+      }
+      final response = await ApiClient.post(
+        ApiEndpoints.kcpPayRequest,
+        {
+          'mb_id': user.id,
+          'cart_ids': cartIds,
+          'payment_method': _paymentMethodCode,
+          'escrow_use': _useEscrow,
+          'shipping_cost': widget.shippingCost,
+          'coupon_discount': _couponDiscount,
+          'used_point': _pointDiscount,
+          'final_amount': _finalAmount,
+          'goods_name': widget.cartItems.length == 1
+              ? widget.cartItems.first.itName
+              : '${widget.cartItems.first.itName} 외 ${widget.cartItems.length - 1}건',
+          'orderer': {
+            'name': user.name,
+            'email': user.email,
+            'tel': user.phone ?? _phoneController.text.trim(),
+            'hp': user.phone ?? _phoneController.text.trim(),
+          },
+          'receiver': {
+            'name': _receiverController.text.trim(),
+            'tel': _phoneController.text.trim(),
+            'hp': _phoneController.text.trim(),
+            'zip': _zipController.text.trim(),
+            'addr1': _addressController.text.trim(),
+            'addr2': _detailAddressController.text.trim(),
+            'addr3': '',
+            'memo': _memoController.text.trim(),
+          },
+        },
+        additionalHeaders: kIsWeb
+            ? null
+            : <String, String>{'User-Agent': _kcpMobileUserAgent()},
+      );
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode != 200 || data['success'] != true) {
+        throw Exception((data['message'] ?? '결제 요청에 실패했습니다.').toString());
+      }
+
+      if (!mounted) return;
+      final html = (data['html'] ?? '').toString();
+      final token = (data['token'] ?? '').toString();
+      if (html.isEmpty || token.isEmpty) {
+        throw Exception('KCP 결제 요청 응답이 올바르지 않습니다.');
+      }
+
+      dynamic result;
+      if (kIsWeb) {
+        final launchUrl =
+            '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(token)}';
+        _lastWebKcpLaunchUrl = launchUrl;
+        // data: URL로 팝업 top-frame 이동은 Chrome에서 차단됨 → 백엔드 launch URL만 사용
+        var opened = loadKcpUrlToPopup(webPendingPopup, launchUrl);
+        if (!opened) {
+          final directOpened = openKcpUrlInNewTab(launchUrl);
+          if (!directOpened) {
+            throw Exception('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해 주세요.');
+          }
+        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('새 탭에서 결제를 진행해 주세요. 완료 후 결과를 자동 확인합니다.'),
+            action: SnackBarAction(
+              label: '결제창 다시열기',
+              onPressed: _reopenWebKcpLaunch,
+            ),
+          ),
+        );
+        result = await _pollKcpPayResult(token, webPopup: webPendingPopup);
+      } else {
+        result = await Navigator.pushNamed(
+          context,
+          '/kcp-pay',
+          arguments: {
+            'html': html,
+            'token': token,
+          },
+        );
+      }
+
+      if (!mounted || result == null) return;
+      final resultMap =
+          result is Map<String, dynamic> ? result : <String, dynamic>{};
+      final success = resultMap['success'] == true;
+      final message = (resultMap['message'] ?? '').toString();
+      final errorCode = (resultMap['error_code'] ?? '').toString().trim();
+      final orderId = (resultMap['order_id'] ?? '').toString();
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message.isEmpty ? '결제가 완료되었습니다.' : message)),
+        );
+        if (orderId.isNotEmpty) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/payment-complete',
+            (route) => route.isFirst,
+            arguments: {'orderId': orderId},
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/order',
+            (route) => route.isFirst,
+          );
+        }
+      } else {
+        final code = _resolvePaymentErrorCode(errorCode, message);
+        // [3001] 사용자 취소(또는 앱 내부 USER_CANCELLED)는 실패 안내 팝업/스낵바 없이
+        // 현재 결제 페이지로 자연스럽게 복귀합니다.
+        if (code == '3001' || code == 'USER_CANCELLED') {
+          return;
+        }
+
+        await _showPaymentFailureGuideDialog(code, message);
+        if (kIsWeb && message.contains('3017')) {
+          _showWebPopupBlockedDialog();
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message.isEmpty ? '결제가 완료되지 않았습니다.' : message),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('결제 처리 중 오류가 발생했습니다: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+        });
+      }
+    }
   }
 
-  Future<void> _openAddressManagement() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddressManagementScreen()),
+  Future<bool> _showWebKcpGuideDialog() async {
+    if (!mounted) return false;
+    final agreed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('웹 결제 전 안내'),
+          content: const Text(
+            '카드 인증 단계에서 팝업이 추가로 열릴 수 있습니다.\n\n'
+            '1) 브라우저 팝업 차단 해제\n'
+            '2) 결제창/카드인증창 모두 허용\n'
+            '3) 차단되면 "결제창 다시열기" 버튼으로 재시도',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('확인 후 진행'),
+            ),
+          ],
+        );
+      },
     );
+
+    final ok = agreed == true;
+    if (ok && mounted) {
+      setState(() {
+        _webPopupGuideAcknowledged = true;
+      });
+    }
+    return ok;
+  }
+
+  void _reopenWebKcpLaunch() {
+    if (!kIsWeb) return;
+    final url = (_lastWebKcpLaunchUrl ?? '').trim();
+    if (url.isEmpty) return;
+    final opened = openKcpUrlInNewTab(url);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('결제창 재열기에 실패했습니다. 팝업 허용 상태를 확인해 주세요.')),
+      );
+    }
+  }
+
+  Future<void> _showWebPopupBlockedDialog() async {
     if (!mounted) return;
-    setState(() => _loading = true);
-    await _loadData();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('팝업 차단 감지 (3017)'),
+          content: const Text(
+            '결제창은 열렸지만 카드사 인증 팝업이 차단된 상태입니다.\n\n'
+            '확장 프로그램/브라우저 팝업 차단을 해제한 뒤,\n'
+            '"결제창 다시열기" 또는 아래 버튼으로 재시도해 주세요.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('닫기'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _reopenWebKcpLaunch();
+              },
+              child: const Text('결제창 다시열기'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> _pollKcpPayResult(
+    String token, {
+    Object? webPopup,
+  }) async {
+    const maxTry = 150; // 약 5분
+    for (var i = 0; i < maxTry; i += 1) {
+      if (!mounted) return null;
+      if (kIsWeb && webPopup != null && isKcpPopupClosed(webPopup)) {
+        return {
+          'success': false,
+          'error_code': 'USER_CANCELLED',
+          'message': '사용자가 결제를 취소했습니다. 결제하기 버튼으로 다시 시도해 주세요.',
+        };
+      }
+      try {
+        final response = await ApiClient.get(ApiEndpoints.kcpPayResult(token));
+        if (response.statusCode == 404) {
+          await Future.delayed(const Duration(seconds: 2));
+          continue;
+        }
+
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final status = (data['status'] ?? '').toString();
+        if (status == 'pending') {
+          await Future.delayed(const Duration(seconds: 2));
+          continue;
+        }
+
+        return {
+          'success': data['success'] == true,
+          'error_code': data['error_code'],
+          'status': status,
+          'order_id': data['order_id'],
+          'message': (data['message'] ?? '').toString(),
+        };
+      } catch (_) {
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    }
+
+    return {
+      'success': false,
+      'error_code': 'NO_CODE',
+      'message': '결제 결과 확인 시간이 초과되었습니다. 주문내역에서 상태를 확인해 주세요.',
+    };
+  }
+
+  String _resolvePaymentErrorCode(String rawCode, String message) {
+    final code = rawCode.trim();
+    if (code.isNotEmpty) return code;
+
+    final match = RegExp(r'\[([A-Za-z0-9_]+)\]').firstMatch(message);
+    if (match != null) {
+      return (match.group(1) ?? '').trim();
+    }
+    if (message.contains('NO_CODE')) return 'NO_CODE';
+    return 'UNKNOWN';
+  }
+
+  String _paymentErrorGuideText(String code) {
+    switch (code) {
+      case '3017':
+        return '카드 인증 팝업이 차단된 상태입니다.\n\n'
+            '- 브라우저 팝업 차단 해제\n'
+            '- 결제창 다시열기 후 재시도\n'
+            '- 동일하면 Edge/웨일 등 다른 브라우저로 시도';
+      case '3014':
+        return 'KCP 사이트코드/도메인 등록 정보 불일치입니다.\n\n'
+            '- SITE_CD, JS_URL(운영/테스트) 일치 확인\n'
+            '- KCP 관리자에 결제 호출/리턴/공통통보 URL 등록 확인';
+      case 'NO_CODE':
+        return 'KCP 응답코드를 받지 못했습니다.\n\n'
+            '- 네트워크/CSP/브리지 로그 확인\n'
+            '- 백엔드 승인 브리지 응답(stderr 포함) 점검';
+      case 'USER_CANCELLED':
+        return '사용자가 결제창을 닫아 결제가 취소되었습니다.\n'
+            '현재 페이지에서 결제하기 버튼으로 다시 진행할 수 있습니다.';
+      default:
+        return '결제가 완료되지 않았습니다.\n'
+            '잠시 후 다시 시도하거나 주문내역에서 상태를 확인해 주세요.';
+    }
+  }
+
+  Future<void> _showPaymentFailureGuideDialog(
+    String code,
+    String message,
+  ) async {
+    if (!mounted) return;
+    final titleCode = code.isEmpty ? 'UNKNOWN' : code;
+    final guide = _paymentErrorGuideText(titleCode);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('결제 실패 안내 [$titleCode]'),
+          content: SingleChildScrollView(
+            child: Text(
+              '$guide\n\n원인 메시지:\n${message.isEmpty ? '(없음)' : message}',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // 웹: 결제 새창이 남아있다면 닫고, 결제 화면에 그대로 복귀
+                if (kIsWeb) {
+                  closeKcpPopup(_lastWebKcpPopup);
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _couponPickerLine(Coupon c) {
+    final sub = c.subject.trim();
+    final disc = c.discountText.trim();
+    if (sub.isEmpty && disc.isEmpty) return '쿠폰 #${c.no}';
+    if (sub.isEmpty) return '$disc (#${c.no})';
+    if (disc.isEmpty) return sub;
+    return '$sub ($disc)';
+  }
+
+  List<String> _uniqueCouponPickerLines(List<Coupon> candidates) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final c in candidates) {
+      var line = _couponPickerLine(c);
+      var n = 0;
+      while (seen.contains(line)) {
+        n += 1;
+        line = '${_couponPickerLine(c)} ·$n';
+      }
+      seen.add(line);
+      out.add(line);
+    }
+    return out;
   }
 
   String _itemImageUrl(CartItem item) {
     final normalized =
         ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId);
-    final fallback =
-        normalized ?? '${ImageUrlHelper.imageBaseUrl}/data/item/${item.itId}/no_img.png';
+    final fallback = normalized ??
+        '${ImageUrlHelper.imageBaseUrl}/data/item/${item.itId}/no_img.png';
+    final isAlreadyProxyUrl = fallback.contains('/api/proxy/image?url=');
     if (kIsWeb &&
         (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
-        fallback.startsWith('http')) {
+        fallback.startsWith('http') &&
+        !isAlreadyProxyUrl) {
       return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
     }
     return fallback;
@@ -302,286 +780,343 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    _title('배송지'),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '배송지 선택',
-                      style: TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 12,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _modeButton('기본배송지', _useDefaultAddress, () {
-                            setState(() {
-                              _useDefaultAddress = true;
-                              _applyAddressMode();
-                            });
-                          }),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _modeButton('신규배송지', !_useDefaultAddress, () {
-                            setState(() {
-                              _useDefaultAddress = false;
-                              _applyAddressMode();
-                            });
-                          }),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),                    
-                    _inputField('배송지명', _addressNameController, '배송지명을 입력해 주세요.'),
-                    _inputField('수령인*', _receiverController, '수령인의 이름을 입력해 주세요.'),
-                    _inputField('핸드폰 번호*', _phoneController, '\'-\'없이 기입해주세요.'),
-                    _inputField('우편번호*', _zipController, '\'주소 검색\' 클릭'),
-                    _inputField('주소*', _addressController, '\'주소 검색\'을 통하여 입력됩니다.'),
-                    _inputField('상세 주소*', _detailAddressController, '상세 주소를 입력해 주세요.'),
-                    _inputField('배송 요청 사항', _memoController, '배송 관련 요청 사항이 있으시면 입력해 주세요.'),
-                    const SizedBox(height: 2),
-                    const Text(
-                      '※ 영업일 기준 오후 2시 이전 처방완료 시 당일 발송',
-                      style: TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 12,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    const Divider( height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
-                    const SizedBox(height: 12),
-                    _title('결제 예정 목록'),
-                    const SizedBox(height: 10),
-                    ...widget.cartItems.map(_orderCard),
-                    const SizedBox(height: 20),
-
-                    const Divider( height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
-                    const SizedBox(height: 12),
-                    _title('쿠폰 선택'),
-                    const SizedBox(height: 8),
-                    _couponDropdown(),
-                    const SizedBox(height: 8),
-                    ..._selectedCoupons.map((c) => _selectedCouponRow(c)),
-                    Text(
-                      '선택 ${_selectedCoupons.length}/2',
-                      style: const TextStyle(
-                        color: _muted,
-                        fontSize: 10,
-                        fontFamily: 'Gmarket Sans TTF',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    const Divider( height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
-                    const SizedBox(height: 12),
-                    _title('포인트'),
-                    const SizedBox(height: 8),
-                    _summaryRow('보유 포인트', '${PointService.formatPoint(_myPoint)} 점'),
-                    _summaryRow('최대 사용 가능 포인트', '${PointService.formatPoint(_maxUsablePoint)} 점'),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const SizedBox(
-                            width: 137.08,
-                            child: Text(
-                              '포인트 사용 (100 점 단위)',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 11.70,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 80,
-                            height: 32,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            clipBehavior: Clip.antiAlias,
-                            decoration: ShapeDecoration(
-                              shape: RoundedRectangleBorder(
-                                side: const BorderSide(
-                                  width: 1,
-                                  color: Color(0xFFD2D2D2),
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _pointController,
-                                    keyboardType: TextInputType.number,
-                                    textAlign: TextAlign.right,
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 12,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w300,
-                                    ),
-                                    decoration: const InputDecoration(
-                                      isCollapsed: true,
-                                      border: InputBorder.none,
-                                      hintText: '0',
-                                      hintStyle: TextStyle(
-                                        color: Color(0xFF898686),
-                                        fontSize: 12,
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        fontWeight: FontWeight.w300,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  '점',
-                                  style: TextStyle(
-                                    color: Color(0xFF898686),
-                                    fontSize: 12,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w300,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            checkboxTheme: CheckboxThemeData(
-                              side: const BorderSide(
-                                color: Color(0xFFE3E3E3),
-                                width: 0.8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                          ),
-                          child: Checkbox(
-                            value: _useAllPoints,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity:
-                                const VisualDensity(horizontal: -4, vertical: -4),
-                            activeColor: _pink,
-                            onChanged: (checked) {
-                              final all = checked ?? false;
-                              setState(() {
-                                _useAllPoints = all;
-                                _usedPoint = all ? _maxUsablePoint : 0;
-                                _pointController.text =
-                                    _usedPoint == 0 ? '' : '$_usedPoint';
-                              });
-                            },
-                          ),
-                        ),
-                        const Text(
-                          '모두 사용',
-                          style: TextStyle(
-                            color: _ink,
-                            fontSize: 11.7,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    const Divider( height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
-                    const SizedBox(height: 12),
-                    _title('결제 금액'),
-                    const SizedBox(height: 8),
-                    _summaryRow('구매금액', '${PriceFormatter.format(_purchaseAmount)} 원'),
-                    _summaryRow('쿠폰할인', '-${PriceFormatter.format(_couponDiscount)} 원'),
-                    _summaryRow('포인트할인', '-${PriceFormatter.format(_pointDiscount)} 원'),
-                    _summaryRow('배송비', '${PriceFormatter.format(widget.shippingCost)} 원'),
-                    const SizedBox(height: 6),
-                    _strongRow('총 결제비용', '${PriceFormatter.format(_finalAmount)}원'),
-                    const SizedBox(height: 2),
-                    const Text(
-                      '*상품별 포인트 설정 기준 예상 적립',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 8,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                    _summaryRow('예상 적립 포인트', '${PointService.formatPoint(_expectedPoint)} 점'),
-                    const SizedBox(height: 20),
-                    const Divider( height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
-                    const SizedBox(height: 12),
-                    _title('결제 수단'),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(child: _methodButton('신용카드', 0)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _methodButton('계좌이체', 1)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _methodButton('가상계좌', 2)),
-                      ],
-                    ),
-                    if (_paymentMethodIndex == 1 || _paymentMethodIndex == 2) ...[
+                      _title('배송지'),
                       const SizedBox(height: 10),
+                      const Text(
+                        '배송지 선택',
+                        style: TextStyle(
+                          color: Color(0xFF1A1A1A),
+                          fontSize: 12,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
-                            child: _escrowToggle('에스크로 사용', _useEscrow, () {
-                              setState(() => _useEscrow = true);
+                            child: _modeButton('기본배송지', _useDefaultAddress, () {
+                              setState(() {
+                                _useDefaultAddress = true;
+                                _applyAddressMode();
+                              });
                             }),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: _escrowToggle('에스크로 미사용', !_useEscrow, () {
-                              setState(() => _useEscrow = false);
+                            child:
+                                _modeButton('신규배송지', !_useDefaultAddress, () {
+                              setState(() {
+                                _useDefaultAddress = false;
+                                _applyAddressMode();
+                              });
                             }),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      _escrowNotice(),
-                    ],
-                    const SizedBox(height: 20),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('결제 기능 준비 중입니다.')),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _pink,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                      _inputField(
+                          '배송지명', _addressNameController, '배송지명을 입력해 주세요.'),
+                      _inputField(
+                          '수령인*', _receiverController, '수령인의 이름을 입력해 주세요.'),
+                      _inputField(
+                          '핸드폰 번호*', _phoneController, '\'-\'없이 기입해주세요.'),
+                      _zipSearchRow(),
+                      _inputField(
+                          '주소*', _addressController, '\'주소 검색\'을 통하여 입력됩니다.'),
+                      _inputField('상세 주소*', _detailAddressController,
+                          '상세 주소를 입력해 주세요.'),
+                      _inputField('배송 요청 사항', _memoController,
+                          '배송 관련 요청 사항이 있으시면 입력해 주세요.'),
+                      const SizedBox(height: 2),
+                      const Text(
+                        '※ 영업일 기준 오후 2시 이전 처방완료 시 당일 발송',
+                        style: TextStyle(
+                          color: Color(0xFF1A1A1A),
+                          fontSize: 12,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
                         ),
-                        child: const Text('결제하기'),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      const Divider(
+                          height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
+                      const SizedBox(height: 12),
+                      _title('결제 예정 목록'),
+                      const SizedBox(height: 10),
+                      ...widget.cartItems.map(_orderCard),
+                      const SizedBox(height: 20),
+                      const Divider(
+                          height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
+                      const SizedBox(height: 12),
+                      _title('쿠폰 선택'),
+                      const SizedBox(height: 8),
+                      if (_couponPointDisabled)
+                        const Text(
+                          '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.',
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 11,
+                            fontFamily: 'Gmarket Sans TTF',
+                          ),
+                        )
+                      else
+                        _couponDropdown(),
+                      const SizedBox(height: 8),
+                      ..._selectedCoupons.map((c) => _selectedCouponRow(c)),
+                      Text(
+                        _hasCategoryCoupon
+                            ? '카테고리 쿠폰 ${_selectedCoupons.where((c) => c.method == 1).length}/2 선택'
+                            : (_selectedCoupons.isEmpty
+                                ? '쿠폰 미선택'
+                                : '쿠폰 1개 선택'),
+                        style: const TextStyle(
+                          color: _muted,
+                          fontSize: 10,
+                          fontFamily: 'Gmarket Sans TTF',
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Divider(
+                          height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
+                      const SizedBox(height: 12),
+                      _title('포인트'),
+                      const SizedBox(height: 8),
+                      _summaryRow(
+                          '보유 포인트', '${PointService.formatPoint(_myPoint)} 점'),
+                      _summaryRow('최대 사용 가능 포인트',
+                          '${PointService.formatPoint(_maxUsablePoint)} 점'),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 137.08,
+                              child: Text(
+                                '포인트 사용',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 11.70,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 80,
+                              height: 32,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              clipBehavior: Clip.antiAlias,
+                              decoration: ShapeDecoration(
+                                shape: RoundedRectangleBorder(
+                                  side: const BorderSide(
+                                    width: 1,
+                                    color: Color(0xFFD2D2D2),
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _pointController,
+                                      enabled: !_couponPointDisabled,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 12,
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        isCollapsed: true,
+                                        border: InputBorder.none,
+                                        hintText: '0',
+                                        hintStyle: TextStyle(
+                                          color: Color(0xFF898686),
+                                          fontSize: 12,
+                                          fontFamily: 'Gmarket Sans TTF',
+                                          fontWeight: FontWeight.w300,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    '점',
+                                    style: TextStyle(
+                                      color: Color(0xFF898686),
+                                      fontSize: 12,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              checkboxTheme: CheckboxThemeData(
+                                side: const BorderSide(
+                                  color: Color(0xFFE3E3E3),
+                                  width: 0.8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ),
+                            child: Checkbox(
+                              value: _useAllPoints,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: const VisualDensity(
+                                  horizontal: -4, vertical: -4),
+                              activeColor: _pink,
+                              onChanged: _couponPointDisabled
+                                  ? null
+                                  : (checked) {
+                                      final all = checked ?? false;
+                                      setState(() {
+                                        _useAllPoints = all;
+                                        _usedPoint = all ? _maxUsablePoint : 0;
+                                        _pointController.text = _usedPoint == 0
+                                            ? ''
+                                            : '$_usedPoint';
+                                      });
+                                    },
+                            ),
+                          ),
+                          const Text(
+                            '모두 사용',
+                            style: TextStyle(
+                              color: _ink,
+                              fontSize: 11.7,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Divider(
+                          height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
+                      const SizedBox(height: 12),
+                      _title('결제 금액'),
+                      const SizedBox(height: 8),
+                      _summaryRow('구매금액',
+                          '${PriceFormatter.format(_purchaseAmount)} 원'),
+                      _summaryRow('쿠폰할인',
+                          '-${PriceFormatter.format(_couponDiscount)} 원'),
+                      _summaryRow('포인트할인',
+                          '-${PriceFormatter.format(_pointDiscount)} 원'),
+                      _summaryRow('배송비',
+                          '${PriceFormatter.format(widget.shippingCost)} 원'),
+                      const SizedBox(height: 6),
+                      _strongRow(
+                          '총 결제비용', '${PriceFormatter.format(_finalAmount)}원'),
+                      const SizedBox(height: 2),
+                      const Text(
+                        '*최소 결제 금액 3,000원',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: 8,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 5),
+                      _summaryRow('예상 적립 포인트',
+                          '${PointService.formatPoint(_expectedPoint)} 점'),
+                      const Text(
+                        '*상품별 포인트 설정 기준 예상 적립',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 8,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      const Divider(
+                          height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
+                      const SizedBox(height: 12),
+                      _title('결제 수단'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: _methodButton('신용카드', 0)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _methodButton('계좌이체', 1)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _methodButton('가상계좌', 2)),
+                        ],
+                      ),
+                      if (_paymentMethodIndex == 1 ||
+                          _paymentMethodIndex == 2) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _escrowToggle('에스크로 사용', _useEscrow, () {
+                                setState(() => _useEscrow = true);
+                              }),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _escrowToggle('에스크로 미사용', !_useEscrow, () {
+                                setState(() => _useEscrow = false);
+                              }),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _escrowNotice(),
+                      ],
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: _submitting ? null : _requestKcpPayment,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _pink,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: _submitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                              : const Text('결제하기'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -621,6 +1156,111 @@ class _PaymentScreenState extends State<PaymentScreen> {
             fontWeight: FontWeight.w500,
           ),
         ),
+      ),
+    );
+  }
+
+  String _formatPostalCodeDisplay(String postalCode) {
+    final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
+    if (t.length == 5) {
+      return '${t.substring(0, 3)}-${t.substring(3)}';
+    }
+    return postalCode.trim();
+  }
+
+  Future<void> _openAddressSearch() async {
+    final selected = await showDaumPostcodeSearchDialog(context);
+    if (!mounted || selected == null) return;
+
+    final postalCode = (selected['postalCode'] ?? '').toString().trim();
+    final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
+    final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
+    final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
+    final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
+
+    setState(() {
+      _zipController.text = _formatPostalCodeDisplay(postalCode);
+      _addressController.text = baseAddress;
+      if (_detailAddressController.text.trim().isEmpty &&
+          extraAddress.isNotEmpty) {
+        _detailAddressController.text = extraAddress;
+      }
+    });
+  }
+
+  Widget _zipSearchRow() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '우편번호*',
+            style: TextStyle(
+              color: _ink,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _zipController,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 10),
+                      hintText: '\'주소 검색\' 클릭',
+                      hintStyle: const TextStyle(
+                        color: _muted,
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: _border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: _border),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 40,
+                child: OutlinedButton(
+                  onPressed: _openAddressSearch,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _pink,
+                    side: const BorderSide(color: _pink, width: 1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: const Text(
+                    '주소 검색',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -860,48 +1500,122 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  bool get _hasCategoryCoupon =>
+      _selectedCoupons.any((coupon) => coupon.method == 1);
+  bool get _hasNonCategoryCoupon =>
+      _selectedCoupons.any((coupon) => coupon.method != 1);
+
+  bool _isCouponMethodDisabled(int method) {
+    if (method == 1) {
+      return _hasNonCategoryCoupon;
+    }
+    if (_hasCategoryCoupon) return true;
+    return _selectedCoupons.any((coupon) => coupon.method != method);
+  }
+
+  List<Coupon> _availableCouponsByMethod(int method) {
+    if (_couponPointDisabled) return const [];
+    return _applicableCoupons
+        .where((coupon) => coupon.method == method)
+        .where((coupon) =>
+            !_selectedCoupons.any((selected) => selected.no == coupon.no))
+        .toList();
+  }
+
+  void _onCouponChosenByMethod(int method, String label) {
+    final candidates = _availableCouponsByMethod(method);
+    final lines = _uniqueCouponPickerLines(candidates);
+    final index = lines.indexOf(label);
+    if (index < 0 || index >= candidates.length) return;
+    final picked = candidates[index];
+
+    setState(() {
+      if (method == 1) {
+        _selectedCoupons.removeWhere((coupon) => coupon.method != 1);
+        final categoryCount =
+            _selectedCoupons.where((coupon) => coupon.method == 1).length;
+        if (categoryCount < 2) {
+          _selectedCoupons.add(picked);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('카테고리 쿠폰은 최대 2개까지 선택할 수 있습니다.')),
+          );
+        }
+      } else {
+        _selectedCoupons.removeWhere(
+            (coupon) => coupon.method == 1 || coupon.method != method);
+        _selectedCoupons.removeWhere((coupon) => coupon.method == method);
+        _selectedCoupons.add(picked);
+      }
+
+      if (_usedPoint > _maxUsablePoint) {
+        _usedPoint = _maxUsablePoint;
+        _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
+      }
+    });
+  }
+
   Widget _couponDropdown() {
-    return Container(
-      key: _couponDropdownAnchorKey,
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: _border),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 4,
-            offset: Offset(0, 0),
-            spreadRadius: 0,
-          ),
+    const displayOrder = [1, 0, 2, 3];
+    return Column(
+      children: [
+        for (final method in displayOrder) ...[
+          _couponMethodSection(method),
+          const SizedBox(height: 8),
         ],
-      ),
-      alignment: Alignment.center,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: _openCouponMenu,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                _selectedCoupons.isEmpty ? '선택' : '${_selectedCoupons.length}개 선택됨',
-                style: TextStyle(
-                  color: _selectedCoupons.isEmpty ? _muted : _ink,
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          ],
-        ),
-      ),
+      ],
     );
+  }
+
+  Widget _couponMethodSection(int method) {
+    final candidates = _availableCouponsByMethod(method);
+    final lines = _uniqueCouponPickerLines(candidates);
+    final disabled = _isCouponMethodDisabled(method);
+    final selectedByMethod =
+        _selectedCoupons.where((coupon) => coupon.method == method).length;
+    final canAdd =
+        !disabled && lines.isNotEmpty && (method != 1 || selectedByMethod < 2);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _couponMethodTitle(method),
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 12,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        DropdownBtn(
+          buttonHeight: 44,
+          enabled: canAdd,
+          items: lines,
+          value: '',
+          emptyText: disabled
+              ? '다른 종류 쿠폰 사용 중'
+              : (lines.isEmpty ? '선택 가능한 쿠폰 없음' : '쿠폰 선택'),
+          onChanged: (label) => _onCouponChosenByMethod(method, label),
+        ),
+      ],
+    );
+  }
+
+  String _couponMethodTitle(int method) {
+    switch (method) {
+      case 0:
+        return '상품쿠폰';
+      case 1:
+        return '카테고리쿠폰';
+      case 2:
+        return '주문할인쿠폰';
+      case 3:
+        return '배송비쿠폰';
+      default:
+        return '쿠폰';
+    }
   }
 
   Widget _selectedCouponRow(Coupon coupon) {
@@ -969,7 +1683,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   _selectedCoupons.removeWhere((c) => c.no == coupon.no);
                   if (_usedPoint > _maxUsablePoint) {
                     _usedPoint = _maxUsablePoint;
-                    _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
+                    _pointController.text =
+                        _usedPoint == 0 ? '' : '$_usedPoint';
                   }
                 });
               },
@@ -995,6 +1710,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return '[상품 쿠폰]';
       case 1:
         return '[카테고리 쿠폰]';
+      case 2:
+        return '[주문할인 쿠폰]';
       case 3:
         return '[배송비 쿠폰]';
       default:
@@ -1148,4 +1865,3 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 }
-
