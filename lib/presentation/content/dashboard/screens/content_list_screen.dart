@@ -100,6 +100,13 @@ class _ContentListScreenState extends State<ContentListScreen> {
     if (!mounted) return;
     final data = (result['data'] as List?)?.whereType<Map<String, dynamic>>().toList() ??
         const <Map<String, dynamic>>[];
+    for (final item in data) {
+      final thumbRaw = item['thumbnail_url']?.toString();
+      final resolvedThumb = ContentService.resolveThumbnailUrl(thumbRaw, fallback: '');
+      debugPrint(
+        '[ContentList] title=${item['title']} | thumbnailRaw=$thumbRaw | thumbnailResolved=$resolvedThumb | bodyFirstImage=${ContentService.resolveFirstBodyImageUrl(item['content_html']?.toString())}',
+      );
+    }
     final pagination = result['pagination'] as Map<String, dynamic>? ?? const {};
     final total = pagination['total'] is num
         ? (pagination['total'] as num).toInt()
@@ -124,67 +131,57 @@ class _ContentListScreenState extends State<ContentListScreen> {
         leadingType: HealthAppBarLeadingType.back,
       ),
       backgroundColor: Colors.white,
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildCategoryChips(_categories),
-                      const SizedBox(height: 10),
-                      _buildSearchBox(),
-                      const SizedBox(height: 10),
-                      _buildCountRow(),
-                      const SizedBox(height: 10),
-                      if (_isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFFF5B8C),
-                            ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCategoryChips(_categories),
+                  const SizedBox(height: 10),
+                  _buildSearchBox(),
+                  const SizedBox(height: 10),
+                  _buildCountRow(),
+                  const SizedBox(height: 10),
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF5B8C),
+                        ),
+                      ),
+                    )
+                  else if (_posts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          '게시글이 없습니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _textMuted,
+                            fontSize: 14,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
                           ),
-                        )
-                      else if (_posts.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(
-                            child: Text(
-                              '게시글이 없습니다.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: _textMuted,
-                                fontSize: 14,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        ..._posts.map((e) => Padding(
-                              padding: const EdgeInsets.only(bottom: 20),
-                              child: _buildListCard(context, e),
-                            )),
-                      const SizedBox(height: 100),
-                    ],
-                  ),
-                ),
+                        ),
+                      ),
+                    )
+                  else
+                    ..._posts.map((e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: _buildListCard(context, e),
+                        )),
+                  const SizedBox(height: 100),
+                ],
               ),
-              const ContentBottomNavBar(),
-            ],
+            ),
           ),
-          Positioned(
-            right: 20,
-            bottom: 53 + 16,
-            child: _WriteFab(onTap: () {}),
-          ),
+          const ContentBottomNavBar(),
         ],
       ),
     );
@@ -206,7 +203,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
               await _loadPosts();
             },
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: selected ? 10 : 5, vertical: selected ? 2 : 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: ShapeDecoration(
                 color: selected ? _pink : Colors.transparent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -217,10 +214,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: selected ? Colors.white : _chipInactive,
-                  fontSize: selected ? 14 : 12,
+                  fontSize: 12,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
-                  height: selected ? 1.43 : 1.67,
+                  height: 1.5,
                 ),
               ),
             ),
@@ -233,7 +230,8 @@ class _ContentListScreenState extends State<ContentListScreen> {
   Widget _buildSearchBox() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 15),
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
           side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
@@ -255,6 +253,8 @@ class _ContentListScreenState extends State<ContentListScreen> {
                   fontWeight: FontWeight.w300,
                 ),
                 border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
               ),
               style: const TextStyle(
                 color: _textDark,
@@ -267,6 +267,8 @@ class _ContentListScreenState extends State<ContentListScreen> {
           ),
           IconButton(
             onPressed: _onSearchSubmitted,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             icon: const Icon(Icons.search, size: 18, color: _textMuted),
           ),
         ],
@@ -381,59 +383,18 @@ class _ContentListScreenState extends State<ContentListScreen> {
     required dynamic thumbnail,
     required dynamic contentHtml,
   }) {
+    final rawThumbnail = thumbnail?.toString();
+    final resolvedThumbnail = ContentService.resolveThumbnailUrl(
+      rawThumbnail,
+      fallback: '',
+    );
+    if (resolvedThumbnail.isNotEmpty) {
+      return resolvedThumbnail;
+    }
     return ContentService.resolveDisplayImageUrl(
-      thumbnail: thumbnail?.toString(),
+      thumbnail: rawThumbnail,
       contentHtml: contentHtml?.toString(),
       fallback: 'https://placehold.co/321x200',
-    );
-  }
-}
-
-class _WriteFab extends StatelessWidget {
-  const _WriteFab({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Ink(
-          width: 55,
-          height: 55,
-          decoration: ShapeDecoration(
-            color: const Color(0xFFFF5B8C),
-            shape: RoundedRectangleBorder(
-              side: BorderSide(width: 2, color: Colors.white.withValues(alpha: 0.20)),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            shadows: const [
-              BoxShadow(
-                color: Color(0x66FF5B8C),
-                blurRadius: 10,
-                offset: Offset(0, 8),
-                spreadRadius: -6,
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Text(
-              '글쓰기',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                height: 1.25,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

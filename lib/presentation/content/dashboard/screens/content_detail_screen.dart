@@ -1,4 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_html/flutter_html.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/app_bar.dart';
@@ -56,25 +60,20 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   late String _categoryLabel = widget.categoryLabel;
   late String _title = widget.title;
-  late String _body = ContentService.normalizeHtmlToText(widget.body);
-  late String _imageUrl = ContentService.resolveDisplayImageUrl(
-    thumbnail: widget.imageUrl,
-    contentHtml: widget.body,
-    fallback: 'https://placehold.co/321x200',
-  );
-  String? _bodyImageUrl;
+  late String _bodyHtml = widget.body;
   String? _prevTitle;
   int? _prevId;
   String? _nextTitle;
   int? _nextId;
   bool _isLoading = false;
+  int? _currentContentId;
 
   @override
   void initState() {
     super.initState();
+    _currentContentId = widget.contentId;
     _prevTitle = widget.prevTitle;
     _nextTitle = widget.nextTitle;
-    _bodyImageUrl = ContentService.resolveFirstBodyImageUrl(widget.body);
     if (widget.contentId != null) {
       _fetchDetail(widget.contentId!);
     }
@@ -95,17 +94,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         _title = data['title']?.toString().trim().isNotEmpty == true
             ? data['title'].toString()
             : _title;
-        _body = data['content_html']?.toString().trim().isNotEmpty == true
-            ? ContentService.normalizeHtmlToText(data['content_html'].toString())
-            : _body;
-        final thumb = data['thumbnail_url']?.toString();
-        final contentHtml = data['content_html']?.toString();
-        _bodyImageUrl = ContentService.resolveFirstBodyImageUrl(contentHtml);
-        _imageUrl = ContentService.resolveDisplayImageUrl(
-          thumbnail: thumb,
-          contentHtml: contentHtml,
-          fallback: _imageUrl,
-        );
+        _bodyHtml = data['content_html']?.toString().trim().isNotEmpty == true
+            ? data['content_html'].toString()
+            : _bodyHtml;
+        _currentContentId = _toInt(data['id']) ?? id;
         _prevTitle = prev?['title']?.toString();
         _prevId = _toInt(prev?['id']);
         _nextTitle = next?['title']?.toString();
@@ -146,65 +138,15 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                         color: Color(0xFFFF5A8D),
                       ),
                     ),
-                  Text(
-                    _body,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: _textDark,
-                      fontSize: 12,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      height: 2.08,
-                      letterSpacing: -1.08,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      _imageUrl,
-                      width: double.infinity,
-                      fit: BoxFit.fitWidth,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 200,
-                        color: const Color(0xFFF2F2F2),
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.broken_image_outlined,
-                          color: Color(0xFFBDBDBD),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_bodyImageUrl != null &&
-                      _bodyImageUrl!.isNotEmpty &&
-                      _bodyImageUrl != _imageUrl) ...[
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        _bodyImageUrl!,
-                        width: double.infinity,
-                        fit: BoxFit.fitWidth,
-                        errorBuilder: (_, __, ___) => Container(
-                          height: 200,
-                          color: const Color(0xFFF2F2F2),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.broken_image_outlined,
-                            color: Color(0xFFBDBDBD),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: 16),
+                  _buildBodyContent(),
                   const SizedBox(height: 100),
                   if (_prevId != null && (_prevTitle?.trim().isNotEmpty ?? false))
                     _buildPrevNextRow(
                       context: context,
                       label: '이전글',
                       articleTitle: _prevTitle!,
-                      icon: Icons.chevron_left,
+                      icon: Icons.keyboard_arrow_up,
                       targetId: _prevId!,
                     ),
                   if (_prevId != null && (_prevTitle?.trim().isNotEmpty ?? false))
@@ -214,7 +156,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                       context: context,
                       label: '다음글',
                       articleTitle: _nextTitle!,
-                      icon: Icons.chevron_right,
+                      icon: Icons.keyboard_arrow_down,
                       targetId: _nextId!,
                     ),
                   const SizedBox(height: 24),
@@ -284,7 +226,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 label,
                 style: const TextStyle(
                   color: _textMuted,
-                  fontSize: 14,
+                  fontSize: 12,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
@@ -295,11 +237,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           Expanded(
             child: Text(
               articleTitle,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.black,
-                fontSize: 14,
+                fontSize: 12,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -334,7 +276,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 icon: const Icon(Icons.share_outlined, size: 24, color: _textDark),
-                onPressed: () {},
+                onPressed: () => _shareContent(context),
               ),
             ],
           ),
@@ -361,5 +303,103 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildBodyContent() {
+    final processedHtml = ContentService.prepareContentHtmlForRender(_bodyHtml);
+    if (processedHtml.trim().isEmpty) {
+      final bodyText = ContentService.normalizeHtmlToText(_bodyHtml);
+      return Text(
+        bodyText,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: _textDark,
+          fontSize: 12,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+          height: 2.08,
+          letterSpacing: -1.08,
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width - 54;
+        return SizedBox(
+          width: maxWidth,
+          child: Html(
+            data: processedHtml,
+            style: {
+              'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+              'body': Style(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+                fontFamily: 'Gmarket Sans TTF',
+                fontSize: FontSize(12),
+                fontWeight: FontWeight.w500,
+                lineHeight: const LineHeight(1.8),
+                textAlign: TextAlign.center,
+                color: _textDark,
+              ),
+              'p': Style(
+                margin: Margins.only(bottom: 10),
+                padding: HtmlPaddings.zero,
+                textAlign: TextAlign.center,
+              ),
+              'img': Style(
+                width: Width(maxWidth),
+                display: Display.block,
+                margin: Margins.symmetric(vertical: 8),
+              ),
+              'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+              'span': Style(fontFamily: 'Gmarket Sans TTF'),
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _shareContent(BuildContext anchorContext) async {
+    final currentUrl = Uri.base.toString();
+    final shareUrl = _currentContentId != null
+        ? '$currentUrl${currentUrl.contains('?') ? '&' : '?'}contentId=$_currentContentId'
+        : currentUrl;
+    final text = '$_title\n$shareUrl';
+
+    // Flutter Web에서 share_plus가 window.dart assertion을 유발하는 환경이 있어
+    // 웹은 클립보드 복사로 안정적으로 공유 UX를 제공합니다.
+    if (kIsWeb) {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공유 링크를 복사했습니다.')),
+      );
+      return;
+    }
+
+    final box = anchorContext.findRenderObject() as RenderBox?;
+    final Rect? origin =
+        box != null && box.hasSize ? box.localToGlobal(Offset.zero) & box.size : null;
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: text,
+          title: _title,
+          subject: _title,
+          sharePositionOrigin: origin,
+        ),
+      );
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공유를 지원하지 않아 링크를 복사했습니다.')),
+      );
+    }
   }
 }
