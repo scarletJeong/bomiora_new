@@ -1,7 +1,33 @@
 import 'package:flutter/material.dart';
 
-class GuidebookSection extends StatelessWidget {
+import '../../../data/services/content_service.dart';
+import '../../common/widgets/web_drag_scroll_configuration.dart';
+import '../../content/dashboard/screens/content_detail_screen.dart';
+
+class GuidebookSection extends StatefulWidget {
   const GuidebookSection({super.key});
+
+  @override
+  State<GuidebookSection> createState() => _GuidebookSectionState();
+}
+
+class _GuidebookSectionState extends State<GuidebookSection> {
+  late final Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadLatest();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadLatest() async {
+    final result = await ContentService.getContentList(page: 1, size: 3);
+    if (result['success'] == true) {
+      final list = (result['data'] as List<Map<String, dynamic>>?) ?? const [];
+      return list.take(3).toList();
+    }
+    return const [];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,24 +77,27 @@ class GuidebookSection extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFFF5A8D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(9999),
+                InkWell(
+                  onTap: () => Navigator.pushNamed(context, '/content'),
+                  borderRadius: BorderRadius.circular(9999),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: ShapeDecoration(
+                      color: const Color(0xFFFF5A8D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9999),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    '+ More',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
-                      height: 1.5,
+                    child: const Text(
+                      '+ More',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                        height: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -78,22 +107,58 @@ class GuidebookSection extends StatelessWidget {
           const SizedBox(height: 12),
           SizedBox(
             height: 278,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              children: const [
-                _NewProductCard(
-                  title: '보미 다이어트한 신제품 출시!\n보미 다이어트한',
-                ),
-                SizedBox(width: 16),
-                _NewProductCard(
-                  title: '대사 활성화를 위한 보미 다이\n어트한 8단계',
-                ),
-                SizedBox(width: 16),
-                _NewProductCard(
-                  title: '대사 활성화를 위한 보미 다이\n어트한 8단계',
-                ),
-              ],
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _future,
+              builder: (context, snapshot) {
+                final items = snapshot.data ?? const [];
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                }
+                if (items.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Center(
+                      child: Text(
+                        '등록된 콘텐츠가 없습니다.',
+                        style: TextStyle(
+                          color: Color(0x665B3F43),
+                          fontSize: 12,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return WebDragScrollConfiguration(
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 16),
+                    itemBuilder: (context, index) {
+                      final it = items[index];
+                      return _GuidebookCard(
+                        item: it,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ContentDetailScreen.fromArgs(it),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -102,18 +167,25 @@ class GuidebookSection extends StatelessWidget {
   }
 }
 
-class _NewProductCard extends StatelessWidget {
-  static const String _description =
-      '쉬워지는 다이어트 보미 다이어트환 드디어 7~9단계가 출시됐습니다. 기존 단계로 효과를 못보신 분들께 적합합니다.';
+class _GuidebookCard extends StatelessWidget {
+  static const String _fallbackDescription = '건강 콘텐츠를 확인해보세요.';
 
-  final String title;
+  final Map<String, dynamic> item;
+  final VoidCallback? onTap;
 
-  const _NewProductCard({
-    required this.title,
-  });
+  const _GuidebookCard({required this.item, this.onTap});
+
+  String _t(String? v) => (v ?? '').trim();
 
   @override
   Widget build(BuildContext context) {
+    final title = _t(item['title']?.toString());
+    final bodyHtml = _t(item['content_html']?.toString());
+    final bodyPlain = ContentService.normalizeHtmlToText(bodyHtml);
+    final description = bodyPlain.isNotEmpty ? bodyPlain : _fallbackDescription;
+    final thumbRaw = item['thumbnail_url']?.toString();
+    final thumb = ContentService.resolveThumbnailUrl(thumbRaw, fallback: '');
+
     return Container(
       // 카드 너비
       width: 320, 
@@ -141,45 +213,54 @@ class _NewProductCard extends StatelessWidget {
               child: SizedBox(
                 height: 160,
                 width: double.infinity,
-                child: const ColoredBox(
-                  color: Color(0xFFFFE9EA),
-                ),
+                child: thumb.isNotEmpty
+                    ? Image.network(
+                        thumb,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const ColoredBox(
+                          color: Color(0xFFFFE9EA),
+                        ),
+                      )
+                    : const ColoredBox(color: Color(0xFFFFE9EA)),
               ),
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF28171A),
-                        fontSize: 12,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w600,
-                        height: 1.33,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: Text(
-                        _description,
-                        maxLines: 4,
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title.isEmpty ? '(제목 없음)' : title,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Color(0x665B3F43),
-                          fontSize: 10,
+                          color: Color(0xFF28171A),
+                          fontSize: 12,
                           fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                          height: 1.45,
+                          fontWeight: FontWeight.w600,
+                          height: 1.33,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Expanded(
+                        child: Text(
+                          description,
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0x665B3F43),
+                            fontSize: 10,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

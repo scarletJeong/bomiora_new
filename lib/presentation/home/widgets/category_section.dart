@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../common/widgets/web_drag_scroll_configuration.dart';
 import '../../shopping/utils/get_product.dart';
 
 class CategorySection extends StatefulWidget {
@@ -228,18 +229,20 @@ class _CategorySectionState extends State<CategorySection>
       );
     }
 
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemCount: products.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 16),
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return _CategoryProductCard(
-          product: product,
-          onTap: () => Navigator.pushNamed(context, '/product/${product.id}'),
-        );
-      },
+    return WebDragScrollConfiguration(
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: products.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 16),
+        itemBuilder: (context, index) {
+          final product = products[index];
+          return _CategoryProductCard(
+            product: product,
+            onTap: () => Navigator.pushNamed(context, '/product/${product.id}'),
+          );
+        },
+      ),
     );
   }
 }

@@ -94,43 +94,41 @@ class _HomeScreenState extends State<HomeScreen> {
   // 3 메뉴판
   @override
   Widget build(BuildContext context) {
+    final isMyPage = _currentIndex == 1;
+
     return MobileAppLayoutWrapper(
       child: Scaffold(
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: Image.asset(
-          AppAssets.bomioraLogo,
-          height: 40,
-        ),
-        centerTitle: true,
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.shopping_cart, color: Colors.black),
-        //     onPressed: () {
-        //       Navigator.pushNamed(context, '/cart');
-        //     },
-        //   ),
-        // ],
-      ),
-      drawer: AppBarMenuTapDrawer(
-        onHealthDashboardTap: () {
-          Navigator.pop(context);
-          Navigator.pushNamed(context, '/health');
-        },
-      ),
+      extendBodyBehindAppBar: !isMyPage,
+      appBar: isMyPage
+          ? null
+          : AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.black),
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
+                  },
+                ),
+              ),
+              title: Image.asset(
+                AppAssets.bomioraLogo,
+                height: 40,
+              ),
+              centerTitle: true,
+            ),
+      drawer: isMyPage
+          ? null
+          : AppBarMenuTapDrawer(
+              onHealthDashboardTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/health');
+              },
+            ),
       body: _getCurrentPage(),
       // 하단 탭 임시 비활성화
       // bottomNavigationBar: SizedBox(
