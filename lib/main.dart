@@ -20,8 +20,11 @@ import 'data/services/kakao_auth_service.dart';
 //   if (dart.library.io) 'data/services/fcm_service.dart';
 import 'presentation/common/widgets/mobile_layout_wrapper.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
+import 'presentation/shopping/screens/product_detail_general_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
 import 'presentation/shopping/screens/product_main_screen.dart';
+import 'presentation/shopping/screens/kcp_pay_webview_screen.dart';
+import 'presentation/shopping/screens/payment_complete_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
 import 'presentation/shopping/screens/temp_cart_screen.dart';
 import 'presentation/shopping/showcase/screens/showcase_screen.dart';
@@ -35,6 +38,15 @@ import 'presentation/review/screens/all_reviews_screen.dart';
 import 'presentation/user/healthprofile/screens/health_profile_list_screen.dart';
 import 'presentation/user/review/my_reviews_screen.dart';
 import 'presentation/health/dashboard/screens/health_dashboard_screen.dart';
+import 'presentation/community/announcement/screens/announcement_list_screen.dart';
+import 'presentation/community/announcement/screens/announcement_detail_screen.dart';
+import 'presentation/community/event/screens/event_list_screen.dart';
+import 'presentation/community/event/screens/event_detail_screen.dart';
+import 'presentation/community/faq/screens/faq_list_screen.dart';
+import 'presentation/community/faq/screens/faq_detail_screen.dart';
+import 'presentation/content/dashboard/screens/content_dashboard_screen.dart';
+import 'presentation/content/dashboard/screens/content_list_screen.dart';
+import 'presentation/content/dashboard/screens/content_detail_screen.dart';
 
 void main() async {
   // Flutter 바인딩 초기화
@@ -80,7 +92,8 @@ class BomioraApp extends StatelessWidget {
       title: '보미오라1',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        fontFamily: 'NotoSans',
+        // pubspec에 등록된 실제 폰트와 일치시켜 웹 fallback(Noto) 탐색 경고를 줄임
+        fontFamily: 'Gmarket Sans TTF',
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       // 한국어 로케일 설정
@@ -147,8 +160,32 @@ class BomioraApp extends StatelessWidget {
             email: args?['email']?.toString(),
           );
         },
+        '/kcp-pay': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return KcpPayWebViewScreen(
+            html: (args?['html'] ?? '').toString(),
+            token: (args?['token'] ?? '').toString(),
+          );
+        },
+        '/payment-complete': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return PaymentCompleteScreen(
+            orderId: (args?['orderId'] ?? '').toString(),
+          );
+        },
         '/point': (context) => const PointScreen(),
         '/order': (context) => const DeliveryListScreen(),
+        '/announcement': (context) => const AnnouncementListScreen(),
+        '/evnt': (context) => const EventListScreen(),
+        '/faq': (context) => const FaqListScreen(),
+        '/content': (context) => const ContentDashboardScreen(),
+        '/content/list': (context) => const ContentListScreen(),
+        '/content/detail': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          return ContentDetailScreen.fromArgs(args);
+        },
         '/signup': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
@@ -242,12 +279,62 @@ class BomioraApp extends StatelessWidget {
             uri.pathSegments[1].trim().isNotEmpty) {
           final productId = uri.pathSegments[1];
           return MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(productId: productId),
+            builder: (context) =>
+                ProductDetailGeneralScreen(productId: productId),
             settings: RouteSettings(
               name: routeName,
               arguments: settings.arguments,
             ),
           );
+        }
+
+        // 공지 상세: /announcement/:id
+        if (uri.pathSegments.length == 2 &&
+            uri.pathSegments[0] == 'announcement' &&
+            uri.pathSegments[1].trim().isNotEmpty) {
+          final id = int.tryParse(uri.pathSegments[1]);
+          if (id != null && id > 0) {
+            return MaterialPageRoute(
+              builder: (context) =>
+                  AnnouncementDetailScreen(announcementId: id),
+              settings: RouteSettings(
+                name: routeName,
+                arguments: settings.arguments,
+              ),
+            );
+          }
+        }
+
+        // 이벤트 상세: /evnt/:id
+        if (uri.pathSegments.length == 2 &&
+            uri.pathSegments[0] == 'evnt' &&
+            uri.pathSegments[1].trim().isNotEmpty) {
+          final id = int.tryParse(uri.pathSegments[1]);
+          if (id != null && id > 0) {
+            return MaterialPageRoute(
+              builder: (context) => EventDetailScreen(wrId: id),
+              settings: RouteSettings(
+                name: routeName,
+                arguments: settings.arguments,
+              ),
+            );
+          }
+        }
+
+        // FAQ 상세: /faq/:id
+        if (uri.pathSegments.length == 2 &&
+            uri.pathSegments[0] == 'faq' &&
+            uri.pathSegments[1].trim().isNotEmpty) {
+          final id = int.tryParse(uri.pathSegments[1]);
+          if (id != null && id > 0) {
+            return MaterialPageRoute(
+              builder: (context) => FaqDetailScreen(faqId: id),
+              settings: RouteSettings(
+                name: routeName,
+                arguments: settings.arguments,
+              ),
+            );
+          }
         }
 
         return null;
@@ -274,7 +361,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkLoginStatus() async {
-    await AuthService.isLoggedIn();
+    final isLoggedIn = await AuthService.isLoggedIn();
+
+    // 로컬 웹( localhost )에서만 자동 로그인
+    if (!isLoggedIn && kIsWeb) {
+      final host = Uri.base.host;
+      final isLocalHost = host == 'localhost' || host == '127.0.0.1' || host.isEmpty;
+      if (isLocalHost) {
+        await _tryDebugAutoLogin();
+      }
+    }
 
     if (mounted) {
       setState(() {
@@ -283,9 +379,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
   }
 
-  /// 디버그 모드 전용: test@naver.com / testtest 로 자동 로그인
+  /// 로컬 개발용: test@naver.com / testtest1234 로 자동 로그인
   static const String _debugEmail = 'test@naver.com';
-  static const String _debugPassword = 'testtest';
+  static const String _debugPassword = 'testtest1234';
 
   Future<bool> _tryDebugAutoLogin() async {
     try {
@@ -299,7 +395,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       if (resultData is! Map) return false;
 
       final userData = NodeValueParser.normalizeMap(
-        Map<String, dynamic>.from(resultData as Map),
+        Map<String, dynamic>.from(resultData),
       );
       final userRaw = userData['user'];
       final userJson = NodeValueParser.normalizeMap(

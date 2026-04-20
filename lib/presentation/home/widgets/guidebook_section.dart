@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/services/content_service.dart';
-import '../../common/widgets/web_drag_scroll_configuration.dart';
+import '../../common/widgets/web_dragscroll.dart';
 import '../../content/dashboard/screens/content_detail_screen.dart';
 
 class GuidebookSection extends StatefulWidget {

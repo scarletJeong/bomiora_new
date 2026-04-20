@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
-import '../../common/widgets/web_drag_scroll_configuration.dart';
+import '../../common/widgets/web_dragscroll.dart';
 import '../../shopping/utils/get_product.dart';
 
 class CategorySection extends StatefulWidget {
