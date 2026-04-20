@@ -314,8 +314,20 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 
+  /// 리뷰 첨부(`images` 등) 우선, 없으면 상품 썸네일(`productImage` / it_img1 등)
+  String? _reviewListImageUrl(ReviewModel r) {
+    if (r.images.isNotEmpty) {
+      return ImageUrlHelper.getReviewImageUrl(r.images.first);
+    }
+    final thumb = r.productImage?.trim();
+    if (thumb != null && thumb.isNotEmpty) {
+      return ImageUrlHelper.getImageUrl(thumb);
+    }
+    return null;
+  }
+
   Widget _productImage(ReviewModel r) {
-    final url = r.images.isNotEmpty ? ImageUrlHelper.getReviewImageUrl(r.images.first) : null;
+    final url = _reviewListImageUrl(r);
     return ClipRRect(
       borderRadius: BorderRadius.circular(4),
       child: SizedBox(
@@ -631,6 +643,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Widget _collapsedTile(ReviewModel r) {
+    final listThumb = _reviewListImageUrl(r);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -652,9 +665,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                 child: SizedBox(
                   width: 40,
                   height: 40,
-                  child: r.images.isNotEmpty
+                  child: listThumb != null && listThumb.isNotEmpty
                       ? Image.network(
-                          ImageUrlHelper.getReviewImageUrl(r.images.first),
+                          listThumb,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             color: const Color(0x4CD2D2D2),

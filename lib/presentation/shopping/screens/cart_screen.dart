@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:url_launcher/url_launcher.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/app_bar.dart';
@@ -10,12 +8,11 @@ import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/cart/cart_item_model.dart';
-import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/price_formatter.dart';
-import '../../../core/network/api_client.dart';
 import 'payment_screen.dart';
 import '../widgets/recommend_product.dart';
+import '../widgets/cart_item_thumbnail.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;
@@ -191,35 +188,6 @@ class _CartScreenState extends State<CartScreen> {
         }
       });
     }
-  }
-
-  String _getImageUrl(CartItem item) {
-    // ImageUrlHelper를 사용하여 이미지 URL 정규화 (https:// 처리 포함)
-    if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
-      // normalizeThumbnailUrl을 사용하여 data/item/ 경로 포함 및 https:// 처리
-      final normalized =
-          ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId);
-      if (normalized != null && normalized.isNotEmpty) {
-        // 웹 로컬 개발 환경에서는 XAMPP 정적 파일 CORS 문제가 있어 API 프록시 경유
-        if (kIsWeb &&
-            (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
-            normalized.startsWith('http')) {
-          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(normalized)}';
-        }
-        return normalized;
-      }
-    }
-    // 기본 이미지 반환
-    final defaultImage =
-        ImageUrlHelper.normalizeThumbnailUrl('no_img.png', item.itId);
-    final fallback = defaultImage ??
-        '${ImageUrlHelper.imageBaseUrl}/data/item/${item.itId}/no_img.png';
-    if (kIsWeb &&
-        (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
-        fallback.startsWith('http')) {
-      return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
-    }
-    return fallback;
   }
 
   Future<void> _updateQuantity(int ctId, int newQuantity) async {
@@ -1063,26 +1031,7 @@ class _CartScreenState extends State<CartScreen> {
                 GestureDetector(
                   onTap: () =>
                       Navigator.pushNamed(context, '/product/${item.itId}'),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.network(
-                      _getImageUrl(item),
-                      width: 87,
-                      height: 87,
-                      fit: BoxFit.cover,
-                      cacheWidth: 87,
-                      cacheHeight: 87,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 87,
-                        height: 87,
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: CartItemThumbnail(item: item, size: 87),
                 ),
                 const SizedBox(width: 20),
                 Expanded(
