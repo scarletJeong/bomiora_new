@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 
-import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
+import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 
@@ -91,10 +92,8 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   }
 
   Widget _buildBody(AnnouncementModel item) {
-    final createdDate = item.createdAt == null ? '-' : DateDisplayFormatter.formatYmd(item.createdAt!);
     final hasImage = item.imagePath != null && item.imagePath!.trim().isNotEmpty;
     final formattedTitle = _normalizeTitle(item.title);
-    final formattedContent = _normalizeHtmlToText(item.content);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(27, 16, 27, 24),
@@ -128,16 +127,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
           ),
           const SizedBox(height: 20),
         ],
-        Text(
-          formattedContent,
-          style: const TextStyle(
-            color: _kText,
-            fontSize: 14,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-            height: 1.7,
-          ),
-        ),
+        _buildAnnouncementBody(item.content),
         const SizedBox(height: 20),
         Container(height: 1, color: _kBorder),
         const SizedBox(height: 14),
@@ -190,43 +180,62 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     );
   }
 
+  Widget _buildAnnouncementBody(String rawHtml) {
+    final processed = ContentService.prepareContentHtmlForRender(rawHtml);
+    if (processed.trim().isEmpty) {
+      final plain = ContentService.normalizeHtmlToText(rawHtml);
+      return Text(
+        plain,
+        style: const TextStyle(
+          color: _kText,
+          fontSize: 14,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+          height: 1.7,
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width - 54;
+        return Html(
+          data: processed,
+          style: {
+            'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+            'body': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              fontFamily: 'Gmarket Sans TTF',
+              fontSize: FontSize(14),
+              fontWeight: FontWeight.w500,
+              lineHeight: const LineHeight(1.7),
+              textAlign: TextAlign.start,
+              color: _kText,
+            ),
+            'p': Style(
+              margin: Margins.only(bottom: 8),
+              padding: HtmlPaddings.zero,
+            ),
+            'img': Style(
+              width: Width(maxWidth),
+              display: Display.block,
+              margin: Margins.symmetric(vertical: 8),
+            ),
+            'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+            'span': Style(fontFamily: 'Gmarket Sans TTF'),
+          },
+        );
+      },
+    );
+  }
+
   String _normalizeTitle(String raw) {
     return raw
         .replaceAll(r'\n', '\n')
         .replaceAll(RegExp(r'[ \t]+\n'), '\n')
         .trim();
-  }
-
-  String _normalizeHtmlToText(String raw) {
-    var text = raw;
-    text = text.replaceAll(r'\n', '\n');
-    text = text.replaceAll(RegExp(r'<\s*br\s*/?\s*>', caseSensitive: false), '\n');
-    text = text.replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n');
-    text = text.replaceAll(RegExp(r'<p[^>]*>', caseSensitive: false), '');
-    text = text.replaceAll('&nbsp;', ' ');
-    text = text.replaceAll('&amp;', '&');
-    text = text.replaceAll('&lt;', '<');
-    text = text.replaceAll('&gt;', '>');
-    text = text.replaceAll('&quot;', '"');
-    text = text.replaceAll('&#39;', "'");
-    text = text.replaceAll(RegExp(r'<[^>]+>'), '');
-    final lines = text
-        .split('\n')
-        .map((line) => line.replaceAll(RegExp(r'\s+'), ' ').trim())
-        .toList();
-
-    final compact = <String>[];
-    var blankStreak = 0;
-    for (final line in lines) {
-      if (line.isEmpty) {
-        blankStreak += 1;
-        if (blankStreak <= 1) compact.add('');
-      } else {
-        blankStreak = 0;
-        compact.add(line);
-      }
-    }
-    return compact.join('\n').trim();
   }
 
   Widget _buildAdjacentRow({
