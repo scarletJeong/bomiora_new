@@ -319,6 +319,7 @@ class _CartScreenState extends State<CartScreen> {
     final paid = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: '/pay'),
         builder: (context) => PaymentScreen(
           cartItems: selectedCartItems,
           shippingCost: selectedShippingCost,

@@ -41,6 +41,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   static const _ink = Color(0xFF1A1A1A);
   static const _muted = Color(0xFF898686);
   static const _border = Color(0xFFD2D2D2);
+  static const double _fieldHeight = 40;
 
   final TextEditingController _pointController = TextEditingController();
   final TextEditingController _addressNameController = TextEditingController();
@@ -58,7 +59,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _syncingPoint = false;
   bool _useAllPoints = false;
   bool _useEscrow = false;
-  bool _webPopupGuideAcknowledged = false;
   String? _lastWebKcpLaunchUrl;
   Object? _lastWebKcpPopup;
 
@@ -347,11 +347,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_submitting) return;
     if (!_validateBeforePay()) return;
 
-    if (kIsWeb && !_webPopupGuideAcknowledged) {
-      final proceed = await _showWebKcpGuideDialog();
-      if (!proceed) return;
-    }
-
     final webPendingPopup = kIsWeb ? openPendingKcpPopup() : null;
     if (kIsWeb && webPendingPopup == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -527,43 +522,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  Future<bool> _showWebKcpGuideDialog() async {
-    if (!mounted) return false;
-    final agreed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('웹 결제 전 안내'),
-          content: const Text(
-            '카드 인증 단계에서 팝업이 추가로 열릴 수 있습니다.\n\n'
-            '1) 브라우저 팝업 차단 해제\n'
-            '2) 결제창/카드인증창 모두 허용\n'
-            '3) 차단되면 "결제창 다시열기" 버튼으로 재시도',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('확인 후 진행'),
-            ),
-          ],
-        );
-      },
-    );
-
-    final ok = agreed == true;
-    if (ok && mounted) {
-      setState(() {
-        _webPopupGuideAcknowledged = true;
-      });
-    }
-    return ok;
-  }
-
   void _reopenWebKcpLaunch() {
     if (!kIsWeb) return;
     final url = (_lastWebKcpLaunchUrl ?? '').trim();
@@ -612,18 +570,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
     Object? webPopup,
   }) async {
     const maxTry = 150; // 약 5분
+    var popupClosedSeen = false;
+    var popupClosedGraceLeft = 6; // 팝업 닫힘 감지 후 약 12초(6*2s) 동안 결과를 추가 확인
     for (var i = 0; i < maxTry; i += 1) {
       if (!mounted) return null;
       if (kIsWeb && webPopup != null && isKcpPopupClosed(webPopup)) {
-        return {
-          'success': false,
-          'error_code': 'USER_CANCELLED',
-          'message': '사용자가 결제를 취소했습니다. 결제하기 버튼으로 다시 시도해 주세요.',
-        };
+        // 가상계좌/승인 완료 직후 팝업이 먼저 닫히는 경우가 있어,
+        // 즉시 취소 처리하지 않고 잠깐 결과를 더 확인한다.
+        popupClosedSeen = true;
       }
       try {
         final response = await ApiClient.get(ApiEndpoints.kcpPayResult(token));
         if (response.statusCode == 404) {
+          if (popupClosedSeen) {
+            popupClosedGraceLeft -= 1;
+            if (popupClosedGraceLeft <= 0) {
+              return {
+                'success': false,
+                'error_code': 'USER_CANCELLED',
+                'message': '사용자가 결제를 취소했습니다. 결제하기 버튼으로 다시 시도해 주세요.',
+              };
+            }
+          }
           await Future.delayed(const Duration(seconds: 2));
           continue;
         }
@@ -631,6 +599,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final status = (data['status'] ?? '').toString();
         if (status == 'pending') {
+          // 가상계좌는 "입금 전"이어도 발급(결제 프로세스 완료)이면 완료 화면으로 이동해야 함.
+          // 백엔드가 status=pending으로 내려도 res_cd=0000(성공) + order_id가 있으면 성공으로 처리.
+          final resCd = (data['res_cd'] ?? '').toString().trim();
+          final orderId = (data['order_id'] ?? '').toString().trim();
+          if (resCd == '0000' && orderId.isNotEmpty) {
+            return {
+              'success': true,
+              'error_code': data['error_code'],
+              'status': status,
+              'order_id': orderId,
+              'message': (data['message'] ?? '가상계좌 발급이 완료되었습니다.').toString(),
+            };
+          }
+          if (popupClosedSeen) {
+            popupClosedGraceLeft -= 1;
+            if (popupClosedGraceLeft <= 0) {
+              return {
+                'success': false,
+                'error_code': 'USER_CANCELLED',
+                'status': status,
+                'order_id': data['order_id'],
+                'message': '결제창이 닫혀 결제가 완료되지 않았습니다. 결제하기 버튼으로 다시 시도해 주세요.',
+              };
+            }
+          }
           await Future.delayed(const Duration(seconds: 2));
           continue;
         }
@@ -643,6 +636,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'message': (data['message'] ?? '').toString(),
         };
       } catch (_) {
+        if (popupClosedSeen) {
+          popupClosedGraceLeft -= 1;
+          if (popupClosedGraceLeft <= 0) {
+            return {
+              'success': false,
+              'error_code': 'USER_CANCELLED',
+              'message': '결제창이 닫혀 결제가 완료되지 않았습니다. 결제하기 버튼으로 다시 시도해 주세요.',
+            };
+          }
+        }
         await Future.delayed(const Duration(seconds: 2));
       }
     }
@@ -1041,7 +1044,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           fontWeight: FontWeight.w300,
                         ),
                       ),
-                      
+
                       const SizedBox(height: 5),
                       _summaryRow('예상 적립 포인트',
                           '${PointService.formatPoint(_expectedPoint)} 점'),
@@ -1208,7 +1211,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             children: [
               Expanded(
                 child: SizedBox(
-                  height: 40,
+                  height: _fieldHeight,
                   child: TextField(
                     controller: _zipController,
                     readOnly: true,
@@ -1237,7 +1240,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               const SizedBox(width: 8),
               SizedBox(
-                height: 40,
+                height: _fieldHeight,
                 child: OutlinedButton(
                   onPressed: _openAddressSearch,
                   style: OutlinedButton.styleFrom(
@@ -1246,7 +1249,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, _fieldHeight),
+                    fixedSize: const Size.fromHeight(_fieldHeight),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                   ),
                   child: const Text(
                     '주소 검색',
@@ -1286,7 +1293,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 40,
+            height: _fieldHeight,
             child: TextField(
               controller: controller,
               decoration: InputDecoration(
