@@ -9,6 +9,7 @@ class MainHomeReviewModel {
   final String? mrTitle;
   final String? mrContent;
   final String? mrSummary;
+  final String? productImage;
   final List<String> images;
 
   const MainHomeReviewModel({
@@ -18,6 +19,7 @@ class MainHomeReviewModel {
     this.mrTitle,
     this.mrContent,
     this.mrSummary,
+    this.productImage,
     this.images = const [],
   });
 
@@ -39,6 +41,7 @@ class MainHomeReviewModel {
       mrTitle: _decodeTextField(json['mrTitle']),
       mrContent: _decodeTextField(json['mrContent']),
       mrSummary: _decodeTextField(json['mrSummary']),
+      productImage: _decodeTextField(json['productImage']),
       images: images,
     );
   }

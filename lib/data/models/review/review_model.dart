@@ -34,7 +34,10 @@ class ReviewModel {
   
   // 이미지들
   final List<String> images;
-  
+
+  /// 상품 대표 썸네일 원본 경로(API `it_img1`, `product.image_url` 등) — 리뷰 첨부가 없을 때 표시
+  final String? productImage;
+
   // 사용자 정보
   final DateTime? isBirthday;
   final int? isWeight;
@@ -75,6 +78,7 @@ class ReviewModel {
     this.isNegativeReviewText,
     this.isMoreReviewText,
     this.images = const [],
+    this.productImage,
     this.isBirthday,
     this.isWeight,
     this.isHeight,
@@ -104,6 +108,41 @@ class ReviewModel {
     return null;
   }
 
+  static String? _readProductThumbnailRaw(Map<String, dynamic> m) {
+    const directKeys = <String>[
+      'productImage',
+      'product_image',
+      'imageUrl',
+      'image_url',
+      'thumbnail',
+      'thumbnail_url',
+      'it_img',
+    ];
+    for (final k in directKeys) {
+      final s = NodeValueParser.asString(m[k]);
+      if (s != null) {
+        final t = s.trim();
+        if (t.isNotEmpty && t.toLowerCase() != 'null') return t;
+      }
+    }
+    for (var i = 1; i <= 9; i++) {
+      for (final k in ['it_img$i', 'itImg$i', 'IT_IMG$i']) {
+        final s = NodeValueParser.asString(m[k]);
+        if (s != null) {
+          final t = s.trim();
+          if (t.isNotEmpty && t.toLowerCase() != 'null') return t;
+        }
+      }
+    }
+    return null;
+  }
+
+  static void _pushUniqueImage(List<String> list, String? raw) {
+    final t = (raw ?? '').trim();
+    if (t.isEmpty || t.toLowerCase() == 'null') return;
+    if (!list.contains(t)) list.add(t);
+  }
+
   /// JSON에서 모델로 변환
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
@@ -113,6 +152,19 @@ class ReviewModel {
           .map((e) => NodeValueParser.asString(e) ?? '')
           .where((e) => e.isNotEmpty)
           .toList();
+    }
+    if (imageList.isEmpty) {
+      for (final k in ['image', 'reviewImage', 'review_image', 'is_img', 'isImg', 'photo']) {
+        _pushUniqueImage(imageList, NodeValueParser.asString(normalized[k]));
+      }
+      final altLists = [normalized['reviewPhotos'], normalized['review_images']];
+      for (final raw in altLists) {
+        if (raw is List) {
+          for (final e in raw) {
+            _pushUniqueImage(imageList, NodeValueParser.asString(e));
+          }
+        }
+      }
     }
 
     String? itName = _readProductNameFromMap(normalized);
@@ -157,6 +209,24 @@ class ReviewModel {
         productMap['itKind'] ?? productMap['it_kind'],
       );
     }
+
+    String? productImage = _readProductThumbnailRaw(normalized);
+    if (productImage == null || productImage.isEmpty) {
+      productImage = productMap != null ? _readProductThumbnailRaw(productMap) : null;
+    }
+    if (productImage == null || productImage.isEmpty) {
+      for (final nestedKey in ['item', 'goods', 'itInfo', 'it', 'product']) {
+        final raw = normalized[nestedKey];
+        if (raw is Map) {
+          final nm = NodeValueParser.normalizeMap(
+            Map<String, dynamic>.from(raw),
+          );
+          productImage = _readProductThumbnailRaw(nm);
+          if (productImage != null && productImage.isNotEmpty) break;
+        }
+      }
+    }
+
     if (itKind == null || itKind.isEmpty) {
       for (final nestedKey in [
         'item',
@@ -200,6 +270,7 @@ class ReviewModel {
       isNegativeReviewText: NodeValueParser.asString(normalized['isNegativeReviewText']),
       isMoreReviewText: NodeValueParser.asString(normalized['isMoreReviewText']),
       images: imageList,
+      productImage: productImage,
       isBirthday: NodeValueParser.asDateTime(normalized['isBirthday']),
       isWeight: NodeValueParser.asInt(normalized['isWeight']),
       isHeight: NodeValueParser.asInt(normalized['isHeight']),
@@ -233,6 +304,7 @@ class ReviewModel {
       if (isNegativeReviewText != null) 'isNegativeReviewText': isNegativeReviewText,
       if (isMoreReviewText != null) 'isMoreReviewText': isMoreReviewText,
       'images': images,
+      if (productImage != null) 'productImage': productImage,
       if (isBirthday != null) 'isBirthday': isBirthday!.toIso8601String().split('T')[0],
       if (isWeight != null) 'isWeight': isWeight,
       if (isHeight != null) 'isHeight': isHeight,

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../network/api_client.dart';
+
 /// 이미지 URL 정규화 헬퍼
 /// 
 /// 주의: CORS 문제 해결 필요
@@ -12,7 +14,30 @@ import 'package:flutter/foundation.dart';
 /// 
 /// 2. 또는 Flutter 앱을 XAMPP를 통해 서빙 (포트 80)
 class ImageUrlHelper {
-  static String _localProxyBaseUrl() => 'http://localhost:9000';
+  /// `/api/proxy/image?url=` 로 감싼 URL을 최대 여러 겹 벗겨 실제 이미지 주소만 남김.
+  static String unwrapProxyImageUrlIfAny(String url) {
+    var current = url.trim();
+    for (var i = 0; i < 8; i++) {
+      final parsed = Uri.tryParse(current);
+      if (parsed == null) break;
+      final p = parsed.path.toLowerCase();
+      if (!p.contains('proxy/image')) break;
+      final inner = parsed.queryParameters['url'];
+      if (inner == null || inner.isEmpty) break;
+      final next = Uri.decodeFull(inner);
+      if (next == current) break;
+      current = next;
+    }
+    return current;
+  }
+
+  /// 웹에서만 쓰이는 `blob:` 등 — 서버 프록시로내면 415 등이 나므로 제외
+  static bool isBrowserBlobOrInvalidImageUrl(String url) {
+    final t = url.trim().toLowerCase();
+    return t.startsWith('blob:') ||
+        t.contains('blob:http') ||
+        t.contains('blob:https');
+  }
 
   /// HTML 조각에서 첫 번째 img src를 추출.
   /// - 리뷰 데이터가 URL 대신 `<img src="...">` 형태로 올 때 대응.
@@ -68,7 +93,10 @@ class ImageUrlHelper {
     if (imageUrl == null || imageUrl.isEmpty) {
       return '';
     }
-    
+    if (isBrowserBlobOrInvalidImageUrl(imageUrl)) {
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
+
     // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return convertToLocalUrl(imageUrl);
@@ -184,8 +212,15 @@ class ImageUrlHelper {
   /// 예: https://bomiora.kr/data/item/... -> http://localhost/bomiora/www/data/item/... (로컬 환경)
   /// CORS 문제 해결: 같은 도메인 사용
   static String convertToLocalUrl(String url) {
-    if (url.contains('bomiora.kr') || url.contains('www.bomiora.kr') || url.contains('bomiora0.mycafe24.com')) {
-      Uri uri = Uri.parse(url);
+    var u = unwrapProxyImageUrlIfAny(url);
+    if (u.isEmpty) return url;
+    if (isBrowserBlobOrInvalidImageUrl(u)) {
+      // 재귀: 로컬 웹이면 프록시 경로로 정리됨
+      return convertToLocalUrl('https://bomiora0.mycafe24.com/data/item/no_img.png');
+    }
+
+    if (u.contains('bomiora.kr') || u.contains('www.bomiora.kr') || u.contains('bomiora0.mycafe24.com')) {
+      Uri uri = Uri.parse(u);
       String path = uri.path;
       // TODO: 운영 전환 시 canonicalUpstreamHost를 bomiora.kr로 변경
       const canonicalUpstreamHost = 'https://bomiora0.mycafe24.com';
@@ -194,10 +229,9 @@ class ImageUrlHelper {
       if (kIsWeb) {
         final currentHost = Uri.base.host;
         
-        // 로컬 개발 환경 - 로컬 경로 사용
+        // 로컬 웹: Flutter web은 이미지 로드에 XHR을 쓰는 경우가 많아 cross-origin 원본은 CORS에 막힘 → 백엔드 프록시(한 겹)
         if (currentHost == 'localhost' || currentHost == '127.0.0.1' || currentHost.isEmpty) {
-          final target = canonicalUpstreamUrl;
-          return '${_localProxyBaseUrl()}/api/proxy/image?url=${Uri.encodeComponent(target)}';
+          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(canonicalUpstreamUrl)}';
         }
         
         // Cafe24 프로덕션 환경 - 같은 도메인 사용 (CORS 해결!)
@@ -219,7 +253,7 @@ class ImageUrlHelper {
       return result;
     }
     
-    return url;
+    return u;
   }
 
   /// 간단한 이미지 URL 반환 (일반적인 용도)
@@ -228,7 +262,10 @@ class ImageUrlHelper {
     if (imageUrl == null || imageUrl.isEmpty) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
     }
-    
+    if (isBrowserBlobOrInvalidImageUrl(imageUrl)) {
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
+
     // localhost URL 수정 (잘못된 형태)
     if (imageUrl.contains('localhost/bomiora/www/')) {
       String fixedUrl = imageUrl
@@ -268,6 +305,9 @@ class ImageUrlHelper {
 
     final extractedSrc = _extractFirstImageSrc(imageUrl);
     final trimmed = (extractedSrc ?? imageUrl).trim();
+    if (isBrowserBlobOrInvalidImageUrl(trimmed)) {
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       return convertToLocalUrl(trimmed);
     }

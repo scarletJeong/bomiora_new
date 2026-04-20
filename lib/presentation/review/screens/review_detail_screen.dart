@@ -9,8 +9,6 @@ import '../../../data/services/auth_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/snackbar_utils.dart';
-import '../../shopping/screens/product_detail_screen.dart';
-
 /// 리뷰 상세보기 화면
 class ReviewDetailScreen extends StatefulWidget {
   final ReviewModel review;

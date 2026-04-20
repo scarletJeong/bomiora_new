@@ -6,25 +6,30 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
 
-/// 메인 리뷰 `mr_img` — `it_id/파일` 형태가 아니면 `itId`를 붙여 상품 리뷰와 같은 itemuse URL 생성
-String? _mainHomeReviewCardImageUrl(MainHomeReviewModel r) {
-  if (r.images.isEmpty) return null;
-  var raw = r.images.first.trim();
-  if (raw.isEmpty) return null;
-  if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
-    raw = raw.replaceAll('\\', '/');
-    while (raw.startsWith('/')) {
-      raw = raw.substring(1);
-    }
-    const prefix = 'data/itemuse/';
-    if (raw.startsWith(prefix)) {
-      raw = raw.substring(prefix.length);
-    }
-    if (!raw.contains('/') && (r.itId?.trim().isNotEmpty ?? false)) {
-      raw = '${r.itId!.trim()}/$raw';
-    }
+const _defaultMainReviewImage =
+    'https://bomiora0.mycafe24.com/data/mainreview/1686290723/7KO864Sk66W0_01.gif';
+const _mainReviewImagePool = <String>[
+  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/6rmA7JuQ7KeE220x220px.gif',
+  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_iLd8o8.gif',
+  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_4cxlQV.gif',
+  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_yTlnjB.gif',
+  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_bBWgZU.gif',
+  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_VQ1Mzk.gif',
+];
+
+/// 메인 리뷰 `mr_img`를 mainreview 경로로 정규화
+String _mainHomeReviewCardImageUrl(MainHomeReviewModel r, int index) {
+  final productImage = r.productImage?.trim();
+  if (productImage != null && productImage.isNotEmpty) {
+    return ImageUrlHelper.getImageUrl(productImage);
   }
-  return ImageUrlHelper.getReviewImageUrl(raw);
+  final fallback = _mainReviewImagePool[index % _mainReviewImagePool.length];
+  return ImageUrlHelper.convertToLocalUrl(fallback);
+}
+
+/// 메인리뷰 이미지 실패 시 기존 itemuse 경로 재시도용
+String _mainHomeReviewFallbackImageUrl() {
+  return ImageUrlHelper.convertToLocalUrl(_defaultMainReviewImage);
 }
 
 class ReviewSection extends StatefulWidget {
@@ -219,11 +224,13 @@ class _ReviewSectionState extends State<ReviewSection> {
       itemCount: _reviews.length,
       itemBuilder: (context, index) {
         final r = _reviews[index];
-        final thumb = _mainHomeReviewCardImageUrl(r);
+        final thumb = _mainHomeReviewCardImageUrl(r, index);
+        final fallbackThumb = _mainHomeReviewFallbackImageUrl();
         return _ReviewCard(
           titleLine: r.headline,
           bodyLine: r.bodyText,
           imageUrl: thumb,
+          fallbackImageUrl: fallbackThumb,
         );
       },
     );
@@ -236,11 +243,13 @@ class _ReviewCard extends StatelessWidget {
   final String titleLine;
   final String bodyLine;
   final String? imageUrl;
+  final String? fallbackImageUrl;
 
   const _ReviewCard({
     required this.titleLine,
     required this.bodyLine,
     this.imageUrl,
+    this.fallbackImageUrl,
   });
 
   @override
@@ -253,24 +262,9 @@ class _ReviewCard extends StatelessWidget {
           // 배경 이미지
           Positioned.fill(
             child: imageUrl != null && imageUrl!.isNotEmpty
-                ? Image.network(
-                    imageUrl!,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
-                    errorBuilder: (_, __, ___) =>
-                        Container(color: const Color(0xFFE0E0E0)),
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: const Color(0xFFE8E8E8),
-                        alignment: Alignment.center,
-                        child: const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    },
+                ? _ReviewCardImage(
+                    primaryUrl: imageUrl!,
+                    fallbackUrl: fallbackImageUrl,
                   )
                 : Container(color: const Color(0xFFE0E0E0)),
           ),
@@ -351,6 +345,70 @@ class _ReviewCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ReviewCardImage extends StatefulWidget {
+  final String primaryUrl;
+  final String? fallbackUrl;
+
+  const _ReviewCardImage({
+    required this.primaryUrl,
+    this.fallbackUrl,
+  });
+
+  @override
+  State<_ReviewCardImage> createState() => _ReviewCardImageState();
+}
+
+class _ReviewCardImageState extends State<_ReviewCardImage> {
+  late String _activeUrl = widget.primaryUrl;
+  bool _didFallback = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.network(
+      _activeUrl,
+      fit: BoxFit.cover,
+      alignment: Alignment.center,
+      errorBuilder: (_, __, ___) {
+        final fallback = widget.fallbackUrl;
+        if (!_didFallback &&
+            fallback != null &&
+            fallback.isNotEmpty &&
+            fallback != _activeUrl) {
+          _didFallback = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() {
+              _activeUrl = fallback;
+            });
+          });
+          return Container(
+            color: const Color(0xFFE8E8E8),
+            alignment: Alignment.center,
+            child: const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+        return Container(color: const Color(0xFFE0E0E0));
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: const Color(0xFFE8E8E8),
+          alignment: Alignment.center,
+          child: const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      },
     );
   }
 }

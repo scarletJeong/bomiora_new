@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/utils/image_url_helper.dart';
 
 class ContentService {
+  /// Cafe24 업로드 썸네일 실제 경로 (HTML이 아닌 이미지 바이트가 내려오는 경로)
   static const String _contentThumbBase =
-      'https://bomiora0.mycafe24.com/www/data/content/';
+      'https://bomiora0.mycafe24.com/data/content/';
 
   static String? _extractFirstImageSrc(String raw) {
     final text = raw.trim();
@@ -56,6 +58,23 @@ class ContentService {
     return compact.join('\n').trim();
   }
 
+  static String prepareContentHtmlForRender(String raw) {
+    if (raw.trim().isEmpty) return '';
+    return raw.replaceAllMapped(
+      RegExp(
+        r'''(<img[^>]*\bsrc\s*=\s*["'])([^"']+)(["'][^>]*>)''',
+        caseSensitive: false,
+      ),
+      (match) {
+        final prefix = match.group(1) ?? '';
+        final src = match.group(2) ?? '';
+        final suffix = match.group(3) ?? '';
+        final resolved = resolveThumbnailUrl(src, fallback: src);
+        return '$prefix$resolved$suffix';
+      },
+    );
+  }
+
   static String resolveThumbnailUrl(String? rawUrl, {String fallback = ''}) {
     final raw = (rawUrl ?? '').trim();
     if (raw.isEmpty) return fallback;
@@ -69,11 +88,20 @@ class ContentService {
 
     if (source.startsWith('/')) {
       final noSlash = source.replaceFirst(RegExp(r'^/+'), '');
+      if (noSlash.startsWith('bomiora0/www/data/content/')) {
+        final fileName = noSlash.substring('bomiora0/www/data/content/'.length);
+        return _toWebSafeImageUrl('$_contentThumbBase$fileName');
+      }
+      if (noSlash.startsWith('www/data/content/')) {
+        final fileName = noSlash.substring('www/data/content/'.length);
+        return _toWebSafeImageUrl('$_contentThumbBase$fileName');
+      }
       if (noSlash.startsWith('data/content/')) {
-        return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/www/$noSlash');
+        return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/$noSlash');
       }
       if (noSlash.startsWith('content/')) {
-        return _toWebSafeImageUrl('$_contentThumbBase$noSlash');
+        final fileName = noSlash.substring('content/'.length);
+        return _toWebSafeImageUrl('$_contentThumbBase$fileName');
       }
       if (noSlash.startsWith('www/')) {
         return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/$noSlash');
@@ -84,12 +112,20 @@ class ContentService {
     }
 
     final normalized = source.replaceFirst(RegExp(r'^/+'), '');
+    if (normalized.startsWith('bomiora0/www/data/content/')) {
+      final fileName = normalized.substring('bomiora0/www/data/content/'.length);
+      return _toWebSafeImageUrl('$_contentThumbBase$fileName');
+    }
+    if (normalized.startsWith('www/data/content/')) {
+      final fileName = normalized.substring('www/data/content/'.length);
+      return _toWebSafeImageUrl('$_contentThumbBase$fileName');
+    }
     if (normalized.startsWith('content/')) {
-      // DB 값: content/xxx.png -> /www/data/content/content/xxx.png
-      return _toWebSafeImageUrl('$_contentThumbBase$normalized');
+      final fileName = normalized.substring('content/'.length);
+      return _toWebSafeImageUrl('$_contentThumbBase$fileName');
     }
     if (normalized.startsWith('data/content/')) {
-      return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/www/$normalized');
+      return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/$normalized');
     }
     if (normalized.startsWith('www/')) {
       return _toWebSafeImageUrl('https://bomiora0.mycafe24.com/$normalized');
@@ -105,13 +141,8 @@ class ContentService {
     final host = Uri.base.host;
     final isLocalWeb = host == 'localhost' || host == '127.0.0.1' || host.isEmpty;
     if (!isLocalWeb) return url;
-    final lower = url.toLowerCase();
-    final shouldProxy = lower.contains('bomiora0.mycafe24.com') ||
-        lower.contains('bomiora.kr') ||
-        lower.contains('localhost/bomiora/www') ||
-        lower.contains('127.0.0.1/bomiora/www');
-    if (!shouldProxy) return url;
-    return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(url)}';
+    // 로컬 웹: [ImageUrlHelper.convertToLocalUrl] — 프록시 이중 감싸기·415 방지, Cafe24 원본 직링크 사용
+    return ImageUrlHelper.convertToLocalUrl(url);
   }
 
   static String? resolveFirstBodyImageUrl(String? html) {
@@ -128,14 +159,6 @@ class ContentService {
   }) {
     final thumbRaw = (thumbnail ?? '').trim();
     final bodyImage = resolveFirstBodyImageUrl(contentHtml);
-
-    // 운영 데이터상 상대경로 thumbnail(content/...)가 HTML로 떨어지는 경우가 있어
-    // 절대경로가 아니면 본문 첫 이미지를 우선 사용.
-    final isAbsoluteThumb =
-        thumbRaw.startsWith('http://') || thumbRaw.startsWith('https://');
-    if (!isAbsoluteThumb && bodyImage != null && bodyImage.isNotEmpty) {
-      return bodyImage;
-    }
 
     final thumbResolved = resolveThumbnailUrl(thumbRaw, fallback: '');
     if (thumbResolved.isNotEmpty) return thumbResolved;
