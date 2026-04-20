@@ -9,7 +9,6 @@ import '../../../data/models/cart/cart_item_model.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/price_formatter.dart';
-import '../../../core/network/api_client.dart';
 import 'checkout_webview_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -159,29 +158,14 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   String _getImageUrl(CartItem item) {
-    // ImageUrlHelper를 사용하여 이미지 URL 정규화 (https:// 처리 포함)
     if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
-      // normalizeThumbnailUrl을 사용하여 data/item/ 경로 포함 및 https:// 처리
       final normalized = ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId);
       if (normalized != null && normalized.isNotEmpty) {
-        // 웹 로컬 개발 환경에서는 XAMPP 정적 파일 CORS 문제가 있어 API 프록시 경유
-        if (kIsWeb &&
-            (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
-            normalized.startsWith('http')) {
-          return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(normalized)}';
-        }
         return normalized;
       }
     }
-    // 기본 이미지 반환
     final defaultImage = ImageUrlHelper.normalizeThumbnailUrl('no_img.png', item.itId);
-    final fallback = defaultImage ?? '${ImageUrlHelper.imageBaseUrl}/data/item/${item.itId}/no_img.png';
-    if (kIsWeb &&
-        (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
-        fallback.startsWith('http')) {
-      return '${ApiClient.baseUrl}/api/proxy/image?url=${Uri.encodeComponent(fallback)}';
-    }
-    return fallback;
+    return defaultImage ?? '${ImageUrlHelper.imageBaseUrl}/data/item/${item.itId}/no_img.png';
   }
 
   Future<void> _updateQuantity(int ctId, int newQuantity) async {
