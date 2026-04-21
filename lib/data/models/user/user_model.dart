@@ -8,6 +8,10 @@ class UserModel {
   final String? phone;
   final String? password; // 비밀번호 저장
   final String? profileImage; // 프로필 이미지 경로/URL
+  /// 회원 생년월일(가능한 포맷: YYYYMMDD / yyyy-MM-dd 등)
+  final String? birthDate;
+  /// 회원 성별(가능한 값: M/F/1/2/남/여 등)
+  final String? sex;
 
   UserModel({
     required this.id,
@@ -17,6 +21,8 @@ class UserModel {
     this.phone,
     this.password,
     this.profileImage,
+    this.birthDate,
+    this.sex,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -48,6 +54,14 @@ class UserModel {
     final profileImage =
         NodeValueParser.asString(normalized['profileImage']) ??
         NodeValueParser.asString(normalized['profile_img']);
+    final birthDate =
+        NodeValueParser.asString(normalized['birthDate']) ??
+        NodeValueParser.asString(normalized['mbBirth']) ??
+        NodeValueParser.asString(normalized['mb_birth']);
+    final sex =
+        NodeValueParser.asString(normalized['sex']) ??
+        NodeValueParser.asString(normalized['mbSex']) ??
+        NodeValueParser.asString(normalized['mb_sex']);
     
     return UserModel(
       id: id,
@@ -57,6 +71,8 @@ class UserModel {
       phone: phone,
       password: password,
       profileImage: profileImage,
+      birthDate: birthDate,
+      sex: sex,
     );
   }
 
@@ -69,6 +85,8 @@ class UserModel {
       'phone': phone,
       if (password != null) 'password': password,
       if (profileImage != null) 'profileImage': profileImage,
+      if (birthDate != null) 'birthDate': birthDate,
+      if (sex != null) 'sex': sex,
     };
   }
 
@@ -80,6 +98,8 @@ class UserModel {
     String? phone,
     String? password,
     String? profileImage,
+    String? birthDate,
+    String? sex,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -89,6 +109,8 @@ class UserModel {
       phone: phone ?? this.phone,
       password: password ?? this.password,
       profileImage: profileImage ?? this.profileImage,
+      birthDate: birthDate ?? this.birthDate,
+      sex: sex ?? this.sex,
     );
   }
 }
