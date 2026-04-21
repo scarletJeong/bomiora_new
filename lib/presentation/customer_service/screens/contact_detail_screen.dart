@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../data/models/contact/contact_model.dart';
-import '../../../data/services/contact_service.dart';
-import '../../../data/services/auth_service.dart';
+import 'package:flutter_html/flutter_html.dart';
+
 import '../../../core/utils/date_formatter.dart';
+import '../../../data/models/contact/contact_model.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/services/contact_service.dart';
+import '../../../data/services/content_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
@@ -310,16 +313,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             ],
           ),
           const SizedBox(height: 15),
-          Text(
-            c.plainQuestionBody,
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 14,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w300,
-              height: 1.63,
-            ),
-          ),
+          _buildContactHtmlBody(c.wrContent),
         ],
             ),
           ),
@@ -406,16 +400,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 15),
-                  Text(
-                    reply.getPlainTextContent(),
-                    style: const TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 14,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      height: 1.63,
-                    ),
-                  ),
+                  _buildContactHtmlBody(_primaryContactHtml(reply)),
                 ],
               ),
             ),
@@ -526,16 +511,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 15),
-                      Text(
-                        _stripToPlainText(raw),
-                        style: const TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 14,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                          height: 1.63,
-                        ),
-                      ),
+                      _buildContactHtmlBody(raw),
                     ],
                   ),
                 ),
@@ -684,13 +660,63 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     );
   }
 
-  static String _stripToPlainText(String s) {
-    return s
-        .replaceAll(RegExp(r'<[^>]*>'), '')
-        .replaceAll(RegExp(r'&nbsp;'), ' ')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&amp;', '&')
-        .trim();
+  /// 본문 HTML 우선, 비어 있으면 답변 필드
+  String _primaryContactHtml(Contact c) {
+    if (c.wrContent.trim().isNotEmpty) return c.wrContent;
+    return c.wrReply;
+  }
+
+  Widget _buildContactHtmlBody(String rawHtml) {
+    final trimmed = rawHtml.trim();
+    if (trimmed.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final processed = ContentService.prepareContentHtmlForRender(rawHtml);
+    if (processed.trim().isEmpty) {
+      return Text(
+        ContentService.normalizeHtmlToText(rawHtml),
+        style: const TextStyle(
+          color: Color(0xFF1A1A1A),
+          fontSize: 14,
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w300,
+          height: 1.63,
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width - 48;
+        return Html(
+          data: processed,
+          style: {
+            'html': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+            'body': Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              fontFamily: 'Gmarket Sans TTF',
+              fontSize: FontSize(14),
+              fontWeight: FontWeight.w300,
+              lineHeight: const LineHeight(1.63),
+              textAlign: TextAlign.start,
+              color: const Color(0xFF1A1A1A),
+            ),
+            'p': Style(
+              margin: Margins.only(bottom: 8),
+              padding: HtmlPaddings.zero,
+            ),
+            'img': Style(
+              width: Width(maxWidth),
+              display: Display.block,
+              margin: Margins.symmetric(vertical: 8),
+            ),
+            'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+            'span': Style(fontFamily: 'Gmarket Sans TTF'),
+          },
+        );
+      },
+    );
   }
 }
