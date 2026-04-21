@@ -1,4 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
@@ -7,6 +11,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/delivery_service.dart' as delivery;
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../user/delivery/widgets/delivery_address_change_popup.dart';
 
 class PaymentCompleteScreen extends StatefulWidget {
   const PaymentCompleteScreen({
@@ -77,6 +82,62 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     }
   }
 
+  Future<void> _openDeliveryAddressChange() async {
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '배송지 변경',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, _, __) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+            DeliveryAddressChangePopup(orderId: widget.orderId),
+          ],
+        );
+      },
+    );
+    if (result == true && mounted) {
+      await _loadOrder();
+    }
+  }
+
+  Future<void> _openCardPurchaseReceipt(OrderDetailModel order) async {
+    final url = (order.cardReceiptUrl ?? '').trim();
+    if (url.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('영수증 URL이 아직 준비되지 않았습니다. (백엔드 응답 필드 확인 필요)')),
+      );
+      return;
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('영수증 URL 형식이 올바르지 않습니다.')),
+      );
+      return;
+    }
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('영수증 페이지를 열 수 없습니다.')),
+      );
+    }
+  }
+
+  bool _isCardPayment(OrderDetailModel order) {
+    final m = order.paymentMethod.toLowerCase();
+    return m.contains('카드') || m.contains('card') || m.contains('신용');
+  }
+
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
@@ -121,6 +182,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
           const SizedBox(height: 10),
           ...order.products.map(_productCard),
           const SizedBox(height: 10),
+          const Divider(height: 20, color: _border),
           _sectionTitle('주문자'),
           const SizedBox(height: 10),
           _plainLine(order.ordererName),
@@ -128,7 +190,28 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
           _plainLine(order.ordererEmail),
           const SizedBox(height: 10),
           const Divider(height: 20, color: _border),
-          _sectionTitle('배송지'),
+          Row(
+            children: [
+              Expanded(child: _sectionTitle('배송지')),
+              InkWell(
+                onTap: _openDeliveryAddressChange,
+                borderRadius: BorderRadius.circular(6),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text(
+                    '배송지 변경',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFFFF5A8D),
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           _plainLine(order.recipientAddress),
           if (order.recipientAddressDetail.isNotEmpty)
@@ -142,7 +225,11 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
           const SizedBox(height: 10),
           _priceRow('구매금액', '${PriceFormatter.format(order.productPrice)} 원'),
           _priceRow(
-              '할인금액', '-${PriceFormatter.format(order.discountAmount)} 원'),
+            '할인금액',
+            order.discountAmount <= 0
+                ? '${PriceFormatter.format(order.discountAmount)} 원'
+                : '-${PriceFormatter.format(order.discountAmount)} 원',
+          ),
           _priceRow('배송비', '${PriceFormatter.format(order.deliveryFee)} 원'),
           const Divider(height: 20, color: _border),
           _priceRow('총 결제비용', '${PriceFormatter.format(order.totalPrice)}원',
@@ -337,9 +424,102 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     final isVirtualAccount = order.paymentMethod.contains('가상계좌') ||
         order.paymentMethod.contains('무통장');
     final accountInfo = (order.paymentMethodDetail ?? '').trim();
-    final accountNo = accountInfo.contains('/')
-        ? accountInfo.split('/')[1].trim()
-        : accountInfo;
+    final accountParts = accountInfo
+        .split('/')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final bankName = accountParts.isNotEmpty ? accountParts[0] : '';
+    final bankAccountNo = accountParts.length >= 2 ? accountParts[1] : '';
+    final displayDepositAccount = [
+      if (bankName.isNotEmpty) bankName,
+      if (bankAccountNo.isNotEmpty) bankAccountNo,
+    ].join(' ');
+    final canCopyDepositAccount = isVirtualAccount && displayDepositAccount.isNotEmpty;
+    final showCardReceipt = _isCardPayment(order);
+
+    final rows = <TableRow>[
+      _infoTableRow(
+        label: '주문번호',
+        value: Row(
+          children: [
+            Expanded(child: Text(order.odId)),
+            if (showCardReceipt) ...[
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => _openCardPurchaseReceipt(order),
+                borderRadius: BorderRadius.circular(6),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text(
+                    '구매 영수증',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFFFF5A8D),
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      _infoTableRow(label: '주문상태', value: Text(order.displayStatus)),
+      _infoTableRow(label: '결제일시', value: Text(order.orderDate)),
+      _infoTableRow(
+        label: '결제방식',
+        value: Text(
+          isVirtualAccount
+              ? order.paymentMethod
+              : '${order.paymentMethod}${order.paymentMethodDetail ?? ''}',
+        ),
+      ),
+    ];
+
+    if (isVirtualAccount) {
+      rows.add(
+        _infoTableRow(
+          label: '입금계좌',
+          value: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  displayDepositAccount.isNotEmpty
+                      ? displayDepositAccount
+                      : (accountInfo.isNotEmpty ? accountInfo : '-'),
+                ),
+              ),
+              if (canCopyDepositAccount) ...[
+                const SizedBox(width: 8),
+                _copyChip(displayDepositAccount),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    rows.add(
+      _infoTableRow(
+        label: '결제금액',
+        value: Text('${PriceFormatter.format(order.totalPrice)}원'),
+      ),
+    );
+
+    if ((order.paymentMethod.contains('가상계좌') ||
+            order.paymentMethod.contains('무통장')) &&
+        order.deliveryMessage != null &&
+        order.deliveryMessage!.isNotEmpty) {
+      rows.add(
+        _infoTableRow(
+          label: '입금안내',
+          value: Text(order.deliveryMessage!),
+        ),
+      );
+    }
 
     return Container(
       width: double.infinity,
@@ -349,65 +529,82 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
           borderRadius: BorderRadius.circular(7),
         ),
       ),
-      child: Column(
-        children: [
-          _infoRow(
-            isVirtualAccount ? '가상계좌번호' : '주문번호',
-            isVirtualAccount && accountNo.isNotEmpty ? accountNo : order.odId,
-          ),
-          _infoRow('주문상태', order.displayStatus),
-          _infoRow('결제일시', order.orderDate),
-          _infoRow(
-              '결제방식',
-              isVirtualAccount
-                  ? order.paymentMethod
-                  : '${order.paymentMethod}${order.paymentMethodDetail ?? ''}'),
-          _infoRow('결제금액', '${PriceFormatter.format(order.totalPrice)}원'),
-          if (isVirtualAccount && accountInfo.isNotEmpty)
-            _infoRow('입금계좌', accountInfo),
-          if ((order.paymentMethod.contains('가상계좌') ||
-                  order.paymentMethod.contains('무통장')) &&
-              order.deliveryMessage != null &&
-              order.deliveryMessage!.isNotEmpty)
-            _infoRow('입금안내', order.deliveryMessage!),
-        ],
+      clipBehavior: Clip.antiAlias,
+      child: Table(
+        columnWidths: const {
+          0: FixedColumnWidth(84),
+          1: FlexColumnWidth(),
+        },
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        border: const TableBorder(
+          verticalInside: BorderSide(width: 1, color: Color(0xFFE3E3E3)),
+          horizontalInside: BorderSide(width: 1, color: Color(0xFFE3E3E3)),
+        ),
+        children: rows,
       ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(width: 1, color: _border)),
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 72,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: _ink,
-                fontSize: 12,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-              ),
+  TableRow _infoTableRow({
+    required String label,
+    required Widget value,
+  }) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: _ink,
-                fontSize: 12,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-              ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: DefaultTextStyle(
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
             ),
+            child: value,
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _copyChip(String copyText) {
+    return InkWell(
+      onTap: () async {
+        await Clipboard.setData(ClipboardData(text: copyText));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('입금계좌가 복사되었습니다.')),
+        );
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFD2D2D2), width: 0.5),
+          borderRadius: BorderRadius.circular(6),
+          color: Colors.white,
+        ),
+        child: const Text(
+          '복사',
+          style: TextStyle(
+            color: _muted,
+            fontSize: 11,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
     );
   }

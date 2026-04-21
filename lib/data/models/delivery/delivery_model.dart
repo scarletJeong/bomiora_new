@@ -205,6 +205,8 @@ class OrderDetailModel {
   final bool isPrescriptionOrder;
   final String paymentMethod;
   final String? paymentMethodDetail;
+  /// 카드 매출전표/영수증 URL (백엔드가 내려주는 경우)
+  final String? cardReceiptUrl;
   final String ordererName;
   final String ordererPhone;
   final String ordererEmail;
@@ -233,6 +235,7 @@ class OrderDetailModel {
     this.isPrescriptionOrder = false,
     required this.paymentMethod,
     this.paymentMethodDetail,
+    this.cardReceiptUrl,
     required this.ordererName,
     required this.ordererPhone,
     required this.ordererEmail,
@@ -261,6 +264,13 @@ class OrderDetailModel {
       (p) => (p.itKind ?? '').toLowerCase() == 'prescription',
     );
 
+    final receiptUrl = NodeValueParser.asString(normalized['cardReceiptUrl']) ??
+        NodeValueParser.asString(normalized['card_receipt_url']) ??
+        NodeValueParser.asString(normalized['receiptUrl']) ??
+        NodeValueParser.asString(normalized['receipt_url']) ??
+        NodeValueParser.asString(normalized['kcpReceiptUrl']) ??
+        NodeValueParser.asString(normalized['kcp_receipt_url']);
+
     return OrderDetailModel(
       odId: odIdString,
       orderDate: NodeValueParser.asString(normalized['orderDate']) ?? '',
@@ -281,6 +291,7 @@ class OrderDetailModel {
       isPrescriptionOrder: topLevelPrescription || inferredPrescription,
       paymentMethod: NodeValueParser.asString(normalized['paymentMethod']) ?? '',
       paymentMethodDetail: NodeValueParser.asString(normalized['paymentMethodDetail']),
+      cardReceiptUrl: receiptUrl,
       ordererName: NodeValueParser.asString(normalized['ordererName']) ?? '',
       ordererPhone: NodeValueParser.asString(normalized['ordererPhone']) ?? '',
       ordererEmail: NodeValueParser.asString(normalized['ordererEmail']) ?? '',
@@ -312,6 +323,7 @@ class OrderDetailModel {
       'isPrescriptionOrder': isPrescriptionOrder,
       'paymentMethod': paymentMethod,
       'paymentMethodDetail': paymentMethodDetail,
+      'cardReceiptUrl': cardReceiptUrl,
       'ordererName': ordererName,
       'ordererPhone': ordererPhone,
       'ordererEmail': ordererEmail,
