@@ -4,7 +4,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
-import '../../../user/healthprofile/health_profile_payload_codec.dart';
+import '../../../user/healthprofile/health_profile_payload.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/network/api_client.dart';
@@ -84,20 +84,20 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
         answer6: widget.formData['dietPeriod'] ?? '',
         answer7: widget.formData['mealsPerDay'] ?? '',
         answer71: widget.formData['mealTimes'] ?? '|||',
-        answer8: HealthProfilePayloadCodec.formatListToString(widget.formData['eatingHabits']),
-        answer9: HealthProfilePayloadCodec.formatListToString(widget.formData['foodPreference']),
-        answer10: HealthProfilePayloadCodec.composeAnswer10FrequencyOnly(
+        answer8: HealthProfilePayload.formatListToString(widget.formData['eatingHabits']),
+        answer9: HealthProfilePayload.formatListToString(widget.formData['foodPreference']),
+        answer10: HealthProfilePayload.composeAnswer10FrequencyOnly(
           widget.formData['exerciseFrequency']?.toString(),
         ),
-        answer102: HealthProfilePayloadCodec.composeAnswer10TypesOnly(
+        answer102: HealthProfilePayload.composeAnswer10TypesOnly(
           widget.formData['exerciseTypes'],
         ),
-        answer11: HealthProfilePayloadCodec.formatListToString(widget.formData['diseases']),
-        answer12: HealthProfilePayloadCodec.formatAnswer12(
+        answer11: HealthProfilePayload.formatListToString(widget.formData['diseases']),
+        answer12: HealthProfilePayload.formatAnswer12(
           widget.formData['medications'],
           widget.formData['medicationsEtc']?.toString(),
         ),
-        answer13: HealthProfilePayloadCodec.encodeAnswer13ForApi(
+        answer13: HealthProfilePayload.encodeAnswer13ForApi(
           widget.formData['dietExperience']?.toString(),
         ),
         answer13Medicine: widget.formData['dietMedicine'] ?? '',
@@ -136,18 +136,18 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
         'answer6': widget.formData['dietPeriod'] ?? '',
         'answer7': widget.formData['mealsPerDay'] ?? '',
         'answer71': widget.formData['mealTimes'] ?? '|||',
-        'answer8': HealthProfilePayloadCodec.formatListToString(widget.formData['eatingHabits']),
-        'answer9': HealthProfilePayloadCodec.formatListToString(widget.formData['foodPreference']),
-        'answer10': HealthProfilePayloadCodec.composeAnswer10(
+        'answer8': HealthProfilePayload.formatListToString(widget.formData['eatingHabits']),
+        'answer9': HealthProfilePayload.formatListToString(widget.formData['foodPreference']),
+        'answer10': HealthProfilePayload.composeAnswer10(
           widget.formData['exerciseFrequency']?.toString(),
           widget.formData['exerciseTypes'],
         ),
-        'answer11': HealthProfilePayloadCodec.formatListToString(widget.formData['diseases']),
-        'answer12': HealthProfilePayloadCodec.formatAnswer12(
+        'answer11': HealthProfilePayload.formatListToString(widget.formData['diseases']),
+        'answer12': HealthProfilePayload.formatAnswer12(
           widget.formData['medications'],
           widget.formData['medicationsEtc']?.toString(),
         ),
-        'answer13': HealthProfilePayloadCodec.encodeAnswer13ForApi(
+          'answer13': HealthProfilePayload.encodeAnswer13ForApi(
           widget.formData['dietExperience']?.toString(),
         ),
         'answer13Period': widget.formData['dietPeriodMonths'] ?? '',

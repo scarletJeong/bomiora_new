@@ -7,7 +7,7 @@ import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
 import '../../../user/healthprofile/health_profile_questionnaire_options.dart';
-import '../../../user/healthprofile/health_profile_payload_codec.dart';
+import '../../../user/healthprofile/health_profile_payload.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 import 'prescription_time_screen.dart';
@@ -216,7 +216,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     _formData['eatingHabits'] = _splitPipeList(p.answer8);
     _formData['foodPreference'] = _splitPipeList(p.answer9);
 
-    HealthProfilePayloadCodec.parseAnswer10IntoFormData(
+    HealthProfilePayload.parseAnswer10IntoFormData(
       p.answer10,
       answer10TypesRaw: p.answer102,
       setFrequency: (freq) => _formData['exerciseFrequency'] =
@@ -365,23 +365,23 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       answer6: _formData['dietPeriod']?.toString() ?? '',
       answer7: _formData['mealsPerDay']?.toString() ?? '',
       answer71: _formData['mealTimes']?.toString() ?? '|||',
-      answer8: HealthProfilePayloadCodec.formatListToString(
+      answer8: HealthProfilePayload.formatListToString(
           _formData['eatingHabits']),
-      answer9: HealthProfilePayloadCodec.formatListToString(
+      answer9: HealthProfilePayload.formatListToString(
           _formData['foodPreference']),
-      answer10: HealthProfilePayloadCodec.composeAnswer10FrequencyOnly(
+      answer10: HealthProfilePayload.composeAnswer10FrequencyOnly(
         _formData['exerciseFrequency']?.toString(),
       ),
-      answer102: HealthProfilePayloadCodec.composeAnswer10TypesOnly(
+      answer102: HealthProfilePayload.composeAnswer10TypesOnly(
         _formData['exerciseTypes'],
       ),
       answer11:
-          HealthProfilePayloadCodec.formatListToString(_formData['diseases']),
-      answer12: HealthProfilePayloadCodec.formatAnswer12(
+          HealthProfilePayload.formatListToString(_formData['diseases']),
+      answer12: HealthProfilePayload.formatAnswer12(
         _formData['medications'],
         _formData['medicationsEtc']?.toString(),
       ),
-      answer13: HealthProfilePayloadCodec.encodeAnswer13ForApi(
+      answer13: HealthProfilePayload.encodeAnswer13ForApi(
         _formData['dietExperience']?.toString(),
       ),
       answer13Medicine: _formData['dietMedicine']?.toString() ?? '',
