@@ -53,4 +53,15 @@ abstract final class AppAssets {
 
   // 건강대시보드 그래프 확대 아이콘
   static const String healthZoomin = '${_img}graph_zoomin.svg';
+
+  // 헬스케어 스토어(일반 상품) 메인 페이지
+  static const String generalMainIcon1 = '${_img}general_main_icon1.svg'; // 다이어트
+  static const String generalMainIcon2 = '${_img}general_main_icon2.svg'; // 디톡스
+  static const String generalMainIcon3 = '${_img}general_main_icon3.svg'; // 건강/면역
+  static const String generalMainIcon4 = '${_img}general_main_icon4.svg'; // 심신안정
+  static const String generalMainIcon5 = '${_img}general_main_icon5.svg'; // 스킨케어
+  static const String generalMainIcon6 = '${_img}general_main_icon6.svg'; // 헤어/탈모
+
+  static const String generalMainBanner = '${_img}general_main_banner1.png';
+  static const String generalMainBanner2 = '${_img}general_main_banner2.png';
 }
