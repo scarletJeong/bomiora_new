@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
@@ -31,6 +32,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   UserModel? _user;
   bool _isTelemedicineExpanded = true;
+  bool _isHealthcareStoreExpanded = false;
+  bool _isContentExpanded = false;
 
   @override
   void initState() {
@@ -73,6 +76,14 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
       {Object? arguments}) {
     Navigator.pop(context);
     Navigator.pushNamed(context, route, arguments: arguments);
+  }
+
+  Future<void> _openKakaoTalkConsult() async {
+    const kakaoChannelUrl = 'https://pf.kakao.com/_NdxgAG';
+    final uri = Uri.parse(kakaoChannelUrl);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened || !mounted) return;
+    Navigator.pop(context);
   }
 
   Widget _buildShortcutGrid(BuildContext context) {
@@ -157,7 +168,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             cell(_DrawerShortcutData(
               icon: Icons.headset_mic_outlined,
               label: '카카오톡 상담',
-              onTap: () {},
+              onTap: _openKakaoTalkConsult,
             )),
           ],
         ),
@@ -273,73 +284,168 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                         ),
                       ],
                     ),
-                    ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      initiallyExpanded: false,
-                      iconColor: _inkTitle,
-                      collapsedIconColor: _inkTitle,
-                      title: const Text(
-                        '헬스케어 스토어',
-                        style: TextStyle(
-                          color: _inkTitle,
-                          fontSize: 16,
-                          fontFamily: _fontFamily,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -1.44,
-                        ),
-                      ),
-                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                    Column(
                       children: [
-                        _ExpansionSubmenuWithRail(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: productGeneralCategoryList
-                                .map(
-                                  (item) => _SubLink(
-                                    label: item.label,
-                                    onTap: () => _popAndPushNamed(
-                                      context,
-                                      '/product-general/',
-                                      arguments: {
-                                        'categoryId': item.categoryId,
-                                        'categoryName': item.label,
-                                        'productKind': 'general',
-                                      },
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/healthcare-store',
+                                  );
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(
+                                    '헬스케어 스토어',
+                                    style: TextStyle(
+                                      color: _inkTitle,
+                                      fontSize: 16,
+                                      fontFamily: _fontFamily,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: -1.44,
                                     ),
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isHealthcareStoreExpanded =
+                                      !_isHealthcareStoreExpanded;
+                                });
+                              },
+                              icon: Icon(
+                                _isHealthcareStoreExpanded
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                color: _inkTitle,
+                              ),
+                            ),
+                          ],
+                        ),
+                        AnimatedCrossFade(
+                          firstChild: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _ExpansionSubmenuWithRail(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: productGeneralCategoryList
+                                    .map(
+                                      (item) => _SubLink(
+                                        label: item.label,
+                                        onTap: () => _popAndPushNamed(
+                                          context,
+                                          '/product-general/',
+                                          arguments: {
+                                            'categoryId': item.categoryId,
+                                            'categoryName': item.label,
+                                            'productKind': 'general',
+                                          },
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
                           ),
+                          secondChild: const SizedBox.shrink(),
+                          crossFadeState: _isHealthcareStoreExpanded
+                              ? CrossFadeState.showFirst
+                              : CrossFadeState.showSecond,
+                          duration: const Duration(milliseconds: 180),
                         ),
                       ],
                     ),
-                    ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      initiallyExpanded: false,
-                      iconColor: _inkTitle,
-                      collapsedIconColor: _inkTitle,
-                      title: const Text(
-                        '건강 콘텐츠',
-                        style: TextStyle(
-                          color: _inkTitle,
-                          fontSize: 16,
-                          fontFamily: _fontFamily,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -1.44,
-                        ),
-                      ),
-                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                    Column(
                       children: [
-                        _ExpansionSubmenuWithRail(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _SubLink(label: '건강상식', onTap: () {}),
-                              _SubLink(label: '운동가이드', onTap: () {}),
-                              _SubLink(label: '추천식단', onTap: () {}),
-                              _SubLink(label: '질환관리', onTap: () {}),
-                            ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => _popAndPushNamed(context, '/content'),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(
+                                    '건강 콘텐츠',
+                                    style: TextStyle(
+                                      color: _inkTitle,
+                                      fontSize: 16,
+                                      fontFamily: _fontFamily,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: -1.44,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isContentExpanded = !_isContentExpanded;
+                                });
+                              },
+                              icon: Icon(
+                                _isContentExpanded
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                color: _inkTitle,
+                              ),
+                            ),
+                          ],
+                        ),
+                        AnimatedCrossFade(
+                          firstChild: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _ExpansionSubmenuWithRail(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _SubLink(
+                                    label: '건강상식',
+                                    onTap: () => _popAndPushNamed(
+                                      context,
+                                      '/content/list',
+                                      arguments: const {'category': '건강상식'},
+                                    ),
+                                  ),
+                                  _SubLink(
+                                    label: '운동가이드',
+                                    onTap: () => _popAndPushNamed(
+                                      context,
+                                      '/content/list',
+                                      arguments: const {'category': '운동가이드'},
+                                    ),
+                                  ),
+                                  _SubLink(
+                                    label: '추천식단',
+                                    onTap: () => _popAndPushNamed(
+                                      context,
+                                      '/content/list',
+                                      arguments: const {'category': '추천식단'},
+                                    ),
+                                  ),
+                                  _SubLink(
+                                    label: '질환관리',
+                                    onTap: () => _popAndPushNamed(
+                                      context,
+                                      '/content/list',
+                                      arguments: const {'category': '질환관리'},
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
+                          secondChild: const SizedBox.shrink(),
+                          crossFadeState: _isContentExpanded
+                              ? CrossFadeState.showFirst
+                              : CrossFadeState.showSecond,
+                          duration: const Duration(milliseconds: 180),
                         ),
                       ],
                     ),
@@ -429,11 +535,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    Navigator.pushNamed(
-                      context,
-                      '/kcp-cert',
-                      arguments: const {'flow': 'signup'},
-                    );
+                    Navigator.pushNamed(context, '/signup');
                   },
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.white,
