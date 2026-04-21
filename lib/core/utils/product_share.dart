@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -23,6 +24,13 @@ class ProductShare {
   }) async {
     final url = buildPublicProductUrl(itId);
     final text = productName.isNotEmpty ? '$productName\n$url' : url;
+
+    // 웹에서는 share_plus가 엔진(window.dart assertion)을 유발하는 환경이 있어
+    // 안정적으로 클립보드 복사로만 처리합니다. (UI 안내는 호출자에서)
+    if (kIsWeb) {
+      await Clipboard.setData(ClipboardData(text: text));
+      return false;
+    }
 
     final box = anchorContext.findRenderObject() as RenderBox?;
     final Rect? origin = box != null && box.hasSize
