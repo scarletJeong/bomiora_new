@@ -86,8 +86,10 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
         answer71: widget.formData['mealTimes'] ?? '|||',
         answer8: HealthProfilePayloadCodec.formatListToString(widget.formData['eatingHabits']),
         answer9: HealthProfilePayloadCodec.formatListToString(widget.formData['foodPreference']),
-        answer10: HealthProfilePayloadCodec.composeAnswer10(
+        answer10: HealthProfilePayloadCodec.composeAnswer10FrequencyOnly(
           widget.formData['exerciseFrequency']?.toString(),
+        ),
+        answer102: HealthProfilePayloadCodec.composeAnswer10TypesOnly(
           widget.formData['exerciseTypes'],
         ),
         answer11: HealthProfilePayloadCodec.formatListToString(widget.formData['diseases']),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../health_profile_questionnaire_options.dart';
-import '../health_profile_payload_codec.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../health_profile_questionnaire_options.dart';
+import '../health_profile_payload.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
@@ -12,6 +12,10 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 
 class HealthProfileFormScreen extends StatefulWidget {
+  /// [HealthProfileListScreen] 등에서 push 시 `RouteSettings.name`으로 넣어야 함.
+  /// 뒤로가기 한 번에 연속으로 쌓인 문진표 라우트를 모두 닫을 때 사용.
+  static const String routeName = 'health_profile_form';
+
   final HealthProfileModel? existingProfile;
   /// 목록 등에서 특정 섹션만 수정할 때. 길이 1이면 해당 섹션만, 2 이상이면 해당 섹션들만 PageView(스와이프) + 하단 `수정하기`만 표시.
   final List<int>? initialSectionIndices;
@@ -102,7 +106,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   final GlobalKey _answer6FieldKey = GlobalKey();
   OverlayEntry? _answer6MenuOverlay;
   ScrollController? _answer6MenuScrollController;
-  
+
+  /// 생년월일 `TextFormField` 재마운트용(프리필/기존 데이터 로드 시만 증가). 입력마다 바꾸면 포커스가 끊김.
+  int _wizardBirthFieldKeySeed = 0;
+
   // 건강 프로필 섹션들
   late List<HealthProfileSection> _sections;
 
@@ -121,20 +128,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     '다이어트약 복용경험',
   ];
 
-  static String _profileSvgForStep(int stepIndex) {
-    switch (stepIndex) {
-      case 0:
-        return AppAssets.profile1;
-      case 1:
-        return AppAssets.profile2;
-      case 2:
-        return AppAssets.profile3;
-      case 3:
-        return AppAssets.profile4;
-      default:
-        return AppAssets.profile5;
-    }
-  }
+  static const List<String> _wizardStepIconAssets = [
+    AppAssets.profile1,
+    AppAssets.profile2,
+    AppAssets.profile3,
+    AppAssets.profile4,
+    AppAssets.profile5,
+  ];
 
   @override
   void initState() {
@@ -165,12 +165,14 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   void _loadUser() async {
     final user = await AuthService.getUser();
+    if (!mounted) return;
     setState(() {
       _currentUser = user;
     });
-    
+
     // 전달받은 기존 건강프로필가 있으면 우선 사용
     if (widget.existingProfile != null) {
+      if (!mounted) return;
       setState(() {
         _existingProfile = widget.existingProfile;
       });
@@ -183,20 +185,89 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   void _checkExistingProfile() async {
     try {
-      final existingProfile = await HealthProfileService.getHealthProfile(_currentUser!.id);
-      
-      if (existingProfile != null) {        
+      final existingProfile =
+          await HealthProfileService.getHealthProfile(_currentUser!.id);
+
+      if (!mounted) return;
+
+      if (existingProfile != null) {
         // 기존 건강프로필 정보 저장
         setState(() {
           _existingProfile = existingProfile;
         });
-        
+
         _loadExistingData(existingProfile);
       } else {
         print('기존 건강프로필 없음 - 새로 작성');
+        final u = _currentUser!;
+        final digitsBirth =
+            (u.birthDate ?? '').trim().replaceAll(RegExp(r'\D'), '');
+        print(
+          '[HealthProfileForm] 로컬 UserModel — birthDate=${u.birthDate} (digits=$digitsBirth), sex=${u.sex}',
+        );
+        // 최초 작성: 회원 테이블(bomiora_member) 값은 "프리필"만 (저장 시 member 테이블은 갱신하지 않음)
+        _prefillMemberBasicsFromUser(u);
+        print(
+          '[HealthProfileForm] 프리필 후 폼 — answer_1=${_formData['answer_1']}, '
+          'birth_year=${_formData['birth_year']}, birth_month=${_formData['birth_month']}, '
+          'birth_day=${_formData['birth_day']}, answer_2=${_formData['answer_2']}',
+        );
       }
     } catch (e) {
-      print('기존 건강프로필 확인 중 오류: $e');
+      if (mounted) {
+        print('기존 건강프로필 확인 중 오류: $e');
+      }
+    }
+  }
+
+  void _prefillMemberBasicsFromUser(UserModel user) {
+    // 이미 프로필/폼에 값이 있으면 덮어쓰지 않음
+    final hasBirth = (_formData['answer_1']?.toString().trim().isNotEmpty == true) ||
+        ((_formData['birth_year']?.toString().length ?? 0) == 4 &&
+            (_formData['birth_month']?.toString().length ?? 0) == 2 &&
+            (_formData['birth_day']?.toString().length ?? 0) == 2);
+    final g = _formData['answer_2']?.toString().trim() ?? '';
+    final hasGender = g == 'M' || g == 'F';
+
+    var changed = false;
+    var birthPrefilled = false;
+
+    if (!hasBirth) {
+      final raw = (user.birthDate ?? '').trim().replaceAll(RegExp(r'\D'), '');
+      if (raw.length >= 8) {
+        final ymd = raw.substring(0, 8);
+        _formData['answer_1'] = ymd;
+        _formData['birth_year'] = ymd.substring(0, 4);
+        _formData['birth_month'] = ymd.substring(4, 6);
+        _formData['birth_day'] = ymd.substring(6, 8);
+        changed = true;
+        birthPrefilled = true;
+      }
+    }
+
+    if (!hasGender) {
+      final rawSex = (user.sex ?? '').trim();
+      if (rawSex.isNotEmpty) {
+        final upper = rawSex.toUpperCase();
+        if (upper == 'M' || rawSex == '남' || rawSex == '남성') {
+          _formData['answer_2'] = 'M';
+          changed = true;
+        } else if (upper == 'F' || rawSex == '여' || rawSex == '여성') {
+          _formData['answer_2'] = 'F';
+          changed = true;
+        } else if (rawSex == '1' || rawSex == '01') {
+          _formData['answer_2'] = 'M';
+          changed = true;
+        } else if (rawSex == '2' || rawSex == '02') {
+          _formData['answer_2'] = 'F';
+          changed = true;
+        }
+      }
+    }
+
+    if (changed && mounted) {
+      if (birthPrefilled) _wizardBirthFieldKeySeed++;
+      setState(() {});
     }
   }
 
@@ -330,7 +401,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     _formData['answer_3'] = profile.answer3;
     _formData['answer_4'] = profile.answer4;
     _formData['answer_5'] = profile.answer5;
-    _formData['answer_6'] = profile.answer6;
+    _formData['answer_6'] = _normalizeDietPeriodOption(profile.answer6);
     _formData['answer_7'] = profile.answer7;
     
     // 식사시간 파싱 (| 기준으로 분리)
@@ -359,10 +430,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       _formData['answer_9'] = [];
     }
     
-    HealthProfilePayloadCodec.parseAnswer10IntoFormData(
+    HealthProfilePayload.parseAnswer10IntoFormData(
       profile.answer10,
-      (f) => _formData['answer_10'] = f,
-      (t) => _formData['answer_10_types'] = t,
+      answer10TypesRaw: profile.answer102,
+      setFrequency: (f) => _formData['answer_10'] = f,
+      setTypes: (t) => _formData['answer_10_types'] = t,
     );
 
     bool rawMeansNoHealth(String raw) {
@@ -460,8 +532,41 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     _backupAnswer13Fields['answer_13_dosage'] = profile.answer13Dosage;
     _backupAnswer13Fields['answer_13_sideeffect'] = profile.answer13Sideeffect;
 
-    // UI 업데이트
-    setState(() {});
+    // UI 업데이트 (생년월일 필드 initialValue 반영)
+    if (mounted) {
+      _wizardBirthFieldKeySeed++;
+      setState(() {});
+    }
+  }
+
+  /// API/DB 값이 선택지와 약간 다를 때(공백·개행 등) 목표 기간 드롭다운과 맞춤
+  /// 기본정보(YYYYMMDD 한 칸) 표시·TextFormField 재생성용 — `initialValue`는 첫 마운트만 적용되므로 Key와 함께 사용
+  String _birthYyyymmddDisplayForWizardField() {
+    final a1 = (_formData['answer_1']?.toString().trim() ?? '');
+    if (a1.length == 8 && RegExp(r'^\d{8}$').hasMatch(a1)) return a1;
+    final y = (_formData['birth_year']?.toString().trim() ?? '');
+    final m = (_formData['birth_month']?.toString().trim() ?? '');
+    final d = (_formData['birth_day']?.toString().trim() ?? '');
+    if (y.length != 4 || m.isEmpty || d.isEmpty) return '';
+    final mm = m.padLeft(2, '0');
+    final dd = d.padLeft(2, '0');
+    if (mm.length != 2 || dd.length != 2) return '';
+    return '$y$mm$dd';
+  }
+
+  String _normalizeDietPeriodOption(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    final options = HealthProfileQuestionnaireOptions.dietPeriod;
+    for (final o in options) {
+      if (o == t) return o;
+    }
+    for (final o in options) {
+      if (o.replaceAll(RegExp(r'\s'), '') == t.replaceAll(RegExp(r'\s'), '')) {
+        return o;
+      }
+    }
+    return t;
   }
 
   @override
@@ -475,20 +580,35 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ? _sections[_currentPage].title
             : '');
 
-    return MobileAppLayoutWrapper(
-      appBar: HealthAppBar(
-        title: isSubsetEdit ? '$appBarEditTitle' : '문진표',
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _popAllHealthProfileFormRoutes(context);
+      },
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: isSubsetEdit ? '$appBarEditTitle' : '문진표',
+          onBack: () => _popAllHealthProfileFormRoutes(context),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+          child: _currentUser == null
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF3787)))
+              : isMultiSubsetMode
+                  ? _buildMultiSubsetFormMode()
+                  : isSingleSectionMode
+                      ? _buildSingleSectionMode()
+                      : _buildFullFormMode(),
+        ),
       ),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: _currentUser == null
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF3787)))
-            : isMultiSubsetMode
-                ? _buildMultiSubsetFormMode()
-                : isSingleSectionMode
-                    ? _buildSingleSectionMode()
-                    : _buildFullFormMode(),
-      ),
+    );
+  }
+
+  /// 카드별 수정마다 push되어 스택이 여러 겹일 때, 한 번에 문진표 바깥(예: 프로필 목록)으로 나감.
+  void _popAllHealthProfileFormRoutes(BuildContext context) {
+    Navigator.of(context).popUntil(
+      (route) => route.settings.name != HealthProfileFormScreen.routeName,
     );
   }
 
@@ -676,10 +796,24 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       alignment: Alignment.center,
-                      child: SvgPicture.asset(
-                        _profileSvgForStep(i),
-                        width: 22,
-                        height: 22,
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Semantics(
+                        label: _stepLabels[i],
+                        button: true,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SvgPicture.asset(
+                              i < _wizardStepIconAssets.length
+                                  ? _wizardStepIconAssets[i]
+                                  : AppAssets.profile1,
+                              width: 20,
+                              height: 20,
+                              fit: BoxFit.contain,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -700,6 +834,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
     );
+    if (!mounted) return;
   }
 
   Widget _wizardStepQuestionsColumn(
@@ -736,6 +871,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Widget _buildWizardBottomBar() {
     final last = _currentPage >= _sections.length - 1;
+    final canFinish = last ? _isAllWizardStepsFilled() : true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(27, 4, 27, 20),
       child: Row(
@@ -767,7 +903,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             const SizedBox(width: 72),
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: _isLoading ? null : (last ? _submitForm : _nextPage),
+            onTap: _isLoading || !canFinish
+                ? null
+                : (last ? _submitForm : _nextPage),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               child: Row(
@@ -775,8 +913,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 children: [
                   Text(
                     last ? '완료' : '다음',
-                    style: const TextStyle(
-                      color: Color(0xFFFF5A8D),
+                    style: TextStyle(
+                      color: canFinish
+                          ? const Color(0xFFFF5A8D)
+                          : const Color(0xFFBDBDBD),
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -784,7 +924,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   const SizedBox(width: 4),
                   Icon(
                     last ? Icons.check : Icons.chevron_right,
-                    color: const Color(0xFFFF5A8D),
+                    color: canFinish
+                        ? const Color(0xFFFF5A8D)
+                        : const Color(0xFFBDBDBD),
                     size: 20,
                   ),
                 ],
@@ -794,6 +936,109 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         ],
       ),
     );
+  }
+
+  bool _nonEmptyString(dynamic v) => (v?.toString().trim().isNotEmpty ?? false);
+
+  bool _nonEmptyList(dynamic v) => v is List && v.map((e) => e.toString().trim()).any((e) => e.isNotEmpty);
+
+  bool _isYmdValid(int y, int m, int d) {
+    try {
+      final dt = DateTime(y, m, d);
+      return !dt.isAfter(DateTime.now());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _isBirthValid() {
+    final a1 = (_formData['answer_1']?.toString().trim() ?? '');
+    if (a1.length == 8) {
+      final y = int.tryParse(a1.substring(0, 4));
+      final m = int.tryParse(a1.substring(4, 6));
+      final d = int.tryParse(a1.substring(6, 8));
+      if (y == null || m == null || d == null) return false;
+      return _isYmdValid(y, m, d);
+    }
+
+    final ys = _formData['birth_year']?.toString().trim() ?? '';
+    final ms = _formData['birth_month']?.toString().trim() ?? '';
+    final ds = _formData['birth_day']?.toString().trim() ?? '';
+    if (ys.length != 4 || ms.length != 2 || ds.length != 2) return false;
+    final y = int.tryParse(ys);
+    final m = int.tryParse(ms);
+    final d = int.tryParse(ds);
+    if (y == null || m == null || d == null) return false;
+    return _isYmdValid(y, m, d);
+  }
+
+  bool _isWizardStepFilled(int stepIndex) {
+    if (stepIndex < 0 || stepIndex >= _sections.length) return false;
+    final section = _sections[stepIndex];
+
+    if (stepIndex == 0) {
+      if (!_nonEmptyString(_formData['answer_1']) &&
+          !(((_formData['birth_year']?.toString().length ?? 0) == 4) &&
+              ((_formData['birth_month']?.toString().length ?? 0) == 2) &&
+              ((_formData['birth_day']?.toString().length ?? 0) == 2))) {
+        return false;
+      }
+      if (!_isBirthValid()) return false;
+
+      final g = _formData['answer_2']?.toString().trim() ?? '';
+      if (g != 'M' && g != 'F') return false;
+
+      if (!_nonEmptyString(_formData['answer_4'])) return false;
+      if (!_nonEmptyString(_formData['answer_5'])) return false;
+      if (!_nonEmptyString(_formData['answer_3'])) return false;
+      if (!_nonEmptyString(_formData['answer_6'])) return false;
+      return true;
+    }
+
+    for (final q in section.questions) {
+      if (!_shouldShowQuestion(q)) continue;
+      if (q.type == 'mealtime') continue; // 식사시간은 필수 제외
+
+      switch (q.type) {
+        case 'grid':
+          final raw = _formData[q.id];
+          if (q.allowMultiple == true) {
+            if (!_nonEmptyList(raw)) return false;
+          } else {
+            if (!_nonEmptyString(raw)) return false;
+          }
+          if (q.id == 'answer_10') {
+            if (!_nonEmptyList(_formData['answer_10_types'])) return false;
+          }
+          break;
+        case 'radio':
+          if (!_nonEmptyString(_formData[q.id])) return false;
+          break;
+        case 'text':
+          if (q.isRequired && !_nonEmptyString(_formData[q.id])) return false;
+          break;
+        default:
+          break;
+      }
+    }
+
+    // 다이어트약 상세(있음) 필수값
+    final a13 = _formData['answer_13']?.toString().trim() ?? '';
+    if (stepIndex == 4 && (a13 == '있음' || a13 == '2')) {
+      if (!_nonEmptyString(_formData['answer_13_medicine'])) return false;
+      if (!_nonEmptyString(_formData['answer_13_period'])) return false;
+      if (!_nonEmptyString(_formData['answer_13_dosage'])) return false;
+      if (!_nonEmptyString(_formData['answer_13_sideeffect'])) return false;
+    }
+
+    return true;
+  }
+
+  bool _isAllWizardStepsFilled() {
+    for (var i = 0; i < _sections.length; i++) {
+      if (!_isWizardStepFilled(i)) return false;
+    }
+    return true;
   }
 
   bool _isFirstVisibleInStep(int stepIndex, String questionId) {
@@ -950,9 +1195,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         _figmaLabeledRow(
           label: '생년월일',
           field: TextFormField(
-            initialValue: _formData['answer_1']?.toString().length == 8
-                ? _formData['answer_1'].toString()
-                : '${_formData['birth_year'] ?? ''}${_formData['birth_month'] ?? ''}${_formData['birth_day'] ?? ''}',
+            key: ValueKey<int>(_wizardBirthFieldKeySeed),
+            initialValue: _birthYyyymmddDisplayForWizardField(),
             keyboardType: TextInputType.number,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
@@ -960,6 +1204,22 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ],
             style: _figmaFieldTextStyle,
             decoration: _figmaInputDecoration(hint: 'YYYYMMDD'),
+            onChanged: (v) {
+              final s = (v ?? '').trim();
+              if (!mounted) return;
+              setState(() {
+                _formData['answer_1'] = s;
+                if (s.length == 8) {
+                  _formData['birth_year'] = s.substring(0, 4);
+                  _formData['birth_month'] = s.substring(4, 6);
+                  _formData['birth_day'] = s.substring(6, 8);
+                } else {
+                  _formData['birth_year'] = '';
+                  _formData['birth_month'] = '';
+                  _formData['birth_day'] = '';
+                }
+              });
+            },
             validator: (v) {
               if (v == null || v.length != 8) return '생년월일 8자리를 입력해주세요';
               final y = int.tryParse(v.substring(0, 4));
@@ -989,24 +1249,65 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         _figmaLabeledRow(
           label: '성별',
           labelAlign: TextAlign.right,
-          field: Row(
-            children: [
-              Expanded(
-                child: _genderChip(
-                  label: '여',
-                  selected: _formData['answer_2'] == 'F',
-                  onTap: () => setState(() => _formData['answer_2'] = 'F'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _genderChip(
-                  label: '남',
-                  selected: _formData['answer_2'] == 'M',
-                  onTap: () => setState(() => _formData['answer_2'] = 'M'),
-                ),
-              ),
-            ],
+          field: FormField<String>(
+            initialValue: _formData['answer_2']?.toString(),
+            validator: (v) {
+              final g = (v ?? _formData['answer_2']?.toString() ?? '').trim();
+              if (g != 'M' && g != 'F') return '성별을 선택해주세요';
+              return null;
+            },
+            onSaved: (_) {},
+            builder: (state) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _genderChip(
+                          label: '여',
+                          selected: _formData['answer_2'] == 'F',
+                          onTap: () {
+                            setState(() => _formData['answer_2'] = 'F');
+                            state.didChange('F');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _genderChip(
+                          label: '남',
+                          selected: _formData['answer_2'] == 'M',
+                          onTap: () {
+                            setState(() => _formData['answer_2'] = 'M');
+                            state.didChange('M');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (state.hasError) ...[
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 16,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          state.errorText ?? '',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontSize: 12,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: 16),
@@ -1132,20 +1433,60 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     required String suffix,
     required String requiredMsg,
   }) {
-    return TextFormField(
-      initialValue: _formData[questionId]?.toString() ?? '',
-      keyboardType: TextInputType.number,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: _figmaFieldTextStyle,
-      decoration: _figmaInputDecoration(hint: hint).copyWith(
-        suffixText: suffix,
-        suffixStyle: _figmaFieldTextStyle,
-      ),
+    return FormField<String>(
+      initialValue: (_formData[questionId]?.toString() ?? '').trim(),
       validator: (v) {
-        if (v == null || v.trim().isEmpty) return requiredMsg;
+        final s = (v ?? '').trim();
+        if (s.isEmpty) return requiredMsg;
         return null;
       },
-      onSaved: (v) => _formData[questionId] = v?.trim() ?? '',
+      onSaved: (v) => _formData[questionId] = (v ?? '').trim(),
+      builder: (state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              initialValue: state.value,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: _figmaFieldTextStyle,
+              decoration: _figmaInputDecoration(hint: hint).copyWith(
+                suffixText: suffix,
+                suffixStyle: _figmaFieldTextStyle,
+                errorStyle: const TextStyle(height: 0, fontSize: 0),
+              ),
+              onChanged: (v) {
+                state.didChange(v);
+                if (!mounted) return;
+                setState(() {
+                  _formData[questionId] = (v ?? '').trim();
+                });
+              },
+              validator: (_) => null,
+              onSaved: (_) {},
+            ),
+            if (state.hasError) ...[
+              const SizedBox(height: 4),
+              SizedBox(
+                height: 16,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    state.errorText ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -1154,13 +1495,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     final current = _formData['answer_6']?.toString().trim() ?? '';
     final selected = current.isEmpty || !options.contains(current) ? null : current;
     return FormField<String>(
+      // initialValue는 첫 마운트에만 적용되므로, 값이 바뀔 때마다 필드를 재생성해 표시·검증이 _formData와 일치하게 함
+      key: ValueKey<String>('answer6|${selected ?? ''}'),
       initialValue: selected,
       validator: (v) {
         final val = (v ?? _formData['answer_6']?.toString() ?? '').trim();
         if (val.isEmpty) return '기간을 선택해주세요';
         return null;
       },
+      onSaved: (v) {
+        final s = (v ?? _formData['answer_6']?.toString() ?? '').trim();
+        if (s.isNotEmpty) _formData['answer_6'] = s;
+      },
       builder: (state) {
+        final label = selected ?? '선택';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1189,9 +1537,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 onTap: () => _openAnswer6Menu(
                   options: options,
                   onSelected: (v) {
+                    _removeAnswer6MenuOverlay();
+                    if (!mounted) return;
                     setState(() {
                       _formData['answer_6'] = v;
-                      state.didChange(v);
                     });
                   },
                 ),
@@ -1199,7 +1548,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        selected ?? '선택',
+                        label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -1345,8 +1694,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     required Widget field,
     TextAlign labelAlign = TextAlign.left,
   }) {
+    // 오류 문구로 필드 열 높이가 늘어나도 라벨이 세로 중앙으로 밀리지 않도록 상단 정렬
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 72,
@@ -1535,7 +1885,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               initialValue: _formData[id]?.toString() ?? '',
               decoration: _figmaInputDecoration(hint: hint),
               style: _figmaFieldTextStyle,
-              onChanged: (v) => _formData[id] = v,
+              onChanged: (v) {
+                _formData[id] = v;
+                setState(() {});
+              },
               onSaved: (v) => _formData[id] = v ?? '',
             ),
           ),
@@ -1645,7 +1998,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   }
 
   String _canonicalHealthNoneGridOption(String questionId, String opt) {
-    if (questionId != 'answer_11' && questionId != 'answer_12') return opt;
+    if (questionId != 'answer_8' &&
+        questionId != 'answer_9' &&
+        questionId != 'answer_11' &&
+        questionId != 'answer_12') {
+      return opt;
+    }
     final o = opt.trim();
     if (o == '해당없음' || o == '없음' || o == '해당 없음') return '해당 없음';
     return opt;
@@ -1682,6 +2040,25 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     void toggle(String opt) {
       setState(() {
         final optC = _canonicalHealthNoneGridOption(question.id, opt);
+        if (question.id == 'answer_8') {
+          if (optC == '해당 없음') {
+            _formData[question.id] = isMulti ? <String>['해당 없음'] : '해당 없음';
+            return;
+          }
+          if (isMulti) {
+            final list = selected
+                .map((e) => _canonicalHealthNoneGridOption(question.id, e))
+                .toList();
+            list.remove('해당 없음');
+            if (list.contains(optC)) {
+              list.remove(optC);
+            } else {
+              list.add(optC);
+            }
+            _formData[question.id] = list;
+            return;
+          }
+        }
         if (question.id == 'answer_11' || question.id == 'answer_12') {
           if (optC == '해당 없음') {
             _formData[question.id] = isMulti ? <String>['해당 없음'] : '해당 없음';
@@ -1787,7 +2164,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     VoidCallback onTap, {
     bool stretchWidth = false,
   }) {
-    final bool compactLabel = label.contains('\n') || label.length >= 10;
+    // 줄바꿈이 있을 때만 작은 글꼴(한 줄 10자 이상이어도 운동 빈도 등은 16px 유지)
+    final bool compactLabel = label.contains('\n');
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -2177,26 +2555,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
-    
+
+    if (!mounted) return;
     if (picked != null) {
       setState(() {
-        _formData[questionId] = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+        _formData[questionId] =
+            '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
       });
     }
   }
 
   void _nextPage() {
-    if (_currentPage == 0) {
-      final g = _formData['answer_2']?.toString();
-      if (g != 'M' && g != 'F') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('성별을 선택해주세요.'),
-            duration: Duration(milliseconds: 1200),
-          ),
-        );
-        return;
-      }
+    if (!_isWizardStepFilled(_currentPage)) {
+      _formKey.currentState?.validate();
+      return;
     }
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -2215,6 +2587,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   }
 
   void _submitForm() async {
+    if (!_isAllWizardStepsFilled()) {
+      _formKey.currentState?.validate();
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       
@@ -2226,17 +2602,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         await _saveHealthProfile();
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_existingProfile != null
-                  ? '문진표가 수정되었습니다'
-                  : '문진표가 저장되었습니다'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
+          // `pushReplacementNamed`만 쓰면 [이전 목록(미작성)] 위에 [새 /profile]만 얹혀
+          // 뒤로가기 시 이전 목록으로 가며 "문진표가 없습니다"가 다시 보임.
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/profile',
+            (route) => route.isFirst,
           );
-          Navigator.of(context).pushReplacementNamed('/profile');
         }
       } catch (e) {
         if (mounted) {
@@ -2251,17 +2622,24 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           );
         }
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
 
-  /// 운동 빈도 + 선택 운동 종목(복수) — API 한 필드에 `빈도###종목1|종목2` 형태로 저장
-  String _composeAnswer10() {
-    return HealthProfilePayloadCodec.composeAnswer10(
+  /// 운동 빈도(`answer_10`) + 주로 하는 운동(`answer_10_2`) — DB 컬럼 분리 저장
+  String _composeAnswer10Frequency() {
+    return HealthProfilePayload.composeAnswer10FrequencyOnly(
       (_formData['answer_10'] ?? '').toString(),
+    );
+  }
+
+  String _composeAnswer10Types() {
+    return HealthProfilePayload.composeAnswer10TypesOnly(
       _formData['answer_10_types'],
     );
   }
@@ -2292,15 +2670,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       answer5: _formData['answer_5'] ?? '',
       answer6: _formData['answer_6'] ?? '',
       answer7: _formData['answer_7'] ?? '',
-      answer8: HealthProfilePayloadCodec.formatListToString(_formData['answer_8']),
-      answer9: HealthProfilePayloadCodec.formatListToString(_formData['answer_9']),
-      answer10: _composeAnswer10(),
-      answer11: HealthProfilePayloadCodec.formatListToString(_formData['answer_11']),
-      answer12: HealthProfilePayloadCodec.formatAnswer12(
+      answer8: HealthProfilePayload.formatListToString(_formData['answer_8']),
+      answer9: HealthProfilePayload.formatListToString(_formData['answer_9']),
+      answer10: _composeAnswer10Frequency(),
+      answer102: _composeAnswer10Types(),
+      answer11: HealthProfilePayload.formatListToString(_formData['answer_11']),
+      answer12: HealthProfilePayload.formatAnswer12(
         _formData['answer_12'],
         _formData['answer_12_other']?.toString(),
       ),
-      answer13: HealthProfilePayloadCodec.encodeAnswer13ForApi(
+      answer13: HealthProfilePayload.encodeAnswer13ForApi(
         _formData['answer_13']?.toString(),
       ),
       answer13Period: _formData['answer_13_period'] ?? '',
@@ -2325,14 +2704,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   /// 생년월일 입력 위젯 (년/월/일 3칸)
   Widget _buildBirthdateInput() {
+    final y = _formData['birth_year']?.toString() ?? '';
+    final m = _formData['birth_month']?.toString() ?? '';
+    final d = _formData['birth_day']?.toString() ?? '';
     return Column(
+      key: ValueKey<String>('birth3|$y|$m|$d'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Expanded(
               child: TextFormField(
-                initialValue: _formData['birth_year'] ?? '',
+                initialValue: y,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -2373,7 +2756,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: TextFormField(
-                initialValue: _formData['birth_month'] ?? '',
+                initialValue: m,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -2408,7 +2791,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: TextFormField(
-                initialValue: _formData['birth_day'] ?? '',
+                initialValue: d,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -2613,6 +2996,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         ),
       ],
     );
+  }
+
+  @override
+  void deactivate() {
+    _removeAnswer6MenuOverlay();
+    super.deactivate();
   }
 
   @override

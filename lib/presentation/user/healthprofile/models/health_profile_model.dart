@@ -13,6 +13,8 @@ class HealthProfileModel {
   final String answer8; // 식습관
   final String answer9; // 자주먹는음식
   final String answer10; // 운동습관
+  /// 주로 하는 운동(복수) — DB 컬럼: `answer_10_2`
+  final String answer102;
   final String answer11; // 질병
   final String answer12; // 복용중인 약
   final String answer13; // 기존 다이어트 복용약 여부
@@ -39,6 +41,7 @@ class HealthProfileModel {
     required this.answer8,
     required this.answer9,
     required this.answer10,
+    this.answer102 = '',
     required this.answer11,
     required this.answer12,
     required this.answer13,
@@ -121,6 +124,10 @@ class HealthProfileModel {
           NodeValueParser.asString(normalized['answer10']) ??
           NodeValueParser.asString(normalized['answer_10']) ??
           '',
+      answer102:
+          NodeValueParser.asString(normalized['answer102']) ??
+          NodeValueParser.asString(normalized['answer_10_2']) ??
+          '',
       answer11:
           NodeValueParser.asString(normalized['answer11']) ??
           NodeValueParser.asString(normalized['answer_11']) ??
@@ -186,6 +193,8 @@ class HealthProfileModel {
       'answer8': answer8,
       'answer9': answer9,
       'answer10': answer10,
+      'answer102': answer102,
+      'answer_10_2': answer102,
       'answer11': answer11,
       'answer12': answer12,
       'answer13': answer13,
@@ -214,6 +223,7 @@ class HealthProfileModel {
     String? answer8,
     String? answer9,
     String? answer10,
+    String? answer102,
     String? answer11,
     String? answer12,
     String? answer13,
@@ -240,6 +250,7 @@ class HealthProfileModel {
       answer8: answer8 ?? this.answer8,
       answer9: answer9 ?? this.answer9,
       answer10: answer10 ?? this.answer10,
+      answer102: answer102 ?? this.answer102,
       answer11: answer11 ?? this.answer11,
       answer12: answer12 ?? this.answer12,
       answer13: answer13 ?? this.answer13,

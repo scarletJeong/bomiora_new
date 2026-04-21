@@ -218,9 +218,10 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
 
     HealthProfilePayloadCodec.parseAnswer10IntoFormData(
       p.answer10,
-      (freq) => _formData['exerciseFrequency'] =
+      answer10TypesRaw: p.answer102,
+      setFrequency: (freq) => _formData['exerciseFrequency'] =
           freq.isEmpty ? null : freq,
-      (types) => _formData['exerciseTypes'] = types,
+      setTypes: (types) => _formData['exerciseTypes'] = types,
     );
 
     _formData['diseases'] = _splitPipeList(p.answer11);
@@ -368,8 +369,10 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
           _formData['eatingHabits']),
       answer9: HealthProfilePayloadCodec.formatListToString(
           _formData['foodPreference']),
-      answer10: HealthProfilePayloadCodec.composeAnswer10(
+      answer10: HealthProfilePayloadCodec.composeAnswer10FrequencyOnly(
         _formData['exerciseFrequency']?.toString(),
+      ),
+      answer102: HealthProfilePayloadCodec.composeAnswer10TypesOnly(
         _formData['exerciseTypes'],
       ),
       answer11:

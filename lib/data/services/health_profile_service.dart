@@ -132,6 +132,10 @@ class HealthProfileService {
     if (profile.answer10.isEmpty) {
       errors['answer_10'] = '운동 습관을 선택해주세요';
     }
+
+    if (profile.answer102.trim().isEmpty) {
+      errors['answer_10_2'] = '주로 하는 운동을 선택해주세요';
+    }
     
     return errors;
   }

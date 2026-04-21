@@ -184,14 +184,25 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   ),
                   const SizedBox(height: 34),
                   _buildFigmaSection(
-                    title: '식습관 및 운동',
+                    title: '식습관',
                     onEdit: () => _openSectionForEdit(
-                      [1, 2],
-                      screenTitle: '식습관 및 운동',
+                      [1],
+                      screenTitle: '식습관',
                     ),
                     innerPadding: EdgeInsets.zero,
                     showBottomDivider: true,
-                    child: _buildDietAndExerciseBody(profile),
+                    child: _buildDietHabitsBody(profile),
+                  ),
+                  const SizedBox(height: 34),
+                  _buildFigmaSection(
+                    title: '운동',
+                    onEdit: () => _openSectionForEdit(
+                      [2],
+                      screenTitle: '운동',
+                    ),
+                    innerPadding: EdgeInsets.zero,
+                    showBottomDivider: true,
+                    child: _buildExerciseHabitsBody(profile),
                   ),
                   const SizedBox(height: 34),
                   _buildFigmaSection(
@@ -203,8 +214,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   ),
                   const SizedBox(height: 34),
                   _buildDietExperienceSection(profile),
-                  const SizedBox(height: 34),
-                  _buildMetaCard(profile),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
@@ -385,42 +394,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           color: _kBorderField,
         ),
       ],
-    );
-  }
-
-  Widget _buildMetaCard(HealthProfileModel profile) {
-    final written = DateDisplayFormatter.formatYmdDash(profile.pfWdatetime);
-    final modified = DateDisplayFormatter.formatYmdDash(profile.pfMdatetime);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorderField),
-          borderRadius: BorderRadius.circular(7),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '프로필 정보',
-            style: TextStyle(
-              fontSize: 16,
-              fontFamily: _kFont,
-              fontWeight: FontWeight.w500,
-              color: _kInk,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(height: 1, color: _kBorderField),
-          const SizedBox(height: 12),
-          _metaRow('작성일', written),
-          const SizedBox(height: 8),
-          _metaRow('수정일', modified),
-        ],
-      ),
     );
   }
 
@@ -741,7 +714,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     );
   }
 
-  Widget _buildDietAndExerciseBody(HealthProfileModel profile) {
+  Widget _buildDietHabitsBody(HealthProfileModel profile) {
     final mealParts = _pipeParts(profile.answer7);
     final mealItems = mealParts.isEmpty && profile.answer7.trim().isNotEmpty
         ? [profile.answer7.trim()]
@@ -777,26 +750,71 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         ),
         const SizedBox(height: 8),
         _wrapChipsWhite(_listItemsFromPipe(profile.answer9)),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text('운동 습관', style: _listSubsectionStyle),
-        ),
-        const SizedBox(height: 8),
-        _buildExerciseHabitChips(profile.answer10),
       ],
     );
   }
 
-  List<String> _listItemsFromPipe(String raw) {
-    final p = _pipeParts(raw);
-    if (p.isNotEmpty) return p;
-    final t = raw.trim();
-    return t.isEmpty ? [] : [t];
+  /// `answer_10` = 빈도, `answer102` = 주로 하는 운동(파이프). 구버전은 `answer_10`에 `###` 포함.
+  Widget _buildExerciseHabitsBody(HealthProfileModel profile) {
+    final freq = _exerciseFrequencyDisplay(profile.answer10);
+    final types = _exerciseTypeItems(profile);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('운동 빈도', style: _listSubsectionStyle),
+        ),
+        const SizedBox(height: 8),
+        _buildExerciseFrequencyChips(freq),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text('주로 하는 운동', style: _listSubsectionStyle),
+        ),
+        const SizedBox(height: 8),
+        types.isEmpty
+            ? const Text(
+                '-',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black54,
+                ),
+              )
+            : _wrapChipsWhite(types),
+      ],
+    );
   }
 
-  Widget _buildExerciseHabitChips(String answer10) {
-    if (answer10.trim().isEmpty) {
+  String _exerciseFrequencyDisplay(String answer10) {
+    var raw = answer10.trim();
+    if (raw.contains('###')) {
+      raw = raw.split('###').first.trim();
+    }
+    if (raw == '일주일 4회 이상') return '일주일 4회 ~ 6회';
+    return raw;
+  }
+
+  List<String> _exerciseTypeItems(HealthProfileModel profile) {
+    final from102 = _listItemsFromPipe(profile.answer102);
+    if (from102.isNotEmpty) return from102;
+    final a10 = profile.answer10.trim();
+    if (!a10.contains('###')) return [];
+    final p = a10.split('###');
+    if (p.length < 2) return [];
+    final rest = p[1].trim();
+    if (rest.isEmpty) return [];
+    return rest
+        .split(RegExp(r'\s*[,|]\s*'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  Widget _buildExerciseFrequencyChips(String freq) {
+    if (freq.isEmpty) {
       return const Text(
         '-',
         style: TextStyle(
@@ -806,37 +824,23 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         ),
       );
     }
-    if (!answer10.contains('###')) {
-      final t = answer10.trim();
-      final looksLikeWeeklyFreq = t.contains('일주') ||
-          t.contains('매일') ||
-          RegExp(r'주\s*\d').hasMatch(t);
-      return Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          looksLikeWeeklyFreq ? _chipLightBorder(t) : _chipWhitePlain(t),
-        ],
-      );
-    }
-    final p = answer10.split('###');
-    final freq = p[0].trim();
-    final types = p.length > 1 ? p[1].trim() : '';
-    final typeList = types.isEmpty
-        ? <String>[]
-        : types
-            .split(RegExp(r'\s*[,|]\s*'))
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+    final looksLikeWeeklyFreq = freq.contains('일주') ||
+        freq.contains('매일') ||
+        RegExp(r'주\s*\d').hasMatch(freq);
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
-        if (freq.isNotEmpty) _chipLightBorder(freq),
-        ...typeList.map((t) => _chipWhitePlain(t)),
+        looksLikeWeeklyFreq ? _chipLightBorder(freq) : _chipWhitePlain(freq),
       ],
     );
+  }
+
+  List<String> _listItemsFromPipe(String raw) {
+    final p = _pipeParts(raw);
+    if (p.isNotEmpty) return p;
+    final t = raw.trim();
+    return t.isEmpty ? [] : [t];
   }
 
   Widget _buildMealTimeRowFigma(String answer71) {
@@ -889,13 +893,13 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        slot('1st 식사', at(0)),
+        slot('1식', at(0)),
         const SizedBox(width: 6),
-        slot('2nd 식사', at(1)),
+        slot('2식', at(1)),
         const SizedBox(width: 6),
-        slot('3rd 식사', at(2)),
+        slot('3식', at(2)),
         const SizedBox(width: 6),
-        slot('기타', at(3)),
+        slot('4식', at(3)),
       ],
     );
   }
@@ -1198,6 +1202,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
         builder: (context) => const HealthProfileFormScreen(),
       ),
     );
@@ -1211,6 +1216,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
         builder: (context) => HealthProfileFormScreen(
           existingProfile: _healthProfile,
         ),
@@ -1222,12 +1228,13 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     }
   }
 
-  /// 카드별 수정: 이전/다음 없이 `수정하기`만. 식습관+운동은 [1,2]로 스와이프만 가능.
+  /// 카드별 수정: 이전/다음 없이 `수정하기`만. 식습관은 [1], 운동은 [2].
   void _openSectionForEdit(List<int> sectionIndices, {String? screenTitle}) async {
     if (sectionIndices.isEmpty) return;
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
         builder: (context) => HealthProfileFormScreen(
           existingProfile: _healthProfile,
           initialSectionIndices: sectionIndices,
