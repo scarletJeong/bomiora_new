@@ -794,11 +794,12 @@ class ProductMainPhotoBioSection extends StatelessWidget {
 class _StaggeredBottomGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const colW = 158.0;
-    const gap = 10.0;
-    const cellH = 210.0;
-    const stagger = 32.0;
-    const rowGap = 12.0;
+    // 기본 설계보다 작게 — 하단 2×2 그리드만 축소
+    const colW = 124.0;
+    const gap = 8.0;
+    const cellH = 158.0;
+    const stagger = 24.0;
+    const rowGap = 10.0;
 
     return LayoutBuilder(
       builder: (context, c) {

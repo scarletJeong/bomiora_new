@@ -231,6 +231,27 @@ class Product {
     return ((originalPrice! - price) / originalPrice!) * 100;
   }
 
+  /// API `it_subject` (한 줄 요약 등) — 목록/상세 JSON 루트 또는 additionalInfo
+  String? get itSubject {
+    final info = additionalInfo;
+    if (info != null) {
+      final s = NodeValueParser.asString(info['it_subject']) ??
+          NodeValueParser.asString(info['itSubject']);
+      if (s != null && s.trim().isNotEmpty) return s.trim();
+    }
+    return null;
+  }
+
+  /// API `it_basic` — 카드/목록용 짧은 설명 (`description`은 `it_explain` 매핑)
+  String? get itBasic {
+    final info = additionalInfo;
+    if (info != null) {
+      final s = NodeValueParser.asString(info['it_basic']);
+      if (s != null && s.trim().isNotEmpty) return s.trim();
+    }
+    return null;
+  }
+
   /// 장바구니에 추가할 때 사용할 ct_kind 값 반환
   /// productKind (it_kind)를 기반으로 판단, 없으면 'general'
   String get ctKind {

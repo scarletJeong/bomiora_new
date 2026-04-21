@@ -7,6 +7,20 @@ import '../utils/get_product.dart';
 import '../widgets/product_banner_slider.dart';
 import '../../../core/constants/app_assets.dart';
 
+String _productListStripHtml(String? raw) {
+  if (raw == null) return '';
+  var s = raw.replaceAll(RegExp(r'<[^>]*>'), ' ');
+  s = s
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&quot;', '"');
+  s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return s;
+}
+
 class ProductListScreen extends StatefulWidget {
   final String categoryId;
   final String categoryName;
@@ -414,7 +428,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
       builder: (context, itemConstraints) {
         final screenW = MediaQuery.sizeOf(context).width;
         final tScale = (screenW / 390.0).clamp(0.88, 1.18);
+        final namePlain = _productListStripHtml(product.name);
+        final subjectPlain = _productListStripHtml(product.itSubject);
+        final descPlain = _productListStripHtml(
+          product.itBasic ?? product.description ?? '',
+        );
         final nameFs = (12.5 * tScale).clamp(11.0, 15.0);
+        final subjectFs = (10.0 * tScale).clamp(9.0, 12.0);
+        final descFs = (10.5 * tScale).clamp(9.5, 12.5);
         final origFs = (10.5 * tScale).clamp(9.5, 12.5);
         final discFs = (11.5 * tScale).clamp(10.5, 14.0);
         final priceFs = (13.5 * tScale).clamp(12.0, 16.0);
@@ -488,32 +509,63 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
+                              if (subjectPlain.isNotEmpty) ...[
+                                Text(
+                                  subjectPlain,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: subjectFs,
+                                    fontWeight: FontWeight.w400,
+                                    fontFamily: _gmarket,
+                                  ),
+                                ),
+                                SizedBox(height: 3 * tScale),
+                              ],
                               Text(
-                                product.name,
+                                namePlain,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
+                                  color: const Color(0xFF231F20),
                                   fontSize: nameFs,
                                   fontWeight: FontWeight.w500,
                                   fontFamily: _gmarket,
+                                  height: 1.25,
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                              if (product.originalPrice != null &&
-                                  product.originalPrice! > product.price) ...[
-                                SizedBox(height: 3 * tScale),
+                              if (descPlain.isNotEmpty) ...[
+                                SizedBox(height: 4 * tScale),
                                 Text(
-                                  product.formattedOriginalPrice ?? '',
+                                  descPlain,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: origFs,
-                                    color: Colors.grey[600],
-                                    decoration: TextDecoration.lineThrough,
+                                    color: Colors.grey[700],
+                                    fontSize: descFs,
+                                    fontWeight: FontWeight.w300,
                                     fontFamily: _gmarket,
+                                    height: 1.25,
                                   ),
                                 ),
                               ],
                             ],
                           ),
                         ),
+                        if (product.originalPrice != null &&
+                            product.originalPrice! > product.price) ...[
+                          Text(
+                            product.formattedOriginalPrice ?? '',
+                            style: TextStyle(
+                              fontSize: origFs,
+                              color: Colors.grey[600],
+                              decoration: TextDecoration.lineThrough,
+                              fontFamily: _gmarket,
+                            ),
+                          ),
+                          SizedBox(height: 4 * tScale),
+                        ],
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
