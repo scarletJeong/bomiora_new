@@ -3,12 +3,16 @@ class ApiEndpoints {
   static const String login = '/api/auth/login';
   static const String register = '/api/auth/register';
   static const String checkEmail = '/api/auth/check-email';
+  /// 본인인증 `mb_dupinfo`(또는 DI) 기준 기가입 여부 — 서버 미구현 시 404 등으로 무시 가능
+  static const String checkDupInfo = '/api/auth/check-dup-info';
   static const String logout = '/api/auth/logout';
   static const String findId = '/api/auth/find-id';
   static const String resetPassword = '/api/auth/reset-password';
   static const String withdraw = '/api/auth/withdraw';
   static const String forgotPassword = '/api/auth/forgot-password';
   static const String verifyToken = '/api/auth/verify';
+  static const String otpSend = '/api/auth/otp/send';
+  static const String otpVerify = '/api/auth/otp/verify';
 
   // 상품 관련 (기존 Cafe24 서버)
   static const String popularProducts = '/api/products/popular';

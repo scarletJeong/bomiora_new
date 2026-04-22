@@ -47,16 +47,19 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   bool _isCodeSent = false;
   bool _isCodeExpired = false;
   int _remainingSeconds = 0;
+  String? _otpToken;
+  int _otpTtlSeconds = 180;
+  int _resendCooldownSeconds = 0;
 
-  String? _errorText;
-  String? _resultText;
   String? _emailLookupErrorText;
   String? _verificationErrorText;
+  String? _verificationInfoText;
   /// 휴대폰 번호 행 바로 아래 표시(발송 전 검증, 인증 만료 등). 분홍 박스 미사용.
   String? _phoneInlineErrorText;
   List<String> _foundAccounts = [];
   int _selectedFoundAccountIndex = 0;
   Timer? _countdownTimer;
+  Timer? _resendCooldownTimer;
 
   @override
   void dispose() {
@@ -67,6 +70,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     _phoneLastController.dispose();
     _verificationCodeController.dispose();
     _countdownTimer?.cancel();
+    _resendCooldownTimer?.cancel();
     super.dispose();
   }
 
@@ -90,10 +94,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
   }
 
   void _clearMessages() {
-    _errorText = null;
-    _resultText = null;
     _emailLookupErrorText = null;
     _verificationErrorText = null;
+    _verificationInfoText = null;
     _phoneInlineErrorText = null;
   }
 
@@ -105,6 +108,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
   void _resetForTab(_FindAccountTab tab, {String? prefillPasswordEmail}) {
     _countdownTimer?.cancel();
+    _resendCooldownTimer?.cancel();
     setState(() {
       _selectedTab = tab;
       _step = _FindAccountStep.form;
@@ -113,6 +117,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       _isCodeSent = false;
       _isCodeExpired = false;
       _remainingSeconds = 0;
+      _resendCooldownSeconds = 0;
+      _otpToken = null;
+      _otpTtlSeconds = 180;
       _idNameController.clear();
       _passwordEmailController.clear();
       _passwordNameController.clear();
@@ -128,6 +135,23 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           _passwordEmailController.text = pre;
         }
       }
+    });
+  }
+
+  void _startResendCooldown({int seconds = 5}) {
+    _resendCooldownTimer?.cancel();
+    _resendCooldownSeconds = seconds;
+    _resendCooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_resendCooldownSeconds <= 1) {
+        t.cancel();
+        setState(() => _resendCooldownSeconds = 0);
+        return;
+      }
+      setState(() => _resendCooldownSeconds -= 1);
     });
   }
 
@@ -150,7 +174,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
   void _startCountdown() {
     _countdownTimer?.cancel();
-    _remainingSeconds = 180;
+    _remainingSeconds = _otpTtlSeconds;
     _isCodeExpired = false;
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -165,10 +189,11 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           _remainingSeconds = 0;
           _isCodeExpired = true;
           _isCodeSent = false;
+          _otpToken = null;
           _verificationCodeController.clear();
-          _errorText = null;
-          _resultText = null;
           _phoneInlineErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
+          _verificationErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
+          _verificationInfoText = null;
         });
         return;
       }
@@ -179,7 +204,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     });
   }
 
-  void _handleSendCode() {
+  Future<void> _handleSendCode() async {
     final hasEnoughData = _selectedTab == _FindAccountTab.id
         ? _idNameController.text.trim().isNotEmpty
         : _passwordEmailController.text.trim().isNotEmpty &&
@@ -189,20 +214,72 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         _phoneMidController.text.trim().length < 3 ||
         _phoneLastController.text.trim().length < 4) {
       setState(() {
-        _errorText = null;
         _phoneInlineErrorText = '이름과 휴대폰 번호를 먼저 입력해 주세요.';
       });
       return;
     }
 
+    if (_resendCooldownSeconds > 0) {
+      setState(() {
+        _phoneInlineErrorText = '재전송은 $_resendCooldownSeconds초 후에 가능합니다.';
+      });
+      return;
+    }
+
     setState(() {
-      _isCodeSent = true;
+      _isLoading = true;
+      _isCodeSent = false;
       _isCodeExpired = false;
+      _otpToken = null;
       _verificationErrorText = null;
-      _resultText = null;
-      _errorText = null;
+      _verificationInfoText = null;
       _phoneInlineErrorText = null;
     });
+
+    final purpose = _selectedTab == _FindAccountTab.password
+        ? 'password_find'
+        : 'id_find';
+    final name = _selectedTab == _FindAccountTab.password
+        ? _passwordNameController.text.trim()
+        : _idNameController.text.trim();
+    final send = await AuthRepository.otpSend(
+      purpose: purpose,
+      name: name,
+      phone: _phoneNumber,
+    );
+
+    if (!mounted) return;
+
+    if (send['success'] != true) {
+      setState(() {
+        _isLoading = false;
+        _phoneInlineErrorText = send['error']?.toString() ?? '인증번호 발송에 실패했습니다.';
+      });
+      return;
+    }
+
+    final token = send['otpToken']?.toString();
+    if (token == null || token.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _phoneInlineErrorText = '인증번호 발송 응답이 올바르지 않습니다. (otpToken 누락)';
+      });
+      return;
+    }
+
+    final ttl = int.tryParse(send['ttlSeconds']?.toString() ?? '');
+    final ttlSeconds = (ttl != null && ttl > 0 && ttl <= 600) ? ttl : 180;
+
+    setState(() {
+      _isLoading = false;
+      _isCodeSent = true;
+      _isCodeExpired = false;
+      _otpToken = token;
+      _otpTtlSeconds = ttlSeconds;
+      _verificationCodeController.clear();
+      _verificationInfoText = '인증번호가 발송되었습니다.';
+    });
+    _startResendCooldown(seconds: 5);
     _startCountdown();
   }
 
@@ -255,9 +332,57 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         : _passwordFormKey.currentState?.validate() ?? false;
     if (!formValid) return;
 
-    if (_verificationCodeController.text.trim() != '1234') {
+    final token = _otpToken;
+    if (token == null || token.isEmpty || !_isCodeSent || _isCodeExpired) {
       setState(() {
-        _verificationErrorText = '인증번호가 일치하지 않습니다.';
+        _verificationErrorText = '인증번호를 다시 발송해 주세요.';
+      });
+      return;
+    }
+
+    final purpose = _selectedTab == _FindAccountTab.password
+        ? 'password_find'
+        : 'id_find';
+    final verify = await AuthRepository.otpVerify(
+      otpToken: token,
+      code: _verificationCodeController.text.trim(),
+      purpose: purpose,
+    );
+    if (!mounted) return;
+    if (verify['success'] != true) {
+      final code = verify['code']?.toString();
+      final msg = verify['error']?.toString() ?? '인증에 실패했습니다.';
+      if (code == 'EXPIRED') {
+        _countdownTimer?.cancel();
+        setState(() {
+          _isCodeExpired = true;
+          _isCodeSent = false;
+          _otpToken = null;
+          _remainingSeconds = 0;
+          _phoneInlineErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
+          _verificationErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
+          _verificationInfoText = null;
+        });
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('인증시간 만료'),
+              content: const Text('인증시간이 만료되었습니다.\n인증번호를 다시 발송해 주세요.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        _verificationErrorText = msg;
       });
       return;
     }
@@ -337,7 +462,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             );
           } else {
             setState(() {
-              _errorText = forgot['error']?.toString() ??
+              _verificationErrorText = forgot['error']?.toString() ??
                   '비밀번호 재설정을 진행할 수 없습니다.';
             });
           }
@@ -346,7 +471,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorText = '처리 중 오류가 발생했습니다: $e';
+        _verificationErrorText = '처리 중 오류가 발생했습니다: $e';
       });
     } finally {
       if (mounted) {
@@ -410,7 +535,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                         const SizedBox(height: 20),
                         _buildPhoneCertCard(),
                         const SizedBox(height: 16),
-                        _buildMessageArea(),
+                        const SizedBox.shrink(),
                       ] else ...[
                         _buildFindIdResultView(),
                       ],
@@ -857,7 +982,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               width: 60,
               height: 40,
               child: ElevatedButton(
-                onPressed: _handleSendCode,
+                onPressed: (_isLoading || _resendCooldownSeconds > 0)
+                    ? null
+                    : () => _handleSendCode(),
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: const Color(0xFFFF5A8D),
@@ -1080,23 +1207,39 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         AnimatedSize(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
-          child: _verificationErrorText == null
-              ? const SizedBox(height: 10)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 14),
-                    Text(
-                      _verificationErrorText!,
-                      style: const TextStyle(
-                        color: Color(0xFFEF4444),
-                        fontSize: 12,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_verificationInfoText != null &&
+                  _verificationInfoText!.trim().isNotEmpty &&
+                  _verificationErrorText == null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _verificationInfoText!,
+                  style: const TextStyle(
+                    color: Color(0xFF16A34A),
+                    fontSize: 12,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
+              ],
+              if (_verificationErrorText != null &&
+                  _verificationErrorText!.trim().isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(
+                  _verificationErrorText!,
+                  style: const TextStyle(
+                    color: Color(0xFFEF4444),
+                    fontSize: 12,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ],
     );
@@ -1254,31 +1397,5 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
     );
   }
 
-  Widget _buildMessageArea() {
-    if (_errorText == null && _resultText == null) {
-      return const SizedBox.shrink();
-    }
-
-    final isError = _errorText != null;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isError ? const Color(0xFFFFF1F2) : const Color(0xFFFFF4F8),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isError ? const Color(0xFFEF4444) : const Color(0xFFFF5A8D),
-        ),
-      ),
-      child: Text(
-        isError ? _errorText! : _resultText!,
-        style: TextStyle(
-          color: isError ? const Color(0xFFEF4444) : const Color(0xFFFF5A8D),
-          fontSize: 13,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
+  // _buildMessageArea(): 요구사항에 의해 제거됨
 }

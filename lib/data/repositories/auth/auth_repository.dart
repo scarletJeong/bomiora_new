@@ -10,6 +10,46 @@ class AuthRepository {
     return value.toString();
   }
 
+  /// KCP 등 본인인증 고유값(`mb_dupinfo`)으로 이미 가입된 계정이 있는지 확인
+  static Future<Map<String, dynamic>> checkDupInfo({
+    required String mbDupinfo,
+  }) async {
+    final trimmed = mbDupinfo.trim();
+    if (trimmed.isEmpty) {
+      return {'success': true, 'exists': false};
+    }
+    try {
+      final response = await ApiClient.post(ApiEndpoints.checkDupInfo, {
+        'mb_dupinfo': trimmed,
+      });
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final data = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
+        final exists = data['exists'] == true ||
+            data['duplicate'] == true ||
+            data['registered'] == true;
+        return {
+          'success': true,
+          'exists': exists,
+          'error': exists
+              ? _asErrorMessage(
+                  data['message'],
+                  fallback: '이미 가입된 본인인증 정보입니다.',
+                )
+              : null,
+        };
+      }
+
+      // 엔드포인트 미배포(404 등) — 클라이언트만으로는 막지 않고 서버 register에서 검증
+      return {'success': true, 'exists': false};
+    } catch (e) {
+      return {'success': false, 'exists': false, 'error': e.toString()};
+    }
+  }
+
   static Future<Map<String, dynamic>> checkEmail({
     required String email,
   }) async {
@@ -269,6 +309,103 @@ class AuthRepository {
     }
   }
 
+  static Future<Map<String, dynamic>> otpSend({
+    required String purpose,
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      final response = await ApiClient.post(ApiEndpoints.otpSend, {
+        'purpose': purpose,
+        'name': name,
+        'phone': phone,
+      });
+
+      Map<String, dynamic> data = <String, dynamic>{};
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) data = decoded;
+      } catch (_) {}
+
+      if (response.statusCode == 200) {
+        return {
+          'success': data['success'] == true,
+          'data': data,
+          'otpToken': data['otpToken'],
+          'expiresAt': data['expiresAt'],
+          'ttlSeconds': data['ttlSeconds'],
+          'resendCooldownSeconds': data['resendCooldownSeconds'],
+          'retryAfterSec': data['retryAfterSec'],
+          'code': data['code'],
+          'error': null,
+        };
+      }
+
+      return {
+        'success': false,
+        'data': data,
+        'code': data['code']?.toString(),
+        'retryAfterSec': data['retryAfterSec'],
+        'error': _asErrorMessage(
+          data['message'] ?? data['error'],
+          fallback: '인증번호 발송에 실패했습니다. (${response.statusCode})',
+        ),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '인증번호 발송 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> otpVerify({
+    required String otpToken,
+    required String code,
+    required String purpose,
+  }) async {
+    try {
+      final response = await ApiClient.post(ApiEndpoints.otpVerify, {
+        'otpToken': otpToken,
+        'code': code,
+        'purpose': purpose,
+      });
+
+      Map<String, dynamic> data = <String, dynamic>{};
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) data = decoded;
+      } catch (_) {}
+
+      if (response.statusCode == 200) {
+        return {
+          'success': data['success'] == true,
+          'data': data,
+          'code': data['code'],
+          'error': null,
+        };
+      }
+
+      return {
+        'success': false,
+        'data': data,
+        'code': data['code']?.toString(),
+        'expiresAt': data['expiresAt'],
+        'tryCount': data['tryCount'],
+        'remainingAttempts': data['remainingAttempts'],
+        'error': _asErrorMessage(
+          data['message'] ?? data['error'],
+          fallback: '인증번호 확인에 실패했습니다. (${response.statusCode})',
+        ),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '인증번호 확인 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
   static Future<Map<String, dynamic>> resetPassword({
     required String email,
     required String name,
@@ -340,6 +477,9 @@ class AuthRepository {
       print('🔐 [REGISTER] 이메일: $email');
       print('🔐 [REGISTER] 비밀번호: [보호됨]');
       
+      final mbDup = (certInfo?['mb_dupinfo'] ?? certInfo?['mbDupinfo'])
+          ?.toString()
+          .trim();
       final response = await ApiClient.post(ApiEndpoints.register, {
         'email': email,
         'password': password, // 평문 비밀번호 전송 (HTTPS로 보호)
@@ -347,6 +487,7 @@ class AuthRepository {
         'phone': phone,
         'birthday': birthday,
         'gender': gender,
+        if (mbDup != null && mbDup.isNotEmpty) 'mb_dupinfo': mbDup,
         'certInfo': certInfo,
         'agreements': agreements,
       });
