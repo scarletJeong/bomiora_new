@@ -270,14 +270,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   String _safe(dynamic value) => (value ?? '').toString().trim();
 
-  String get _paymentMethodCode {
+  /// 운영 쇼핑몰 `www/shop/orderform.sub.payment.php` 의 `od_settle_case` 값과 동일.
+  String get _paymentMethodLabel {
     switch (_paymentMethodIndex) {
       case 1:
-        return 'bank';
+        return '계좌이체';
       case 2:
-        return 'vbank';
+        return '가상계좌';
       default:
-        return 'card';
+        return '신용카드';
+    }
+  }
+
+  /// KCP PayPlus hidden `pay_method` (영카트 `www/shop/orderform.sub.php` forderform_check 분기와 동일).
+  String get _kcpPayMethodBits {
+    switch (_paymentMethodIndex) {
+      case 1:
+        return '010000000000';
+      case 2:
+        return '001000000000';
+      default:
+        return '100000000000';
     }
   }
 
@@ -386,7 +399,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         {
           'mb_id': user.id,
           'cart_ids': cartIds,
-          'payment_method': _paymentMethodCode,
+          'payment_method': _paymentMethodLabel,
+          'pay_method': _kcpPayMethodBits,
           'escrow_use': _useEscrow,
           'shipping_cost': widget.shippingCost,
           'coupon_discount': _couponDiscount,
@@ -434,8 +448,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
         final launchUrl =
             '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(token)}';
         _lastWebKcpLaunchUrl = launchUrl;
-        // data: URL로 팝업 top-frame 이동은 Chrome에서 차단됨 → 백엔드 launch URL만 사용
-        var opened = loadKcpUrlToPopup(webPendingPopup, launchUrl);
+        // 1) 먼저 HTML을 Blob URL로 로드(서버 메모리 스토어 분산/재시작으로 launch 404가 나는 케이스 회피)
+        // 2) 실패 시 launch URL로 폴백
+        var opened = loadKcpHtmlToPopup(webPendingPopup, html);
+        if (!opened) {
+          // data: URL로 팝업 top-frame 이동은 Chrome에서 차단됨 → 백엔드 launch URL 폴백
+          opened = loadKcpUrlToPopup(webPendingPopup, launchUrl);
+        }
         if (!opened) {
           final directOpened = openKcpUrlInNewTab(launchUrl);
           if (!directOpened) {
