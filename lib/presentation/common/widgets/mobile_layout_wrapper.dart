@@ -19,13 +19,13 @@ class MobileLayoutWrapper extends StatelessWidget {
       backgroundColor: Colors.grey[100], // 외부 배경색
       body: Center(
         child: Container(
-          width: 750, // 모바일 화면 크기로 고정
+          width: 650, // 모바일 화면 크기로 고정
           height: double.infinity,
           decoration: BoxDecoration(
             color: backgroundColor ?? Colors.white, // 기본값: 하얀색
             boxShadow: showShadow ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 10,
                 spreadRadius: 5,
               ),
@@ -44,8 +44,10 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final Widget? drawer;
   final Widget? endDrawer;
+  final GlobalKey<ScaffoldState>? scaffoldKey;
   final bool showShadow;
   final Color? backgroundColor;
+  final Color? outerBackgroundColor;
 
   const MobileAppLayoutWrapper({
     super.key,
@@ -53,8 +55,10 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     this.appBar,
     this.drawer,
     this.endDrawer,
+    this.scaffoldKey,
     this.showShadow = true,
     this.backgroundColor,
+    this.outerBackgroundColor,
   });
 
   @override
@@ -95,22 +99,23 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     }
     
     return Scaffold(
-      backgroundColor: Colors.grey[100], // 외부 배경색
+      backgroundColor: outerBackgroundColor ?? Colors.grey[100], // 외부 배경색
       body: Center(
         child: Container(
-          width: 750, // 모바일 화면 크기로 고정
+          width: 650, // 모바일 화면 크기로 고정
           height: double.infinity,
           decoration: BoxDecoration(
             color: backgroundColor ?? Colors.white, // 기본값: 하얀색
             boxShadow: showShadow ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 10,
                 spreadRadius: 5,
               ),
             ] : null,
           ),
           child: Scaffold(
+            key: scaffoldKey,
             backgroundColor: backgroundColor ?? Colors.white, // 기본값: 하얀색
             appBar: wrappedAppBar ?? appBar,
             drawer: drawer,
