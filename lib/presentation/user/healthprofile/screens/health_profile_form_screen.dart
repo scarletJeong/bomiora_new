@@ -1315,6 +1315,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           label: '키/\n몸무게',
           labelAlign: TextAlign.right,
           field: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: _suffixField(
