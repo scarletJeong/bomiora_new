@@ -45,13 +45,20 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final screenH = MediaQuery.sizeOf(context).height;
+    final dialogW = (screenW * 0.95).clamp(420.0, 560.0);
+    final dialogH = (screenH * 0.82).clamp(520.0, 680.0);
+    final webW = (dialogW - 32).clamp(360.0, 520.0);
+    final webH = (dialogH - 90).clamp(430.0, 620.0);
+
     return Dialog(
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: SizedBox(
-        width: 420,
-        height: 520,
+        width: dialogW,
+        height: dialogH,
         child: Column(
           children: [
             Padding(
@@ -75,8 +82,8 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
             Expanded(
               child: Center(
                 child: SizedBox(
-                  width: 360,
-                  height: 430,
+                  width: webW,
+                  height: webH,
                   child: _errorMessage != null
                       ? Padding(
                           padding: const EdgeInsets.all(16),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
@@ -23,7 +24,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   final GlobalKey<FormFieldState<String>> _zipFormFieldKey =
       GlobalKey<FormFieldState<String>>();
 
-  static const double _addressSearchRowHeight = 40;
+  static const double _addressSearchRowHeight = 30;
 
   // 입력 컨트롤러
   final TextEditingController _subjectController = TextEditingController();
@@ -70,13 +71,12 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     return '';
   }
 
-  /// 우편번호: API는 ad_zip1·ad_zip2 분리, UI는 한 칸에 `123-45` 형태로 표시
+  /// 우편번호: API는 ad_zip1·ad_zip2 분리, UI는 한 칸에 `12345` 형태로 표시
   static String _zipLine(Map<String, dynamic> m) {
     final z1 = _str(m, ['adZip1', 'ad_zip1']);
     final z2 = _str(m, ['adZip2', 'ad_zip2']);
-    if (z1.isNotEmpty && z2.isNotEmpty) return '$z1-$z2';
-    if (z1.isNotEmpty) return z1;
-    return z2;
+    final joined = ('$z1$z2').replaceAll(RegExp(r'[^0-9]'), '');
+    return joined;
   }
 
   static Map<String, String> _splitZipForApi(String raw) {
@@ -93,11 +93,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   }
 
   static String _formatPostalCodeDisplay(String postalCode) {
-    final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
-    if (t.length == 5) {
-      return '${t.substring(0, 3)}-${t.substring(3)}';
-    }
-    return postalCode.trim();
+    // 주소검색 결과에 하이픈이 포함되어도 화면에는 숫자 5자리로만 표시
+    return postalCode.replaceAll(RegExp(r'[^0-9]'), '').trim();
   }
 
   /// 기존 데이터 로드 (수정 모드인 경우)
@@ -142,9 +139,8 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     setState(() {
       _zipController.text = displayZip;
       _address1Controller.text = baseAddress;
-      if (_address2Controller.text.trim().isEmpty && extraAddress.isNotEmpty) {
-        _address2Controller.text = extraAddress;
-      }
+      // 상세주소(마지막 입력란)는 자동 채움 금지: 사용자가 항상 직접 입력
+      _address2Controller.text = '';
     });
 
     _zipFormFieldKey.currentState?.didChange(_zipController.text);
@@ -291,6 +287,9 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               _BoxField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? '연락처를 입력해주세요' : null,
               ),
@@ -306,7 +305,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               ),
               const SizedBox(height: 5),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: FormField<String>(
@@ -403,10 +402,12 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          padding: EdgeInsets.zero,
                           minimumSize:
                               const Size.fromHeight(_addressSearchRowHeight),
+                          fixedSize: const Size.fromHeight(_addressSearchRowHeight),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          alignment: Alignment.center,
                         ),
                         child: const Text(
                           '주소 검색',
@@ -477,12 +478,14 @@ class _BoxField extends StatelessWidget {
   const _BoxField({
     required this.controller,
     this.keyboardType,
+    this.inputFormatters,
     this.validator,
     this.enabled = true,
   });
 
   final TextEditingController controller;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
   final bool enabled;
 
@@ -492,6 +495,7 @@ class _BoxField extends StatelessWidget {
       controller: controller,
       enabled: enabled,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       minLines: 1,
       maxLines: 1,
       decoration: InputDecoration(
