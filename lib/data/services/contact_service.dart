@@ -13,17 +13,31 @@ class ContactDetailPayload {
   const ContactDetailPayload({
     required this.contact,
     this.nestedReplies = const [],
+    this.thread = const [],
+    this.rootWrId,
     this.fallbackReplyText = '',
     this.fallbackReplyDatetime = '',
   });
 
   final Contact contact;
   final List<Contact> nestedReplies;
+  final List<Contact> thread;
+  final int? rootWrId;
   final String fallbackReplyText;
   final String fallbackReplyDatetime;
 }
 
 class ContactService {
+  static const Map<String, String> _noCacheHeaders = {
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+  };
+
+  static String _withNoCacheParam(String endpoint) {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return endpoint.contains('?') ? '$endpoint&_ts=$ts' : '$endpoint?_ts=$ts';
+  }
+
   static List<Contact> _mapJsonToContacts(List<dynamic> list) {
     return list
         .whereType<Map>()
@@ -91,18 +105,31 @@ class ContactService {
         throw Exception('로그인이 필요합니다.');
       }
 
-      final response = await ApiClient.get(
+      final endpoint = _withNoCacheParam(
         '${ApiEndpoints.getMyContacts}?mb_id=${user.id}',
+      );
+      final response = await ApiClient.get(
+        endpoint,
+        additionalHeaders: _noCacheHeaders,
       );
 
       final responseData = json.decode(response.body);
       
       if (responseData['success'] == true && responseData['data'] != null) {
         final List<dynamic> dataList = responseData['data'];
-        return dataList
+        final contacts = dataList
             .whereType<Map>()
             .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
             .toList();
+
+        // 방금 등록한 문의가 "바로" 보이도록 최신순 정렬(내림차순)
+        contacts.sort((a, b) {
+          final byId = b.wrId.compareTo(a.wrId);
+          if (byId != 0) return byId;
+          return b.wrDatetime.compareTo(a.wrDatetime);
+        });
+
+        return contacts;
       }
 
       return [];
@@ -130,9 +157,19 @@ class ContactService {
             debugPrint('[ContactDetail] wr_id=$wrId wr_7=$wr7 (type=${wr7.runtimeType}) wr_reply=$wrReply');
           }
           final nested = _repliesFromDetailData(map);
+          final threadRaw = responseData['thread'];
+          final thread = threadRaw is List
+              ? threadRaw
+                  .whereType<Map>()
+                  .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
+                  .toList()
+              : const <Contact>[];
+          final rootWrId = NodeValueParser.asInt(responseData['root_wr_id']);
           return ContactDetailPayload(
             contact: Contact.fromJson(map),
             nestedReplies: nested,
+            thread: thread,
+            rootWrId: rootWrId,
             fallbackReplyText: _extractReplyText(map),
             fallbackReplyDatetime: _extractReplyDatetime(map),
           );
@@ -181,6 +218,7 @@ class ContactService {
   static Future<Map<String, dynamic>> createContact({
     required String subject,
     required String content,
+    int? parentWrId,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -206,6 +244,7 @@ class ContactService {
           'wr_email': user.email.isNotEmpty ? user.email : '',
           'wr_subject': subject,
           'wr_content': content,
+          if (parentWrId != null) 'parent_wr_id': parentWrId,
           'wr_password': (user.password != null && user.password!.isNotEmpty)
               ? user.password
               : user.id, // 사용자 비밀번호 없으면 ID 사용

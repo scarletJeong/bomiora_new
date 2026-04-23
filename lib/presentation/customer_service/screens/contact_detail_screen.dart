@@ -25,6 +25,8 @@ class ContactDetailScreen extends StatefulWidget {
 
 class _ContactDetailScreenState extends State<ContactDetailScreen> {
   Contact? _contact;
+  List<Contact> _thread = [];
+  int? _rootWrId;
   List<Contact> _replies = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -55,6 +57,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
       if (payload != null) {
         setState(() {
           _contact = payload.contact;
+          _thread = payload.thread;
+          _rootWrId = payload.rootWrId;
           _isLoading = false;
         });
 
@@ -322,6 +326,198 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     );
   }
 
+  Widget _buildQuestionCardFor(Contact c) {
+    final canEdit = (_canEditContact == true) && c.wrId == _contact?.wrId;
+    final canDelete = (_canDeleteContact == true) && c.wrId == _contact?.wrId;
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kBorderMuted, width: 1),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 4,
+              decoration: const BoxDecoration(
+                color: _kPink,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              color: _kPink,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Text(
+                              'Q',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  c.wrSubject.isEmpty ? '(제목 없음)' : c.wrSubject,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 16,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                Text(
+                                  DateDisplayFormatter.formatYmdFromString(c.wrDatetime),
+                                  style: const TextStyle(
+                                    color: Color(0xFF1A1A1A),
+                                    fontSize: 10,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (canEdit || canDelete)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (canEdit) ...[
+                            TextButton(
+                              onPressed: _navigateToEdit,
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF898383),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                '수정',
+                                style: TextStyle(
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                  fontSize: 11,
+                                  color: Color(0xFF898383),
+                                ),
+                              ),
+                            ),
+                            const Text(
+                              '|',
+                              style: TextStyle(
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                                fontSize: 11,
+                                color: Color(0xFF898383),
+                              ),
+                            ),
+                          ],
+                          if (canDelete)
+                            TextButton(
+                              onPressed: _confirmAndDeleteContact,
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF898383),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                '삭제',
+                                style: TextStyle(
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                  fontSize: 11,
+                                  color: Color(0xFF898383),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                _buildContactHtmlBody(c.wrContent),
+                if ((c.wrReply.trim().isNotEmpty || c.hasReply) && _primaryContactHtml(c).trim().isNotEmpty)
+                  _buildAnswerCard(
+                    Contact(
+                      wrId: c.wrId,
+                      wrSubject: c.wrSubject,
+                      wrContent: _primaryContactHtml(c),
+                      mbId: c.mbId,
+                      wrName: '관리자',
+                      wrEmail: c.wrEmail,
+                      wrDatetime: c.wrLast.isNotEmpty ? c.wrLast : c.wrDatetime,
+                      wrLast: c.wrLast,
+                      wrComment: c.wrComment,
+                      wrReply: c.wrReply,
+                      wrParent: c.wrParent,
+                      caName: c.caName,
+                      wrHit: c.wrHit,
+                      wrOption: c.wrOption,
+                      wrIsComment: c.wrIsComment,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Contact> get _threadQuestions {
+    if (_thread.isEmpty) return _contact != null ? [_contact!] : const [];
+    final sorted = [..._thread]..sort((a, b) {
+      final byDt = b.wrDatetime.compareTo(a.wrDatetime);
+      if (byDt != 0) return byDt;
+      return b.wrId.compareTo(a.wrId);
+    });
+    return sorted;
+  }
+
+  int get _followupCount {
+    final root = _rootWrId;
+    if (root == null) return 0;
+    return _threadQuestions.where((c) => c.wrId != root).length;
+  }
+
   Widget _buildAnswerCard(Contact reply) {
     final title = reply.wrSubject.trim().isEmpty ? '답변' : reply.wrSubject;
     return Padding(
@@ -582,7 +778,10 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    _buildQuestionCard(),
+                                    ..._threadQuestions.map((c) => Padding(
+                                          padding: const EdgeInsets.only(bottom: 16),
+                                          child: _buildQuestionCardFor(c),
+                                        )),
                                     ..._buildAnswerBlocks(),
                                   ],
                                 ),
@@ -598,10 +797,20 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                     height: 40,
                                     child: OutlinedButton(
                                       onPressed: () {
+                                        final root = _rootWrId ?? widget.wrId;
+                                        if (_followupCount >= 2) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('추가질문은 최대 2회까지 가능합니다.')),
+                                          );
+                                          return;
+                                        }
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => const ContactFormScreen(),
+                                            builder: (context) => ContactFormScreen(
+                                              parentWrId: root,
+                                              onSuccess: _loadContactDetail,
+                                            ),
                                           ),
                                         );
                                       },

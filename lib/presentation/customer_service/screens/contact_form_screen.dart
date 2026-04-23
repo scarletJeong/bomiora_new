@@ -13,11 +13,13 @@ import '../widget/contact_inquiry_type_filters.dart';
 class ContactFormScreen extends StatefulWidget {
   final VoidCallback? onSuccess;
   final Contact? contact;
+  final int? parentWrId; // 추가질문: 연결할 원글(또는 스레드)의 wr_id
 
   const ContactFormScreen({
     super.key,
     this.onSuccess,
     this.contact,
+    this.parentWrId,
   });
 
   @override
@@ -122,6 +124,7 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           : await ContactService.createContact(
               subject: mergedSubject,
               content: _contentController.text.trim(),
+              parentWrId: widget.parentWrId,
             );
 
       if (!mounted) return;
