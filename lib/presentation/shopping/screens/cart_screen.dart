@@ -523,7 +523,42 @@ class _CartScreenState extends State<CartScreen> {
                                     ),
                                     const SizedBox(height: 18),
 
-                                    if (_recommendedProducts.isNotEmpty) ...[
+                                    if ((() {
+                                      if (_recommendedProducts.isEmpty) return false;
+                                      bool containsGroup(String name, String keyword) =>
+                                          name.replaceAll(' ', '').contains(keyword);
+
+                                      final selectedGroups = <String>{};
+                                      for (final n in _displayedCartItems.map((e) => e.itName)) {
+                                        if (containsGroup(n, '다이어트')) selectedGroups.add('diet');
+                                        if (containsGroup(n, '디톡스')) selectedGroups.add('detox');
+                                        if (containsGroup(n, '심신안정')) selectedGroups.add('calm');
+                                      }
+
+                                      String? groupFromCategory(String? caId) {
+                                        if (caId == null || caId.isEmpty) return null;
+                                        if (caId.startsWith('10')) return 'diet';
+                                        if (caId.startsWith('20')) return 'detox';
+                                        if (caId.startsWith('80')) return 'calm';
+                                        return null;
+                                      }
+
+                                      String? groupFromName(String name) {
+                                        final normalized = name.replaceAll(' ', '');
+                                        if (normalized.contains('다이어트')) return 'diet';
+                                        if (normalized.contains('디톡스')) return 'detox';
+                                        if (normalized.contains('심신안정')) return 'calm';
+                                        return null;
+                                      }
+
+                                      for (final p in _recommendedProducts) {
+                                        final g = groupFromCategory(p.categoryId) ?? groupFromName(p.name);
+                                        if (g == null) continue;
+                                        if (selectedGroups.contains(g)) continue;
+                                        return true;
+                                      }
+                                      return false;
+                                    })()) ...[
                                       // 추가 상품 구매하기 섹션 라벨
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -586,8 +621,9 @@ class _CartScreenState extends State<CartScreen> {
                                                   .map((e) => e.itName)
                                                   .toList(),
                                           products: _recommendedProducts,
-                                          title: '추가 상품 구매하기',
+                                          title: '',
                                           showLeadingBar: false,
+                                          hideWhenEmpty: true,
                                           onProductTap: (product) {
                                             Navigator.pushNamed(
                                               context,
