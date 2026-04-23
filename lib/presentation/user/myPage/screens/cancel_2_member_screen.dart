@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 
@@ -85,7 +87,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '회원 탈퇴 안내'),
+      appBar: const HealthAppBar(title: '회원 탈퇴'),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: SafeArea(
@@ -96,7 +98,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
               children: [
               const Text(
                 '탈퇴하시는 이유가 궁금해요',
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.left,
                 style: TextStyle(
                   color: Color(0xFF1A1A1A),
                   fontSize: 20,
@@ -108,7 +110,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
               const SizedBox(height: 10),
               const Text(
                 '보미오라를 떠나시는 이유를 알려주시면 \n더 나은 서비스로보답하겠습니다',
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.left,
                 style: TextStyle(
                   color: Color(0xFF898686),
                   fontSize: 12,
@@ -325,120 +327,128 @@ class CancelMemberCompleteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void goHome() {
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    }
+
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '회원 탈퇴 안내'),
+      appBar: HealthAppBar(
+        title: '회원 탈퇴',
+        onBack: goHome,
+      ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Center(
-                  child: SizedBox(
-                    width: 192,
-                    height: 192,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Container(
-                            decoration: ShapeDecoration(
-                              color: const Color(0x0CFF5C8F),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9999),
+        child: PopScope(
+          canPop: false,
+          onPopInvoked: (didPop) {
+            if (didPop) return;
+            goHome();
+          },
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: SizedBox(
+                        width: 192,
+                        height: 192,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Container(
+                                decoration: ShapeDecoration(
+                                  color: const Color(0x0CFF5C8F),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(9999),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 16,
-                          top: 16,
-                          child: Container(
-                            width: 160,
-                            height: 160,
-                            decoration: ShapeDecoration(
-                              color: const Color(0x19FF5C8F),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9999),
+                            Positioned(
+                              left: 16,
+                              top: 16,
+                              child: Container(
+                                width: 160,
+                                height: 160,
+                                decoration: ShapeDecoration(
+                                  color: const Color(0x19FF5C8F),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(9999),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        Align(
-                          alignment: Alignment.center,
-                          child: Container(
-                            width: 64,
-                            height: 64,
-                            decoration: ShapeDecoration(
-                              color: const Color(0xFFFF5A8D),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9999),
+                            Align(
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                width: 120,
+                                height: 120,
+                                child: SvgPicture.asset(
+                                  AppAssets.cancelMemberIcon,
+                                  width: 120,
+                                  height: 120,
+                                ),
                               ),
                             ),
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 36,
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const Text(
-                '탈퇴가 완료되었습니다',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 20,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  height: 1.60,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '그동안 보미오라를 이용해 주셔서 감사합니다.\n더 발전된 모습으로 다시 만날 수 있기를 바랍니다.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: 12,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  height: 1.67,
-                ),
-              ),
-              const Spacer(),
-              SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5A8D),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    '메인으로 이동',
+                  const Text(
+                    '탈퇴가 완료되었습니다',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 20,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
+                      height: 1.60,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '그동안 보미오라를 이용해 주셔서 감사합니다.\n더 발전된 모습으로 다시 만날 수 있기를 바랍니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF898686),
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      height: 1.67,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: goHome,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5A8D),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        '메인으로 이동',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                ],
               ),
-              ],
             ),
           ),
         ),

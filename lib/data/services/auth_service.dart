@@ -67,6 +67,35 @@ class AuthService {
     await prefs.remove(_isLoggedInKey);
   }
 
+  /// 탈퇴/차단 등으로 세션이 유효한지 확인
+  /// - active=false면 호출 측에서 logout 처리
+  static Future<bool> isSessionActive() async {
+    try {
+      final user = await getUser();
+      if (user == null || user.id.trim().isEmpty) return false;
+
+      final response = await http.get(
+        Uri.parse(
+          '${ApiClient.baseUrl}/api/auth/session?mb_id=${Uri.encodeQueryComponent(user.id)}',
+        ),
+        headers: const {
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        // 서버 오류 시 즉시 로그아웃하지 않고 유지(보수적)
+        return true;
+      }
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map) return true;
+      return decoded['active'] == true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   // 사용자 정보 업데이트
   static Future<void> updateUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
@@ -173,6 +202,50 @@ class AuthService {
     } catch (e) {
       print('❌ [비밀번호 확인] 에러: $e');
       return false;
+    }
+  }
+
+  /// 비밀번호 변경 (로그인 상태에서 마이페이지에서 사용)
+  ///
+  /// - 서버 구현에 따라 엔드포인트가 다를 수 있어, 먼저 `/api/user/change-password`를 시도합니다.
+  /// - 성공 시 `{ success: true }` 형태를 기대합니다.
+  static Future<Map<String, dynamic>> changePassword({
+    required String mbId,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiClient.baseUrl}/api/user/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'mbId': mbId,
+          'newPassword': newPassword,
+        }),
+      );
+
+      Map<String, dynamic> data = <String, dynamic>{};
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) data = decoded;
+      } catch (_) {}
+
+      final ok = response.statusCode == 200 && (data['success'] == true);
+      return {
+        'success': ok,
+        'message': data['message']?.toString() ??
+            (ok ? '비밀번호가 변경되었습니다.' : '비밀번호 변경에 실패했습니다.'),
+        'statusCode': response.statusCode,
+        'data': data,
+      };
+    } catch (e) {
+      print('❌ [비밀번호 변경] 에러: $e');
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
     }
   }
 

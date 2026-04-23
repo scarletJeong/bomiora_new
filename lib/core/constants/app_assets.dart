@@ -64,4 +64,7 @@ abstract final class AppAssets {
 
   static const String generalMainBanner = '${_img}general_main_banner1.png';
   static const String generalMainBanner2 = '${_img}general_main_banner2.png';
+
+  // 회원 탈퇴 아이콘
+  static const String cancelMemberIcon = '${_img}cancel_member_icon.svg';
 }

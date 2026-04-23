@@ -77,7 +77,7 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '회원 탈퇴 안내'),
+      appBar: const HealthAppBar(title: '회원 탈퇴'),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: SafeArea(

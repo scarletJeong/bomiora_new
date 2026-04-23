@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 // import 'package:firebase_core/firebase_core.dart';
@@ -8,12 +7,10 @@ import 'presentation/auth/screens/find_account_main_screen.dart';
 import 'presentation/auth/screens/find_account_not_found_screen.dart';
 import 'presentation/auth/screens/find_account_result_screen.dart';
 import 'presentation/auth/screens/find_password_reset_screen.dart';
+import 'core/navigation/app_navigator_key.dart';
 import 'presentation/auth/widgets/kcp_cert.dart';
 import 'presentation/auth/screens/signup_screen.dart';
 import 'data/services/auth_service.dart';
-import 'data/repositories/auth/auth_repository.dart';
-import 'data/models/user/user_model.dart';
-import 'core/utils/node_value_parser.dart';
 import 'data/services/kakao_auth_service.dart';
 // 조건부 임포트: 웹과 모바일에서 다른 FCM 서비스 사용
 // import 'data/services/fcm_service_stub.dart'
@@ -22,6 +19,7 @@ import 'presentation/common/widgets/mobile_layout_wrapper.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_detail_general_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
+import 'presentation/shopping/screens/product_main_general_screen.dart';
 import 'presentation/shopping/screens/product_main_screen.dart';
 import 'presentation/shopping/screens/kcp_pay_webview_screen.dart';
 import 'presentation/shopping/screens/payment_complete_screen.dart';
@@ -79,16 +77,13 @@ void main() async {
   runApp(const BomioraApp());
 }
 
-// 전역 NavigatorKey (context 없이 네비게이션 가능)
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 class BomioraApp extends StatelessWidget {
   const BomioraApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey,
+      navigatorKey: appNavigatorKey,
       title: '보미오라1',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -145,6 +140,7 @@ class BomioraApp extends StatelessWidget {
         '/cart': (context) => const CartScreen(),
         '/temp-cart': (context) => const TempCartScreen(),
         '/product-main': (context) => const ProductMainScreen(),
+        '/healthcare-store': (context) => const ProductMainGeneralScreen(),
         '/coupon': (context) => const CouponScreen(),
         '/review': (context) => const AllReviewsScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
@@ -152,14 +148,6 @@ class BomioraApp extends StatelessWidget {
         '/qna': (context) => const ContactListScreen(),
         '/cancel-member': (context) => const CancelMemberScreen(),
         '/customer-service': (context) => const ContactListScreen(),
-        '/kcp-cert': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments
-              as Map<String, dynamic>?;
-          return KcpCertWebViewScreen(
-            flow: (args?['flow'] ?? 'signup').toString(),
-            email: args?['email']?.toString(),
-          );
-        },
         '/kcp-pay': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
@@ -196,6 +184,25 @@ class BomioraApp extends StatelessWidget {
         // 동적 라우트 처리
         final routeName = settings.name ?? '';
         final uri = Uri.parse(routeName);
+
+        // KCP 본인인증: 원래 화면이 비치는 딤 오버레이 스타일로 표시
+        if (routeName == '/kcp-cert') {
+          final args = settings.arguments as Map<String, dynamic>? ?? const {};
+          return PageRouteBuilder(
+            settings: settings,
+            opaque: false,
+            barrierDismissible: false,
+            barrierColor: const Color(0x991A1A1A),
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return KcpCertWebViewScreen(
+                flow: (args['flow'] ?? 'signup').toString(),
+                email: args['email']?.toString(),
+                popResultToParent: args['popResultToParent'] == true,
+                overlayStyle: true,
+              );
+            },
+          );
+        }
 
         // 제품 목록 페이지: /product-list (레거시)
         if (uri.pathSegments.length == 1 &&
@@ -353,6 +360,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
+  bool _isLoggedIn = false;
 
   @override
   void initState() {
@@ -361,60 +369,21 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkLoginStatus() async {
-    final isLoggedIn = await AuthService.isLoggedIn();
-
-    // 로컬 웹( localhost )에서만 자동 로그인
-    if (!isLoggedIn && kIsWeb) {
-      final host = Uri.base.host;
-      final isLocalHost = host == 'localhost' || host == '127.0.0.1' || host.isEmpty;
-      if (isLocalHost) {
-        await _tryDebugAutoLogin();
+    var loggedIn = await AuthService.isLoggedIn();
+    // 탈퇴/차단 시 다른 탭/세션도 다음 진입에서 강제 로그아웃
+    if (loggedIn) {
+      final active = await AuthService.isSessionActive();
+      if (!active) {
+        await AuthService.logout();
+        loggedIn = false;
       }
     }
 
     if (mounted) {
       setState(() {
+        _isLoggedIn = loggedIn;
         _isLoading = false;
       });
-    }
-  }
-
-  /// 로컬 개발용: test@naver.com / testtest1234 로 자동 로그인
-  static const String _debugEmail = 'test@naver.com';
-  static const String _debugPassword = 'testtest1234';
-
-  Future<bool> _tryDebugAutoLogin() async {
-    try {
-      final result = await AuthRepository.login(
-        email: _debugEmail,
-        password: _debugPassword,
-      );
-      if (result['success'] != true) return false;
-
-      final resultData = result['data'];
-      if (resultData is! Map) return false;
-
-      final userData = NodeValueParser.normalizeMap(
-        Map<String, dynamic>.from(resultData),
-      );
-      final userRaw = userData['user'];
-      final userJson = NodeValueParser.normalizeMap(
-        userRaw is Map
-            ? Map<String, dynamic>.from(userRaw)
-            : Map<String, dynamic>.from(userData),
-      );
-      final userId = NodeValueParser.asString(userJson['mb_id']) ??
-          NodeValueParser.asString(userJson['id']) ??
-          '';
-      userJson['id'] = userId;
-      userJson['password'] = _debugPassword;
-      final user = UserModel.fromJson(userJson);
-      final token = NodeValueParser.asString(userData['token']);
-      await AuthService.saveLoginData(user: user, token: token);
-      return true;
-    } catch (e) {
-      debugPrint('⚠️ [DEBUG AUTO LOGIN] 실패: $e');
-      return false;
     }
   }
 
@@ -428,7 +397,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    return const MobileLayoutWrapper();
+    return _isLoggedIn ? const MobileLayoutWrapper() : const LoginScreen();
   }
 }
 
