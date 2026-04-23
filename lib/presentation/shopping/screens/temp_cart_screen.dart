@@ -263,15 +263,6 @@ class _TempCartScreenState extends State<TempCartScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '진료 예약 항목',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
                       if (_tempItems.isEmpty)
                         Container(
                           width: double.infinity,
@@ -312,7 +303,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
                                   ),
                                 )
                               : const Text(
-                                  '장바구니에 넣기',
+                                  '처방 예약하기',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -321,17 +312,6 @@ class _TempCartScreenState extends State<TempCartScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          '${PriceFormatter.format(_totalPrice)}원',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ),
                       RecommendProductSection(
                         excludedProductNames:
                             _tempItems.map((item) => item.itName).toList(),
