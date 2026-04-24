@@ -5,7 +5,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../common/widgets/app_bar.dart';
-import '../../../common/widgets/bottom_bar.dart';
+import '../../../common/widgets/footer_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 
 /// 콘텐츠 상세 (본문, 이전/다음 글, 찜·추천·목록)
@@ -253,7 +253,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               ),
             ),
           ),
-          const BottomBar(),
+          const FooterBar(),
         ],
       ),
     );
