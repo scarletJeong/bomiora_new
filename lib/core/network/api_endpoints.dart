@@ -39,6 +39,7 @@ class ApiEndpoints {
 
   // 찜 관련 (기존 Cafe24 서버)
   static const String getWishList = '/api/wish/list';
+  static const String checkWish = '/api/wish/check';
   static const String addToWish = '/api/wish/toggle';
   static const String removeFromWish = '/api/wish/remove';
 
@@ -152,6 +153,7 @@ class ApiEndpoints {
   // 콘텐츠 관련
   static const String getContentList = '/api/content/list';
   static const String getContentDetail = '/api/content';
+  static String contentRecommend(int id) => '/api/content/$id/recommend';
 
   // 공통 카테고리 관련
   static const String getCategoryList = '/api/get-category/list';

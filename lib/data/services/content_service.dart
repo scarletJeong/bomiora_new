@@ -282,5 +282,31 @@ class ContentService {
       };
     }
   }
+
+  /// 콘텐츠 추천 (엄지업)
+  static Future<Map<String, dynamic>> recommendContent(int id) async {
+    try {
+      final response = await ApiClient.post(
+        ApiEndpoints.contentRecommend(id),
+        <String, dynamic>{},
+      );
+      if (response.statusCode != 200) {
+        return {
+          'success': false,
+          'message': '추천 처리에 실패했습니다.',
+        };
+      }
+      final body = json.decode(response.body);
+      if (body is! Map<String, dynamic>) {
+        return {'success': false, 'message': '응답 형식이 올바르지 않습니다.'};
+      }
+      return Map<String, dynamic>.from(body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '네트워크 오류: $e',
+      };
+    }
+  }
 }
 
