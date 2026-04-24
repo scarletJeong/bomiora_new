@@ -1,4 +1,5 @@
 import '../../../../core/utils/node_value_parser.dart';
+import 'package:flutter/foundation.dart';
 
 class HealthProfileModel {
   final int? pfNo;
@@ -59,12 +60,9 @@ class HealthProfileModel {
   factory HealthProfileModel.fromJson(Map<dynamic, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
     // camelCase와 snake_case 모두 지원
-    print('=== HealthProfileModel.fromJson 파싱 시작 ===');
-    print('입력 JSON: $normalized');
-    
+
     // pfNo 파싱 (camelCase 또는 snake_case)
     final pfNo = normalized['pfNo'] ?? normalized['pf_no'];
-    print('pfNo: $pfNo');
     
     // DateTime 파싱 헬퍼 함수
     DateTime? parseDateTime(dynamic value) {
@@ -74,7 +72,7 @@ class HealthProfileModel {
       if (direct != null) return direct;
       final withT = DateTime.tryParse(stringValue.replaceAll(' ', 'T'));
       if (withT != null) return withT;
-      print('날짜 파싱 오류: $value');
+      debugPrint('[HealthProfileModel] 날짜 파싱 오류: $value');
       return null;
     }
     
@@ -171,11 +169,6 @@ class HealthProfileModel {
           NodeValueParser.asString(normalized['pf_memo']) ??
           '',
     );
-    
-    print('=== 파싱 완료 ===');
-    print('pfNo: ${result.pfNo}, mbId: ${result.mbId}');
-    print('answer1: ${result.answer1}, answer2: ${result.answer2}');
-    
     return result;
   }
 

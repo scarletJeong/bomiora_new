@@ -10,6 +10,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
+import 'health_profile_done_screen.dart';
 
 class HealthProfileFormScreen extends StatefulWidget {
   /// [HealthProfileListScreen] 등에서 push 시 `RouteSettings.name`으로 넣어야 함.
@@ -1064,6 +1065,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   }
 
   Widget _buildFigmaQuestionBlock(HealthProfileQuestion question, int stepIndex) {
+    final hintInlineIds = const <String>{
+      'answer_12', // 복용 중인 약
+      'answer_10_types', // 주로 하는 운동
+      'answer_8', // 식습관
+      'answer_9', // 자주 먹는 음식
+      'answer_11', // 질병
+    };
+    final showInlineMultipleHint = question.allowMultiple && hintInlineIds.contains(question.id);
+    final inlineHintRightAlignedIds = const <String>{};
+    final inlineHintRightAligned =
+        showInlineMultipleHint && inlineHintRightAlignedIds.contains(question.id);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -1073,31 +1086,66 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   widget.initialSectionIndices!.isEmpty) &&
               _isFirstVisibleInStep(stepIndex, question.id)) ...[
             _buildFigmaStepHeading(stepIndex),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
           ],
           if (_showPerQuestionCaption(question, stepIndex) &&
               question.type != 'mealtime') ...[
             _figmaTitleLeadingBarRow(
               crossAxisAlignment: CrossAxisAlignment.end,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Text(
-                      question.question,
-                      style: _figmaBlockTitleStyle,
+              child: showInlineMultipleHint
+                  ? (inlineHintRightAligned
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                question.question,
+                                style: _figmaBlockTitleStyle,
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Text(
+                                '*중복선택가능',
+                                style: _figmaMultiHintStyle,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.end,
+                          spacing: 5,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              question.question,
+                              style: _figmaBlockTitleStyle,
+                            ),
+                            const Text(
+                              '*중복선택가능',
+                              style: _figmaMultiHintStyle,
+                            ),
+                          ],
+                        ))
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            question.question,
+                            style: _figmaBlockTitleStyle,
+                          ),
+                        ),
+                        if (question.allowMultiple)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Text(
+                              '*중복선택가능',
+                              style: _figmaMultiHintStyle,
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  if (question.allowMultiple)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Text(
-                        '*중복선택가능',
-                        style: _figmaMultiHintStyle,
-                      ),
-                    ),
-                ],
-              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -1139,10 +1187,26 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     };
     return _figmaTitleLeadingBarRow(
       crossAxisAlignment: CrossAxisAlignment.center,
-      child: Text(
-        title,
-        style: _figmaBlockTitleStyle,
-      ),
+      child: stepIndex == 3
+          ? Wrap(
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 5,
+              runSpacing: 4,
+              children: [
+                Text(
+                  title,
+                  style: _figmaBlockTitleStyle,
+                ),
+                const Text(
+                  '*중복선택가능',
+                  style: _figmaMultiHintStyle,
+                ),
+              ],
+            )
+          : Text(
+              title,
+              style: _figmaBlockTitleStyle,
+            ),
     );
   }
 
@@ -1708,11 +1772,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               color: Color(0xFF1A1A1A),
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              height: 1.25,
+              height: 1,
             ),
           ),
         ),
-        const SizedBox(width: 12),
         Expanded(child: field),
       ],
     );
@@ -1725,6 +1788,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          '다이어트약 복용 경험',
+          style: TextStyle(
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF1A1A1A),
+          ),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -1833,24 +1906,70 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   color: Color(0xFF1A1A1A),
                 ),
               ),
-              OutlinedButton(
-                onPressed: () {
-                  setState(() {
-                    _formData['answer_13_medicine'] = '';
-                    _formData['answer_13_period'] = '';
-                    _formData['answer_13_dosage'] = '';
-                    _formData['answer_13_sideeffect'] = '';
-                    _dietDetailResetTick++;
-                  });
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _pfPink,
-                  side: const BorderSide(color: _pfPink),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _formData['answer_13_medicine'] = '';
+                      _formData['answer_13_period'] = '';
+                      _formData['answer_13_dosage'] = '';
+                      _formData['answer_13_sideeffect'] = '';
+                      _dietDetailResetTick++;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    height: 28,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(width: 1, color: _pfPink),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(4)),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '🗑️',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontFamily: 'Pretendard Variable',
+                                  fontWeight: FontWeight.w400,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 2),
+                        Text(
+                          '초기화',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _pfPink,
+                            fontSize: 12,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: const Text('초기화', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
               ),
             ],
           ),
@@ -2603,12 +2722,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         await _saveHealthProfile();
         
         if (mounted) {
-          // `pushReplacementNamed`만 쓰면 [이전 목록(미작성)] 위에 [새 /profile]만 얹혀
-          // 뒤로가기 시 이전 목록으로 가며 "문진표가 없습니다"가 다시 보임.
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/profile',
-            (route) => route.isFirst,
-          );
+          final isFullWizard =
+              widget.initialSectionIndices == null || widget.initialSectionIndices!.isEmpty;
+          if (isFullWizard) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const HealthProfileDoneScreen()),
+            );
+          } else {
+            // `pushReplacementNamed`만 쓰면 [이전 목록(미작성)] 위에 [새 /profile]만 얹혀
+            // 뒤로가기 시 이전 목록으로 가며 "문진표가 없습니다"가 다시 보임.
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/profile',
+              (route) => route.isFirst,
+            );
+          }
         }
       } catch (e) {
         if (mounted) {
