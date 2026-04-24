@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               title: Image.asset(
-                AppAssets.bomioraLogo,
+                AppAssets.bomioraLogoPink,
                 height: 40,
               ),
               centerTitle: true,
