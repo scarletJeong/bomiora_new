@@ -99,34 +99,38 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
     if (widget.hideWhenEmpty && recommended.isEmpty) {
       return const SizedBox.shrink();
     }
+    final hasHeader = widget.showLeadingBar || widget.title.trim().isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.topSpacingBefore > 0)
           SizedBox(height: widget.topSpacingBefore),
-        Row(
-          children: [
-            if (widget.showLeadingBar)
-              const Text(
-                '|',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
+        if (hasHeader) ...[
+          Row(
+            children: [
+              if (widget.showLeadingBar)
+                const Text(
+                  '|',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
-              ),
-            const SizedBox(width: 6),
-            Text(
-              widget.title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+              if (widget.showLeadingBar) const SizedBox(width: 6),
+              if (widget.title.trim().isNotEmpty)
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         SizedBox(
           height: 198,
           child: recommended.isEmpty
