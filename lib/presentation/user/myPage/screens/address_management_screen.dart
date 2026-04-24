@@ -60,7 +60,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         _isLoadingAddresses = false;
       });
     } catch (e) {
-      print('❌ 배송지 목록 로드 에러: $e');
       if (mounted) {
         setState(() {
           _isLoadingAddresses = false;
@@ -249,25 +248,25 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_addresses.isNotEmpty) ...[
-                      Row(
-                        children: const [
+                      const Row(
+                        children: [
                           Text(
-                            '나의',
+                            '|',
+                            style: TextStyle(
+                              color: Color(0xFF1A1A1A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -1.44,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            '나의 배송지',
                             style: TextStyle(
                               color: Color(0xFF1A1A1A),
                               fontSize: 16,
                               fontWeight: FontWeight.w300,
                               letterSpacing: -1.44,
-                            ),
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            '배송지',
-                            style: TextStyle(
-                              color: Color(0xFF1A1A1A),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1.76,
                             ),
                           ),
                         ],

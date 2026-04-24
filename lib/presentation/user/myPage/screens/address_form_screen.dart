@@ -6,6 +6,8 @@ import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
 
+const double _kAddressFormFieldHeight = 40;
+
 /// 배송지 추가/수정 화면
 class AddressFormScreen extends StatefulWidget {
   final Map<String, dynamic>? address; // 수정 시 기존 주소 데이터
@@ -24,7 +26,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   final GlobalKey<FormFieldState<String>> _zipFormFieldKey =
       GlobalKey<FormFieldState<String>>();
 
-  static const double _addressSearchRowHeight = 30;
+  static const double _addressSearchRowHeight = _kAddressFormFieldHeight;
 
   // 입력 컨트롤러
   final TextEditingController _subjectController = TextEditingController();
@@ -41,6 +43,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     super.initState();
     _loadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _zipFormFieldKey.currentState?.didChange(_zipController.text);
     });
   }
@@ -102,17 +105,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     final m = widget.address;
     if (m == null) return;
 
-    final z1 = _str(m, ['adZip1', 'ad_zip1']);
-    final z2 = _str(m, ['adZip2', 'ad_zip2']);
     final zipLine = _zipLine(m);
-    debugPrint(
-      '📮 [배송지][우편번호] AddressFormScreen._loadData adId=${m['adId'] ?? m['ad_id']}',
-    );
-    debugPrint('📮 [배송지][우편번호] 전달된 맵 키: ${m.keys.toList()}');
-    debugPrint(
-      '📮 [배송지][우편번호] 필드값 adZip1/ad_zip1="$z1" adZip2/ad_zip2="$z2" → _zipController에 넣을 값="$zipLine"',
-    );
-
     _subjectController.text = _str(m, ['adSubject', 'ad_subject']);
     _nameController.text = _str(m, ['adName', 'ad_name']);
     _phoneController.text = _str(m, ['adHp', 'ad_hp', 'adTel', 'ad_tel']);
@@ -131,8 +124,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     final postalCode = (selected['postalCode'] ?? '').toString().trim();
     final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
     final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
-    final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
-
     final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
     final displayZip = _formatPostalCodeDisplay(postalCode);
 
@@ -213,7 +204,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         );
       }
     } catch (e) {
-      print('❌ 배송지 저장 에러: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -308,6 +298,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
+                    flex: 3,
                     child: FormField<String>(
                       key: _zipFormFieldKey,
                       validator: (_) {
@@ -328,6 +319,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                               child: TextField(
                                 controller: _zipController,
                                 enabled: false,
+                                textAlignVertical: TextAlignVertical.center,
                                 onChanged: (_) =>
                                     state.didChange(_zipController.text),
                                 style: const TextStyle(
@@ -338,7 +330,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                                 decoration: InputDecoration(
                                   isDense: true,
                                   contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 8),
+                                      horizontal: 12, vertical: 12),
                                   hintText: '우편번호',
                                   hintStyle: const TextStyle(
                                     color: Color(0xFF898686),
@@ -390,8 +382,9 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 8),
                   Expanded(
+                    flex: 1,
                     child: SizedBox(
                       height: _addressSearchRowHeight,
                       width: double.infinity,
@@ -480,57 +473,58 @@ class _BoxField extends StatelessWidget {
     this.keyboardType,
     this.inputFormatters,
     this.validator,
-    this.enabled = true,
   });
 
   final TextEditingController controller;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
-  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      minLines: 1,
-      maxLines: 1,
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        hintStyle: const TextStyle(
-          color: Color(0xFF898686),
+    return SizedBox(
+      height: _kAddressFormFieldHeight,
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        minLines: 1,
+        maxLines: 1,
+        textAlignVertical: TextAlignVertical.center,
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          hintStyle: const TextStyle(
+            color: Color(0xFF898686),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            height: 1.83,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
+          ),
+        ),
+        style: const TextStyle(
+          color: Color(0xFF1A1A1A),
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          height: 1.83,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
-        ),
+        validator: validator,
       ),
-      style: const TextStyle(
-        color: Color(0xFF1A1A1A),
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-      ),
-      validator: validator,
     );
   }
 }
