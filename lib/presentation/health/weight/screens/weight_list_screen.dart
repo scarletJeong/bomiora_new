@@ -42,7 +42,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
   Map<String, WeightRecord> weightRecordsMap = {}; // 날짜를 키로 하는 맵
   List<WeightRecord> allRecords = []; // 모든 체중 기록 (시간 정보 포함)
   bool isLoading = true;
-  bool hasShownNoDataDialog = false; // 데이터 없음 다이얼로그를 한 번만 표시하기 위한 플래그
 
   // 현재 선택된 날짜 (기본값: 오늘)
   late DateTime selectedDate;
@@ -450,14 +449,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
                   .isAfter(weightRecordsMap[dateKey]!.measuredAt)) {
             weightRecordsMap[dateKey] = record;
           }
-        }
-
-        // 데이터가 없으면 다이얼로그 표시 (한 번만)
-        if (records.isEmpty && mounted && !hasShownNoDataDialog) {
-          hasShownNoDataDialog = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showNoDataDialog();
-          });
         }
 
         setState(() {
@@ -2053,50 +2044,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
     // 공통 수정 팝업(health_edit_bottom_sheet) 사용
     await _showTimeSelectionBottomSheet(todayRecords);
-  }
-
-  // 데이터 없을 때 다이얼로그 표시
-  void _showNoDataDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('체중 기록 없음'),
-        content: const Text(
-          '아직 체중 기록이 없습니다.\n지금 체중을 입력해주세요!',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // 다이얼로그 닫기
-            },
-            child: const Text('나중에'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context); // 다이얼로그 닫기
-
-              // 체중 입력 페이지로 이동
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => WeightInputScreen(
-                        recordContextDate: selectedDate,
-                      ),
-                ),
-              );
-
-              // 입력 완료 후 데이터 새로고침
-              if (result == true && mounted) {
-                await _loadData();
-              }
-            },
-            child: const Text('체중 입력하기'),
-          ),
-        ],
-      ),
-    );
   }
 }
 
