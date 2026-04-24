@@ -14,6 +14,7 @@ import '../../user/myPage/screens/my_page_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/app_footer.dart';
+import '../../common/widgets/footer_bar.dart';
 import '../widgets/notice_section.dart';
 import '../widgets/event_section.dart';
 
@@ -130,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
       body: _getCurrentPage(),
+      bottomNavigationBar: const FooterBar(),
       // 하단 탭 임시 비활성화
       // bottomNavigationBar: SizedBox(
       //   height: kBottomNavigationBarHeight + 2.0,

@@ -1,49 +1,58 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../../core/constants/app_assets.dart';
 
 class HomeQuickTabSection extends StatelessWidget {
   const HomeQuickTabSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFFF5A8D),
-            width: 1,
-          ),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: Row(
-        children: const [
-          Expanded(
-            child: _QuickTabItem(
-              icon: Icons.videocam_outlined,
-              label: '비대면 진료',
+    return ColoredBox(
+      color: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              children: const [
+                Expanded(
+                  child: _QuickTabItem(
+                    iconAsset: AppAssets.quickTabIcon1,
+                    label: '비대면 진료',
+                  ),
+                ),
+                _QuickDivider(),
+                Expanded(
+                  child: _QuickTabItem(
+                    iconAsset: AppAssets.quickTabIcon2,
+                    label: '문진표',
+                  ),
+                ),
+                _QuickDivider(),
+                Expanded(
+                  child: _QuickTabItem(
+                    iconAsset: AppAssets.quickTabIcon3,
+                    label: '건강대시보드',
+                  ),
+                ),
+                _QuickDivider(),
+                Expanded(
+                  child: _QuickTabItem(
+                    iconAsset: AppAssets.quickTabIcon4,
+                    label: '스토어',
+                  ),
+                ),
+              ],
             ),
           ),
-          _QuickDivider(),
-          Expanded(
-            child: _QuickTabItem(
-              icon: Icons.assignment_outlined,
-              label: '문진표',
-            ),
-          ),
-          _QuickDivider(),
-          Expanded(
-            child: _QuickTabItem(
-              icon: Icons.bar_chart_outlined,
-              label: '건강대시보드',
-            ),
-          ),
-          _QuickDivider(),
-          Expanded(
-            child: _QuickTabItem(
-              icon: Icons.shopping_bag_outlined,
-              label: '스토어',
+          // 아래 줄: 끝까지 꽉 채우지 않도록 좌우 여백 유지
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: Color(0xFFE5E5E5),
             ),
           ),
         ],
@@ -53,11 +62,11 @@ class HomeQuickTabSection extends StatelessWidget {
 }
 
 class _QuickTabItem extends StatelessWidget {
-  final IconData icon;
+  final String iconAsset;
   final String label;
 
   const _QuickTabItem({
-    required this.icon,
+    required this.iconAsset,
     required this.label,
   });
 
@@ -74,19 +83,10 @@ class _QuickTabItem extends StatelessWidget {
             children: [
               Align(
                 alignment: Alignment.center,
-                child: Icon(
-                  icon,
-                  size: 22,
-                  color: const Color(0xFF8E8E8E),
-                ),
-              ),
-              const Positioned(
-                right: 1,
-                top: 3,
-                child: Icon(
-                  Icons.circle,
-                  size: 5,
-                  color: Color(0xFFFF5A8D),
+                child: SvgPicture.asset(
+                  iconAsset,
+                  width: 22,
+                  height: 22,
                 ),
               ),
             ],

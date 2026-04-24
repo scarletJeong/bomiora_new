@@ -24,7 +24,23 @@ abstract final class AppAssets {
   static const String bomioraLogo = '${_img}bomiora-logo.png';
   static const String bomioraPinkLogo = '${_img}bomiora-logo-pink.png';
   static const String bomioraAppbarLogo = '${_img}bomiora-appbar-logo.png';
+  static const String bomioraBottomLogo = '${_img}bomiora-bottom-logo.png';
+
+  // 푸터 아이콘
+  static const String footerIcon1 = '${_img}footer_icon1.svg'; // 홈
+  static const String footerIcon2 = '${_img}footer_icon2.svg'; // 건강대시보드
+  static const String footerIcon3 = '${_img}footer_icon3.svg'; // 비대면 진료
+  static const String footerIcon4 = '${_img}footer_icon4.svg'; // 문진표
+  static const String footerIcon5 = '${_img}footer_icon5.svg'; // MY PAGE
+
+  // 메인 퀵 탭 아이콘
+  static const String quickTabIcon1 = '${_img}main_quick_tap_icon1.svg'; // 비대면 진료
+  static const String quickTabIcon2 = '${_img}main_quick_tap_icon2.svg'; // 문진표
+  static const String quickTabIcon3 = '${_img}main_quick_tap_icon3.svg'; // 건강대시보드
+  static const String quickTabIcon4 = '${_img}main_quick_tap_icon4.svg'; // 스토어
+
   // 회원 탈퇴 아이콘
+
   /// 건강프로필 문진표 단계 아이콘 (SVG)
   static const String profile1 = '${_img}profile_1.svg';
   static const String profile2 = '${_img}profile_2.svg';
@@ -68,4 +84,5 @@ abstract final class AppAssets {
 
   // 회원 탈퇴 아이콘
   static const String cancelMemberIcon = '${_img}cancel_member_icon.svg';
+
 }
