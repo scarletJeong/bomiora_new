@@ -145,6 +145,21 @@ class OrderListModel {
         ? parsedTotalPrice
         : (itemsTotalPrice > 0 ? itemsTotalPrice : 0);
 
+    final topLevelPrescription =
+        (NodeValueParser.asInt(normalized['isPrescriptionOrder']) ?? 0) == 1 ||
+            (NodeValueParser.asString(normalized['isPrescriptionOrder']) ?? '').toLowerCase() == 'true';
+    final kindString = (NodeValueParser.asString(normalized['it_kind']) ??
+            NodeValueParser.asString(normalized['itKind']) ??
+            NodeValueParser.asString(normalized['product_kind']) ??
+            NodeValueParser.asString(normalized['productKind']) ??
+            NodeValueParser.asString(normalized['wi_it_kind']) ??
+            NodeValueParser.asString(normalized['wiItKind']) ??
+            '')
+        .toLowerCase();
+    final inferredPrescription =
+        kindString == 'prescription' ||
+        itemList.any((p) => (p.itKind ?? '').toLowerCase() == 'prescription');
+
     return OrderListModel(
       odId: NodeValueParser.asString(normalized['odId']) ?? '0', // String으로 변환 (int도 처리)
       orderDate: NodeValueParser.asString(normalized['orderDate']) ?? '',
@@ -154,8 +169,7 @@ class OrderListModel {
       totalPrice: resolvedTotalPrice,
       deliveryFee: parsedDeliveryFee,
       odCartCount: NodeValueParser.asInt(normalized['odCartCount']) ?? 0,
-      isPrescriptionOrder: (NodeValueParser.asInt(normalized['isPrescriptionOrder']) ?? 0) == 1 ||
-          (NodeValueParser.asString(normalized['isPrescriptionOrder']) ?? '').toLowerCase() == 'true',
+      isPrescriptionOrder: topLevelPrescription || inferredPrescription,
       items: itemList,
       firstProductName: NodeValueParser.asString(normalized['firstProductName']),
       firstProductOption: NodeValueParser.asString(normalized['firstProductOption']),
@@ -201,10 +215,16 @@ class OrderDetailModel {
   final int productPrice;
   final int deliveryFee;
   final int discountAmount;
+  /// 쿠폰 합계 (장바구니·배송비·주문 쿠폰)
+  final int couponDiscount;
+  /// 포인트 사용액
+  final int pointDiscount;
   final int totalPrice;
   final bool isPrescriptionOrder;
   final String paymentMethod;
   final String? paymentMethodDetail;
+  /// 가상계좌 등 원문 `od_bank_account` (은행/계좌/입금기한)
+  final String? odBankAccount;
   /// 카드 매출전표/영수증 URL (백엔드가 내려주는 경우)
   final String? cardReceiptUrl;
   final String ordererName;
@@ -231,10 +251,13 @@ class OrderDetailModel {
     required this.productPrice,
     required this.deliveryFee,
     required this.discountAmount,
+    this.couponDiscount = 0,
+    this.pointDiscount = 0,
     required this.totalPrice,
     this.isPrescriptionOrder = false,
     required this.paymentMethod,
     this.paymentMethodDetail,
+    this.odBankAccount,
     this.cardReceiptUrl,
     required this.ordererName,
     required this.ordererPhone,
@@ -287,10 +310,15 @@ class OrderDetailModel {
       productPrice: NodeValueParser.asInt(normalized['productPrice']) ?? 0,
       deliveryFee: NodeValueParser.asInt(normalized['deliveryFee']) ?? 0,
       discountAmount: NodeValueParser.asInt(normalized['discountAmount']) ?? 0,
+      couponDiscount:
+          NodeValueParser.asInt(normalized['couponDiscount'] ?? normalized['coupon_discount']) ?? 0,
+      pointDiscount:
+          NodeValueParser.asInt(normalized['pointDiscount'] ?? normalized['point_discount']) ?? 0,
       totalPrice: NodeValueParser.asInt(normalized['totalPrice']) ?? 0,
       isPrescriptionOrder: topLevelPrescription || inferredPrescription,
       paymentMethod: NodeValueParser.asString(normalized['paymentMethod']) ?? '',
       paymentMethodDetail: NodeValueParser.asString(normalized['paymentMethodDetail']),
+      odBankAccount: NodeValueParser.asString(normalized['odBankAccount'] ?? normalized['od_bank_account']),
       cardReceiptUrl: receiptUrl,
       ordererName: NodeValueParser.asString(normalized['ordererName']) ?? '',
       ordererPhone: NodeValueParser.asString(normalized['ordererPhone']) ?? '',
@@ -319,10 +347,13 @@ class OrderDetailModel {
       'productPrice': productPrice,
       'deliveryFee': deliveryFee,
       'discountAmount': discountAmount,
+      'couponDiscount': couponDiscount,
+      'pointDiscount': pointDiscount,
       'totalPrice': totalPrice,
       'isPrescriptionOrder': isPrescriptionOrder,
       'paymentMethod': paymentMethod,
       'paymentMethodDetail': paymentMethodDetail,
+      'odBankAccount': odBankAccount,
       'cardReceiptUrl': cardReceiptUrl,
       'ordererName': ordererName,
       'ordererPhone': ordererPhone,

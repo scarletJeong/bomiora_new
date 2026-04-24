@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/shop_default/reservation_settings_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart' as order_service;
@@ -40,12 +41,90 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
   }
 
   void _parseCurrentDate() {
+    _selectedDate =
+        DateDisplayFormatter.tryParseYmdFlexible(widget.currentDate) ??
+            _tryParseCurrentDateStrict();
+    _selectedTime = widget.currentTime;
+  }
+
+  DateTime? _tryParseCurrentDateStrict() {
     try {
       if (widget.currentDate.contains('T') || widget.currentDate.contains('-')) {
-        _selectedDate = DateTime.parse(widget.currentDate);
+        return DateTime.parse(widget.currentDate);
       }
-      _selectedTime = widget.currentTime;
     } catch (_) {}
+    return null;
+  }
+
+  String _formatYmdWeekdayParen(DateTime d) {
+    const w = ['월', '화', '수', '목', '금', '토', '일'];
+    final y = d.year;
+    final mo = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y.$mo.$day(${w[d.weekday - 1]})';
+  }
+
+  String _formatMeridiemTime(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return hhmm;
+    var h = int.tryParse(parts[0]) ?? 0;
+    final minute = parts[1].length >= 2 ? parts[1].substring(0, 2) : parts[1];
+    final isPm = h >= 12;
+    final label = isPm ? '오후' : '오전';
+    var h12 = h % 12;
+    if (h12 == 0) h12 = 12;
+    return '$label $h12:$minute';
+  }
+
+  Widget _buildSelectedReservationPreviewCard() {
+    if (_selectedDate == null || _selectedTime == null) return const SizedBox.shrink();
+    final d = _selectedDate!;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: _kBorder),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            '진료 예약일자',
+            style: TextStyle(
+              color: _kInk,
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _formatYmdWeekdayParen(d),
+            style: const TextStyle(
+              color: _kPink,
+              fontSize: 14,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatMeridiemTime(_selectedTime!),
+            style: const TextStyle(
+              color: _kInk,
+              fontSize: 14,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadSettings() async {
@@ -134,7 +213,7 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
       type: MaterialType.transparency,
       child: Center(
         child: SizedBox(
-          width: 300,
+          width: 332,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: Column(
@@ -173,13 +252,18 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
                             const SizedBox(height: 8),
                             Text('예약번호: ${widget.orderId}', style: const TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF')),
                             const SizedBox(height: 4),
-                            Text('예약일자: ${widget.currentDate}', style: const TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF')),
+                            Text(
+                              '예약일자: ${DateDisplayFormatter.formatKoreanDateFromString(widget.currentDate)}',
+                              style: const TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF'),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 12),
+                      _buildSelectedReservationPreviewCard(),
+                      const SizedBox(height: 12),
                       const Text(
-                        '새 예약 날짜 선택',
+                        '변경할 예약 날짜 선택',
                         style: TextStyle(color: _kMuted, fontSize: 14, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 8),
@@ -222,7 +306,7 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        '희망 시간 선택',
+                        '시간 선택',
                         style: TextStyle(color: _kMuted, fontSize: 14, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 8),

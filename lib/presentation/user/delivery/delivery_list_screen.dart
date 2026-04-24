@@ -4,7 +4,6 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 // import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/app_bar.dart';
 import 'widgets/delivery_status_filter_bar.dart';
-import 'delivery_detail_screen.dart';
 import 'widgets/reservation_time_change_popup.dart';
 import '../review/review_write_screen.dart';
 import '../review/review_write_general_screen.dart';
@@ -631,29 +630,46 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         out.add(w);
       }
 
+      // 결제대기중 / 배송준비중
       if (_isPaymentStage(order) || _isPreparingStage(order)) {
-        add(_cardActionPrimary(
-          '배송지변경',
-          isPrescription ? null : () => _changeDeliveryAddress(order.odId),
-        ));
-        add(_cardActionOutline(
-          '예약시간변경',
-          isPrescription ? null : () => _changeReservationTimeFromList(order.odId),
-        ));
+        // 공통: 배송지변경 + 주문취소
+        add(_cardActionPrimary('배송지변경', () => _changeDeliveryAddress(order.odId)));
+
+        // 비대면(처방) 주문만 예약시간변경 노출
+        if (isPrescription) {
+          add(_cardActionOutline('예약시간변경', () => _changeReservationTimeFromList(order.odId)));
+        } else {
+          add(_cardActionOutline('주문취소', () => _cancelOrder(order.odId)));
+          return out;
+        }
+
         add(_cardActionGray('주문취소', () => _cancelOrder(order.odId)));
         return out;
       }
+
+      // 배송중: 배송조회 + 수령확인
       if (_isDeliveringStage(order)) {
         add(_cardActionPrimary('수령확인', () => _confirmPurchase(order.odId)));
         add(_cardActionOutline('배송조회', () => _trackDelivery(order.odId)));
-        add(_cardActionGray('리뷰쓰기', () => _writeReview(order.odId)));
-        add(_cardActionGray('교환/환불', null));
         return out;
       }
+
+      // 배송완료: 교환/환불 + 리뷰쓰기
       if (_isCompletedStage(order)) {
-        add(_cardActionOutline('배송조회', () => _trackDelivery(order.odId)));
+        add(_cardActionOutline('교환/환불', null));
         add(_cardActionGray('리뷰쓰기', () => _writeReview(order.odId)));
-        add(_cardActionGray('교환/환불', null));
+        return out;
+      }
+
+      // 교환중: 교환취소
+      if (_isExchangeStage(order)) {
+        add(_cardActionGray('교환취소', null));
+        return out;
+      }
+
+      // 환불중: 환불취소
+      if (_isRefundStage(order)) {
+        add(_cardActionGray('환불취소', null));
         return out;
       }
       return out;
@@ -849,13 +865,20 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     return order.displayStatus == '배송완료' || order.odStatus == '완료';
   }
 
+  bool _isExchangeStage(OrderListModel order) {
+    return order.displayStatus.contains('교환') || order.odStatus.contains('교환');
+  }
+
+  bool _isRefundStage(OrderListModel order) {
+    return order.displayStatus.contains('환불') || order.odStatus.contains('환불');
+  }
+
   /// 주문 상세 화면으로 이동
   void _navigateToOrderDetail(String orderNumber) {
-    Navigator.push(
+    Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (context) => DeliveryDetailScreen(orderNumber: orderNumber),
-      ),
+      '/order-detail',
+      arguments: {'orderNumber': orderNumber},
     );
   }
 
