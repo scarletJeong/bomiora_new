@@ -21,6 +21,10 @@ class DateDisplayFormatter {
   static String formatKoreanDateFromString(String? raw,
       {String fallback = '-'}) {
     if (raw == null || raw.isEmpty) return fallback;
+    final flexible = tryParseYmdFlexible(raw);
+    if (flexible != null) {
+      return '${flexible.year}년 ${flexible.month}월 ${flexible.day}일';
+    }
     try {
       final date = DateTime.parse(raw);
       return '${date.year}년 ${date.month}월 ${date.day}일';
@@ -122,8 +126,8 @@ class DateDisplayFormatter {
   }
 
   /// 예약일자 표시 형식으로 변환
-  /// - 예: `Wed Jan 21 2026` -> `2026.01.21 수`
-  /// - 예: `2026-01-21` -> `2026.01.21 수`
+  /// - 예: `Wed Jan 21 2026` -> `2026.01.21 수요일`
+  /// - 예: `2026-01-21` -> `2026.01.21 수요일`
   static String formatReservationDateWithWeekday(String? raw) {
     if (raw == null || raw.isEmpty || raw == '-') return '-';
 
@@ -146,7 +150,7 @@ class DateDisplayFormatter {
     }
 
     String format(DateTime d) {
-      const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+      const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
       final wd = weekdays[d.weekday - 1];
       return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')} $wd';
     }
@@ -174,5 +178,40 @@ class DateDisplayFormatter {
     } catch (_) {
       return '-';
     }
+  }
+
+  /// 주문 상세 등 `2026.04.20 18:14` 형태 → `2026년 04월 20일 18시 14분`
+  static String formatDotDateTimeToKoreanLong(String? raw) {
+    if (raw == null || raw.isEmpty || raw == '-') return '-';
+    final t = raw.trim();
+    final m = RegExp(
+      r'^(\d{4})\.(\d{2})\.(\d{2})(?:\s+(\d{1,2}):(\d{2}))?',
+    ).firstMatch(t);
+    if (m == null) return t;
+    final y = m.group(1)!;
+    final mo = m.group(2)!;
+    final d = m.group(3)!;
+    final hh = m.group(4);
+    final mm = m.group(5);
+    if (hh != null && mm != null) {
+      return '${y}년 ${mo}월 ${d}일 ${int.parse(hh)}시 ${mm}분';
+    }
+    return '${y}년 ${mo}월 ${d}일';
+  }
+
+  /// `od_bank_account` 세 번째 토큰 `YYYYMMDDHHmmss` → `YYYY년 MM월 DD일 HH시 mm분`
+  static String formatBankDeadlineCompact14(String? raw) {
+    if (raw == null || raw.isEmpty) return '-';
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length < 12) return '-';
+    final y = digits.substring(0, 4);
+    final mo = digits.substring(4, 6);
+    final d = digits.substring(6, 8);
+    if (digits.length >= 12) {
+      final h = int.tryParse(digits.substring(8, 10)) ?? 0;
+      final mi = digits.length >= 14 ? digits.substring(10, 12) : '00';
+      return '${y}년 ${mo}월 ${d}일 ${h}시 ${mi}분';
+    }
+    return '${y}년 ${mo}월 ${d}일';
   }
 }
