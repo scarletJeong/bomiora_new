@@ -30,6 +30,7 @@ class _CouponScreenState extends State<CouponScreen> {
   static const Color _textMain = Color(0xFF1A1A1A);
   static const Color _textMuted = Color(0xFF898383);
   static const Color _textSub = Color(0xFF898686);
+  static const Color _usedRed = Color(0xFFEF4444);
 
   @override
   void dispose() {
@@ -44,13 +45,16 @@ class _CouponScreenState extends State<CouponScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
 
     try {
       final user = await AuthService.getUser();
+      if (!mounted) return;
       if (user != null) {
+        if (!mounted) return;
         setState(() {
           _currentUser = user;
         });
@@ -66,9 +70,9 @@ class _CouponScreenState extends State<CouponScreen> {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -82,6 +86,7 @@ class _CouponScreenState extends State<CouponScreen> {
         CouponService.getExpiredCoupons(_currentUser!.id),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _availableCoupons = results[0];
         _usedCoupons = results[1];
@@ -170,7 +175,7 @@ class _CouponScreenState extends State<CouponScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
-        title: '쿠폰',
+        title: '내 쿠폰',
       ),
       child: _isLoading
           ? const Center(
@@ -348,30 +353,44 @@ class _CouponScreenState extends State<CouponScreen> {
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 5),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: selected ? _pink : _textMuted,
-                fontSize: 14,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
+        child: Center(
+          // 탭 영역은 Expanded로 넓게 유지하되, underline은 텍스트 폭만큼만 그려지게.
+          child: IntrinsicWidth(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? _pink : _textMuted,
+                    fontSize: 14,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  height: 1,
+                  color: selected ? _pink : Colors.transparent,
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Container(
-              height: 1,
-              color: selected ? _pink : Colors.transparent,
-            ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  String _formatUsedDate(DateTime? dt) {
+    if (dt == null) return '';
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '$y.$m.$d';
   }
 
   Future<void> _showCouponRegisteredDialog() async {
@@ -560,6 +579,7 @@ class _CouponScreenState extends State<CouponScreen> {
 
   Widget _buildCouponCard(Coupon coupon, int tabIndex) {
     final dateLine = coupon.formattedDateRange.replaceAll('–', '~');
+    final usedDateLine = _formatUsedDate(coupon.datetime);
     final appliedLine = coupon.displayAppliedLine;
     final minMaxLine = coupon.minMaxOrderDescription;
     final showUsageDetail = tabIndex != 1;
@@ -580,15 +600,41 @@ class _CouponScreenState extends State<CouponScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            dateLine,
-            style: const TextStyle(
-              color: _textMain,
-              fontSize: 12,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+          if (tabIndex == 1)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    usedDateLine,
+                    style: const TextStyle(
+                      color: _textMain,
+                      fontSize: 12,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const Text(
+                  '사용완료',
+                  style: TextStyle(
+                    color: _usedRed,
+                    fontSize: 10,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              dateLine,
+              style: const TextStyle(
+                color: _textMain,
+                fontSize: 12,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
           const SizedBox(height: 10),
           Container(height: 1, color: _border),
           const SizedBox(height: 10),

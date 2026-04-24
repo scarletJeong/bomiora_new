@@ -73,8 +73,16 @@ class Coupon {
       minimum: NodeValueParser.asInt(normalized['cp_minimum'] ?? normalized['minimum']) ?? 0,
       maximum: NodeValueParser.asInt(normalized['cp_maximum'] ?? normalized['maximum']) ?? 0,
       orderId: NodeValueParser.asInt(normalized['od_id'] ?? normalized['orderId']),
-      datetime: normalized['cp_datetime'] != null || normalized['datetime'] != null
-          ? _parseDateTime(normalized['cp_datetime'] ?? normalized['datetime'])
+      // 사용일시: 백엔드에 따라 cp_datetime / cl_datetime / datetime 등으로 내려올 수 있음
+      datetime: normalized['cp_datetime'] != null ||
+              normalized['cl_datetime'] != null ||
+              normalized['datetime'] != null
+          ? _parseDateTime(
+              // 사용한 쿠폰은 coupon_log.cl_datetime가 기준이므로 cl_datetime를 최우선으로 사용
+              normalized['cl_datetime'] ??
+                  normalized['cp_datetime'] ??
+                  normalized['datetime'],
+            )
           : null,
       appliedProduct: NodeValueParser.asString(normalized['applied_product']),
     );
@@ -114,8 +122,13 @@ class Coupon {
           dateStr.isEmpty) {
         return null;
       }
-      
-      return DateTime.parse(dateStr);
+
+      // '2026-04-20 14:16:43' 같은 포맷도 허용
+      final direct = DateTime.tryParse(dateStr);
+      if (direct != null) return direct;
+      final withT = DateTime.tryParse(dateStr.replaceAll(' ', 'T'));
+      if (withT != null) return withT;
+      return null;
     } catch (_) {
       return null;
     }
