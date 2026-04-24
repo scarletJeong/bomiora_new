@@ -18,6 +18,19 @@ class WishService {
   static Map<String, dynamic>? _normalizeWishItem(dynamic raw) {
     if (raw is! Map) return null;
     final item = NodeValueParser.normalizeMap(Map<String, dynamic>.from(raw));
+    // API는 `product_kind`(snake, Buffer)만 주는 경우가 많음 → 탭/상세와 맞추기 위해 it_kind·productKind 보강
+    final productKindRaw = NodeValueParser.asString(item['product_kind']) ??
+        NodeValueParser.asString(item['productKind']) ??
+        '';
+    final itKindRaw = NodeValueParser.asString(item['it_kind']) ??
+        NodeValueParser.asString(item['itKind']) ??
+        '';
+    final wiKindRaw =
+        NodeValueParser.asString(item['wi_it_kind']) ?? NodeValueParser.asString(item['wiItKind']) ?? '';
+    final kind = wiKindRaw.isNotEmpty
+        ? wiKindRaw
+        : (itKindRaw.isNotEmpty ? itKindRaw : productKindRaw);
+
     return {
       ...item,
       'it_id':
@@ -28,6 +41,9 @@ class WishService {
           NodeValueParser.asString(item['mb_id']) ??
           NodeValueParser.asString(item['mbId']) ??
           '',
+      if (kind.isNotEmpty) 'it_kind': kind,
+      if (productKindRaw.isNotEmpty) 'productKind': productKindRaw,
+      if (wiKindRaw.isNotEmpty) 'wi_it_kind': wiKindRaw,
     };
   }
 
@@ -53,10 +69,11 @@ class WishService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is Map && data['data'] != null && data['data'] is List) {
-          return (data['data'] as List)
+          final normalized = (data['data'] as List)
               .map(_normalizeWishItem)
               .whereType<Map<String, dynamic>>()
               .toList();
+          return normalized;
         }
       }
 
@@ -66,20 +83,49 @@ class WishService {
     }
   }
 
+  /// 찜 여부 (콘텐츠는 [productId]에 글 id 문자열, 상품은 it_id)
+  static Future<bool> isWished(String productId) async {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) return false;
+      final q = Uri.encodeQueryComponent(user.id);
+      final p = Uri.encodeQueryComponent(productId);
+      final response = await ApiClient.get(
+        '${ApiEndpoints.checkWish}?mb_id=$q&it_id=$p',
+        additionalHeaders: _noCacheHeaders,
+      );
+      if (response.statusCode != 200) return false;
+      final data = json.decode(response.body);
+      if (data is! Map<String, dynamic>) return false;
+      return data['is_wished'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 찜 추가
-  static Future<Map<String, dynamic>> addToWish(String productId) async {
+  static Future<Map<String, dynamic>> addToWish(
+    String productId, {
+    String? wiItKind,
+  }) async {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
         throw Exception('로그인이 필요합니다.');
       }
 
+      final body = <String, dynamic>{
+        'mb_id': user.id,
+        'it_id': productId,
+      };
+      final k = wiItKind?.trim();
+      if (k != null && k.isNotEmpty) {
+        body['wi_it_kind'] = k;
+      }
+
       final response = await ApiClient.post(
         ApiEndpoints.addToWish,
-        {
-          'mb_id': user.id,
-          'it_id': productId,
-        },
+        body,
       );
 
       return json.decode(response.body);
