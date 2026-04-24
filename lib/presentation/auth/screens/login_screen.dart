@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Image.asset(
-                              AppAssets.bomioraLogoPink,
+                              AppAssets.bomioraPinkLogo,
                               height: 22,
                               fit: BoxFit.contain,
                             ),

@@ -356,7 +356,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       ),
       appBar: AppBar(
         title: Image.asset(
-          AppAssets.bomioraLogoPink,
+          AppAssets.bomioraAppbarLogo,
           height: 40,
         ),
         centerTitle: true,

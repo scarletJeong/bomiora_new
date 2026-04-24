@@ -22,8 +22,9 @@ abstract final class AppAssets {
 
   /// 앱 로고 (PNG)
   static const String bomioraLogo = '${_img}bomiora-logo.png';
-  static const String bomioraLogoPink = '${_img}bomiora-logo-pink.png';
-
+  static const String bomioraPinkLogo = '${_img}bomiora-logo-pink.png';
+  static const String bomioraAppbarLogo = '${_img}bomiora-appbar-logo.png';
+  // 회원 탈퇴 아이콘
   /// 건강프로필 문진표 단계 아이콘 (SVG)
   static const String profile1 = '${_img}profile_1.svg';
   static const String profile2 = '${_img}profile_2.svg';

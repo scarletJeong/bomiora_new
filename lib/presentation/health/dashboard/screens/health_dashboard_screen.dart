@@ -256,7 +256,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           ),
         ),
         title: Image.asset(
-          AppAssets.bomioraLogoPink,
+          AppAssets.bomioraAppbarLogo,
           height: 40,
         ),
         backgroundColor: const Color(0xFFFFACC6),

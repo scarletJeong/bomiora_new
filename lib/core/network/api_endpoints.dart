@@ -63,6 +63,7 @@ class ApiEndpoints {
 
   // 사용자 관련 (Spring Boot 서버)
   static const String userProfile = '/api/user/profile';
+  static const String userRefundAccount = '/api/user/refund-account';
   static const String userOrders = '/api/user/orders';
 
   // 건강 관리 관련 (향후 확장용)
