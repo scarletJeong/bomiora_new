@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../widgets/my_page_common.dart';
@@ -133,6 +134,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
+  bool _isValidPassword(String pw) {
+    final t = pw.trim();
+    if (t.length < 8 || t.length > 16) return false;
+    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(t);
+    final hasDigit = RegExp(r'[0-9]').hasMatch(t);
+    final hasSpecial =
+        RegExp(r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\]~`+=;]').hasMatch(t);
+    return hasLetter && hasDigit && hasSpecial;
+  }
+
   Future<void> _saveProfile() async {
     if (_currentUser == null) return;
 
@@ -161,6 +172,52 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       if (!mounted) return;
       
       if (result['success'] == true) {
+        final newPw = _newPasswordController.text.trim();
+        final confirmPw = _confirmPasswordController.text.trim();
+
+        if (newPw.isNotEmpty || confirmPw.isNotEmpty) {
+          if (newPw.isEmpty || confirmPw.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('새 비밀번호/확인을 모두 입력해 주세요.')),
+            );
+            return;
+          }
+          if (!_isValidPassword(newPw)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('비밀번호는 8~16자이며 문자/숫자/특수문자를 모두 포함해야 합니다.'),
+              ),
+            );
+            return;
+          }
+          if (newPw != confirmPw) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
+            );
+            return;
+          }
+
+          final pwResult = await AuthService.changePassword(
+            mbId: _currentUser!.id,
+            newPassword: newPw,
+          );
+          if (!mounted) return;
+          if (pwResult['success'] != true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  pwResult['message']?.toString() ?? '비밀번호 변경에 실패했습니다.',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? '프로필이 수정되었습니다.'),
@@ -274,6 +331,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         child: TextField(
                           controller: _phone1Controller,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           maxLength: 3,
                           textAlign: TextAlign.center,
                           decoration: const InputDecoration(
@@ -297,6 +357,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         child: TextField(
                           controller: _phone2Controller,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           maxLength: 4,
                           textAlign: TextAlign.center,
                           decoration: const InputDecoration(
@@ -320,6 +383,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         child: TextField(
                           controller: _phone3Controller,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           maxLength: 4,
                           textAlign: TextAlign.center,
                           decoration: const InputDecoration(
@@ -367,6 +433,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   child: TextField(
                     controller: _verificationController,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
                     onChanged: (_) => _recomputeVerificationMismatch(),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
