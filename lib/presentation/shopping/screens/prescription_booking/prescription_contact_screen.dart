@@ -9,7 +9,7 @@ import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../data/services/cart_service.dart';
-import '../../../../main.dart'; // navigatorKey import
+import '../../../../core/navigation/app_navigator_key.dart';
 
 /// 연락처 입력 화면 (개인정보)
 class PrescriptionContactScreen extends StatefulWidget {
@@ -398,7 +398,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       if (!mounted) return;
       Future.microtask(() {
         try {
-          final navigator = navigatorKey.currentState;
+          final navigator = appNavigatorKey.currentState;
           if (navigator != null) {
             navigator.pushNamedAndRemoveUntil(
               '/cart',
