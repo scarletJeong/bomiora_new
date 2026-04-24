@@ -53,7 +53,6 @@ class OrderService {
           'hasNext': data['hasNext'] ?? false,
         };
       } else {
-        print('❌ [주문 목록 조회] 실패: ${response.statusCode}');
         final errorData = _decodeBody(response);
         return {
           'success': false,
@@ -61,7 +60,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [주문 목록 조회] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -78,28 +76,18 @@ class OrderService {
     required String mbId,
   }) async {
     try {
-      print('📦 [주문 상세 조회] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-
       var response = await ApiClient.get('/api/orders/$odId?mbId=$mbId&mb_id=$mbId');
       if (response.statusCode == 404) {
         response = await ApiClient.get('/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId');
       }
 
-      print('📡 [주문 상세 조회] 응답 상태: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
-        
-        print('✅ [주문 상세 조회] 성공');
-        
         return {
           'success': true,
           'order': data,
         };
       } else {
-        print('❌ [주문 상세 조회] 실패: ${response.statusCode}');
         final errorData = _decodeBody(response);
         return {
           'success': false,
@@ -107,7 +95,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [주문 상세 조회] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -124,27 +111,18 @@ class OrderService {
     required String mbId,
   }) async {
     try {
-      print('📦 [주문 취소] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-
       final response = await ApiClient.post(
         '/api/orders/$odId/cancel',
         {'mbId': mbId},
       );
 
-      print('📡 [주문 취소] 응답 상태: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ [주문 취소] 성공');
-        
         return {
           'success': true,
           'message': data['message'] ?? '주문이 취소되었습니다.',
         };
       } else {
-        print('❌ [주문 취소] 실패: ${response.statusCode}');
         final errorData = json.decode(response.body);
         return {
           'success': false,
@@ -152,7 +130,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [주문 취소] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -169,27 +146,18 @@ class OrderService {
     required String mbId,
   }) async {
     try {
-      print('📦 [구매 확정] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-
       final response = await ApiClient.post(
         '/api/orders/$odId/confirm',
         {'mbId': mbId},
       );
 
-      print('📡 [구매 확정] 응답 상태: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ [구매 확정] 성공');
-        
         return {
           'success': true,
           'message': data['message'] ?? '구매가 확정되었습니다.',
         };
       } else {
-        print('❌ [구매 확정] 실패: ${response.statusCode}');
         final errorData = json.decode(response.body);
         return {
           'success': false,
@@ -197,7 +165,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [구매 확정] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',

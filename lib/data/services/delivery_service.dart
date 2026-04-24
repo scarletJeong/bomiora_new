@@ -62,7 +62,6 @@ class OrderService {
           'hasNext': data is Map ? (data['hasNext'] ?? false) : false,
         };
       } else {
-        print('❌ [주문 목록 조회] 실패: ${response.statusCode}');
         final errorData = _decodeBody(response);
         return {
           'success': false,
@@ -70,7 +69,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [주문 목록 조회] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -87,16 +85,10 @@ class OrderService {
     required String mbId,
   }) async {
     try {
-      print('📦 [주문 상세 조회] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-
       var response = await ApiClient.get('/api/orders/$odId?mbId=$mbId&mb_id=$mbId');
       if (response.statusCode == 404) {
         response = await ApiClient.get('/api/user/orders/$odId?mbId=$mbId&mb_id=$mbId');
       }
-
-      print('📡 [주문 상세 조회] 응답 상태: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
@@ -106,43 +98,13 @@ class OrderService {
             'message': '주문 상세 응답 형식이 올바르지 않습니다.',
           };
         }
-        final rawMap = Map<String, dynamic>.from(data);
-        final rawProducts = rawMap['products'];
-        if (rawProducts is List) {
-          print('📦 [주문 상세 조회] 상품 raw 로그 (${rawProducts.length}개)');
-          for (var i = 0; i < rawProducts.length; i++) {
-            final item = rawProducts[i];
-            if (item is Map) {
-              final m = Map<String, dynamic>.from(item);
-              print(
-                '  - [$i] it_id=${m['it_id'] ?? m['itId']} '
-                'it_name=${m['it_name'] ?? m['itName']} '
-                'it_kind=${m['it_kind'] ?? m['itKind']}',
-              );
-            } else {
-              print('  - [$i] $item');
-            }
-          }
-        }
+
         final order = OrderDetailModel.fromJson(Map<String, dynamic>.from(data));
-        
-        print('✅ [주문 상세 조회] 성공');
-        for (var i = 0; i < order.products.length; i++) {
-          final p = order.products[i];
-          print('  - [parsed:$i] it_id=${p.itId} it_name=${p.itName} it_kind=${p.itKind}');
-        }
-        print(
-          '📦 [주문 상세 조회] 파싱 결과: '
-          'odId=${order.odId}, isPrescriptionOrder=${order.isPrescriptionOrder}, '
-          'productCount=${order.products.length}',
-        );
-        
         return {
           'success': true,
           'order': order,
         };
       } else {
-        print('❌ [주문 상세 조회] 실패: ${response.statusCode}');
         final errorData = _decodeBody(response);
         return {
           'success': false,
@@ -150,7 +112,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [주문 상세 조회] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -167,27 +128,18 @@ class OrderService {
     required String mbId,
   }) async {
     try {
-      print('📦 [주문 취소] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-
       final response = await ApiClient.post(
         '/api/orders/$odId/cancel',
         {'mbId': mbId},
       );
 
-      print('📡 [주문 취소] 응답 상태: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
-        print('✅ [주문 취소] 성공');
-        
         return {
           'success': true,
           'message': data['message'] ?? '주문이 취소되었습니다.',
         };
       } else {
-        print('❌ [주문 취소] 실패: ${response.statusCode}');
         final errorData = _decodeBody(response);
         return {
           'success': false,
@@ -195,7 +147,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [주문 취소] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
