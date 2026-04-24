@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../../../data/services/refund_account_service.dart';
+import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 
@@ -15,11 +18,42 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
   final _ownerController = TextEditingController();
   final _accountController = TextEditingController();
 
-  // 은행 목록은 추후 DB 연동 예정 (지금은 UI만 구성)
-  static const String _bankPlaceholder = '은행을 선택하세요';
-  final List<String> _banks = const [_bankPlaceholder];
-  String _selectedBank = _bankPlaceholder;
+  static const String _bankEmptyHint = '은행을 선택하세요';
+
+  /// 드롭다운 노출 순서 (고정)
+  static const List<String> _bankNames = [
+    'KB 국민은행',
+    'SH 신한은행',
+    'WOORI 우리은행',
+    '하나은행',
+    'NH 농협은행',
+    'IBK 기업은행',
+    'KAKAO 카카오뱅크',
+    'K 케이뱅크',
+    'TOSS 토스뱅크',
+    'BS 부산은행',
+    'DG 대구은행',
+    'G 광주은행',
+    'GN 경남은행',
+    'JB 전북은행',
+    'JJ 제주은행',
+    'SH 수협은행',
+    'U 우체국',
+    'SC제일은행',
+    'CITI 씨티은행',
+  ];
+
+  String _selectedBank = '';
   bool _isLoggedIn = false;
+  bool _loadingRefund = true;
+
+  List<String> get _bankItemsForDropdown {
+    final b = _selectedBank.trim();
+    if (b.isNotEmpty && !_bankNames.contains(b)) {
+      return [b, ..._bankNames];
+    }
+    return _bankNames;
+  }
 
   @override
   void initState() {
@@ -30,9 +64,45 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
   Future<void> _loadUser() async {
     final user = await AuthService.getUser();
     if (!mounted) return;
+    if (user == null) {
+      setState(() {
+        _isLoggedIn = false;
+        _loadingRefund = false;
+      });
+      return;
+    }
     setState(() {
-      _isLoggedIn = user != null;
+      _isLoggedIn = true;
+      _loadingRefund = true;
     });
+    await _loadRefund(user.id);
+  }
+
+  Future<void> _loadRefund(String mbId) async {
+    try {
+      final data = await RefundAccountService.fetch(mbId);
+      if (!mounted) return;
+      if (data['success'] == true) {
+        final bank = '${data['refundBank'] ?? data['mb_refund_bank'] ?? ''}'.trim();
+        final acc = '${data['refundAccount'] ?? data['mb_refund_account'] ?? ''}'.trim();
+        final holder = '${data['refundHolder'] ?? data['mb_refund_holder'] ?? ''}'.trim();
+        setState(() {
+          _selectedBank = bank;
+        });
+        _accountController.text = acc;
+        _ownerController.text = holder;
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('환불계좌를 불러오지 못했습니다.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingRefund = false);
+      }
+    }
   }
 
   @override
@@ -42,54 +112,82 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_selectedBank.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('은행을 선택해주세요.')),
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('환불계좌가 저장되었습니다.')),
-    );
-    Navigator.pop(context, true);
+
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인이 필요합니다.')),
+      );
+      return;
+    }
+
+    final digitsOnly = _accountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('계좌번호를 확인해 주세요.')),
+      );
+      return;
+    }
+
+    try {
+      final data = await RefundAccountService.save(
+        mbId: user.id,
+        refundBank: _selectedBank.trim(),
+        refundAccountDigits: digitsOnly,
+        refundHolder: _ownerController.text.trim(),
+      );
+      if (!mounted) return;
+      if (data['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${data['message'] ?? '환불계좌가 저장되었습니다.'}')),
+        );
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${data['message'] ?? '저장에 실패했습니다.'}')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('네트워크 오류로 저장하지 못했습니다.')),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '환불계좌관리'),
+      appBar: const HealthAppBar(title: '환불 계좌 관리'),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: _isLoggedIn
-            ? Form(
+            ? _loadingRefund
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF5A8D)))
+                : Form(
                 key: _formKey,
                 child: ListView(
                   padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
                   children: [
                     const _FieldLabel('은행 선택'),
                     const SizedBox(height: 5),
-                    _BoxDropdown<String>(
+                    DropdownBtn(
+                      items: _bankItemsForDropdown,
                       value: _selectedBank,
-                      items: _banks
-                          .map((bank) => DropdownMenuItem<String>(
-                                value: bank,
-                                child: Text(
-                                  bank,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                      hintText: _bankPlaceholder,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedBank = value);
-                      },
-                      validator: (value) {
-                        if (value == null || value == _bankPlaceholder) {
-                          return null;
-                        }
-                        return null;
-                      },
+                      emptyText: _bankEmptyHint,
+                      buttonHeight: 40,
+                      panelMaxHeight: 320,
+                      onChanged: (v) => setState(() => _selectedBank = v),
                     ),
                     const SizedBox(height: 20),
                     const _FieldLabel('계좌번호'),
@@ -98,9 +196,12 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                       controller: _accountController,
                       hintText: '계좌번호를 입력해주세요.(- 는 제외)',
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       validator: (v) => (v == null || v.trim().isEmpty) ? '계좌번호를 입력해주세요' : null,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 0),
                     const _FieldLabel('예금주명'),
                     const SizedBox(height: 5),
                     _BoxField(
@@ -161,30 +262,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const SizedBox(width: 16, height: 16),
-        const SizedBox(width: 6),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.text);
   final String text;
@@ -208,12 +285,14 @@ class _BoxField extends StatelessWidget {
     required this.controller,
     required this.hintText,
     this.keyboardType,
+    this.inputFormatters,
     this.validator,
   });
 
   final TextEditingController controller;
   final String hintText;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
 
   static const double _fieldH = 40;
@@ -236,6 +315,7 @@ class _BoxField extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 keyboardType: keyboardType,
+                inputFormatters: inputFormatters,
                 onChanged: (_) {
                   state.didChange(controller.text);
                   if (state.hasError) state.validate();
@@ -294,56 +374,6 @@ class _BoxField extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _BoxDropdown<T> extends StatelessWidget {
-  const _BoxDropdown({
-    required this.value,
-    required this.items,
-    required this.hintText,
-    required this.onChanged,
-    this.validator,
-  });
-
-  final T value;
-  final List<DropdownMenuItem<T>> items;
-  final String hintText;
-  final ValueChanged<T?> onChanged;
-  final String? Function(T?)? validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: DropdownButtonFormField<T>(
-        value: value,
-        items: items,
-        onChanged: onChanged,
-        validator: validator,
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.all(10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
-          ),
-        ),
-        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF898686)),
-        style: const TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
     );
   }
 }
