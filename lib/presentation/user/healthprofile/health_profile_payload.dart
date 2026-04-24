@@ -61,7 +61,7 @@ abstract final class HealthProfilePayload {
     return '';
   }
 
-  /// 서버/DB에 맞춘 다이어트약 복용경험 코드 (`1` = 없음, `2` = 있음)
+  /// 서버/DB에 맞춘 다이어트 약 코드 (`1` = 없음, `2` = 있음)
   static String encodeAnswer13ForApi(String? value) {
     final s = value?.trim() ?? '';
     if (s == '2' || s == '있음') return '2';

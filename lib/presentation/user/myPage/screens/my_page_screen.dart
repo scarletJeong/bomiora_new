@@ -467,7 +467,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
                 const SizedBox(height: 10),
                 MyPageLineMenuItem(
-                  title: '건강프로필 관리',
+                  title: '문진표 관리',
                   isLast: true,
                   onTap: () => Navigator.push(
                     context,

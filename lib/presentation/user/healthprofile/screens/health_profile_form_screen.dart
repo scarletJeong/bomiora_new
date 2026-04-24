@@ -125,7 +125,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     '식습관',
     '운동습관',
     '질병',
-    '다이어트약 복용경험',
+    '다이어트 약',
   ];
 
   static const List<String> _wizardStepIconAssets = [
@@ -365,12 +365,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         ],
       ),
       HealthProfileSection(
-        title: '다이어트약 복용경험',
+        title: '다이어트 약',
         description: '',
         questions: [
           HealthProfileQuestion(
             id: 'answer_13',
-            question: '다이어트약 복용경험',
+            question: '다이어트 약',
             type: 'radio',
             options: ['있음', '없음'],
           ),
@@ -512,7 +512,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       _formData['answer_12'] = <String>['해당 없음'];
     }
     
-    // 다이어트약 복용경험 변환 (1 = 없음, 2 = 있음)
+    // 다이어트 약 변환 (1 = 없음, 2 = 있음)
     if (profile.answer13 == '1') {
       _formData['answer_13'] = '없음';
     } else if (profile.answer13 == '2') {
@@ -1135,7 +1135,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       1 => '하루 끼니',
       2 => '운동 습관',
       3 => '질병 정보',
-      _ => '다이어트약 복용경험',
+      _ => '다이어트 약',
     };
     return _figmaTitleLeadingBarRow(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -2412,7 +2412,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         return Column(
           children: question.options!.map((option) {
             // 성별 변환 (M/F -> 남성/여성)
-            // 다이어트약 복용경험 변환 (1 -> 없음, 2 -> 있음)
+            // 다이어트 약 변환 (1 -> 없음, 2 -> 있음)
             String? groupValue = _formData[question.id];
             if (question.id == 'answer_2') {
               if (groupValue == 'M') groupValue = '남성';
@@ -2432,7 +2432,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   if (question.id == 'answer_2') {
                     _formData[question.id] = value == '남성' ? 'M' : (value == '여성' ? 'F' : value ?? '');
                   } else if (question.id == 'answer_13') {
-                    // 다이어트약 복용경험 저장 시 1/2로 변환 (없음=1, 있음=2)
+                    // 다이어트 약 저장 시 1/2로 변환 (없음=1, 있음=2)
                     final newValue = value == '없음' ? '1' : (value == '있음' ? '2' : value ?? '');
                     final oldValue = _formData[question.id]?.toString();
                     _formData[question.id] = newValue;
