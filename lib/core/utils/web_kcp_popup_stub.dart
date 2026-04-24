@@ -2,6 +2,10 @@ bool openKcpHtmlPopup(String html) {
   return false;
 }
 
+Object? openKcpHtmlPopupWindow(String html) {
+  return null;
+}
+
 Object? openPendingKcpPopup() {
   return null;
 }

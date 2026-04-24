@@ -1,24 +1,77 @@
 import 'dart:html' as html;
 
 bool openKcpHtmlPopup(String htmlText) {
-  final popup = openPendingKcpPopup();
-  if (popup == null) {
-    return false;
+  return openKcpHtmlPopupWindow(htmlText) != null;
+}
+
+Object? openKcpHtmlPopupWindow(String htmlText) {
+  try {
+    // about:blank + document.write 는 빈 화면·타입 이슈가 잦아 Blob URL만 사용한다.
+    // KCP가 window.open 으로 빈 창을 더 띄우지 않도록 스크립트를 <head> 직후에 주입한다.
+    var base = htmlText
+        .replaceAll('target="_blank"', 'target="_self"')
+        .replaceAll("target='_blank'", "target='_self'");
+
+    const blockScript = r'''
+<script>
+(function(){
+  var _orig = window.open;
+  window.open = function(u, name, feat) {
+    if (u && String(u) !== 'about:blank') {
+      window.location.href = u;
+      return window;
+    }
+    return _orig ? _orig.call(window, u, name, feat) : window;
+  };
+})();
+</script>''';
+
+    final String injected;
+    final lower = base.toLowerCase();
+    final headIdx = lower.indexOf('<head');
+    if (headIdx >= 0) {
+      final headEnd = base.indexOf('>', headIdx);
+      if (headEnd >= 0) {
+        injected =
+            base.substring(0, headEnd + 1) + blockScript + base.substring(headEnd + 1);
+      } else {
+        injected = blockScript + base;
+      }
+    } else {
+      injected = blockScript + base;
+    }
+
+    final blob = html.Blob([injected], 'text/html; charset=utf-8');
+    final objectUrl = html.Url.createObjectUrlFromBlob(blob);
+    // 고정 이름: 이전에 남은 빈 팝업이 있으면 같은 창을 재사용해 빈 탭이 쌓이지 않게 한다.
+    final w = html.window.open(
+      objectUrl,
+      'kcp_cert_popup',
+      'popup=yes,width=520,height=760',
+    );
+    return w;
+  } catch (_) {
+    return null;
   }
-  return loadKcpHtmlToPopup(popup, htmlText);
 }
 
 Object? openPendingKcpPopup() {
-  return html.window.open('about:blank', '_blank');
+  try {
+    final w = html.window.open(
+      'about:blank',
+      'kcp_cert_popup',
+      'popup=yes,width=520,height=760',
+    );
+    return w;
+  } catch (_) {
+    return null;
+  }
 }
 
 bool loadKcpHtmlToPopup(Object? popup, String htmlText) {
   if (popup is! html.WindowBase) {
     return false;
   }
-
-  // 최상위 프레임을 data: URL로 이동하는 것은 Chrome 등에서 차단됨.
-  // Blob URL은 동일 목적에 대체로 허용되며, 가능하면 백엔드 launch URL 사용을 권장.
   try {
     final blob = html.Blob([htmlText], 'text/html; charset=utf-8');
     final objectUrl = html.Url.createObjectUrlFromBlob(blob);
@@ -43,7 +96,6 @@ bool loadKcpUrlToPopup(Object? popup, String url) {
 
 bool openKcpUrlInNewTab(String url) {
   try {
-    // 브라우저에 따라 차단 시 null — SDK 타입은 nullable이 아닐 수 있음
     // ignore: unnecessary_null_comparison
     return html.window.open(url, '_blank') != null;
   } catch (_) {
