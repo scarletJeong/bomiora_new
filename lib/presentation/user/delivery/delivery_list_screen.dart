@@ -763,28 +763,39 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     final statusText = _selectedStatus == 'all'
         ? '주문'
         : _getStatusText(_selectedStatus);
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 100),
-          Icon(
-            Icons.inbox_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '$statusText 내역이 없습니다',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.inbox_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '$statusText 내역이 없습니다',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  // const AppFooter(),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 48),
-          // const AppFooter(),
-        ],
-      ),
+        );
+      },
     );
   }
 
