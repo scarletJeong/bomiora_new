@@ -102,7 +102,7 @@ class _FaqListScreenState extends State<FaqListScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: 'FAQ',
-        centerTitle: true,
+        centerTitle: false,
       ),
       child: RefreshIndicator(
         onRefresh: () => _load(page: 1),

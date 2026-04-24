@@ -73,7 +73,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '알림센터',
-          centerTitle: true,
+          centerTitle: false,
           actions: [
             IconButton(
               tooltip: '알림 설정',

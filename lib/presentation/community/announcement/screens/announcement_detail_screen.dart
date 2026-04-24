@@ -62,7 +62,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '공지사항', centerTitle: true),
+      appBar: const HealthAppBar(title: '공지사항', centerTitle: false),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

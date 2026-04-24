@@ -29,7 +29,7 @@ class _NotificationSettingsScreenState
       child: MobileAppLayoutWrapper(
         appBar: const HealthAppBar(
           title: '알림 설정',
-          centerTitle: true,
+          centerTitle: false,
         ),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
@@ -106,25 +106,38 @@ class _NotificationSettingsScreenState
           _buildOptionRow(
             title: '마케팅 정보 수신 동의',
             value: _marketingAgree,
-            onChanged: (value) => setState(() => _marketingAgree = value),
+            onChanged: (value) {
+              setState(() {
+                _marketingAgree = value;
+                if (value) {
+                  _appPushAgree = true;
+                  _smsAgree = true;
+                } else {
+                  _appPushAgree = false;
+                  _smsAgree = false;
+                }
+              });
+            },
             isTopLevel: true,
           ),
-          const SizedBox(height: 10),
-          Container(height: 1, color: const Color(0x7FD2D2D2)),
-          const SizedBox(height: 10),
-          _buildOptionRow(
-            title: '앱 푸시 수신',
-            value: _appPushAgree,
-            onChanged: (value) => setState(() => _appPushAgree = value),
-            indent: 20,
-          ),
-          const SizedBox(height: 10),
-          _buildOptionRow(
-            title: 'SMS 수신',
-            value: _smsAgree,
-            onChanged: (value) => setState(() => _smsAgree = value),
-            indent: 20,
-          ),
+          if (_marketingAgree) ...[
+            const SizedBox(height: 10),
+            Container(height: 1, color: const Color(0x7FD2D2D2)),
+            const SizedBox(height: 10),
+            _buildOptionRow(
+              title: '앱 푸시 수신',
+              value: _appPushAgree,
+              onChanged: (value) => setState(() => _appPushAgree = value),
+              indent: 20,
+            ),
+            const SizedBox(height: 10),
+            _buildOptionRow(
+              title: 'SMS 수신',
+              value: _smsAgree,
+              onChanged: (value) => setState(() => _smsAgree = value),
+              indent: 20,
+            ),
+          ],
         ],
       ),
     );

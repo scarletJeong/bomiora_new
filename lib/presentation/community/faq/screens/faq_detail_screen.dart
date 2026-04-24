@@ -57,7 +57,7 @@ class _FaqDetailScreenState extends State<FaqDetailScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: 'FAQ',
-        centerTitle: true,
+        centerTitle: false,
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())

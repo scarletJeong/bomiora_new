@@ -29,7 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '설정',
-        centerTitle: true,
+        centerTitle: false,
       ),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
@@ -200,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, size: 20, color: _kMuted),
+                Icon(icon, size: 20, color: _kPink),
                 const SizedBox(width: 8),
                 Text(
                   title,
