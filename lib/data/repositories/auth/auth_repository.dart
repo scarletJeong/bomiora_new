@@ -214,15 +214,25 @@ class AuthRepository {
   }
 
   // 아이디/비밀번호호 찾기 API 호출
+  ///
+  /// - 본인인증(KCP): `fromKcp` + `mbDupinfo` (이름·휴대폰은 인증서와 교차검증용)
+  /// - 소유인증(OTP): `otpToken`(id_find) + 이름 + 휴대폰
   static Future<Map<String, dynamic>> findId({
     required String name,
     required String phone,
+    String? otpToken,
+    bool fromKcp = false,
+    String? mbDupinfo,
   }) async {
     try {
-      final response = await ApiClient.post(ApiEndpoints.findId, {
+      final body = <String, dynamic>{
         'name': name,
         'phone': phone,
-      });
+        if (otpToken != null && otpToken.trim().isNotEmpty) 'otpToken': otpToken.trim(),
+        if (fromKcp) 'from_kcp': true,
+        if (mbDupinfo != null && mbDupinfo.trim().isNotEmpty) 'mb_dupinfo': mbDupinfo.trim(),
+      };
+      final response = await ApiClient.post(ApiEndpoints.findId, body);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -261,45 +271,47 @@ class AuthRepository {
     }
   }
 
+  /// 비밀번호 찾기 사전 확인
+  ///
+  /// - 문자(OTP): `otpToken` + `identifier`(가입 이메일, mb_email) + 이름 + 휴대폰 (본인인증 등록 시 차단)
+  /// - KCP: `fromKcp` + `mbDupinfo` + `identifier`(가입 이메일)
+  /// - 레거시: `email`(로그인 이메일) + 이름 + 휴대폰만
   static Future<Map<String, dynamic>> forgotPassword({
-    required String email,
     required String name,
     required String phone,
+    String? email,
+    String? identifier,
+    String? otpToken,
+    bool fromKcp = false,
+    String? mbDupinfo,
   }) async {
     try {
-      final response = await ApiClient.post(ApiEndpoints.forgotPassword, {
-        'email': email,
+      final body = <String, dynamic>{
         'name': name,
         'phone': phone,
-      });
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+        if (identifier != null && identifier.trim().isNotEmpty) 'identifier': identifier.trim(),
+        if (otpToken != null && otpToken.trim().isNotEmpty) 'otpToken': otpToken.trim(),
+        if (fromKcp) 'from_kcp': true,
+        if (mbDupinfo != null && mbDupinfo.trim().isNotEmpty) 'mb_dupinfo': mbDupinfo.trim(),
+      };
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final data = decoded is Map<String, dynamic>
-            ? decoded
-            : <String, dynamic>{};
-        final success = data['success'] ?? true;
-        return {
-          'success': success,
-          'data': data,
-          'error': success ? null : _asErrorMessage(data['message'], fallback: '비밀번호 찾기에 실패했습니다'),
-        };
-      }
+      final response = await ApiClient.post(ApiEndpoints.forgotPassword, body);
 
-      String errorMessage = '서버 오류: ${response.statusCode}';
+      Map<String, dynamic> data = <String, dynamic>{};
       try {
-        final errorData = json.decode(response.body);
-        if (errorData is Map<String, dynamic>) {
-          errorMessage = _asErrorMessage(
-            errorData['message'] ?? errorData['error'],
-            fallback: errorMessage,
-          );
-        }
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) data = decoded;
       } catch (_) {}
 
+      final success = data['success'] == true;
       return {
-        'success': false,
-        'error': errorMessage,
+        'success': success,
+        'data': data,
+        'code': data['code']?.toString(),
+        'error': success
+            ? null
+            : _asErrorMessage(data['message'], fallback: '비밀번호 찾기에 실패했습니다'),
       };
     } catch (e) {
       return {
@@ -406,52 +418,51 @@ class AuthRepository {
     }
   }
 
+  /// 비밀번호 재설정
+  ///
+  /// - OTP: `otpToken` + `identifier`(가입 이메일) + 이름 + 휴대폰
+  /// - KCP: `fromKcp` + `mbDupinfo` + `identifier`(가입 이메일)
+  /// - 레거시: `email` + 이름 + 휴대폰
   static Future<Map<String, dynamic>> resetPassword({
-    required String email,
     required String name,
     required String phone,
     required String password,
+    String? email,
+    String? identifier,
+    String? otpToken,
+    bool fromKcp = false,
+    String? mbDupinfo,
   }) async {
     try {
-      final response = await ApiClient.post(ApiEndpoints.resetPassword, {
-        'email': email,
+      final body = <String, dynamic>{
         'name': name,
         'phone': phone,
         'password': password,
-      });
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+        if (identifier != null && identifier.trim().isNotEmpty) 'identifier': identifier.trim(),
+        if (otpToken != null && otpToken.trim().isNotEmpty) 'otpToken': otpToken.trim(),
+        if (fromKcp) 'from_kcp': true,
+        if (mbDupinfo != null && mbDupinfo.trim().isNotEmpty) 'mb_dupinfo': mbDupinfo.trim(),
+      };
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final data = decoded is Map<String, dynamic>
-            ? decoded
-            : <String, dynamic>{};
-        final success = data['success'] ?? true;
-        return {
-          'success': success,
-          'data': data,
-          'error': success
-              ? null
-              : _asErrorMessage(
-                  data['message'],
-                  fallback: '비밀번호 재설정에 실패했습니다',
-                ),
-        };
-      }
+      final response = await ApiClient.post(ApiEndpoints.resetPassword, body);
 
-      String errorMessage = '서버 오류: ${response.statusCode}';
+      Map<String, dynamic> data = <String, dynamic>{};
       try {
-        final errorData = json.decode(response.body);
-        if (errorData is Map<String, dynamic>) {
-          errorMessage = _asErrorMessage(
-            errorData['message'] ?? errorData['error'],
-            fallback: errorMessage,
-          );
-        }
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) data = decoded;
       } catch (_) {}
 
+      final success = data['success'] == true;
       return {
-        'success': false,
-        'error': errorMessage,
+        'success': success,
+        'data': data,
+        'error': success
+            ? null
+            : _asErrorMessage(
+                data['message'],
+                fallback: '비밀번호 재설정에 실패했습니다',
+              ),
       };
     } catch (e) {
       return {

@@ -9,6 +9,7 @@ import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/agreement_widget.dart';
+import '../widgets/kcp_cert.dart';
 
 enum _SignupStep { form, agreement, complete }
 
@@ -41,8 +42,14 @@ class _SignupScreenState extends State<SignupScreen> {
   String? _certGender;
   Map<String, dynamic> _rawCertInfo = {};
 
+  bool get _hasCert =>
+      (_certName?.trim().isNotEmpty ?? false) &&
+      (_certPhone?.trim().isNotEmpty ?? false) &&
+      (_certBirthday?.trim().isNotEmpty ?? false) &&
+      (_certGender?.trim().isNotEmpty ?? false);
+
   bool get _canInputComplete {
-    if (_isLoading) return false;
+    if (_isLoading || !_hasCert) return false;
     return _emailController.text.trim().isNotEmpty &&
         _passwordController.text.isNotEmpty &&
         _passwordConfirmController.text.isNotEmpty;
@@ -62,6 +69,17 @@ class _SignupScreenState extends State<SignupScreen> {
     return message.contains('이미 존재하는 이메일') || message.contains('이미 있는 아이디');
   }
 
+  bool _isDuplicateCertMessage(String? message) {
+    if (message == null) return false;
+    final m = message.toLowerCase();
+    return message.contains('이미 가입') ||
+        message.contains('이미 등록된') ||
+        message.contains('중복 가입') ||
+        message.contains('mb_dupinfo') ||
+        m.contains('dupinfo') ||
+        m.contains('duplicate');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -73,15 +91,24 @@ class _SignupScreenState extends State<SignupScreen> {
     _passwordController.addListener(onFieldChanged);
     _passwordConfirmController.addListener(onFieldChanged);
 
-    _rawCertInfo = Map<String, dynamic>.from(widget.certInfo ?? <String, dynamic>{});
-    _certName = _readString(widget.certInfo, [
+    final initial = widget.certInfo;
+    if (initial != null && initial.isNotEmpty) {
+      _applyCertFromMap(initial);
+    } else {
+      _rawCertInfo = {};
+    }
+  }
+
+  void _applyCertFromMap(Map<String, dynamic> source) {
+    _rawCertInfo = Map<String, dynamic>.from(source);
+    _certName = _readString(source, [
       'name',
       'user_name',
       'mem_name',
       'userName',
     ]);
     _certPhone = _normalizePhone(
-      _readString(widget.certInfo, [
+      _readString(source, [
         'phone',
         'phone_no',
         'phoneNo',
@@ -91,7 +118,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ]),
     );
     _certBirthday = _normalizeBirthday(
-      _readString(widget.certInfo, [
+      _readString(source, [
         'birthday',
         'birth',
         'birth_day',
@@ -99,13 +126,68 @@ class _SignupScreenState extends State<SignupScreen> {
       ]),
     );
     _certGender = _normalizeGender(
-      _readString(widget.certInfo, [
+      _readString(source, [
         'gender',
         'sex',
         'sex_code',
         'sexCode',
       ]),
     );
+  }
+
+  Future<void> _openCertOverlay() async {
+    final cert = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      PageRouteBuilder<Map<String, dynamic>?>(
+        opaque: false,
+        barrierDismissible: false,
+        barrierColor: const Color(0x991A1A1A),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return const KcpCertWebViewScreen(
+            flow: 'signup',
+            popResultToParent: true,
+          );
+        },
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (cert == null) {
+      // 취소/닫힘: 회원가입 화면에서 본인인증 버튼 페이지로 유지
+      setState(() {
+        _rawCertInfo = {};
+        _certName = null;
+        _certPhone = null;
+        _certBirthday = null;
+        _certGender = null;
+      });
+      return;
+    }
+
+    if (cert['popupBlocked'] == true) {
+      setState(() {
+        _rawCertInfo = {};
+        _certName = null;
+        _certPhone = null;
+        _certBirthday = null;
+        _certGender = null;
+      });
+      _showErrorSnackBar('팝업 차단을 해제한 뒤 다시 시도해 주세요.');
+      return;
+    }
+
+    if (cert['duplicate'] == true) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => route.isFirst,
+      );
+      return;
+    }
+
+    if (cert['cert_completed'] == true) {
+      setState(() => _applyCertFromMap(cert));
+    }
   }
 
   @override
@@ -262,6 +344,17 @@ class _SignupScreenState extends State<SignupScreen> {
           _showErrorSnackBar('이미 있는 아이디입니다.');
           return;
         }
+        if (_isDuplicateCertMessage(errorMessage)) {
+          setState(() {
+            _step = _SignupStep.form;
+          });
+          _showErrorSnackBar(
+            errorMessage.contains('이미')
+                ? errorMessage
+                : '이미 가입된 본인인증 정보입니다.',
+          );
+          return;
+        }
         _showErrorSnackBar(errorMessage);
       }
     } catch (e) {
@@ -340,6 +433,79 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildFormStep() {
+    if (!_hasCert) {
+      return Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '환영합니다.',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 20,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -1.8,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    '회원정보를 입력해주세요.\n만 14세 미만은 가입이 불가합니다.',
+                    style: TextStyle(
+                      color: Color(0xFF898686),
+                      fontSize: 16,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: -1.44,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '휴대폰 본인인증을 완료해야 다음 단계로 진행할 수 있습니다.\n인증을 취소하면 로그인 화면으로 돌아갑니다.',
+                    style: TextStyle(
+                      color: Color(0xFF898686),
+                      fontSize: 14,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w400,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _openCertOverlay,
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: const Color(0xFFFF5A8D),
+                        disabledBackgroundColor: const Color(0xFFD2D2D2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        '휴대폰 본인인증',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     final phone = _phoneSegments(_certPhone);
 
     return Column(

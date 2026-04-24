@@ -6,6 +6,7 @@ import '../../../data/models/user/user_model.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -504,7 +505,12 @@ class _LoginScreenState extends State<LoginScreen> {
             color: const Color(0xFF898383),
           ),
           TextButton(
-            onPressed: () => Navigator.pushNamed(context, '/kcp-cert'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (context) => const SignupScreen(),
+              ),
+            ),
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
             child: const Text(
               '회원가입',

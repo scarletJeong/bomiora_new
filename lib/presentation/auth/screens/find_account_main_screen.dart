@@ -20,7 +20,7 @@ class FindAccountScreen extends StatefulWidget {
   });
 
   final String initialTab;
-  /// 비밀번호 찾기 탭 진입 시 이메일(아이디) 자동 입력
+  /// 비밀번호 찾기 탭 진입 시 가입 이메일 자동 입력
   final String? prefillEmail;
 
   @override
@@ -191,7 +191,6 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           _isCodeSent = false;
           _otpToken = null;
           _verificationCodeController.clear();
-          _phoneInlineErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
           _verificationErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
           _verificationInfoText = null;
         });
@@ -296,7 +295,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       final email = _passwordEmailController.text.trim();
       if (email.isEmpty) {
         setState(() {
-          _emailLookupErrorText = '아이디(이메일)를 입력해 주세요.';
+          _emailLookupErrorText = '가입 이메일을 입력해 주세요.';
         });
         return;
       }
@@ -359,25 +358,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           _isCodeSent = false;
           _otpToken = null;
           _remainingSeconds = 0;
-          _phoneInlineErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
           _verificationErrorText = '인증시간이 만료되었습니다. 다시 발송해 주세요.';
           _verificationInfoText = null;
         });
-        if (mounted) {
-          await showDialog<void>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('인증시간 만료'),
-              content: const Text('인증시간이 만료되었습니다.\n인증번호를 다시 발송해 주세요.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
-          );
-        }
         return;
       }
 
@@ -397,6 +380,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
         final result = await AuthRepository.findId(
           name: _idNameController.text.trim(),
           phone: _phoneNumber,
+          otpToken: token,
         );
 
         if (!mounted) return;
@@ -418,54 +402,73 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           _goToFindAccountNotFound();
         }
       } else {
-        final result = await AuthRepository.findId(
-          name: _passwordNameController.text.trim(),
-          phone: _phoneNumber,
-        );
-
-        if (!mounted) return;
-
-        final accounts = parseFindIdAccountEmails(result);
-        final email = _passwordEmailController.text.trim();
+        final identifier = _passwordEmailController.text.trim();
         final name = _passwordNameController.text.trim();
         final phone = _phoneNumber;
 
-        if (accounts.isEmpty) {
-          _goToFindAccountNotFound({
-            'mode': 'password',
-            'email': email,
-            'name': name,
-            'phone': phone,
-          });
-          return;
-        } else if (!accounts.contains(email)) {
-          setState(() {
-            _emailLookupErrorText = '등록된 아이디(이메일)가 없습니다.';
-          });
-        } else {
-          final forgot = await AuthRepository.forgotPassword(
-            email: email,
-            name: name,
-            phone: phone,
-          );
-          if (!mounted) return;
-          if (forgot['success'] == true) {
-            Navigator.pushNamed(
-              context,
-              '/find-password-reset',
-              arguments: {
-                'email': email,
-                'name': name,
-                'phone': phone,
-                'cert_completed': true,
-              },
-            );
-          } else {
-            setState(() {
-              _verificationErrorText = forgot['error']?.toString() ??
-                  '비밀번호 재설정을 진행할 수 없습니다.';
-            });
+        final forgot = await AuthRepository.forgotPassword(
+          name: name,
+          phone: phone,
+          identifier: identifier,
+          otpToken: token,
+        );
+        if (!mounted) return;
+
+        if (forgot['success'] == true) {
+          final root = forgot['data'];
+          Map<String, dynamic>? account;
+          if (root is Map && root['account'] is Map) {
+            account = Map<String, dynamic>.from(root['account'] as Map);
           }
+          final rawAccEmail = account?['email']?.toString().trim() ?? '';
+          final accountEmail = rawAccEmail.isNotEmpty ? rawAccEmail : identifier;
+
+          if (!mounted) return;
+          Navigator.pushNamed(
+            context,
+            '/find-password-reset',
+            arguments: {
+              'identifier': identifier,
+              'email': accountEmail,
+              'name': name,
+              'phone': phone,
+              'otpToken': token,
+              'cert_completed': true,
+            },
+          );
+        } else {
+          final code = forgot['code']?.toString();
+          if (code == 'PASSWORD_RESET_REQUIRES_CERT') {
+            setState(() {
+              _emailLookupErrorText = null;
+              _verificationErrorText = null;
+              _isPhoneCertExpanded = true;
+            });
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  forgot['error']?.toString() ??
+                      '본인인증이 등록된 계정입니다. 아래 본인인증으로 진행해 주세요.',
+                ),
+              ),
+            );
+            return;
+          }
+          if (forgot['error']?.toString().contains('일치') == true ||
+              forgot['error']?.toString().contains('찾을 수 없') == true) {
+            _goToFindAccountNotFound({
+              'mode': 'password',
+              'email': identifier,
+              'name': name,
+              'phone': phone,
+            });
+            return;
+          }
+          setState(() {
+            _emailLookupErrorText = forgot['error']?.toString() ??
+                '등록된 정보와 일치하는 계정을 찾을 수 없습니다.';
+          });
         }
       }
     } catch (e) {
@@ -696,7 +699,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '아이디(이메일)를 입력해 주세요.',
+              '가입 이메일을 입력해 주세요.',
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 16,
@@ -818,12 +821,12 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       children: [
         _buildTextField(
           controller: _passwordEmailController,
-          hintText: '아이디(이메일)',
+          hintText: '가입 이메일',
           keyboardType: TextInputType.emailAddress,
           hasError: _emailLookupErrorText != null,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return '아이디(이메일)를 입력해 주세요.';
+              return '가입 이메일을 입력해 주세요.';
             }
             return null;
           },
@@ -1125,7 +1128,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                     return null;
                   },
                   decoration: InputDecoration(
-                    hintText: '인증번호 4자리를 입력해 주세요',
+                    hintText: '인증번호 6자리를 입력해 주세요',
                     hintStyle: const TextStyle(
                       color: Color(0xFFB0B0B0),
                       fontSize: 14,

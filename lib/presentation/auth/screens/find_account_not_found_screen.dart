@@ -31,11 +31,7 @@ class FindAccountNotFoundScreen extends StatelessWidget {
   }
 
   void _onSignup(BuildContext context) {
-    Navigator.pushNamed(
-      context,
-      '/kcp-cert',
-      arguments: const {'flow': 'signup'},
-    );
+    Navigator.pushNamed(context, '/signup');
   }
 
   @override

@@ -26,8 +26,22 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
   bool _obscureConfirmPassword = true;
 
   String get _email => (widget.resetInfo?['email'] ?? '').toString().trim();
+  String get _identifier =>
+      (widget.resetInfo?['identifier'] ?? widget.resetInfo?['email'] ?? '')
+          .toString()
+          .trim();
   String get _name => (widget.resetInfo?['name'] ?? '').toString().trim();
   String get _phone => (widget.resetInfo?['phone'] ?? '').toString().trim();
+  String get _otpToken =>
+      (widget.resetInfo?['otpToken'] ?? widget.resetInfo?['otp_token'] ?? '')
+          .toString()
+          .trim();
+  bool get _fromKcp =>
+      widget.resetInfo?['from_kcp'] == true || widget.resetInfo?['fromKcp'] == true;
+  String get _mbDupinfo =>
+      (widget.resetInfo?['mb_dupinfo'] ?? widget.resetInfo?['mbDupinfo'] ?? '')
+          .toString()
+          .trim();
 
   bool get _hasPasswordRuleError =>
       _passwordController.text.isNotEmpty &&
@@ -37,7 +51,18 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
       _confirmController.text.isNotEmpty &&
       _passwordController.text != _confirmController.text;
 
+  bool get _hasRequiredContext {
+    if (_fromKcp) {
+      return _mbDupinfo.isNotEmpty && _identifier.isNotEmpty;
+    }
+    return _name.isNotEmpty &&
+        _phone.isNotEmpty &&
+        _otpToken.isNotEmpty &&
+        _identifier.isNotEmpty;
+  }
+
   bool get _canSubmit =>
+      _hasRequiredContext &&
       isValidAppPassword(_passwordController.text) &&
       _passwordController.text == _confirmController.text &&
       !_isSubmitting;
@@ -51,7 +76,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
 
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
-    if (_email.isEmpty || _name.isEmpty || _phone.isEmpty) {
+    if (!_hasRequiredContext) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('본인인증 정보가 올바르지 않습니다. 다시 시도해 주세요.')),
       );
@@ -63,10 +88,14 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
     });
 
     final result = await AuthRepository.resetPassword(
-      email: _email,
       name: _name,
       phone: _phone,
       password: _passwordController.text,
+      email: _email.isNotEmpty ? _email : null,
+      identifier: _identifier,
+      otpToken: _fromKcp ? null : _otpToken,
+      fromKcp: _fromKcp,
+      mbDupinfo: _fromKcp && _mbDupinfo.isNotEmpty ? _mbDupinfo : null,
     );
 
     if (!mounted) return;

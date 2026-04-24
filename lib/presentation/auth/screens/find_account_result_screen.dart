@@ -31,6 +31,15 @@ class _FindAccountResultScreenState
 
   String get _certPhone => (widget.certInfo['phone'] ?? '').toString().trim();
 
+  String get _certMbDupinfo {
+    final v = widget.certInfo['mb_dupinfo'] ??
+        widget.certInfo['mbDupinfo'] ??
+        widget.certInfo['dupinfo'] ??
+        widget.certInfo['dupInfo'] ??
+        widget.certInfo['di'];
+    return (v ?? '').toString().trim();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -38,7 +47,7 @@ class _FindAccountResultScreenState
   }
 
   Future<void> _loadAccounts() async {
-    if (_certName.isEmpty || _certPhone.isEmpty) {
+    if (_certMbDupinfo.isEmpty) {
       _goToNotFound();
       return;
     }
@@ -47,6 +56,8 @@ class _FindAccountResultScreenState
       final result = await AuthRepository.findId(
         name: _certName,
         phone: _certPhone,
+        fromKcp: true,
+        mbDupinfo: _certMbDupinfo,
       );
 
       if (!mounted) return;
