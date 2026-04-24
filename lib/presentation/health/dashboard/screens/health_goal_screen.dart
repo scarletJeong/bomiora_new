@@ -101,6 +101,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (!_stepsWheelController.hasClients) return;
       final idx = _indexFromSteps(_selectedSteps);
       _stepsWheelController.jumpToItem(idx);

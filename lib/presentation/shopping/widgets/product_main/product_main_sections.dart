@@ -205,7 +205,10 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
   void initState() {
     super.initState();
     _imageListener = ImageStreamListener(_onHeroImageLoaded);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncExtraBottom());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncExtraBottom();
+    });
   }
 
   @override

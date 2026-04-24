@@ -448,6 +448,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
           hasShownNoDataDialog = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
             _showNoDataDialog();
           });
         }

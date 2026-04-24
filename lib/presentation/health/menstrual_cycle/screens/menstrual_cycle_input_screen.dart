@@ -66,6 +66,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             record.lastPeriodStart.year, record.lastPeriodStart.month, 1);
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         if (_calendarPageController.hasClients) {
           _calendarPageController.jumpToPage(_monthPageIndex(_focusedDay));
         }

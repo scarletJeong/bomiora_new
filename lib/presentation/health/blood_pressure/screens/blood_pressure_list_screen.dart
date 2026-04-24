@@ -490,6 +490,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
           hasShownNoDataDialog = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
             _showNoDataDialog();
           });
         }

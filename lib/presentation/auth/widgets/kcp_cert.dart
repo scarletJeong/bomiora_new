@@ -362,7 +362,10 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
     }
 
     debugPrint('[KCP] _popKcpCertOverlay: 네이티브 → postFrame attemptPop');
-    WidgetsBinding.instance.addPostFrameCallback((_) => attemptPop());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      attemptPop();
+    });
   }
 
   Widget _buildWebViewOrError() {

@@ -71,6 +71,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   List<ProductOption> _productOptions = [];
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
 
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,7 +84,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     _tabController.addListener(() {
       // 탭 변경 시 UI 업데이트
       if (!_tabController.indexIsChanging) {
-        setState(() {});
+        _safeSetState(() {});
       }
     });
     _loadProductDetail().then((_) {
@@ -115,7 +120,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Future<void> _loadProductDetail() async {
-    setState(() {
+    _safeSetState(() {
       _isLoading = true;
       _hasError = false;
       _errorMessage = null;
@@ -124,7 +129,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     try {
       final product =
           await ProductRepository.getProductDetail(widget.productId);
-      setState(() {
+      _safeSetState(() {
         _product = product;
         _isLoading = false;
         if (product == null) {
@@ -143,7 +148,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       // 찜하기 상태 확인
       await _checkFavoriteStatus();
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = '제품 정보를 불러오는데 실패했습니다: $e';
@@ -167,7 +172,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         return itemId == widget.productId;
       });
 
-      setState(() {
+      _safeSetState(() {
         _isFavorite = isFavorite;
       });
 
@@ -182,7 +187,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Future<void> _loadReviews() async {
     if (widget.productId.isEmpty) return;
 
-    setState(() {
+    _safeSetState(() {
       _isLoadingReviews = true;
     });
 
@@ -193,7 +198,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       );
 
       if (loaded != null) {
-        setState(() {
+        _safeSetState(() {
           _reviews = loaded.allReviews;
           _generalReviews = loaded.generalReviews;
           _visibleNormalReviewCount = 4;
@@ -201,12 +206,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _isLoadingReviews = false;
         });
       } else {
-        setState(() {
+        _safeSetState(() {
           _isLoadingReviews = false;
         });
       }
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _isLoadingReviews = false;
       });
     }
@@ -218,7 +223,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       final user = await AuthService.getUser();
       if (user != null) {
         final point = await PointService.getUserPoint(user.id);
-        setState(() {
+        _safeSetState(() {
           _userPoint = point;
         });
       }
@@ -233,7 +238,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           final config = data['data'];
-          setState(() {
+          _safeSetState(() {
             _usePointConfig =
                 config['cf_use_point'] == 1 || config['cf_use_point'] == true;
           });
@@ -241,7 +246,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       }
     } catch (e) {
       // 기본값 설정
-      setState(() {
+      _safeSetState(() {
         _usePointConfig = true;
       });
     }
@@ -254,7 +259,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     try {
       final options =
           await ProductOptionRepository.getProductOptions(widget.productId);
-      setState(() {
+      _safeSetState(() {
         _productOptions = options;
       });
     } catch (e) {
@@ -281,7 +286,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       final wasFavorite = _isFavorite;
 
       // 즉시 UI 업데이트 (낙관적 업데이트)
-      setState(() {
+      _safeSetState(() {
         _isFavorite = !_isFavorite;
       });
 
@@ -317,7 +322,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       }
     } catch (e) {
       // 실패 시 원래 상태로 되돌리기
-      setState(() {
+      _safeSetState(() {
         _isFavorite = !_isFavorite;
       });
 
@@ -601,7 +606,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
       onLoadMore: () {
-        setState(() {
+        _safeSetState(() {
           _visibleNormalReviewCount += 8;
         });
       },
@@ -670,7 +675,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               controller: _pageController,
               itemCount: images.length,
               onPageChanged: (index) {
-                setState(() {
+                _safeSetState(() {
                   _currentImageIndex = index;
                 });
               },
@@ -1229,7 +1234,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               height: 34,
               child: OutlinedButton(
                 onPressed: () {
-                  setState(() {
+                  _safeSetState(() {
                     _isDetailExpanded = true;
                   });
                 },
@@ -1334,7 +1339,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       onNoOptionGeneral: _showGeneralQuantityBottomSheet,
       onNoOptionPrescription: () async {},
       onOptionsChanged: (newOptions) {
-        setState(() {
+        _safeSetState(() {
           _selectedOptions = newOptions;
         });
       },
@@ -1378,7 +1383,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               duration: Duration(seconds: 2),
             ),
           );
-          setState(() {
+          _safeSetState(() {
             _selectedOptions.clear();
           });
         } else {

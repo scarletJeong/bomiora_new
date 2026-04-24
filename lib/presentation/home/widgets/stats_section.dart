@@ -43,6 +43,7 @@ class _StatsSectionState extends State<StatsSection>
     
     // 위젯이 화면에 나타날 때 애니메이션 시작
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _animationController.forward();
     });
   }
