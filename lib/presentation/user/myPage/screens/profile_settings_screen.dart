@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../widgets/my_page_common.dart';
+import '../../../../data/repositories/auth/auth_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 
@@ -30,9 +31,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Timer? _verifyTimer;
   int _secondsLeft = 0;
-  String? _sentVerificationCode;
-  bool _verificationMismatch = false;
   bool _passwordMismatch = false;
+
+  static const String _contactOtpPurpose = 'profile_phone';
+  String _originalPhoneDigits = '';
+  String? _contactOtpToken;
+  bool _contactPhoneVerified = true;
+  bool _contactOtpSending = false;
+  bool _contactOtpVerifying = false;
+  String? _contactOtpErrorText;
 
   @override
   void initState() {
@@ -65,11 +72,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     print('   - 닉네임: ${user?.nickname}');
     print('   - 전화번호: ${user?.phone}');
 
+    final phone = (user?.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
     setState(() {
       _currentUser = user;
       _nicknameController.text = user?.nickname ?? '';
 
-      final phone = (user?.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
       if (phone.length >= 10) {
         _phone1Controller.text = phone.substring(0, 3);
         _phone2Controller.text = phone.substring(3, phone.length - 4);
@@ -79,6 +86,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _phone2Controller.text = '';
         _phone3Controller.text = '';
       }
+      _originalPhoneDigits = phone;
+      _contactPhoneVerified = true;
+      _contactOtpToken = null;
+      _contactOtpErrorText = null;
+      _verificationController.clear();
+      _secondsLeft = 0;
+      _verifyTimer?.cancel();
     });
   }
   
@@ -88,9 +102,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return '$m:$s';
   }
 
-  void _startVerificationTimer() {
+  void _startVerificationCountdown(int initialSeconds) {
     _verifyTimer?.cancel();
-    setState(() => _secondsLeft = 180);
+    setState(() => _secondsLeft = initialSeconds);
     _verifyTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_secondsLeft <= 1) {
@@ -102,27 +116,140 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     });
   }
 
-  void _sendVerificationCode() {
-    final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
-    setState(() {
-      _sentVerificationCode = code;
-      _verificationController.text = '';
-      _verificationMismatch = false;
-    });
-    _startVerificationTimer();
+  static String _digitsOnly(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
 
+  String get _enteredPhoneDigits =>
+      '${_phone1Controller.text.trim()}${_phone2Controller.text.trim()}${_phone3Controller.text.trim()}';
+
+  void _onPhoneDigitsChanged() {
+    final entered = _enteredPhoneDigits;
+    if (entered != _originalPhoneDigits) {
+      if (_contactPhoneVerified) {
+        setState(() {
+          _contactPhoneVerified = false;
+          _contactOtpToken = null;
+          _contactOtpErrorText = null;
+        });
+      }
+    } else {
+      setState(() {
+        _contactPhoneVerified = true;
+        _contactOtpErrorText = null;
+      });
+    }
+  }
+
+  Future<void> _requestContactChangeOtp() async {
+    if (_currentUser == null) return;
+    final name = _currentUser!.name.trim();
+    final phoneDigits = _digitsOnly(_currentUser!.phone ?? '');
+    if (name.isEmpty || phoneDigits.length < 10) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('등록된 연락처로 인증번호를 보낼 수 없습니다. 고객센터로 문의해 주세요.'),
+        ),
+      );
+      return;
+    }
+    final phoneApi = phoneDigits.length == 11
+        ? '${phoneDigits.substring(0, 3)}-${phoneDigits.substring(3, 7)}-${phoneDigits.substring(7)}'
+        : _currentUser!.phone!.trim();
+
+    setState(() {
+      _contactOtpSending = true;
+      _contactOtpErrorText = null;
+    });
+    final send = await AuthRepository.otpSend(
+      purpose: _contactOtpPurpose,
+      name: name,
+      phone: phoneApi,
+    );
+    if (!mounted) return;
+    setState(() => _contactOtpSending = false);
+
+    if (send['success'] != true) {
+      setState(() {
+        _contactOtpErrorText =
+            send['error']?.toString() ?? '인증번호 발송에 실패했습니다.';
+      });
+      return;
+    }
+
+    final token = send['otpToken']?.toString();
+    if (token == null || token.isEmpty) {
+      setState(() {
+        _contactOtpErrorText = '인증 응답이 올바르지 않습니다. (otpToken 누락)';
+      });
+      return;
+    }
+
+    final ttl = int.tryParse(send['ttlSeconds']?.toString() ?? '');
+    final ttlSeconds = (ttl != null && ttl > 0 && ttl <= 600) ? ttl : 180;
+
+    setState(() {
+      _contactOtpToken = token;
+      _verificationController.clear();
+      _contactOtpErrorText = null;
+    });
+    _startVerificationCountdown(ttlSeconds);
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('인증번호가 발송되었습니다.')),
     );
   }
 
-  void _recomputeVerificationMismatch() {
-    final typed = _verificationController.text.trim();
-    final sent = _sentVerificationCode;
-    final mismatch = sent != null && typed.isNotEmpty && typed.length >= 4 && typed != sent;
-    if (mismatch != _verificationMismatch) {
-      setState(() => _verificationMismatch = mismatch);
+  Future<void> _confirmContactChangeOtp() async {
+    final token = _contactOtpToken;
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('먼저 [변경하기]로 인증번호를 요청해 주세요.')),
+      );
+      return;
     }
+    final code = _verificationController.text.trim();
+    if (code.length < 4) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('인증번호를 입력해 주세요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _contactOtpVerifying = true;
+      _contactOtpErrorText = null;
+    });
+    final verify = await AuthRepository.otpVerify(
+      otpToken: token,
+      code: code,
+      purpose: _contactOtpPurpose,
+    );
+    if (!mounted) return;
+    setState(() => _contactOtpVerifying = false);
+
+    if (verify['success'] != true) {
+      setState(() {
+        _contactOtpErrorText =
+            verify['error']?.toString() ?? '인증에 실패했습니다.';
+      });
+      return;
+    }
+
+    setState(() {
+      _contactPhoneVerified = true;
+      _contactOtpToken = null;
+      _secondsLeft = 0;
+      _contactOtpErrorText = null;
+    });
+    _verifyTimer?.cancel();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('인증이 완료되었습니다. 연락처를 수정한 뒤 저장해 주세요.')),
+    );
   }
 
   void _recomputePasswordMismatch() {
@@ -147,12 +274,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   Future<void> _saveProfile() async {
     if (_currentUser == null) return;
 
-    if (_verificationMismatch) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('인증번호가 일치하지 않습니다.')),
-      );
-      return;
-    }
     if (_passwordMismatch) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
@@ -161,7 +282,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
     
     try {
-      final phone = '${_phone1Controller.text.trim()}${_phone2Controller.text.trim()}${_phone3Controller.text.trim()}';
+      final phone = _enteredPhoneDigits;
+      if (phone != _originalPhoneDigits && !_contactPhoneVerified) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('연락처를 변경하려면 [변경하기]로 인증 후 [확인]까지 완료해 주세요.'),
+          ),
+        );
+        return;
+      }
       final result = await AuthService.updateProfile(
         mbId: _currentUser!.id,
         name: _currentUser!.name,
@@ -336,6 +466,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           ],
                           maxLength: 3,
                           textAlign: TextAlign.center,
+                          onChanged: (_) => _onPhoneDigitsChanged(),
                           decoration: const InputDecoration(
                             counterText: '',
                             border: InputBorder.none,
@@ -362,6 +493,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           ],
                           maxLength: 4,
                           textAlign: TextAlign.center,
+                          onChanged: (_) => _onPhoneDigitsChanged(),
                           decoration: const InputDecoration(
                             counterText: '',
                             border: InputBorder.none,
@@ -388,6 +520,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           ],
                           maxLength: 4,
                           textAlign: TextAlign.center,
+                          onChanged: (_) => _onPhoneDigitsChanged(),
                           decoration: const InputDecoration(
                             counterText: '',
                             border: InputBorder.none,
@@ -408,13 +541,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               SizedBox(
                 height: 40,
                 child: ElevatedButton(
-                  onPressed: _sendVerificationCode,
+                  onPressed:
+                      _contactOtpSending ? null : _requestContactChangeOtp,
                   style: MyPageButtonStyles.pinkElevated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
-                  child: const Text(
-                    '변경하기',
-                    style: TextStyle(
+                  child: Text(
+                    _contactOtpSending ? '발송 중…' : '변경하기',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -429,14 +563,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             children: [
               Expanded(
                 child: _InputBox(
-                  borderColor: _verificationMismatch ? const Color(0xFFEF4444) : const Color(0xFFD2D2D2),
+                  borderColor: _contactOtpErrorText != null
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFFD2D2D2),
                   child: TextField(
                     controller: _verificationController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
                     ],
-                    onChanged: (_) => _recomputeVerificationMismatch(),
+                    onChanged: (_) {
+                      if (_contactOtpErrorText != null) {
+                        setState(() => _contactOtpErrorText = null);
+                      }
+                    },
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       isCollapsed: true,
@@ -457,7 +597,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               const SizedBox(width: 10),
               Text(
-                _secondsLeft > 0 ? _formatTime(_secondsLeft) : '03:00',
+                _secondsLeft > 0 ? _formatTime(_secondsLeft) : '--:--',
                 style: const TextStyle(
                   color: Color(0xFFFF5A8D),
                   fontSize: 12,
@@ -468,13 +608,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               SizedBox(
                 height: 40,
                 child: ElevatedButton(
-                  onPressed: _sendVerificationCode,
+                  onPressed: (_contactOtpVerifying || _contactOtpSending)
+                      ? null
+                      : _confirmContactChangeOtp,
                   style: MyPageButtonStyles.pinkElevated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
-                  child: const Text(
-                    '발송',
-                    style: TextStyle(
+                  child: Text(
+                    _contactOtpVerifying ? '확인 중…' : '확인',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -484,11 +626,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
             ],
           ),
-          if (_verificationMismatch) ...[
+          if (_contactOtpErrorText != null && _contactOtpErrorText!.isNotEmpty) ...[
             const SizedBox(height: 6),
-            const Text(
-              '인증번호가 일치하지 않습니다',
-              style: TextStyle(
+            Text(
+              _contactOtpErrorText!,
+              style: const TextStyle(
                 color: Color(0xFFEF4444),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
