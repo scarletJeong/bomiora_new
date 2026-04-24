@@ -222,8 +222,13 @@ class ImageUrlHelper {
     if (u.contains('bomiora.kr') || u.contains('www.bomiora.kr') || u.contains('bomiora0.mycafe24.com')) {
       Uri uri = Uri.parse(u);
       String path = uri.path;
-      // TODO: 운영 전환 시 canonicalUpstreamHost를 bomiora.kr로 변경
-      const canonicalUpstreamHost = 'https://bomiora0.mycafe24.com';
+      // 경로별로 실제 원본 호스트가 다름.
+      // - 상품/리뷰 이미지: Cafe24(mycafe24)로 정규화
+      // - 에디터 이미지(/data/editor/...): bomiora.kr 원본 유지 (mycafe24에는 없어서 404/HTML로 깨짐)
+      final canonicalUpstreamHost = path.startsWith('/data/editor/')
+          ? 'https://bomiora.kr'
+          // TODO: 운영 전환 시 canonicalUpstreamHost를 bomiora.kr로 변경
+          : 'https://bomiora0.mycafe24.com';
       final canonicalUpstreamUrl = '$canonicalUpstreamHost$path';
       
       if (kIsWeb) {

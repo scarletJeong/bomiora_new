@@ -8,79 +8,97 @@ import 'package:image_picker/image_picker.dart';
 class ApiClient {
   // Spring Boot 서버 연결
   // 개발: localhost (웹) 또는 PC IP (모바일), 배포: AWS EC2 서버 URL
-  
+
   // 개발 서버 설정
   // 옵션 1: 도메인 사용 (HTTPS)
   static const String _devServerUrl = 'https://bomiora.net';
+  static const String _overrideBaseUrl =
+      String.fromEnvironment('API_BASE_URL', defaultValue: '');
   // 옵션 2: IP 주소 사용 (HTTP) - IP로 접근 시 HTTP가 되는 경우
   // static const String _devServerUrl = 'http://3.128.180.207:9000';
-  
+
   // PC의 로컬 IP 주소 (로컬 개발 시 사용)
   // 네트워크가 변경되면 이 값을 업데이트해야 합니다
   // Windows에서 확인: ipconfig 명령어로 IPv4 주소 확인
-  static const String _localPcIp = '172.30.1.83';  // PC의 실제 IP 주소
-  
+  static const String _localPcIp = '172.30.1.83'; // PC의 실제 IP 주소
+
   static String get baseUrl {
+    if (_overrideBaseUrl.trim().isNotEmpty) {
+      return _overrideBaseUrl.trim();
+    }
+
     if (kIsWeb) {
       // 웹 환경: 브라우저의 현재 URL 확인
       final currentHost = Uri.base.host;
       final currentPort = Uri.base.port;
-      
+
       // 현재 브라우저 URL이 localhost인지 확인
-      if (currentHost.contains('localhost') || 
-          currentHost.contains('127.0.0.1') || 
+      if (currentHost.contains('localhost') ||
+          currentHost.contains('127.0.0.1') ||
           currentHost.isEmpty) {
-        return 'http://localhost:9000';  // 웹 로컬 개발
+        return 'http://localhost:9000'; // 웹 로컬 개발
       } else {
-        return _devServerUrl;  // 개발 서버
+        return _devServerUrl; // 개발 서버
       }
     } else {
       // 모바일/데스크톱 환경: 개발 서버 사용 (로컬 IP 연결 문제 해결)
       // 로컬 개발이 필요하면 아래 주석을 해제하고 _devServerUrl 대신 사용
       // return 'http://$_localPcIp:9000';  // 로컬 서버 사용
-      return _devServerUrl;  // 개발 서버 사용
+      return _devServerUrl; // 개발 서버 사용
     }
   }
-  
+
   // GET 요청
-  static Future<http.Response> get(String endpoint, {Map<String, String>? additionalHeaders}) async {
+  static Future<http.Response> get(String endpoint,
+      {Map<String, String>? additionalHeaders}) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'User-Agent': 'Flutter-App/1.0',
     };
-    
+
     // 추가 헤더가 있으면 병합
     if (additionalHeaders != null) {
       headers.addAll(additionalHeaders);
     }
-    
+
     return await http.get(
       Uri.parse('$baseUrl$endpoint'),
       headers: headers,
     );
   }
-  
+
   // POST 요청
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> data) async {
+  static Future<http.Response> post(
+    String endpoint,
+    Map<String, dynamic> data, {
+    Map<String, String>? additionalHeaders,
+  }) async {
     final url = '$baseUrl$endpoint';
-    
+
     // 브라우저와 동일한 헤더 설정 (405 오류 방지)
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       // User-Agent를 브라우저와 유사하게 설정 (서버가 특정 User-Agent만 허용할 수 있음)
-      if (!kIsWeb) 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      if (!kIsWeb)
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     };
-    
+    if (additionalHeaders != null) {
+      headers.addAll(additionalHeaders);
+    }
+
     final body = json.encode(data);
 
     try {
-      final response = await http.post(
+      final response = await http
+          .post(
         Uri.parse(url),
         headers: headers,
         body: body,
-      ).timeout(
+      )
+          .timeout(
         const Duration(seconds: 30),
         onTimeout: () {
           throw TimeoutException('요청 시간이 초과되었습니다', const Duration(seconds: 30));
@@ -95,9 +113,10 @@ class ApiClient {
       rethrow;
     }
   }
-  
+
   // PUT 요청
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> data) async {
+  static Future<http.Response> put(
+      String endpoint, Map<String, dynamic> data) async {
     return await http.put(
       Uri.parse('$baseUrl$endpoint'),
       headers: {
@@ -108,9 +127,10 @@ class ApiClient {
       body: json.encode(data),
     );
   }
-  
+
   // DELETE 요청
-  static Future<http.Response> delete(String endpoint, {Map<String, dynamic>? data}) async {
+  static Future<http.Response> delete(String endpoint,
+      {Map<String, dynamic>? data}) async {
     return await http.delete(
       Uri.parse('$baseUrl$endpoint'),
       headers: {
@@ -125,8 +145,9 @@ class ApiClient {
   // 파일 업로드 요청 (웹 호환성 고려)
   static Future<http.Response> uploadFile(String endpoint, dynamic file) async {
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'));
-      
+      var request =
+          http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'));
+
       if (kIsWeb) {
         // 웹에서는 XFile을 직접 사용
         if (file is XFile) {
@@ -143,12 +164,13 @@ class ApiClient {
       } else {
         // 모바일/데스크톱에서는 파일 경로 사용
         File fileObj = file as File;
-        request.files.add(await http.MultipartFile.fromPath('file', fileObj.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('file', fileObj.path));
       }
-      
+
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
-      
+
       return response;
     } catch (e) {
       return http.Response('File upload failed: $e', 500);
