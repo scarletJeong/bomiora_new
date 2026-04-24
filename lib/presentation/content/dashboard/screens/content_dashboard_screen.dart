@@ -5,7 +5,7 @@ import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/appbar_menutap.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/category_service.dart';
-import '../widgets/content_bottom_nav_bar.dart';
+import '../../../common/widgets/bottom_bar.dart';
 
 /// 건강 콘텐츠 대시보드 (Figma 기반 UI)
 class ContentDashboardScreen extends StatefulWidget {
@@ -67,7 +67,7 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
       scaffoldKey: _scaffoldKey,
       appBar: HealthAppBar(
         title: '건강 콘텐츠',
-        centerTitle: true,
+        centerTitle: false,
         leadingType: HealthAppBarLeadingType.menu,
         onBack: () => _scaffoldKey.currentState?.openDrawer(),
         actions: [
@@ -131,7 +131,7 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
               },
             ),
           ),
-          const ContentBottomNavBar(),
+          const BottomBar(),
         ],
       ),
     );
@@ -326,10 +326,14 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
     final idRaw = post['id'];
     final id = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw');
     if (id == null) return;
+    final cat = (post['category'] ?? '').toString().trim();
     Navigator.pushNamed(
       context,
       '/content/detail',
-      arguments: {'id': id},
+      arguments: {
+        'id': id,
+        if (cat.isNotEmpty) 'category': cat,
+      },
     );
   }
 }

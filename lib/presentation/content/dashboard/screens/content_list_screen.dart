@@ -4,7 +4,7 @@ import '../../../../data/services/content_service.dart';
 import '../../../../data/services/category_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../widgets/content_bottom_nav_bar.dart';
+import '../../../common/widgets/bottom_bar.dart';
 
 /// 콘텐츠 목록 (카테고리 칩, 검색, 리스트, 글쓰기 FAB)
 class ContentListScreen extends StatefulWidget {
@@ -100,13 +100,6 @@ class _ContentListScreenState extends State<ContentListScreen> {
     if (!mounted) return;
     final data = (result['data'] as List?)?.whereType<Map<String, dynamic>>().toList() ??
         const <Map<String, dynamic>>[];
-    for (final item in data) {
-      final thumbRaw = item['thumbnail_url']?.toString();
-      final resolvedThumb = ContentService.resolveThumbnailUrl(thumbRaw, fallback: '');
-      debugPrint(
-        '[ContentList] title=${item['title']} | thumbnailRaw=$thumbRaw | thumbnailResolved=$resolvedThumb | bodyFirstImage=${ContentService.resolveFirstBodyImageUrl(item['content_html']?.toString())}',
-      );
-    }
     final pagination = result['pagination'] as Map<String, dynamic>? ?? const {};
     final total = pagination['total'] is num
         ? (pagination['total'] as num).toInt()
@@ -127,7 +120,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: '건강 콘텐츠',
-        centerTitle: true,
+        centerTitle: false,
         leadingType: HealthAppBarLeadingType.back,
       ),
       backgroundColor: Colors.white,
@@ -181,7 +174,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
               ),
             ),
           ),
-          const ContentBottomNavBar(),
+          const BottomBar(),
         ],
       ),
     );
@@ -332,10 +325,14 @@ class _ContentListScreenState extends State<ContentListScreen> {
     return InkWell(
       onTap: () {
         if (contentId == null) return;
+        final cat = (item['category'] ?? '').toString().trim();
         Navigator.pushNamed(
           context,
           '/content/detail',
-          arguments: {'id': contentId},
+          arguments: {
+            'id': contentId,
+            if (cat.isNotEmpty) 'category': cat,
+          },
         );
       },
       child: Column(

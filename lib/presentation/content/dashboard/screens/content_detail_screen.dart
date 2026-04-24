@@ -1,15 +1,14 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
+import '../../../../data/services/wish_service.dart';
 import '../../../common/widgets/app_bar.dart';
+import '../../../common/widgets/bottom_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../widgets/content_bottom_nav_bar.dart';
 
-/// 콘텐츠 상세 (본문, 이전/다음 글, 하단 액션)
+/// 콘텐츠 상세 (본문, 이전/다음 글, 찜·추천·목록)
 class ContentDetailScreen extends StatefulWidget {
   const ContentDetailScreen({
     super.key,
@@ -68,6 +67,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   bool _isLoading = false;
   int? _currentContentId;
 
+  bool? _isWished;
+  int _recommendCount = 0;
+  bool _wishBusy = false;
+  bool _recommendBusy = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +91,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       final data = result['data'] as Map<String, dynamic>? ?? const {};
       final prev = result['prev'] as Map<String, dynamic>?;
       final next = result['next'] as Map<String, dynamic>?;
+      final rc = data['recommend_count'];
+      final recCount = rc is num
+          ? rc.toInt()
+          : int.tryParse('$rc') ?? 0;
       setState(() {
         _categoryLabel = data['category']?.toString().trim().isNotEmpty == true
             ? data['category'].toString()
@@ -102,19 +110,96 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         _prevId = _toInt(prev?['id']);
         _nextTitle = next?['title']?.toString();
         _nextId = _toInt(next?['id']);
+        _recommendCount = recCount;
       });
+      await _loadWishState();
     }
     setState(() => _isLoading = false);
   }
 
+  Future<void> _loadWishState() async {
+    final id = _currentContentId;
+    if (id == null || !mounted) return;
+    final wished = await WishService.isWished('$id');
+    if (mounted) setState(() => _isWished = wished);
+  }
+
+  Future<void> _toggleWish() async {
+    final id = _currentContentId;
+    if (id == null || _wishBusy) return;
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 후 찜할 수 있습니다.')),
+      );
+      return;
+    }
+    setState(() => _wishBusy = true);
+    try {
+      final r = await WishService.addToWish('$id', wiItKind: 'content');
+      final wished = r['is_wished'] == true;
+      if (mounted) setState(() => _isWished = wished);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('찜 처리에 실패했습니다: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _wishBusy = false);
+    }
+  }
+
+  Future<void> _onRecommend() async {
+    final id = _currentContentId;
+    if (id == null || _recommendBusy) return;
+    setState(() => _recommendBusy = true);
+    try {
+      final r = await ContentService.recommendContent(id);
+      if (!mounted) return;
+      if (r['success'] == true) {
+        final c = r['recommend_count'];
+        final n = c is num
+            ? c.toInt()
+            : int.tryParse('$c') ?? _recommendCount + 1;
+        setState(() => _recommendCount = n);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              r['message']?.toString().trim().isNotEmpty == true
+                  ? r['message'].toString()
+                  : '추천해 주셔서 감사합니다.',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(r['message']?.toString() ?? '추천에 실패했습니다.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _recommendBusy = false);
+    }
+  }
+
   int? _toInt(dynamic v) => v is num ? v.toInt() : int.tryParse('$v');
+
+  /// 진입 탭·글 카테고리 기준 앱바 제목 (API `category` 반영)
+  String get _appBarTitle {
+    final t = _categoryLabel.trim();
+    if (t.isEmpty) return '콘텐츠';
+    return t;
+  }
 
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(
-        title: '건강 콘텐츠',
-        centerTitle: true,
+      appBar: HealthAppBar(
+        title: _appBarTitle,
+        centerTitle: false,
         leadingType: HealthAppBarLeadingType.back,
       ),
       backgroundColor: Colors.white,
@@ -125,7 +210,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 10),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildArticleHeader(),
                   const SizedBox(height: 20),
@@ -159,45 +244,106 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                       icon: Icons.keyboard_arrow_down,
                       targetId: _nextId!,
                     ),
+                  if (_currentContentId != null) ...[
+                    const SizedBox(height: 20),
+                    _buildDetailPostNavActions(context),
+                  ],
                   const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-          _buildBottomActionBar(context),
-          const ContentBottomNavBar(),
+          const BottomBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailPostNavActions(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(width: 1, color: Color(0x33E0BEC4))),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            tooltip: '찜',
+            icon: Icon(
+              _isWished == true ? Icons.favorite : Icons.favorite_border,
+              size: 24,
+              color: _isWished == true ? _pink : _textDark,
+            ),
+            onPressed: (_wishBusy || _currentContentId == null) ? null : _toggleWish,
+          ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+            tooltip: '이 글 추천',
+            icon: _recommendBusy
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _pink,
+                    ),
+                  )
+                : const Icon(Icons.thumb_up_outlined, size: 24, color: _textDark),
+            onPressed:
+                (_recommendBusy || _currentContentId == null) ? null : _onRecommend,
+          ),
+          if (_recommendCount > 0)
+            Text(
+              '$_recommendCount',
+              style: const TextStyle(
+                fontSize: 13,
+                color: _textMuted,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          const Spacer(),
+          TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: _pink,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            onPressed: () =>
+                Navigator.pushReplacementNamed(context, '/content/list'),
+            child: const Text(
+              '목록',
+              style: TextStyle(
+                fontSize: 14,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildArticleHeader() {
-    return Column(
-      children: [
-        Text(
-          _categoryLabel,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: _textMuted,
-            fontSize: 12,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-            height: 1.67,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          _title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: _textDark,
-            fontSize: 16,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w700,
-            letterSpacing: -1.44,
-          ),
-        ),
-      ],
+    return Text(
+      _title,
+      textAlign: TextAlign.start,
+      style: const TextStyle(
+        color: _textDark,
+        fontSize: 16,
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w700,
+        letterSpacing: -1.44,
+      ),
     );
   }
 
@@ -212,7 +358,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       onTap: () => Navigator.pushReplacementNamed(
         context,
         '/content/detail',
-        arguments: {'id': targetId},
+        arguments: {
+          'id': targetId,
+          'category': _categoryLabel,
+        },
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -242,59 +391,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 12,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomActionBar(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 10),
-      decoration: const ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: 1, color: Color(0x33E0BEC4)),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                icon: const Icon(Icons.favorite_border, size: 24, color: _textDark),
-                onPressed: () {},
-              ),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                icon: const Icon(Icons.share_outlined, size: 24, color: _textDark),
-                onPressed: () => _shareContent(context),
-              ),
-            ],
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: _pink,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            onPressed: () =>
-                Navigator.pushReplacementNamed(context, '/content/list'),
-            child: const Text(
-              '목록',
-              style: TextStyle(
-                fontSize: 14,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -361,45 +457,5 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         );
       },
     );
-  }
-
-  Future<void> _shareContent(BuildContext anchorContext) async {
-    final currentUrl = Uri.base.toString();
-    final shareUrl = _currentContentId != null
-        ? '$currentUrl${currentUrl.contains('?') ? '&' : '?'}contentId=$_currentContentId'
-        : currentUrl;
-    final text = '$_title\n$shareUrl';
-
-    // Flutter Web에서 share_plus가 window.dart assertion을 유발하는 환경이 있어
-    // 웹은 클립보드 복사로 안정적으로 공유 UX를 제공합니다.
-    if (kIsWeb) {
-      await Clipboard.setData(ClipboardData(text: text));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('공유 링크를 복사했습니다.')),
-      );
-      return;
-    }
-
-    final box = anchorContext.findRenderObject() as RenderBox?;
-    final Rect? origin =
-        box != null && box.hasSize ? box.localToGlobal(Offset.zero) & box.size : null;
-
-    try {
-      await SharePlus.instance.share(
-        ShareParams(
-          text: text,
-          title: _title,
-          subject: _title,
-          sharePositionOrigin: origin,
-        ),
-      );
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: text));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('공유를 지원하지 않아 링크를 복사했습니다.')),
-      );
-    }
   }
 }
