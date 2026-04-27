@@ -3,47 +3,23 @@ import 'package:flutter_html/flutter_html.dart';
 
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
+import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/footer_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 
-/// 콘텐츠 상세 (본문, 이전/다음 글, 찜·추천·목록)
+/// 콘텐츠 상세 (본문, 이전/다음 글, 찜·추천·목록) — 본문·제목 등은 API로만 표시
 class ContentDetailScreen extends StatefulWidget {
-  const ContentDetailScreen({
-    super.key,
-    this.contentId,
-    this.categoryLabel = '건강상식',
-    this.title = '다이어트 성공의 열쇠,\n이 음식들 알고 계셨나요?',
-    this.body =
-        '안녕하세요.\n오늘은 다이어트에 도움이 되는\n슈퍼푸드를 소개해드리려고 해요.\n체중감량을 하면서도 건강은 챙기고 싶으신 분들을 위한\n특별한 정보를 준비했답니다.\n자,  그럼 시작해볼까요?',
-    this.imageUrl = 'https://placehold.co/321x200',
-    this.prevTitle = '건강한 다이어트 5가지 핵심 원칙',
-    this.nextTitle = '따듯한 물, 왜 다이어트에 효과적일까?',
-  });
+  const ContentDetailScreen({super.key, this.contentId});
 
   final int? contentId;
-  final String categoryLabel;
-  final String title;
-  final String body;
-  final String imageUrl;
-  final String prevTitle;
-  final String nextTitle;
 
   static ContentDetailScreen fromArgs(Object? args) {
     if (args is Map<String, dynamic>) {
       final idRaw = args['id'];
       final id = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw');
-      return ContentDetailScreen(
-        contentId: id,
-        categoryLabel: args['category']?.toString() ?? '건강상식',
-        title: args['title']?.toString() ?? '다이어트 성공의 열쇠,\n이 음식들 알고 계셨나요?',
-        body: args['body']?.toString() ??
-            '안녕하세요.\n오늘은 다이어트에 도움이 되는\n슈퍼푸드를 소개해드리려고 해요.\n체중감량을 하면서도 건강은 챙기고 싶으신 분들을 위한\n특별한 정보를 준비했답니다.\n자,  그럼 시작해볼까요?',
-        imageUrl: args['imageUrl']?.toString() ?? 'https://placehold.co/321x200',
-        prevTitle: args['prevTitle']?.toString() ?? '건강한 다이어트 5가지 핵심 원칙',
-        nextTitle: args['nextTitle']?.toString() ?? '따듯한 물, 왜 다이어트에 효과적일까?',
-      );
+      return ContentDetailScreen(contentId: id);
     }
     return const ContentDetailScreen();
   }
@@ -57,18 +33,22 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   static const Color _textMuted = Color(0xFF898686);
   static const Color _pink = Color(0xFFFF5A8D);
 
-  late String _categoryLabel = widget.categoryLabel;
-  late String _title = widget.title;
-  late String _bodyHtml = widget.body;
+  String _categoryLabel = '';
+  String _title = '';
+  String _bodyHtml = '';
   String? _prevTitle;
   int? _prevId;
   String? _nextTitle;
   int? _nextId;
   bool _isLoading = false;
   int? _currentContentId;
+  String? _fetchError;
 
   bool? _isWished;
   int _recommendCount = 0;
+  /// 서버 `user_recommended` — 로그인·문진 기준(프로필당 글 1회)
+  bool? _userRecommended;
+  int _recommendPfNo = 0;
   bool _wishBusy = false;
   bool _recommendBusy = false;
 
@@ -76,16 +56,38 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   void initState() {
     super.initState();
     _currentContentId = widget.contentId;
-    _prevTitle = widget.prevTitle;
-    _nextTitle = widget.nextTitle;
-    if (widget.contentId != null) {
-      _fetchDetail(widget.contentId!);
+    final id = widget.contentId;
+    if (id != null) {
+      _fetchDetail(id);
+    } else {
+      _isLoading = false;
     }
   }
 
   Future<void> _fetchDetail(int id) async {
-    setState(() => _isLoading = true);
-    final result = await ContentService.getContentDetail(id);
+    setState(() {
+      _isLoading = true;
+      _fetchError = null;
+    });
+    String? mbId;
+    int pfNo = 0;
+    try {
+      final u = await AuthService.getUser();
+      if (u != null) {
+        mbId = u.id;
+        final hp = await HealthProfileService.getHealthProfile(u.id);
+        pfNo = hp?.pfNo ?? 0;
+        if (pfNo < 0) pfNo = 0;
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _recommendPfNo = pfNo);
+    }
+    final result = await ContentService.getContentDetail(
+      id,
+      mbId: mbId,
+      pfNo: pfNo,
+    );
     if (!mounted) return;
     if (result['success'] == true) {
       final data = result['data'] as Map<String, dynamic>? ?? const {};
@@ -96,23 +98,30 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           ? rc.toInt()
           : int.tryParse('$rc') ?? 0;
       setState(() {
-        _categoryLabel = data['category']?.toString().trim().isNotEmpty == true
-            ? data['category'].toString()
-            : _categoryLabel;
-        _title = data['title']?.toString().trim().isNotEmpty == true
-            ? data['title'].toString()
-            : _title;
-        _bodyHtml = data['content_html']?.toString().trim().isNotEmpty == true
-            ? data['content_html'].toString()
-            : _bodyHtml;
+        _fetchError = null;
+        _categoryLabel = data['category']?.toString().trim() ?? '';
+        _title = data['title']?.toString().trim() ?? '';
+        _bodyHtml = data['content_html']?.toString() ?? '';
         _currentContentId = _toInt(data['id']) ?? id;
         _prevTitle = prev?['title']?.toString();
         _prevId = _toInt(prev?['id']);
         _nextTitle = next?['title']?.toString();
         _nextId = _toInt(next?['id']);
         _recommendCount = recCount;
+        if (data.containsKey('user_recommended')) {
+          final ur = data['user_recommended'];
+          _userRecommended = ur is bool
+              ? ur
+              : ur == true || ur == 1 || ur == '1' || ur == 'true';
+        } else {
+          _userRecommended = null;
+        }
       });
       await _loadWishState();
+    } else {
+      setState(() {
+        _fetchError = result['message']?.toString();
+      });
     }
     setState(() => _isLoading = false);
   }
@@ -143,7 +152,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('찜 처리에 실패했습니다: $e')),
+          SnackBar(content: Text('$e')),
         );
       }
     } finally {
@@ -154,31 +163,56 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   Future<void> _onRecommend() async {
     final id = _currentContentId;
     if (id == null || _recommendBusy) return;
+    if (_userRecommended == true) return;
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 후 추천할 수 있습니다.')),
+      );
+      return;
+    }
+    int pfNo = _recommendPfNo;
+    try {
+      final hp = await HealthProfileService.getHealthProfile(user.id);
+      pfNo = hp?.pfNo ?? 0;
+      if (pfNo < 0) pfNo = 0;
+    } catch (_) {}
+    if (mounted) setState(() => _recommendPfNo = pfNo);
     setState(() => _recommendBusy = true);
     try {
-      final r = await ContentService.recommendContent(id);
+      final r = await ContentService.recommendContent(
+        id,
+        mbId: user.id,
+        pfNo: pfNo,
+      );
       if (!mounted) return;
       if (r['success'] == true) {
         final c = r['recommend_count'];
         final n = c is num
             ? c.toInt()
             : int.tryParse('$c') ?? _recommendCount + 1;
-        setState(() => _recommendCount = n);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              r['message']?.toString().trim().isNotEmpty == true
-                  ? r['message'].toString()
-                  : '추천해 주셔서 감사합니다.',
-            ),
-          ),
-        );
+        setState(() {
+          _recommendCount = n;
+          _userRecommended = true;
+        });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(r['message']?.toString() ?? '추천에 실패했습니다.'),
-          ),
-        );
+        if (r['already_recommended'] == true) {
+          final c = r['recommend_count'];
+          final n = c is num
+              ? c.toInt()
+              : int.tryParse('$c') ?? _recommendCount;
+          setState(() {
+            _recommendCount = n;
+            _userRecommended = true;
+          });
+        }
+        final errMsg = r['message']?.toString().trim() ?? '';
+        if (errMsg.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errMsg)),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _recommendBusy = false);
@@ -187,15 +221,50 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   int? _toInt(dynamic v) => v is num ? v.toInt() : int.tryParse('$v');
 
-  /// 진입 탭·글 카테고리 기준 앱바 제목 (API `category` 반영)
-  String get _appBarTitle {
-    final t = _categoryLabel.trim();
-    if (t.isEmpty) return '콘텐츠';
-    return t;
-  }
+  String get _appBarTitle => _categoryLabel.trim();
 
   @override
   Widget build(BuildContext context) {
+    if (widget.contentId == null) {
+      return MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: _appBarTitle,
+          centerTitle: false,
+          leadingType: HealthAppBarLeadingType.back,
+        ),
+        backgroundColor: Colors.white,
+        child: const Center(
+          child: Icon(Icons.error_outline, size: 48, color: _textMuted),
+        ),
+      );
+    }
+
+    if (_fetchError != null && !_isLoading) {
+      return MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: _appBarTitle,
+          centerTitle: false,
+          leadingType: HealthAppBarLeadingType.back,
+        ),
+        backgroundColor: Colors.white,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              _fetchError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _textDark,
+                fontSize: 14,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: _appBarTitle,
@@ -293,9 +362,18 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                       color: _pink,
                     ),
                   )
-                : const Icon(Icons.thumb_up_outlined, size: 24, color: _textDark),
-            onPressed:
-                (_recommendBusy || _currentContentId == null) ? null : _onRecommend,
+                : Icon(
+                    _userRecommended == true
+                        ? Icons.thumb_up
+                        : Icons.thumb_up_outlined,
+                    size: 24,
+                    color: _userRecommended == true ? _pink : _textDark,
+                  ),
+            onPressed: (_recommendBusy ||
+                    _currentContentId == null ||
+                    _userRecommended == true)
+                ? null
+                : _onRecommend,
           ),
           if (_recommendCount > 0)
             Text(
@@ -334,6 +412,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   }
 
   Widget _buildArticleHeader() {
+    if (_title.isEmpty) return const SizedBox.shrink();
     return Text(
       _title,
       textAlign: TextAlign.start,
@@ -360,7 +439,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         '/content/detail',
         arguments: {
           'id': targetId,
-          'category': _categoryLabel,
+          if (_categoryLabel.isNotEmpty) 'category': _categoryLabel,
         },
       ),
       child: Row(
@@ -402,9 +481,13 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   }
 
   Widget _buildBodyContent() {
+    if (_isLoading) return const SizedBox.shrink();
     final processedHtml = ContentService.prepareContentHtmlForRender(_bodyHtml);
     if (processedHtml.trim().isEmpty) {
       final bodyText = ContentService.normalizeHtmlToText(_bodyHtml);
+      if (bodyText.trim().isEmpty) {
+        return const SizedBox.shrink();
+      }
       return Text(
         bodyText,
         textAlign: TextAlign.center,

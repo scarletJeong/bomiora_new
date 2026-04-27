@@ -241,9 +241,24 @@ class ContentService {
     }
   }
 
-  static Future<Map<String, dynamic>> getContentDetail(int id) async {
+  /// [mbId]·[pfNo]가 있으면 서버에 `user_recommended` 여부를 함께 조회(문진 프로필당 글당 1회).
+  static Future<Map<String, dynamic>> getContentDetail(
+    int id, {
+    String? mbId,
+    int? pfNo,
+  }) async {
     try {
-      final endpoint = '${ApiEndpoints.getContentDetail}/$id';
+      final q = <String>[];
+      final m = (mbId ?? '').trim();
+      if (m.isNotEmpty) {
+        q.add('mb_id=${Uri.encodeQueryComponent(m)}');
+        final p = pfNo ?? 0;
+        if (p > 0) {
+          q.add('pf_no=$p');
+        }
+      }
+      final query = q.isNotEmpty ? '?${q.join('&')}' : '';
+      final endpoint = '${ApiEndpoints.getContentDetail}/$id$query';
       final response = await ApiClient.get(endpoint);
       if (response.statusCode != 200) {
         return {
@@ -283,12 +298,19 @@ class ContentService {
     }
   }
 
-  /// 콘텐츠 추천 (엄지업)
-  static Future<Map<String, dynamic>> recommendContent(int id) async {
+  /// 콘텐츠 추천 (엄지업) — [mbId] + 문진 [pfNo](없으면 0) 기준으로 글당 1회
+  static Future<Map<String, dynamic>> recommendContent(
+    int id, {
+    required String mbId,
+    int pfNo = 0,
+  }) async {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.contentRecommend(id),
-        <String, dynamic>{},
+        <String, dynamic>{
+          'mb_id': mbId,
+          'pf_no': pfNo,
+        },
       );
       if (response.statusCode != 200) {
         return {
