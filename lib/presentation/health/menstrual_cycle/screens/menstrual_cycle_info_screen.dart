@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/date_top_widget.dart';
 import '../../../common/widgets/btn_record.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
+import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_record_selector.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import 'menstrual_cycle_input_screen.dart';
@@ -460,60 +462,61 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           _buildRecommendationItem(
             '음식',
             phaseInfo.foodRecommendations.first,
-            Icons.restaurant,
-            Colors.green,
+            AppAssets.menstrualIcon1,
           ),
           const SizedBox(height: 12),
           _buildRecommendationItem(
             '건강',
             phaseInfo.healthRecommendations.first,
-            Icons.favorite,
-            Colors.red,
+            AppAssets.menstrualIcon2,
           ),
           const SizedBox(height: 12),
           _buildRecommendationItem(
             '관리',
             phaseInfo.managementRecommendations.first,
-            Icons.spa,
-            Colors.blue,
+            AppAssets.menstrualIcon3,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRecommendationItem(String category, String content, IconData icon, Color color) {
+  Widget _buildRecommendationItem(
+      String category, String content, String assetPath) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 20,
+        Image.asset(
+          assetPath,
+          width: 20,
+          height: 20,
+          fit: BoxFit.contain,
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                category,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black,
+                height: 1.4,
+                fontFamily: 'Gmarket Sans TTF',
               ),
-              const SizedBox(height: 4),
-              Text(
-                content,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.black,
-                  height: 1.4,
+              children: [
+                TextSpan(
+                  text: '$category : ',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
+                TextSpan(
+                  text: content,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -582,12 +585,15 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             ),
           ),
         ),
-        Text(
-          date,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: color,
+        Expanded(
+          child: Text(
+            date,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
       ],
@@ -603,18 +609,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       // 모든 생리주기 레코드 가져오기
       final records = await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
       
-      // 선택한 날짜에 해당하는 레코드 찾기
-      for (final record in records) {
-        final daysSinceStart = selectedDate.difference(record.lastPeriodStart).inDays;
-        
-        // 선택한 날짜가 이 레코드의 생리주기 범위 내에 있는지 확인
-        if (daysSinceStart >= 0 && daysSinceStart < record.cycleLength) {
-          return record;
-        }
-      }
-      
-      // 해당 날짜에 맞는 레코드가 없으면 최신 레코드 반환
-      return records.isNotEmpty ? records.first : null;
+      return MenstrualCycleRecordSelector.pickForDay(records, selectedDate);
     } catch (e) {
       print('레코드 조회 중 오류: $e');
       return _currentRecord;

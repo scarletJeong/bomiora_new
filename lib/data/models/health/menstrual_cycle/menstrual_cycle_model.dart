@@ -5,6 +5,10 @@ class MenstrualCycleRecord {
   final int? id;
   final String mbId;
   final DateTime lastPeriodStart; // 마지막 생리 시작일
+  /// 표시용(수정 가능, 계산엔 영향 없음)
+  final DateTime? periodStartDate;
+  /// 표시용(수정 가능, 계산엔 영향 없음)
+  final DateTime? periodEndDate;
   final int cycleLength; // 생리주기 길이 (일)
   final int periodLength; // 생리 기간 길이 (일)
   final String? notes; // 메모
@@ -15,6 +19,8 @@ class MenstrualCycleRecord {
     this.id,
     required this.mbId,
     required this.lastPeriodStart,
+    this.periodStartDate,
+    this.periodEndDate,
     required this.cycleLength,
     required this.periodLength,
     this.notes,
@@ -111,6 +117,8 @@ class MenstrualCycleRecord {
       if (id != null) 'id': id,
       'mb_id': mbId,
       'last_period_start': _formatDateOnly(lastPeriodStart),
+      if (periodStartDate != null) 'period_start_date': _formatDateOnly(periodStartDate!),
+      if (periodEndDate != null) 'period_end_date': _formatDateOnly(periodEndDate!),
       'cycle_length': cycleLength,
       'period_length': periodLength,
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
@@ -124,6 +132,8 @@ class MenstrualCycleRecord {
       lastPeriodStart: _parseDateOnly(
               json['last_period_start'] ?? json['lastPeriodStart']) ??
           DateTime.now(),
+      periodStartDate: _parseDateOnly(json['period_start_date'] ?? json['periodStartDate']),
+      periodEndDate: _parseDateOnly(json['period_end_date'] ?? json['periodEndDate']),
       cycleLength: _parseInt(json['cycle_length'] ?? json['cycleLength']) ?? 28,
       periodLength:
           _parseInt(json['period_length'] ?? json['periodLength']) ?? 5,
@@ -137,7 +147,22 @@ class MenstrualCycleRecord {
     );
   }
 
+
+  // 생리주기 날짜 Date 응답/요청 형식 변환
   static DateTime? _parseDateOnly(dynamic value) {
+    if (value == null) return null;
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return null;
+    // DATE(yyyy-mm-dd)는 타임존 영향 없이 직접 파싱
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(raw)) {
+      final y = int.tryParse(raw.substring(0, 4));
+      final m = int.tryParse(raw.substring(5, 7));
+      final d = int.tryParse(raw.substring(8, 10));
+      if (y != null && m != null && d != null) {
+        return DateTime(y, m, d);
+      }
+    }
+    // ISO instant 등은 기존 로직(로컬 변환) 사용
     final parsed = ApiDateTime.parseInstant(value);
     if (parsed == null) return null;
     return DateTime(parsed.year, parsed.month, parsed.day);
@@ -185,6 +210,8 @@ class MenstrualCycleRecord {
     int? id,
     String? mbId,
     DateTime? lastPeriodStart,
+    DateTime? periodStartDate,
+    DateTime? periodEndDate,
     int? cycleLength,
     int? periodLength,
     String? notes,
@@ -195,12 +222,25 @@ class MenstrualCycleRecord {
       id: id ?? this.id,
       mbId: mbId ?? this.mbId,
       lastPeriodStart: lastPeriodStart ?? this.lastPeriodStart,
+      periodStartDate: periodStartDate ?? this.periodStartDate,
+      periodEndDate: periodEndDate ?? this.periodEndDate,
       cycleLength: cycleLength ?? this.cycleLength,
       periodLength: periodLength ?? this.periodLength,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+
+  /// 달력 표시용 시작일(없으면 계산용 lastPeriodStart)
+  DateTime get displayPeriodStart =>
+      periodStartDate ?? DateTime(lastPeriodStart.year, lastPeriodStart.month, lastPeriodStart.day);
+
+  /// 달력 표시용 종료일(없으면 계산용 periodLength로 계산)
+  DateTime get displayPeriodEnd {
+    if (periodEndDate != null) return periodEndDate!;
+    final s = displayPeriodStart;
+    return s.add(Duration(days: periodLength - 1));
   }
 }
 

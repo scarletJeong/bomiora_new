@@ -85,4 +85,8 @@ abstract final class AppAssets {
   // 회원 탈퇴 아이콘
   static const String cancelMemberIcon = '${_img}cancel_member_icon.svg';
 
+  // 건강대시보드 - 생리주기 추천 카드 아이콘
+  static const String menstrualIcon1 = '${_img}menstrual_icon1.png';
+  static const String menstrualIcon2 = '${_img}menstrual_icon2.png';
+  static const String menstrualIcon3 = '${_img}menstrual_icon3.png';
 }

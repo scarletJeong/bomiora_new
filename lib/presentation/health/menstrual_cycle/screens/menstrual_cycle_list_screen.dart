@@ -6,7 +6,9 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../widgets/menstrual_cycle_date_header.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
+import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_record_selector.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import 'menstrual_cycle_input_screen.dart';
@@ -62,6 +64,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
       records.sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
       final recordForSelected = _recordForDateFrom(records, selectedDate);
+      if (!mounted) return;
       setState(() {
         _allRecords = records;
         _currentRecord = recordForSelected ?? (records.isNotEmpty ? records.first : null);
@@ -70,15 +73,14 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       _maybeAutoCreateNextCycleForDate(selectedDate);
     } catch (e) {
       print('생리주기 데이터 로딩 오류: $e');
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 로딩 실패: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('데이터 로딩 실패: $e')),
+      );
     }
   }
 
@@ -138,7 +140,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
                       child: BtnRecord(
                         text: '+ 기록하기',
                         onPressed: () async {
@@ -149,6 +151,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                                   const MenstrualCycleInputScreen(),
                             ),
                           );
+                          if (!mounted) return;
                           if (result == true) {
                             _loadMenstrualCycleData();
                           }
@@ -203,6 +206,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             text: '+ 기록하기',
             onPressed: () async {
               final recordForDate = await _getRecordForDate(selectedDate);
+              if (!mounted) return;
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -211,6 +215,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                   ),
                 ),
               );
+              if (!mounted) return;
               if (result == true) {
                 _loadMenstrualCycleData();
               }
@@ -229,20 +234,52 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         children: [
           MenstrualCycleDateHeader(
             selectedDate: selectedDate,
-            onDateChanged: (d) {
-              final nextDate = DateTime(d.year, d.month, d.day);
-              setState(() {
-                selectedDate = nextDate;
-                _currentRecord =
-                    _recordForDateFrom(_allRecords, nextDate) ?? _currentRecord;
-              });
-              _maybeAutoCreateNextCycleForDate(nextDate);
-            },
+            periodDayKeys: _periodDayKeysFrom(_allRecords),
+            periodEndpointKeys: _periodEndpointKeysFrom(_allRecords),
           ),
           const SizedBox(height: 16),
         ],
       ),
     );
+  }
+
+  Set<String> _periodDayKeysFrom(List<MenstrualCycleRecord> records) {
+    final keys = <String>{};
+    String key(DateTime day) {
+      final d = DateUtils.dateOnly(day);
+      return '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+    }
+
+    for (final r in records) {
+      final start = DateUtils.dateOnly(r.displayPeriodStart);
+      final end = DateUtils.dateOnly(r.displayPeriodEnd);
+      var cur = start;
+      while (!cur.isAfter(end)) {
+        keys.add(key(cur));
+        cur = cur.add(const Duration(days: 1));
+      }
+    }
+    return keys;
+  }
+
+  Set<String> _periodEndpointKeysFrom(List<MenstrualCycleRecord> records) {
+    final keys = <String>{};
+    String key(DateTime day) {
+      final d = DateUtils.dateOnly(day);
+      return '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+    }
+
+    for (final r in records) {
+      final start = DateUtils.dateOnly(r.displayPeriodStart);
+      final end = DateUtils.dateOnly(r.displayPeriodEnd);
+      keys.add(key(start));
+      keys.add(key(end));
+    }
+    return keys;
   }
 
   Widget _buildCycleChart() {
@@ -341,6 +378,11 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                       periodLength: _currentRecord!.periodLength,
                       fertileWindowStart: _currentRecord!.fertileWindowStart,
                       fertileWindowEnd: _currentRecord!.fertileWindowEnd,
+                      // 가임기 시작 이후라면(가임기가 지난 뒤도 포함) 가임기 구간을 채움.
+                      // 채움 정도는 ringFillSlotCount(=오늘까지 경과한 날짜)로 결정.
+                      highlightFertileWindow: !selectedDate.isBefore(
+                        DateUtils.dateOnly(_currentRecord!.fertileWindowStart),
+                      ),
                     ),
                   ),
                   // 내부 원
@@ -406,7 +448,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                         child: const Text(
                           '가임기',
                           style: TextStyle(
-                            color: Color(0xFFCC946A),
+                            color: Colors.black,
                             fontSize: 11,
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w600,
@@ -530,22 +572,19 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           _buildRecommendationItem(
             '음식',
             phaseInfo.foodRecommendations.first,
-            Icons.restaurant,
-            Colors.green,
+            AppAssets.menstrualIcon1,
           ),
           const SizedBox(height: 12),
           _buildRecommendationItem(
             '건강',
             phaseInfo.healthRecommendations.first,
-            Icons.favorite,
-            Colors.red,
+            AppAssets.menstrualIcon2,
           ),
           const SizedBox(height: 12),
           _buildRecommendationItem(
             '관리',
             phaseInfo.managementRecommendations.first,
-            Icons.spa,
-            Colors.blue,
+            AppAssets.menstrualIcon3,
           ),
         ],
       ),
@@ -580,7 +619,8 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                   ),
                 ),
               );
-              if (result == true && mounted) {
+              if (!mounted) return;
+              if (result == true) {
                 _loadMenstrualCycleData();
               }
             },
@@ -616,38 +656,41 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   }
 
   Widget _buildRecommendationItem(
-      String category, String content, IconData icon, Color color) {
+      String category, String content, String assetPath) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 20,
+        Image.asset(
+          assetPath,
+          width: 20,
+          height: 20,
+          fit: BoxFit.contain,
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                category,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black,
+                height: 1.4,
+                fontFamily: 'Gmarket Sans TTF',
               ),
-              const SizedBox(height: 4),
-              Text(
-                content,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.black,
-                  height: 1.4,
+              children: [
+                TextSpan(
+                  text: '$category : ',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-            ],
+                TextSpan(
+                  text: content,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -661,6 +704,13 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDateRangeCard(
+            title: '생리기간',
+            date:
+                '${DateFormat('M월 d일').format(_currentRecord!.nextPeriodStart)} - ${DateFormat('M월 d일').format(_currentRecord!.nextPeriodEnd)}',
+            color: const Color(0xFFFF5A8D),
+          ),
+          const SizedBox(height: 10),
+          _buildDateRangeCard(
             title: '예상 가임기',
             date:
                 '${DateFormat('M월 d일').format(_currentRecord!.fertileWindowStart)} - ${DateFormat('M월 d일').format(_currentRecord!.fertileWindowEnd)}',
@@ -671,13 +721,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             title: '예상 배란일',
             date: _ovulationRangeText(),
             color: const Color(0xFFFEA38E),
-          ),
-          const SizedBox(height: 10),
-           _buildDateRangeCard(
-            title: '생리기간',
-            date:
-                '${DateFormat('M월 d일').format(_currentRecord!.nextPeriodStart)} - ${DateFormat('M월 d일').format(_currentRecord!.nextPeriodEnd)}',
-            color: const Color(0xFFFF5A8D),
           ),
         ],
       ),
@@ -726,7 +769,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
                 date,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.black,
                   fontSize: 16,
@@ -751,19 +794,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       final records =
           await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
 
-      // 선택한 날짜에 해당하는 레코드 찾기
-      for (final record in records) {
-        final daysSinceStart =
-            selectedDate.difference(record.lastPeriodStart).inDays;
-
-        // 선택한 날짜가 이 레코드의 생리주기 범위 내에 있는지 확인
-        if (daysSinceStart >= 0 && daysSinceStart < record.cycleLength) {
-          return record;
-        }
-      }
-
-      // 해당 날짜에 맞는 레코드가 없으면 최신 레코드 반환
-      return records.isNotEmpty ? records.first : null;
+      return MenstrualCycleRecordSelector.pickForDay(records, selectedDate);
     } catch (e) {
       print('레코드 조회 중 오류: $e');
       return _currentRecord;
@@ -846,6 +877,8 @@ class MenstrualCyclePainter extends CustomPainter {
   final int periodLength;
   final DateTime fertileWindowStart;
   final DateTime fertileWindowEnd;
+  /// 선택일이 가임기 구간에 들어올 때만 가임기 색으로 칠함(기본은 미표시)
+  final bool highlightFertileWindow;
 
   MenstrualCyclePainter({
     required this.layoutDiameter,
@@ -855,6 +888,7 @@ class MenstrualCyclePainter extends CustomPainter {
     required this.periodLength,
     required this.fertileWindowStart,
     required this.fertileWindowEnd,
+    required this.highlightFertileWindow,
   });
 
   @override
@@ -904,16 +938,35 @@ class MenstrualCyclePainter extends CustomPainter {
 
     }
 
-    // 선택 날짜와 무관하게 가임기 기간은 항상 링에 표시한다.
-    _drawDateWindow(
-      canvas: canvas,
-      rect: rect,
-      daySweep: daySweep,
-      paint: stroke,
-      color: const Color(0xFFFFDFC3),
-      startDate: fertileWindowStart,
-      endDate: fertileWindowEnd,
-    );
+    // 가임기 구간은 "선택일이 가임기일 때만" 그리고,
+    // 그 안에서도 날짜가 지나온 만큼만(= ringFillSlotCount 기준) 점진적으로 채운다.
+    if (highlightFertileWindow && ringFillSlotCount > 0) {
+      DateTime dateOnly(DateTime t) => DateTime(t.year, t.month, t.day);
+      DateTime minDate(DateTime a, DateTime b) =>
+          a.isBefore(b) ? a : b;
+
+      final start = dateOnly(fertileWindowStart);
+      final end = dateOnly(fertileWindowEnd);
+      final current = dateOnly(
+        DateTime(
+          cycleStartDate.year,
+          cycleStartDate.month,
+          cycleStartDate.day,
+        ).add(Duration(days: ringFillSlotCount - 1)),
+      );
+
+      if (!current.isBefore(start)) {
+        _drawDateWindow(
+          canvas: canvas,
+          rect: rect,
+          daySweep: daySweep,
+          paint: stroke,
+          color: const Color(0xFFFFDFC3),
+          startDate: start,
+          endDate: minDate(end, current),
+        );
+      }
+    }
 
     // 가임기 시작일 위치 표시선
     _drawPhaseMarker(

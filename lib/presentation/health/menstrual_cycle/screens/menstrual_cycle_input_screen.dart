@@ -28,6 +28,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   bool _isLoading = false;
   late final TextEditingController _cycleLengthController;
   List<MenstrualCycleRecord> _historyRecords = const [];
+  /// 달력에서 이력 범위를 탭해 고른 행(또는 화면 진입 시 existing). 저장 시 이 id로 update.
+  int? _explicitEditRecordId;
 
   DateTime _focusedDay = DateTime.now();
   late final PageController _calendarPageController;
@@ -38,6 +40,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   static const Color _kOutsideDayText = Color(0x4C1A1A1A);
   static const Color _kRangeBarFill = Color(0x26FC6795);
   static const Color _kAccentPink = Color(0xFFFF5A8D);
+  /// 예정 생리 기간(연한 표시) — 바·끝 원 동일 색 (입력 화면에서만 사용)
+  static const Color _kPredictedPeriodFill = Color(0x14FC6795);
   /// 시작·끝 동그라미 지름(바는 이 원 바깥으로 나가지 않게 계산)
   static const double _kPeriodEndpointDiameter = 25.0;
 
@@ -57,9 +61,10 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     if (widget.existingRecord != null) {
       final record = widget.existingRecord!;
       setState(() {
-        _lastPeriodStart = record.lastPeriodStart;
-        _lastPeriodEnd =
-            record.lastPeriodStart.add(Duration(days: record.periodLength - 1));
+        // 편집 모드: "표시용" 시작/끝을 수정(계산용 값은 그대로 유지)
+        _lastPeriodStart = record.displayPeriodStart;
+        _lastPeriodEnd = record.displayPeriodEnd;
+        _explicitEditRecordId = record.id;
         _cycleLength = record.cycleLength;
         _cycleLengthController.text = '$_cycleLength';
         _focusedDay = DateTime(
@@ -129,13 +134,14 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     }
 
     for (final r in _historyRecords) {
-      if (widget.existingRecord != null &&
-          r.id != null &&
-          r.id == widget.existingRecord!.id) {
+      // 편집 중인 행은 DB에 남아 있는 옛 구간을 다시 그리지 않음 → 새로 고른 시작/끝만 보이게
+      if (r.id != null &&
+          _explicitEditRecordId != null &&
+          r.id == _explicitEditRecordId) {
         continue;
       }
-      final start = DateUtils.dateOnly(r.lastPeriodStart);
-      final end = start.add(Duration(days: r.periodLength - 1));
+      final start = DateUtils.dateOnly(r.displayPeriodStart);
+      final end = DateUtils.dateOnly(r.displayPeriodEnd);
       addRange(start, end);
     }
 
@@ -150,13 +156,13 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   bool _isHistoricalEndpoint(DateTime d) {
     final dd = DateUtils.dateOnly(d);
     for (final r in _historyRecords) {
-      if (widget.existingRecord != null &&
-          r.id != null &&
-          r.id == widget.existingRecord!.id) {
+      if (r.id != null &&
+          _explicitEditRecordId != null &&
+          r.id == _explicitEditRecordId) {
         continue;
       }
-      final start = DateUtils.dateOnly(r.lastPeriodStart);
-      final end = start.add(Duration(days: r.periodLength - 1));
+      final start = DateUtils.dateOnly(r.displayPeriodStart);
+      final end = DateUtils.dateOnly(r.displayPeriodEnd);
       if (_sameDate(dd, start) || _sameDate(dd, end)) return true;
     }
     return false;
@@ -164,6 +170,50 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   bool _inPeriodRange(DateTime d) {
     return _allPeriodDayKeys().contains(_dayKey(d));
+  }
+
+  /// 입력 중(신규): 현재 선택한 시작일 기준으로 예정일 표시
+  /// 수정 중: 기존 계산용 start(lastPeriodStart) 기준으로 예정일 표시 (표시용 기간 변경은 계산에 영향 없음)
+  ({DateTime start, DateTime end})? _predictedRange() {
+    // 기준 레코드 선택
+    DateTime? baseStart;
+    int baseCycle = _cycleLength;
+    int basePeriod = 1;
+
+    if (widget.existingRecord != null) {
+      baseStart = widget.existingRecord!.lastPeriodStart;
+      baseCycle = widget.existingRecord!.cycleLength;
+      basePeriod = widget.existingRecord!.periodLength;
+    } else if (_lastPeriodStart != null) {
+      baseStart = _lastPeriodStart;
+      baseCycle = _cycleLength;
+      basePeriod = (_lastPeriodEnd ?? _lastPeriodStart)!.difference(_lastPeriodStart!).inDays + 1;
+    } else if (_historyRecords.isNotEmpty) {
+      final sorted = [..._historyRecords]..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
+      final r = sorted.first;
+      baseStart = r.lastPeriodStart;
+      baseCycle = r.cycleLength;
+      basePeriod = r.periodLength;
+    }
+
+    if (baseStart == null || baseCycle <= 0 || basePeriod <= 0) return null;
+    final s = DateUtils.dateOnly(baseStart.add(Duration(days: baseCycle)));
+    final e = DateUtils.dateOnly(s.add(Duration(days: basePeriod - 1)));
+    return (start: s, end: e);
+  }
+
+  bool _inPredictedRange(DateTime d) {
+    final pr = _predictedRange();
+    if (pr == null) return false;
+    final dd = DateUtils.dateOnly(d);
+    return !dd.isBefore(pr.start) && !dd.isAfter(pr.end);
+  }
+
+  bool _isPredictedEndpoint(DateTime d) {
+    final pr = _predictedRange();
+    if (pr == null) return false;
+    final dd = DateUtils.dateOnly(d);
+    return _sameDate(dd, pr.start) || _sameDate(dd, pr.end);
   }
 
   List<List<DateTime>> _weeksForMonth(DateTime monthStart) {
@@ -197,8 +247,40 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       return;
     }
 
+    MenstrualCycleRecord? hit;
+    for (final r in _historyRecords) {
+      final start = DateUtils.dateOnly(r.displayPeriodStart);
+      final end = DateUtils.dateOnly(r.displayPeriodEnd);
+      if (!selectedDay.isBefore(start) && !selectedDay.isAfter(end)) {
+        hit = r;
+        // ignore: avoid_print
+        print(
+          '🩸 [MenstrualCycle] tapped=${_dayKey(selectedDay)} in record id=${r.id} range=${_dayKey(start)}~${_dayKey(end)}',
+        );
+        break;
+      }
+    }
+
+    // 입력(신규) 화면에서는 과거 이력 수정/선택을 막는다.
+    if (widget.existingRecord == null && hit != null) {
+      return;
+    }
+
+    // 과거 이력 범위를 탭한 경우: 수정할 행(id)만 잡고, 구간은 두 번 탭으로 다시 고른다
+    // (예: 원래 10~12여도 11 탭 → 시작 11, 이어서 14 탭 → 끝 14)
+    if (hit != null) {
+      setState(() {
+        _explicitEditRecordId = hit!.id;
+        _lastPeriodStart = selectedDay;
+        _lastPeriodEnd = null;
+      });
+      return;
+    }
+
     if (_lastPeriodStart == null || _lastPeriodEnd != null) {
       setState(() {
+        // 이력(id) 수정 중에 범위 밖 날짜로 "다시 시작일" 고를 때는 id 유지 → 저장 시 update
+        // (여기서 explicit을 지우면 시작일이 DB와 달라 insert로 새 row가 생김)
         _lastPeriodStart = selectedDay;
         _lastPeriodEnd = null;
       });
@@ -310,12 +392,19 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final cellW = w / 7;
+        final showPredicted = widget.existingRecord == null;
         int? firstIdx;
         int? lastIdx;
+        int? predFirstIdx;
+        int? predLastIdx;
         for (var i = 0; i < 7; i++) {
           if (_inPeriodRange(weekDays[i])) {
             firstIdx ??= i;
             lastIdx = i;
+          }
+          if (showPredicted && _inPredictedRange(weekDays[i])) {
+            predFirstIdx ??= i;
+            predLastIdx = i;
           }
         }
         return SizedBox(
@@ -324,12 +413,27 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             clipBehavior: Clip.none,
             alignment: Alignment.topLeft,
             children: [
+              // 예정(연한) 바를 먼저 그림 → 실제 바가 위로 오게
+              if (showPredicted && predFirstIdx != null && predLastIdx != null)
+                _rangeBarForWeekRow(
+                  weekDays: weekDays,
+                  firstIdx: predFirstIdx,
+                  lastIdx: predLastIdx,
+                  cellW: cellW,
+                  fillColor: _kPredictedPeriodFill,
+                  endpointMatcher: _isPredictedEndpoint,
+                ),
               if (firstIdx != null && lastIdx != null)
                 _rangeBarForWeekRow(
                   weekDays: weekDays,
                   firstIdx: firstIdx,
                   lastIdx: lastIdx,
                   cellW: cellW,
+                  fillColor: _kRangeBarFill,
+                  endpointMatcher: (d) =>
+                      (_lastPeriodStart != null && _sameDate(d, _lastPeriodStart!)) ||
+                      (_lastPeriodEnd != null && _sameDate(d, _lastPeriodEnd!)) ||
+                      _isHistoricalEndpoint(d),
                 ),
               Row(
                 children: List.generate(
@@ -353,6 +457,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     required int firstIdx,
     required int lastIdx,
     required double cellW,
+    required Color fillColor,
+    required bool Function(DateTime day) endpointMatcher,
   }) {
     const d = _kPeriodEndpointDiameter;
     final firstDay = weekDays[firstIdx];
@@ -362,12 +468,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
     final double barLeft;
     final double barRight;
-    final startIsEndpoint = (_lastPeriodStart != null &&
-            _sameDate(firstDay, _lastPeriodStart!)) ||
-        _isHistoricalEndpoint(firstDay);
-    final endIsEndpoint =
-        (_lastPeriodEnd != null && _sameDate(lastDay, _lastPeriodEnd!)) ||
-            _isHistoricalEndpoint(lastDay);
+    final startIsEndpoint = endpointMatcher(firstDay);
+    final endIsEndpoint = endpointMatcher(lastDay);
 
     // 종료일 미선택이더라도 "이전 내역" 범위 바는 끝점 원과 자연스럽게 이어져야 함
     barLeft = startIsEndpoint ? firstCx - d / 2 : firstIdx * cellW;
@@ -383,7 +485,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       child: IgnorePointer(
         child: DecoratedBox(
           decoration: ShapeDecoration(
-            color: _kRangeBarFill,
+            color: fillColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(13),
             ),
@@ -394,6 +496,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   }
 
   Widget _buildDayCell(DateTime day, DateTime focusedMonth) {
+    final showPredicted = widget.existingRecord == null;
     final inMonth = _inFocusedMonth(day, focusedMonth);
     final rangeStart =
         _lastPeriodStart != null && _sameDate(day, _lastPeriodStart!);
@@ -402,6 +505,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     final isCurrentPeriodEndpoint = rangeStart || rangeEnd;
     final isPeriodEndpoint = isCurrentPeriodEndpoint || _isHistoricalEndpoint(day);
     final inRange = _inPeriodRange(day);
+    final predictedEndpoint =
+        showPredicted && !isPeriodEndpoint && _isPredictedEndpoint(day);
+    final predictedInRange = showPredicted && !inRange && _inPredictedRange(day);
 
     final plainTextColor =
         inMonth ? const Color(0xFF1A1A1A) : _kOutsideDayText;
@@ -443,10 +549,39 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                     ),
                   ),
                 )
+              : predictedEndpoint
+                  ? SizedBox(
+                      width: _kPeriodEndpointDiameter,
+                      height: _kPeriodEndpointDiameter,
+                      child: DecoratedBox(
+                        decoration: ShapeDecoration(
+                          color: _kPredictedPeriodFill,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '${day.day}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: plainTextColor,
+                                fontSize: 14,
+                                height: 1.0,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: plainWeight,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
               : Text(
                   '${day.day}',
                   style: TextStyle(
-                    color: plainTextColor,
+                    color: predictedInRange ? const Color(0xFF1A1A1A) : plainTextColor,
                     fontSize: 14,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: plainWeight,
@@ -651,9 +786,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
-                '저장하기',
-                style: TextStyle(
+            : Text(
+                widget.existingRecord != null ? '수정하기' : '저장하기',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontFamily: 'Gmarket Sans TTF',
@@ -706,39 +841,77 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         return;
       }
 
-      final periodLength =
-          _lastPeriodEnd!.difference(_lastPeriodStart!).inDays + 1;
+      MenstrualCycleRecord? _recordById(int id) {
+        if (widget.existingRecord?.id == id) return widget.existingRecord;
+        for (final r in _historyRecords) {
+          if (r.id == id) return r;
+        }
+        return null;
+      }
 
-      final record = MenstrualCycleRecord(
-        id: widget.existingRecord?.id,
-        mbId: user.id,
-        lastPeriodStart: _lastPeriodStart!,
-        cycleLength: _cycleLength,
-        periodLength: periodLength,
-      );
+      MenstrualCycleRecord? _matchExistingRecordForEdit(DateTime start) {
+        final s = DateUtils.dateOnly(start);
+        MenstrualCycleRecord? byCalcStart;
+        MenstrualCycleRecord? byDisplayStart;
+        final all = <MenstrualCycleRecord>[
+          if (widget.existingRecord != null) widget.existingRecord!,
+          ..._historyRecords,
+        ];
+        for (final r in all) {
+          if (r.id == null) continue;
+          if (DateUtils.isSameDay(DateUtils.dateOnly(r.lastPeriodStart), s)) {
+            byCalcStart ??= r;
+          }
+          if (DateUtils.isSameDay(DateUtils.dateOnly(r.displayPeriodStart), s)) {
+            byDisplayStart ??= r;
+          }
+        }
+        // 계산용 시작일 매칭을 우선(안정적)
+        return byCalcStart ?? byDisplayStart;
+      }
 
       bool success;
-      if (widget.existingRecord != null) {
+      final MenstrualCycleRecord? matched = _explicitEditRecordId != null
+          ? (_recordById(_explicitEditRecordId!) ??
+              _matchExistingRecordForEdit(_lastPeriodStart!))
+          : _matchExistingRecordForEdit(_lastPeriodStart!);
+      if (matched != null) {
+        // 기존 이력(원하는 시작일에 해당)이 있으면 그 레코드를 "표시용 날짜"만 수정
+        final record = matched.copyWith(
+          mbId: user.id,
+          periodStartDate: _lastPeriodStart,
+          periodEndDate: _lastPeriodEnd,
+        );
         success =
             await MenstrualCycleRepository.updateMenstrualCycleRecord(record);
       } else {
-        success =
-            await MenstrualCycleRepository.addMenstrualCycleRecord(record);
+        // 매칭되는 기존 시작일이 없으면 신규 입력
+        final periodLength =
+            _lastPeriodEnd!.difference(_lastPeriodStart!).inDays + 1;
+        final record = MenstrualCycleRecord(
+          mbId: user.id,
+          lastPeriodStart: _lastPeriodStart!,
+          periodStartDate: _lastPeriodStart,
+          periodEndDate: _lastPeriodEnd,
+          cycleLength: _cycleLength,
+          periodLength: periodLength,
+        );
+        success = await MenstrualCycleRepository.addMenstrualCycleRecord(record);
       }
 
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(widget.existingRecord != null
-                    ? '생리주기 정보가 수정되었습니다'
+                content: Text(matched != null
+                    ? '생리 기간이 수정되었습니다'
                     : '생리주기 정보가 저장되었습니다')),
           );
           Navigator.pop(context, true);
         }
       } else {
         throw Exception(
-            widget.existingRecord != null ? '수정에 실패했습니다' : '저장에 실패했습니다');
+            matched != null ? '수정에 실패했습니다' : '저장에 실패했습니다');
       }
     } catch (e) {
       if (mounted) {
