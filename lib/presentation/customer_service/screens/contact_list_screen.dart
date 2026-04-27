@@ -80,7 +80,13 @@ class _ContactListScreenState extends State<ContactListScreen> {
   }
 
   String _statusLabel(Contact contact) {
-    return contact.hasReply ? '답변완료' : '접수완료';
+    // 스레드의 "최신 글" 기준 상태 표기
+    // - 추가질문이 있고 최신 글이 미답변이면: 재문의
+    // - 최신 글이 답변완료면: 답변완료
+    // - 그 외: 접수완료
+    if (contact.followupCount > 0 && !contact.latestAnswered) return '재문의';
+    if (contact.latestAnswered) return '답변완료';
+    return '접수완료';
   }
 
   Widget _buildCountRow() {

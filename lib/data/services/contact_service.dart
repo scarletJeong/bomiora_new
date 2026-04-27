@@ -122,11 +122,11 @@ class ContactService {
             .map((json) => Contact.fromJson(Map<String, dynamic>.from(json)))
             .toList();
 
-        // 방금 등록한 문의가 "바로" 보이도록 최신순 정렬(내림차순)
+        // 최신 질문 작성일(추가질문 포함, 서버 wr_datetime 반영) 기준 최신순 정렬(내림차순)
         contacts.sort((a, b) {
-          final byId = b.wrId.compareTo(a.wrId);
-          if (byId != 0) return byId;
-          return b.wrDatetime.compareTo(a.wrDatetime);
+          final byDt = b.wrDatetime.compareTo(a.wrDatetime);
+          if (byDt != 0) return byDt;
+          return b.wrId.compareTo(a.wrId);
         });
 
         return contacts;

@@ -16,9 +16,16 @@ class Contact {
   final int wrHit;
   final String? wrOption; // html1, html2, secret 등의 옵션
   final int? wrIsComment; // 답변 여부 (0=답변없음, 1=답변있음)
+  /// 스레드 내 추가질문 개수(원글 제외)
+  final int followupCount;
+  /// 스레드 최신 글(원글/추가질문) ID
+  final int latestWrId;
+  /// 스레드 최신 글(원글/추가질문)의 답변 여부(0/1)
+  final int latestWrIsComment;
   
   // 답변 여부 (wr_is_comment = 1 이면 답변 있음)
   bool get hasReply => wrIsComment == 1;
+  bool get latestAnswered => latestWrIsComment == 1;
   
   // HTML 포함 여부 (wr_option에 'html1' 또는 'html2' 포함)
   bool get isHtml => wrOption?.contains('html') ?? false;
@@ -39,6 +46,9 @@ class Contact {
     required this.wrHit,
     this.wrOption,
     this.wrIsComment,
+    this.followupCount = 0,
+    this.latestWrId = 0,
+    this.latestWrIsComment = 0,
   });
 
   factory Contact.fromJson(Map<dynamic, dynamic> json) {
@@ -64,6 +74,9 @@ class Contact {
       wrHit: NodeValueParser.asInt(normalized['wr_hit']) ?? 0,
       wrOption: NodeValueParser.asString(normalized['wr_option']),
       wrIsComment: NodeValueParser.asInt(normalized['wr_is_comment']),
+      followupCount: NodeValueParser.asInt(normalized['followup_count']) ?? 0,
+      latestWrId: NodeValueParser.asInt(normalized['latest_wr_id']) ?? 0,
+      latestWrIsComment: NodeValueParser.asInt(normalized['latest_wr_is_comment']) ?? 0,
     );
   }
 
