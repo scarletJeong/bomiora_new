@@ -17,6 +17,8 @@ class ReviewModel {
   final int isScore2; // 가성비
   final int isScore3; // 맛/향
   final int isScore4; // 편리함
+  /// 처방·일반 공통 상품 만족도 0.5~5, 0.5 단위 (API `totalIsScore` / DB `total_is_score`)
+  final double? totalIsScore;
   final double? averageScore; // 평균 평점
   
   // 리뷰 종류
@@ -69,6 +71,7 @@ class ReviewModel {
     required this.isScore2,
     required this.isScore3,
     required this.isScore4,
+    this.totalIsScore,
     this.averageScore,
     required this.isRvkind,
     required this.isRecommend,
@@ -135,6 +138,20 @@ class ReviewModel {
       }
     }
     return null;
+  }
+
+  static String? _extractImgSrcIfHtml(String? raw) {
+    final t = (raw ?? '').trim();
+    if (t.isEmpty) return null;
+    if (!t.contains('<img')) return t;
+    final imgSrcPattern = RegExp(
+      r'''<img[^>]*\bsrc\s*=\s*["']([^"']+)["']''',
+      caseSensitive: false,
+    );
+    final match = imgSrcPattern.firstMatch(t);
+    final src = match?.group(1)?.trim();
+    if (src == null || src.isEmpty) return null;
+    return src;
   }
 
   static void _pushUniqueImage(List<String> list, String? raw) {
@@ -227,6 +244,9 @@ class ReviewModel {
       }
     }
 
+    // API가 `<img src="...">` 형태로 내려주는 케이스 정리
+    productImage = _extractImgSrcIfHtml(productImage);
+
     if (itKind == null || itKind.isEmpty) {
       for (final nestedKey in [
         'item',
@@ -261,6 +281,7 @@ class ReviewModel {
       isScore2: NodeValueParser.asInt(normalized['isScore2']) ?? 0,
       isScore3: NodeValueParser.asInt(normalized['isScore3']) ?? 0,
       isScore4: NodeValueParser.asInt(normalized['isScore4']) ?? 0,
+      totalIsScore: NodeValueParser.asDouble(normalized['totalIsScore'] ?? normalized['total_is_score']),
       averageScore: NodeValueParser.asDouble(normalized['averageScore']),
       isRvkind: NodeValueParser.asString(normalized['isRvkind']) ?? 'general',
       isRecommend: NodeValueParser.asString(normalized['isRecommend']) ?? 'y',
@@ -295,6 +316,7 @@ class ReviewModel {
       'isScore2': isScore2,
       'isScore3': isScore3,
       'isScore4': isScore4,
+      if (totalIsScore != null) 'totalIsScore': totalIsScore,
       if (averageScore != null) 'averageScore': averageScore,
       'isRvkind': isRvkind,
       'isRecommend': isRecommend,

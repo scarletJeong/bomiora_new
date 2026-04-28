@@ -45,6 +45,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   int _score2 = 0;
   int _score3 = 0;
   int _score4 = 0;
+  /// 처방 리뷰 공통 상품 만족도 0=미선택, 0.5~5(0.5 단위) → `total_is_score`
+  double _totalSatisfaction = 0;
   int _weightLossKg = 1;
 
   final _positiveController = TextEditingController();
@@ -66,6 +68,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       _score2 = editing.isScore2;
       _score3 = editing.isScore3;
       _score4 = editing.isScore4;
+      _totalSatisfaction = _snapTotalRating((editing.totalIsScore ?? 0).toDouble());
       final w = editing.isOutageNum ?? 0;
       _weightLossKg = w < 1 ? 1 : (w > 50 ? 50 : w);
       _positiveController.text = editing.isPositiveReviewText ?? '';
@@ -79,7 +82,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       return;
     }
     _weightLossKg = 1;
-    final items = od.products;
+    _totalSatisfaction = 0.0;
   }
 
   @override
@@ -137,7 +140,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
-  /// 섹션 제목 앞 세로 막대(| 느낌, 두께 2)
+  /// 섹션 제목 앞 세로 막대(| 느낌, 두께 2) — 막대는 검정, `trailing` 은 라벨 바로 뒤에 붙임
   Widget _barSectionTitle(
     String title, {
     String? trailing,
@@ -147,35 +150,43 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 2,
+          width: 1,
           height: 16,
           decoration: BoxDecoration(
-            color: _kPink,
-            borderRadius: BorderRadius.circular(1),
+            color: _kInk,
+            borderRadius: BorderRadius.circular(0.5),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontFamily: _kFont,
-              fontSize: 16,
-              fontWeight: FontWeight.w300,
-              letterSpacing: -1.2,
+          child: Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                fontFamily: _kFont,
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+                letterSpacing: -1.2,
+                color: _kInk,
+              ),
+              children: [
+                TextSpan(text: title),
+                if (trailing != null && trailing.isNotEmpty)
+                  TextSpan(
+                    text: '  $trailing',
+                    style: TextStyle(
+                      fontFamily: _kFont,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      color: trailingColor ?? _kMuted,
+                      letterSpacing: -0.6,
+                    ),
+                  ),
+              ],
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (trailing != null && trailing.isNotEmpty)
-          Text(
-            trailing,
-            style: TextStyle(
-              fontFamily: _kFont,
-              fontSize: 12,
-              fontWeight: FontWeight.w300,
-              color: trailingColor ?? _kMuted,
-            ),
-          ),
       ],
     );
   }
@@ -200,21 +211,21 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               _buildSatisfactionSection(),
               const SizedBox(height: 20),
               _buildReviewTextSection(
-                barTitle: '좋았던 점',
+                barTitle: '상품 리뷰 좋았던 점',
                 requiredField: true,
                 controller: _positiveController,
                 hint: '직접 사용(복용)해보며 느낀 점과 만족스러웠던 점 어떤 분들께 추천하고 싶은지 함께 작성해주세요. (최소 20자)',
               ),
               const SizedBox(height: 20),
               _buildReviewTextSection(
-                barTitle: '아쉬운 점',
+                barTitle: '상품 리뷰 아쉬운 점',
                 requiredField: true,
                 controller: _negativeController,
                 hint: '사용(복용)하면서 아쉬웠던 점과 개선되었으면 하는 부분이 있다면 알려주세요. (최소 20자)',
               ),
               const SizedBox(height: 20),
               _buildReviewTextSection(
-                barTitle: '꿀팁',
+                barTitle: '상품 리뷰 꿀팁',
                 requiredField: false,
                 controller: _moreController,
                 hint: '사용(복용)하시면서 알게 된 꿀팁이나 효과적으로 활용하는 방법이 있다면 공유해주세요. (최소 20자)',
@@ -469,6 +480,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           trailingColor: const Color(0xFFEF4444),
         ),
         const SizedBox(height: 10),
+        _buildTotalSatisfactionSummaryCard(),
+        const SizedBox(height: 16),
         _scoreRow('효과', _score1, (v) => setState(() => _score1 = v)),
         const SizedBox(height: 8),
         _scoreRow('가성비', _score2, (v) => setState(() => _score2 = v)),
@@ -477,6 +490,95 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         const SizedBox(height: 8),
         _scoreRow('편리함', _score4, (v) => setState(() => _score4 = v)),
       ],
+    );
+  }
+
+  double _snapTotalRating(double raw) {
+    if (raw <= 0) return 0.0;
+    final c = raw.clamp(0.5, 5.0);
+    return (c * 2).round() / 2.0;
+  }
+
+  IconData _totalStarIcon(double rating, int index) {
+    final full = index + 1.0;
+    final half = index + 0.5;
+    if (rating >= full - 1e-9) return Icons.star_rounded;
+    if (rating >= half - 1e-9) return Icons.star_half_rounded;
+    return Icons.star_border_rounded;
+  }
+
+  Color _totalStarColor(double rating, int index) {
+    final half = index + 0.5;
+    return rating >= half - 1e-9 ? _kPink : const Color(0xFFD2D2D2);
+  }
+
+  /// 공통 상품 만족도(별) — `total_is_score` 저장, 가로폭은 `_scoreRow` 와 동일(전체 너비)
+  Widget _buildTotalSatisfactionSummaryCard() {
+    final display = _totalSatisfaction < 0.5 ? '0.0' : _totalSatisfaction.toStringAsFixed(1);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            display,
+            style: const TextStyle(
+              color: _kPink,
+              fontSize: 24,
+              fontFamily: _kFont,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (i) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: SizedBox(
+                  width: 36,
+                  height: 30,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        _totalStarIcon(_totalSatisfaction, i),
+                        color: _totalStarColor(_totalSatisfaction, i),
+                        size: 24,
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => _totalSatisfaction = i + 0.5),
+                              borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => _totalSatisfaction = i + 1.0),
+                              borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 
@@ -500,7 +602,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             style: const TextStyle(
               fontFamily: _kFont,
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -544,7 +646,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         const SizedBox(height: 10),
         Container(
           height: 120,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
@@ -566,6 +668,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               hintText: '',
               border: InputBorder.none,
               counterText: '',
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
             ),
             validator: (value) {
               final v = (value ?? '').trim();
@@ -734,15 +838,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   /// 이미지 선택
   Future<void> _pickImage() async {
     if (_imageFiles.length >= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('사진은 최대 3장까지 첨부할 수 있습니다.')),
-      );
       return;
     }
-    
+
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      
+
       if (image != null) {
         setState(() {
           _imageFiles.add(File(image.path));
@@ -750,11 +851,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       }
     } catch (e) {
       print('이미지 선택 오류: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이미지를 선택할 수 없습니다.')),
-        );
-      }
     }
   }
 
@@ -772,11 +868,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       // 현재 로그인된 사용자 정보 가져오기
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
-        }
         return;
       }
       
@@ -786,11 +877,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       final editTarget = widget.initialReview;
       final itId = editTarget?.itId ?? currentOrderFirstItem?.itId;
       if (itId == null || itId.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('상품 정보를 찾을 수 없습니다.')),
-          );
-        }
         return;
       }
 
@@ -799,15 +885,15 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       
       if (_positiveController.text.trim().length < 20 ||
           _negativeController.text.trim().length < 20) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('좋았던 점/아쉬운 점은 각각 20자 이상 입력해 주세요.')),
-          );
-        }
+        return;
+      }
+
+      if (_totalSatisfaction < 0.5) {
         return;
       }
 
       // 작성/수정 공용 리뷰 모델 생성
+      final totalSat = _snapTotalRating(_totalSatisfaction);
       final review = ReviewModel(
         isId: editTarget?.isId,
         mbId: user.id,
@@ -818,6 +904,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         isScore2: _score2 == 0 ? 1 : _score2,
         isScore3: _score3 == 0 ? 1 : _score3,
         isScore4: _score4 == 0 ? 1 : _score4,
+        totalIsScore: totalSat,
         isRvkind: editTarget?.isRvkind ?? 'prescription',
         isRecommend: editTarget?.isRecommend ?? 'y',
         isPositiveReviewText: _positiveController.text,
@@ -839,35 +926,11 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       
       if (mounted) {
         if (result['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                result['message'] ?? (_isEditMode ? '리뷰가 성공적으로 수정되었습니다.' : '리뷰가 성공적으로 작성되었습니다.'),
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-          
-          // 화면 닫기
-          Navigator.pop(context, true); // true를 반환하여 새로고침 유도
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? (_isEditMode ? '리뷰 수정에 실패했습니다.' : '리뷰 작성에 실패했습니다.')),
-              backgroundColor: Colors.red,
-            ),
-          );
+          Navigator.pop(context, true);
         }
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditMode ? '리뷰 수정 중 오류가 발생했습니다.' : '리뷰 작성 중 오류가 발생했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    } catch (_) {
+      // 스낵바 없이 조용히 실패 처리
     } finally {
       if (mounted) {
         setState(() {

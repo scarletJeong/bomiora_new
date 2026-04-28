@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
@@ -9,6 +10,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/services/auth_service.dart';
+import 'review_write_general_screen.dart';
 import 'review_write_screen.dart';
 
 /// 내 리뷰 — 상단 1건 펼침 + 이전 리뷰 내역(탭 시 교체)
@@ -46,6 +48,20 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   void initState() {
     super.initState();
     _loadReviews();
+  }
+
+  /// `it_kind` 또는 `is_rvkind` 가 일반일 때 일반 리뷰 작성/수정 화면 사용
+  bool _reviewUsesGeneralWriteEditor(ReviewModel r) {
+    if (r.isRvkind.toLowerCase() == 'general') return true;
+    final raw = (r.itKind ?? '').trim().toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+    return raw == 'general' || raw == 'normal' || raw == 'goods' || raw == 'product';
+  }
+
+  /// 일반 상품 리뷰 카드 상단 만족도 — `total_is_score` (없으면 0)
+  double _generalReviewTotalRating(ReviewModel r) {
+    final t = r.totalIsScore;
+    if (t == null || t <= 0) return 0.0;
+    return t.clamp(0.0, 5.0);
   }
 
   bool _isPrescriptionStyle(ReviewModel r) {
@@ -147,6 +163,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       _historyHeadId = _activeReview?.isId;
       _activeReview = tapped;
     });
+    if (kDebugMode) {
+      _debugLogReviewProductImage(tapped, tag: '.select');
+    }
   }
 
   Future<void> _loadReviews({bool refresh = false}) async {
@@ -195,6 +214,15 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           final vis = _visibleReviews();
           _ensureActiveInVisible(vis);
         });
+        if (kDebugMode) {
+          for (final r in newReviews) {
+            _debugLogReviewProductImage(r, tag: '.load');
+          }
+          final active = _activeReview;
+          if (active != null) {
+            _debugLogReviewProductImage(active, tag: '.activeAfterLoad');
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -222,6 +250,27 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           size: size,
           color: i < score ? _kPink : const Color(0xFFD2D2D2),
         );
+      }),
+    );
+  }
+
+  Widget _starsRowFromRating(double rating, {double size = 14}) {
+    final r = rating.clamp(0.0, 5.0);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) {
+        final full = i + 1.0;
+        final half = i + 0.5;
+        final IconData ic;
+        if (r >= full - 1e-9) {
+          ic = Icons.star_rounded;
+        } else if (r >= half - 1e-9) {
+          ic = Icons.star_half_rounded;
+        } else {
+          ic = Icons.star_border_rounded;
+        }
+        final active = r >= half - 1e-9;
+        return Icon(ic, size: size, color: active ? _kPink : const Color(0xFFD2D2D2));
       }),
     );
   }
@@ -316,14 +365,39 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   /// 리뷰 첨부(`images` 등) 우선, 없으면 상품 썸네일(`productImage` / it_img1 등)
   String? _reviewListImageUrl(ReviewModel r) {
+    String? guardNoImg(String? url) {
+      final t = (url ?? '').toLowerCase();
+      if (t.contains('no_img.png')) return null;
+      return url;
+    }
+
     if (r.images.isNotEmpty) {
-      return ImageUrlHelper.getReviewImageUrl(r.images.first);
+      return guardNoImg(ImageUrlHelper.getReviewImageUrl(r.images.first));
     }
     final thumb = r.productImage?.trim();
     if (thumb != null && thumb.isNotEmpty) {
-      return ImageUrlHelper.getImageUrl(thumb);
+      final normalized = ImageUrlHelper.getImageUrl(thumb);
+      // 리뷰에 이미지가 없을 때 내려오는 기본 no_img.png는 프록시에서 415가 날 수 있어
+      // 리뷰 화면에서는 네트워크로 불러오지 않고 플레이스홀더로 처리한다.
+      return guardNoImg(normalized);
     }
     return null;
+  }
+
+  /// 디버그: API에서 온 `it_id`·원본 썸네일·최종 로드 URL 확인
+  void _debugLogReviewProductImage(ReviewModel r, {String tag = ''}) {
+    if (!kDebugMode) return;
+    final rawThumb = r.productImage;
+    final resolved = _reviewListImageUrl(r);
+    final firstReviewImg = r.images.isNotEmpty ? r.images.first : null;
+    final resolvedReviewFirst =
+        firstReviewImg != null ? ImageUrlHelper.getReviewImageUrl(firstReviewImg) : null;
+    debugPrint(
+      '[MyReviews$tag] it_id=${r.itId} isId=${r.isId} '
+      'productImage(raw)=$rawThumb '
+      'images.count=${r.images.length} firstReviewImg=$firstReviewImg '
+      'resolvedListUrl=$resolved (reviewFirstResolved=$resolvedReviewFirst)',
+    );
   }
 
   Widget _productImage(ReviewModel r) {
@@ -570,9 +644,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Widget _expandedGeneralCard(ReviewModel r) {
-    final avg = r.averageScore != null
-        ? r.averageScore!.round().clamp(0, 5)
-        : ((r.isScore1 + r.isScore2 + r.isScore3 + r.isScore4) / 4.0).round().clamp(0, 5);
+    final starScore = _generalReviewTotalRating(r);
     final body = [
       r.isPositiveReviewText,
       r.isNegativeReviewText,
@@ -599,10 +671,10 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _starsRow(avg, size: 18),
+                _starsRowFromRating(starScore, size: 18),
                 const SizedBox(width: 8),
                 Text(
-                  '$avg',
+                  starScore < 0.5 ? '0.0' : starScore.toStringAsFixed(1),
                   style: const TextStyle(
                     color: _kInk,
                     fontSize: 16,
@@ -767,7 +839,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => ReviewWriteScreen.edit(review: review),
+        builder: (context) => _reviewUsesGeneralWriteEditor(review)
+            ? ReviewWriteGeneralScreen.edit(review: review)
+            : ReviewWriteScreen.edit(review: review),
       ),
     );
     if (!mounted) return;
