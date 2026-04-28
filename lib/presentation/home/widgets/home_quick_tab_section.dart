@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../common/responsive_scale.dart';
 
 class HomeQuickTabSection extends StatelessWidget {
   const HomeQuickTabSection({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final rs = context.rs;
     return ColoredBox(
       color: Colors.white,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: EdgeInsets.symmetric(
+              horizontal: rs.dp(20),
+              vertical: rs.dp(14),
+            ),
             child: Row(
               children: const [
                 Expanded(
@@ -47,9 +52,9 @@ class HomeQuickTabSection extends StatelessWidget {
             ),
           ),
           // 아래 줄: 끝까지 꽉 채우지 않도록 좌우 여백 유지
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: rs.dp(20)),
+            child: const Divider(
               height: 1,
               thickness: 1,
               color: Color(0xFFE5E5E5),
@@ -72,12 +77,13 @@ class _QuickTabItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rs = context.rs;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 24,
-          height: 24,
+          width: rs.dp(24),
+          height: rs.dp(24),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -85,19 +91,19 @@ class _QuickTabItem extends StatelessWidget {
                 alignment: Alignment.center,
                 child: SvgPicture.asset(
                   iconAsset,
-                  width: 22,
-                  height: 22,
+                  width: rs.dp(22),
+                  height: rs.dp(22),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: rs.dp(6)),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Color(0xFF666666),
-            fontSize: 10,
+            fontSize: rs.sp(10),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
@@ -113,9 +119,10 @@ class _QuickDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rs = context.rs;
     return Container(
-      width: 1,
-      height: 26,
+      width: rs.dp(1),
+      height: rs.dp(26),
       color: const Color(0xFFE5E5E5),
     );
   }
