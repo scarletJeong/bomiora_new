@@ -4,8 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_assets.dart';
 
 /// 비대면 처방 메인 — 카테고리(다이어트/디톡스/심신안정/건강·면역) 바로가기
-class ProductMainCategoryIconRow extends StatelessWidget {
-  const ProductMainCategoryIconRow({super.key});
+class ProductMainCategoryTap extends StatelessWidget {
+  const ProductMainCategoryTap({super.key});
 
   static const _circleDiameter = 80.0;
   static const _svgSize = 24.0;

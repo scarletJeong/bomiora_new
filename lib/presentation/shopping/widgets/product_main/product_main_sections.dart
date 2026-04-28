@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
-import 'product_main_category_icon_row.dart';
+import 'product_main_category_tap.dart';
 
 const _sectionLineColor = Color(0xFFD9D9D9);
 
@@ -652,7 +652,7 @@ class ProductMainTrustSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        const ProductMainCategoryIconRow(),
+        const ProductMainCategoryTap(),
         const SizedBox(height: 28),
         const Text(
           '믿을 수 있는 든든한 주치의가',

@@ -8,6 +8,7 @@ import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../utils/get_product.dart';
 import '../widgets/product_banner_slider.dart';
+import '../widgets/product_main/product_main_category_tap.dart';
 
 String _productListStripHtml(String? raw) {
   if (raw == null) return '';
@@ -245,12 +246,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: ProductBannerSlider(),
           ),
           const SliverToBoxAdapter(
+            child: SizedBox(height: 14),
+          ),
+          const SliverToBoxAdapter(
+            child: ProductMainCategoryTap(),
+          ),
+          const SliverToBoxAdapter(
             child: SizedBox(height: 20),
           ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-              child: _buildCategoryTabs(),
+              child: _buildScreenTitle(),
             ),
           ),
           SliverPadding(
@@ -362,6 +369,23 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildScreenTitle() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: Text(
+        '| $_activeCategoryName',
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          color: Colors.black,
+          fontFamily: _gmarket,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
