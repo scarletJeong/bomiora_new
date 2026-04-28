@@ -5,7 +5,8 @@ import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/appbar_menutap.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/category_service.dart';
-import '../../../common/widgets/footer_bar.dart';
+import '../../../common/widgets/navi_bar.dart';
+import '../../../common/widgets/app_footer.dart';
 
 /// 건강 콘텐츠 대시보드 (Figma 기반 UI)
 class ContentDashboardScreen extends StatefulWidget {
@@ -131,6 +132,7 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
               },
             ),
           ),
+          const AppFooter(),
           const FooterBar(),
         ],
       ),

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
 import '../../../core/constants/app_assets.dart';
 
 /// 공통으로 쓰는 하단 핑크 탭 바 (Figma)
+///
+/// - 파일명만 `footer_bar.dart` → `navi_bar.dart`로 변경했습니다.
+/// - 기존 사용처가 많아서 클래스명(`FooterBar`)은 유지합니다.
 class FooterBar extends StatelessWidget {
   const FooterBar({super.key});
 
@@ -53,7 +57,8 @@ class FooterBar extends StatelessWidget {
                   iconAsset,
                   width: 18,
                   height: 18,
-                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  colorFilter:
+                      const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -99,35 +104,35 @@ class FooterBar extends StatelessWidget {
           _item(
             context: context,
             label: 'HOME',
-            iconAsset: AppAssets.footerIcon1,
+            iconAsset: AppAssets.naviIcon1,
             onTap: () => _go(context, '/home'),
           ),
           _sep(),
           _item(
             context: context,
             label: '건강대시보드',
-            iconAsset: AppAssets.footerIcon2,
+            iconAsset: AppAssets.naviIcon2,
             onTap: () => _go(context, '/health'),
           ),
           _sep(),
           _item(
             context: context,
             label: '비대면 진료',
-            iconAsset: AppAssets.footerIcon3,
+            iconAsset: AppAssets.naviIcon3,
             onTap: null, // 요청대로 일단 유지
           ),
           _sep(),
           _item(
             context: context,
             label: '문진표',
-            iconAsset: AppAssets.footerIcon4,
+            iconAsset: AppAssets.naviIcon4,
             onTap: () => _go(context, '/profile'),
           ),
           _sep(),
           _item(
             context: context,
             label: 'MY PAGE',
-            iconAsset: AppAssets.footerIcon5,
+            iconAsset: AppAssets.naviIcon5,
             onTap: () => _go(context, '/my_page'),
           ),
         ],
@@ -135,3 +140,4 @@ class FooterBar extends StatelessWidget {
     );
   }
 }
+

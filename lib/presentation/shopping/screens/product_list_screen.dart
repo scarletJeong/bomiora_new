@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
+import '../../common/widgets/app_footer.dart';  
+import '../../common/widgets/navi_bar.dart';
 import '../utils/get_product.dart';
 import '../widgets/product_banner_slider.dart';
-import '../../../core/constants/app_assets.dart';
 
 String _productListStripHtml(String? raw) {
   if (raw == null) return '';
@@ -174,25 +176,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
     return MobileAppLayoutWrapper(
       child: Scaffold(
         backgroundColor: Colors.white,
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.transparent,
-          leading: Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.menu, color: Colors.black),
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Builder(
+            builder: (ctx) => AppBarMenu(
+              onMenuPressed: () => Scaffold.of(ctx).openDrawer(),
             ),
           ),
-          title: Image.asset(
-            AppAssets.bomioraAppbarLogo,
-            height: 40,
-          ),
-          centerTitle: true,
         ),
         drawer: AppBarMenuTapDrawer(
           onHealthDashboardTap: () {
@@ -200,6 +190,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             Navigator.pushNamed(context, '/health');
           },
         ),
+        bottomNavigationBar: const FooterBar(),
         body: DefaultTextStyle.merge(
           style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
           child: _buildBody(),
@@ -313,6 +304,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                   ),
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          const SliverToBoxAdapter(child: AppFooter()),
         ],
       ),
     );

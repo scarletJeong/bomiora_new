@@ -7,8 +7,7 @@ import '../../../../data/services/delivery_service.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/services/point_service.dart';
 import '../../../../data/models/user/user_model.dart';
-import '../../../settings/settings_screen.dart';
-import '../../../settings/notification_center_screen.dart';
+import '../../../common/widgets/app_bar_menu.dart';
 import '../../../common/widgets/appbar_menutap.dart';
 import 'profile_settings_screen.dart';
 import '../../../customer_service/screens/contact_list_screen.dart';
@@ -18,6 +17,7 @@ import 'refund_account_screen.dart';
 import 'cancel_member_screen.dart';
 import '../../healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/my_page_common.dart';
+import '../../../common/widgets/app_footer.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -354,61 +354,31 @@ class _MyPageScreenState extends State<MyPageScreen> {
           Navigator.pushNamed(context, '/health');
         },
       ),
-      appBar: AppBar(
-        title: Image.asset(
-          AppAssets.bomioraAppbarLogo,
-          height: 40,
-        ),
-        centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: [
-          IconButton(
-            tooltip: '알림 설정',
-            icon: const Icon(Icons.notifications_none_rounded,
-                color: Colors.black),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationCenterScreen(),
-                ),
-              );
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Builder(
+          builder: (ctx) => AppBarMenu(
+            onMenuPressed: () {
+              if (!ctx.mounted) return;
+              Scaffold.of(ctx).openDrawer();
             },
           ),
-          IconButton(
-            tooltip: '설정',
-            icon: const Icon(Icons.settings_outlined, color: Colors.black),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 6),
-        ],
+        ),
       ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: ColoredBox(
           color: Colors.white,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(27, 24, 27, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
                 if (_currentUser == null)
                   _buildGuestHeader()
                 else
@@ -512,9 +482,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ),
                 ],
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+                const AppFooter(),
                 const SizedBox(height: 24),
-                // Footer 숨김
-                // const AppFooter(),
               ],
             ),
           ),

@@ -4,7 +4,8 @@ import '../../../../data/services/content_service.dart';
 import '../../../../data/services/category_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/footer_bar.dart';
+import '../../../common/widgets/navi_bar.dart';
+import '../../../common/widgets/app_footer.dart';
 
 /// 콘텐츠 목록 (카테고리 칩, 검색, 리스트, 글쓰기 FAB)
 class ContentListScreen extends StatefulWidget {
@@ -174,6 +175,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
               ),
             ),
           ),
+          const AppFooter(),
           const FooterBar(),
         ],
       ),

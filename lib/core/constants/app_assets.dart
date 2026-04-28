@@ -26,12 +26,21 @@ abstract final class AppAssets {
   static const String bomioraAppbarLogo = '${_img}bomiora-appbar-logo.png';
   static const String bomioraBottomLogo = '${_img}bomiora-bottom-logo.png';
 
+  // 앱바(app_bar_menu.dart) 아이콘
+  static const String appbarSearchIcon = '${_img}appbar_menu_search.svg';
+  static const String appbarAlarmIcon = '${_img}appbar_menu_alarm.svg';
+  static const String appbarCartIcon = '${_img}appbar_menu_cart.svg';
+
+  // 네비게이션 아이콘
+  static const String naviIcon1 = '${_img}navi_icon1.svg'; // 홈
+  static const String naviIcon2 = '${_img}navi_icon2.svg'; // 건강대시보드
+  static const String naviIcon3 = '${_img}navi_icon3.svg'; // 비대면 진료
+  static const String naviIcon4 = '${_img}navi_icon4.svg'; // 문진표
+  static const String naviIcon5 = '${_img}navi_icon5.svg'; // MY PAGE
+
   // 푸터 아이콘
-  static const String footerIcon1 = '${_img}footer_icon1.svg'; // 홈
-  static const String footerIcon2 = '${_img}footer_icon2.svg'; // 건강대시보드
-  static const String footerIcon3 = '${_img}footer_icon3.svg'; // 비대면 진료
-  static const String footerIcon4 = '${_img}footer_icon4.svg'; // 문진표
-  static const String footerIcon5 = '${_img}footer_icon5.svg'; // MY PAGE
+  static const String footerIcon1 = '${_img}footer_icon1.svg'; // 로고1
+  static const String footerIcon2 = '${_img}footer_icon2.svg'; // 로고2 _글씨
 
   // 메인 퀵 탭 아이콘
   static const String quickTabIcon1 = '${_img}main_quick_tap_icon1.svg'; // 비대면 진료

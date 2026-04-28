@@ -4,9 +4,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
-import '../../common/widgets/app_bar.dart';
+import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/app_footer.dart';
+import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../utils/get_product.dart';
 
@@ -133,11 +135,8 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       child: Scaffold(
         key: _pageScaffoldKey,
         backgroundColor: Colors.white,
-        appBar: HealthAppBar(
-          title: '헬스케어 스토어',
-          centerTitle: true,
-          leadingType: HealthAppBarLeadingType.menu,
-          onBack: () => _pageScaffoldKey.currentState?.openDrawer(),
+        appBar: AppBarMenu(
+          onMenuPressed: () => _pageScaffoldKey.currentState?.openDrawer(),
         ),
         drawer: AppBarMenuTapDrawer(
           onHealthDashboardTap: () {
@@ -181,6 +180,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
                       ),
                     ),
         ),
+        bottomNavigationBar: const FooterBar(),
       ),
     );
   }
@@ -222,6 +222,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       // 카테고리별 API 상품 그리드(각 섹션: 제목 + 2열 그리드)
       ..._buildCategorySectionSlivers(scale),
       const SliverToBoxAdapter(child: SizedBox(height: 32)),
+      const SliverToBoxAdapter(child: AppFooter()),
     ];
   }
 
