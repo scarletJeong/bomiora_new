@@ -192,9 +192,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     }
 
     final g = p.answer2.trim();
-    if (g == '여성' || g == 'F' || g.toUpperCase() == 'F') {
+    if (g == '여' || g == '여성' || g == 'F' || g.toUpperCase() == 'F') {
       _formData['gender'] = 'F';
-    } else if (g == '남성' || g == 'M' || g.toUpperCase() == 'M') {
+    } else if (g == '남' || g == '남성' || g == 'M' || g.toUpperCase() == 'M') {
       _formData['gender'] = 'M';
     } else {
       _formData['gender'] = g.isEmpty ? null : g;
@@ -485,9 +485,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                     ),
                     Row(
                       children: [
-                        Expanded(child: _genderTile('M', '남성')),
+                        Expanded(child: _genderTile('M', '남')),
                         const SizedBox(width: 10),
-                        Expanded(child: _genderTile('F', '여성')),
+                        Expanded(child: _genderTile('F', '여')),
                       ],
                     ),
                   ),
@@ -604,7 +604,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                   _sectionTitleWithIcon('운동', AppAssets.profile3),
                   const SizedBox(height: 12),
                   const Text(
-                    '운동 빈도',
+                    '운동 습관',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 8),
@@ -614,7 +614,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                     (v) => setState(() => _formData['exerciseFrequency'] = v),
                   ),
                   const SizedBox(height: 16),
-                  _labelWithHint('운동 종목', '*중복선택가능'),
+                  _labelWithHint('주로 하는 운동', '*중복선택가능'),
                   const SizedBox(height: 8),
                   _multiGridFigma(
                     HealthProfileQuestionnaireOptions.exerciseTypes,

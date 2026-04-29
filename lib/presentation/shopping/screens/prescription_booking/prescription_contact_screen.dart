@@ -660,14 +660,33 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Center(
-                          child: Text(
-                            '교환환불 안내보기 >',
-                            style: TextStyle(
-                              color: Color(0xFF898686),
-                              fontSize: 12,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
+                        Center(
+                          child: InkWell(
+                            onTap: () {
+                              showDialog<void>(
+                                context: context,
+                                builder: (dialogContext) {
+                                  return AlertDialog(
+                                    content: const Text('(임시)'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(dialogContext),
+                                        child: const Text('확인'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                            child: const Text(
+                              '교환환불 안내보기 >',
+                              style: TextStyle(
+                                color: Color(0xFF898686),
+                                fontSize: 12,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),

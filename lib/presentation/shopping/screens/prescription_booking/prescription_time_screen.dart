@@ -213,7 +213,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '1. 가능한 날짜를 선택해주세요요',
+                    '1. 가능한 날짜를 선택해주세요',
                     style: TextStyle(
                       fontSize: 14,
                       fontFamily: 'Gmarket Sans TTF',
@@ -301,7 +301,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                   ),
                   const SizedBox(height: 32),
                   const Text(
-                    '2. 시간을 선택해주세요요',
+                    '2. 시간을 선택해주세요',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w300,
