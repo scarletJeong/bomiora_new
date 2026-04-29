@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/appbar_menutap.dart';
-import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
@@ -34,6 +33,7 @@ import 'health_goal_screen.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_status_label.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../../common/widgets/navi_bar.dart';
 
 class HealthDashboardScreen extends StatefulWidget {
   const HealthDashboardScreen({super.key});
@@ -207,12 +207,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load data: $e')),
-        );
-      }
     }
   }
 
@@ -245,89 +239,81 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      // 홈 화면과 동일한 구조: 왼쪽 햄버거 메뉴 아이콘 + Drawer
-      appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: Image.asset(
-          AppAssets.bomioraAppbarLogo,
-          height: 40,
-        ),
-        backgroundColor: const Color(0xFFFFACC6),
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-      ),
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
           Navigator.pop(context);
         },
       ),
       backgroundColor: Colors.white,
-      child: isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Color(0xFFFF5A8D)),
-                  SizedBox(height: 16),
-                  Text('Loading data...'),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              color: const Color(0xFFFF5A8D),
-              onRefresh: () => _loadData(showBlockingLoader: false),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    _buildHeaderSection(),
-                    Transform.translate(
-                      offset: const Offset(0, -36),
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 0),
-                        padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.all(Radius.circular(44)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            HealthDateSelector(
-                              selectedDate: selectedDate,
-                              onDateChanged: (newDate) {
-                                setState(() {
-                                  selectedDate = newDate;
-                                });
-                                _loadData();
-                              },
-                              monthTextColor: const Color(0xFF898686),
-                              selectedTextColor: const Color(0xFFFF5A8D),
-                              unselectedTextColor: const Color(0xFFB7B7B7),
-                              iconColor: const Color(0xFF898686),
+      child: Column(
+        children: [
+          Expanded(
+            child: isLoading
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+                        SizedBox(height: 16),
+                        Text('Loading data...'),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    color: const Color(0xFFFF5A8D),
+                    onRefresh: () => _loadData(showBlockingLoader: false),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        children: [
+                          _buildHeaderSection(),
+                          Transform.translate(
+                            offset: const Offset(0, -36),
+                            child: Container(
+                              margin: const EdgeInsets.only(top: 0),
+                              padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(44)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  HealthDateSelector(
+                                    selectedDate: selectedDate,
+                                    onDateChanged: (newDate) {
+                                      setState(() {
+                                        selectedDate = newDate;
+                                      });
+                                      _loadData();
+                                    },
+                                    monthTextColor: const Color(0xFF898686),
+                                    selectedTextColor: const Color(0xFFFF5A8D),
+                                    unselectedTextColor:
+                                        const Color(0xFFB7B7B7),
+                                    iconColor: const Color(0xFF898686),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  _buildBodyMetricsSection(),
+                                  const SizedBox(height: 24),
+                                  _buildMealSection(),
+                                  const SizedBox(height: 24),
+                                  _buildHealthMetricsSection(),
+                                  const SizedBox(height: 18),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 18),
-                            _buildBodyMetricsSection(),
-                            const SizedBox(height: 24),
-                            _buildMealSection(),
-                            const SizedBox(height: 24),
-                            _buildHealthMetricsSection(),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
+          ),
+          const FooterBar(),
+        ],
+      ),
     );
   }
 
