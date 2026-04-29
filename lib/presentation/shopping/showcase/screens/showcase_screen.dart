@@ -327,6 +327,26 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if ((product.rating ?? 0) > 0 ||
+                            (product.reviewCount ?? 0) > 0) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.star,
+                            size: 13,
+                            color: Color(0xFFFF5A8D),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${(product.rating ?? 0).toStringAsFixed(1)}'
+                            '(${product.reviewCount ?? 0})',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[700],
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     
