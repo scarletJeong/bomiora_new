@@ -228,7 +228,7 @@ class _CartScreenState extends State<CartScreen> {
     final confirmed = await ConfirmDialog.show(
       context,
       title: '삭제 확인',
-      message: '장바구니에서 이 상품을 /n삭제하시겠습니까?',
+      message: '장바구니에서 이 상품을\n삭제하시겠습니까?',
       cancelText: '취소',
       confirmText: '삭제',
     );
@@ -266,7 +266,7 @@ class _CartScreenState extends State<CartScreen> {
       context,
       title: '삭제 확인',
       message:
-          '선택한 ${selectedDisplayedItems.length}개 상품을 장바구니에서 삭제하시겠습니까?',
+          '선택한 ${selectedDisplayedItems.length}개 상품을 장바구니에서\n 삭제하시겠습니까?',
       cancelText: '취소',
       confirmText: '삭제',
     );
@@ -667,7 +667,7 @@ class _CartScreenState extends State<CartScreen> {
           const SizedBox(height: 10),
           const Divider(height: 1, thickness: 1, color: Color(0x7F1A1A1A)),
           const SizedBox(height: 10),
-          _summaryRow('결제 예정 금액', '${PriceFormatter.format(payable)}원',
+          _summaryRow('결제 금액', '${PriceFormatter.format(payable)}원',
               fontSize: 16, fontWeight: FontWeight.w700),
           const SizedBox(height: 14),
           SizedBox(
@@ -748,27 +748,6 @@ class _CartScreenState extends State<CartScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('품절삭제 기능은 추후 구현 예정입니다')),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  '품절삭제',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
               TextButton(
                 onPressed: _selectedDisplayedItemIds.isEmpty
                     ? null

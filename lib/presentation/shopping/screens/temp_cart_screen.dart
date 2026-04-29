@@ -251,8 +251,8 @@ class _TempCartScreenState extends State<TempCartScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
-        title: '진료 예약항목',
-        centerTitle: true,
+        title: '진료 예약 항목',
+        centerTitle: false,
       ),
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -306,7 +306,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
                                   '처방 예약하기',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                         ),
@@ -317,6 +317,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
                             _tempItems.map((item) => item.itName).toList(),
                         products: _recommendedProducts,
                         hideWhenEmpty: true,
+                        useGrid2: true,
                         topSpacingBefore: 22,
                         onProductTap: (product) async {
                           await Navigator.pushNamed(
