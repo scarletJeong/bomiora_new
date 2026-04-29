@@ -77,6 +77,9 @@ abstract final class AppAssets {
   static const String productMainBottom3 = '${_img}product_main_bottom_3.png';
   static const String productMainBottom4 = '${_img}product_main_bottom_4.png';
 
+  // 제품 상세보기 하단 - 기관인증 아이콘
+  static const String productDetailCertification = '${_img}product_detail_certification.svg';
+  
   // 건강대시보드 그래프 확대 아이콘
   static const String healthZoomin = '${_img}graph_zoomin.svg';
 
@@ -98,4 +101,9 @@ abstract final class AppAssets {
   static const String menstrualIcon1 = '${_img}menstrual_icon1.png';
   static const String menstrualIcon2 = '${_img}menstrual_icon2.png';
   static const String menstrualIcon3 = '${_img}menstrual_icon3.png';
+
+  // 결제 화면 - 결제수단 아이콘
+  static const String payCredit = '${_img}pay_credit.svg';
+  static const String payCash = '${_img}pay_cash.svg';
+  static const String escrow = '${_img}escrow.png';
 }
