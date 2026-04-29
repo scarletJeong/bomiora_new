@@ -167,22 +167,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         } else {
           _loadContactDetail();
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']?.toString() ?? '삭제에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('삭제 중 오류가 발생했습니다: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -607,9 +594,6 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                       onPressed: () {
                                         final root = _rootWrId ?? widget.wrId;
                                         if (_followupCount >= 2) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('추가질문은 최대 2회까지 가능합니다.')),
-                                          );
                                           return;
                                         }
                                         Navigator.push(

@@ -48,14 +48,7 @@ class _PointScreenState extends State<PointScreen> {
         ]);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('데이터 로드 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // 스낵바 제거: 쇼핑/인증 외 화면 정책
     } finally {
       setState(() {
         _isLoading = false;

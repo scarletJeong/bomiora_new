@@ -289,9 +289,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
     final start = DateUtils.dateOnly(_lastPeriodStart!);
     if (_sameDate(selectedDay, start)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('종료일은 시작일보다 늦어야 합니다')),
-      );
       return;
     }
 
@@ -801,24 +798,15 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   Future<void> _saveMenstrualCycleRecord() async {
     if (_lastPeriodStart == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('마지막 생리 시작일을 선택해주세요')),
-      );
       return;
     }
 
     if (_lastPeriodEnd == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('생리 종료일을 선택해주세요')),
-      );
       return;
     }
 
     final cycleLength = int.tryParse(_cycleLengthController.text);
     if (cycleLength == null || cycleLength <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('생리주기 일수를 입력해주세요')),
-      );
       return;
     }
     _cycleLength = cycleLength;
@@ -901,12 +889,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
       if (success) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(matched != null
-                    ? '생리 기간이 수정되었습니다'
-                    : '생리주기 정보가 저장되었습니다')),
-          );
           Navigator.pop(context, true);
         }
       } else {
@@ -915,9 +897,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류가 발생했습니다: $e')),
-        );
         setState(() {
           _isLoading = false;
         });

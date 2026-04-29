@@ -124,7 +124,6 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     final user = await AuthService.getUser();
     final mbId = user?.id;
     if (mbId == null || mbId.isEmpty) {
-      _showSnack('로그인이 필요합니다.');
       return;
     }
 
@@ -132,11 +131,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     final target = _parseWeightField(_targetWeightController.text);
 
     if (current == null || current <= 0) {
-      _showSnack('현재 체중을 올바르게 입력해주세요.');
       return;
     }
     if (target == null || target <= 0) {
-      _showSnack('목표 체중을 올바르게 입력해주세요.');
       return;
     }
 
@@ -152,17 +149,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
     setState(() => _submitting = false);
 
     if (result.success) {
-      _showSnack(result.message ?? '저장되었습니다.');
       Navigator.pop(context, true);
-    } else {
-      _showSnack(result.message ?? '저장에 실패했습니다.');
     }
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   @override

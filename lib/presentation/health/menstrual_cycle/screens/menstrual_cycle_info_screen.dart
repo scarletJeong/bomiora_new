@@ -49,12 +49,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       setState(() {
         _isLoading = false;
       });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 로딩 실패: $e')),
-        );
-      }
     }
   }
 

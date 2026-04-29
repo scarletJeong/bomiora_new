@@ -94,9 +94,6 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
   Future<void> _pickImage() async {
     if (_images.length >= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('사진은 최대 3장까지 첨부할 수 있습니다.')),
-      );
       return;
     }
 
@@ -129,22 +126,12 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
       if (!mounted) return;
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEditMode ? '문의가 수정되었습니다.' : '문의가 등록되었습니다.')),
-        );
         widget.onSuccess?.call();
         Navigator.pop(context, true);
         return;
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? '문의 처리에 실패했습니다.')),
-      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('문의 처리 중 오류가 발생했습니다: $e')),
-      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

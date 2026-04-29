@@ -34,9 +34,6 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
 
   Future<void> _onConnectBarPressed() async {
     if (_selectedServiceName == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('연동할 건강 앱을 먼저 선택해주세요.')),
-      );
       return;
     }
     await _toggleConnection(_selectedServiceName!);
@@ -45,11 +42,6 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
   Future<void> _toggleConnection(String serviceName) async {
     final isSupported = _isSupportedOnCurrentDevice(serviceName);
     if (!isSupported) {
-      final platformName =
-          _isIOS ? 'iOS' : _isAndroid ? 'Android' : '현재 플랫폼';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$serviceName 는 $platformName 에서 지원되지 않습니다.')),
-      );
       return;
     }
 
@@ -58,9 +50,6 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
       setState(() {
         _connectionState[serviceName] = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$serviceName 연동 해제')),
-      );
       return;
     }
 
@@ -76,12 +65,6 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         _syncedHeartRate = result.heartRate;
       }
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result.success ? '$serviceName 연동 완료' : result.message),
-      ),
-    );
   }
 
   bool _isSupportedOnCurrentDevice(String serviceName) {

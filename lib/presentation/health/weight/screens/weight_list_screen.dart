@@ -1513,28 +1513,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 ),
               );
             }
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('이미지 업로드에 실패했습니다'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
           }
         }
       });
     } catch (e) {
       print('이미지 선택 오류: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('이미지 선택 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -1576,22 +1559,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
         await WeightRepository.updateWeightRecord(updatedRecord);
         _loadData(); // 데이터 새로고침
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('이미지가 삭제되었습니다'),
-            backgroundColor: Colors.green,
-          ),
-        );
       }
     } catch (e) {
       print('이미지 삭제 오류: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('이미지 삭제 중 오류가 발생했습니다: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 

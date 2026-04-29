@@ -101,20 +101,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
         // 목록 응답에 배송비가 없거나 0인 경우, 상세 API 기준 배송비로 보정
         _syncDeliveryFeesFromDetail(userId);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? '주문 목록을 불러올 수 없습니다.')),
-          );
-        }
       }
     } catch (e) {
       print('❌ 주문 목록 로드 에러: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('주문 목록을 불러오는 중 오류가 발생했습니다.')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() {
@@ -889,11 +878,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     final user = await AuthService.getUser();
     if (user == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인이 필요합니다.')),
-        );
-      }
       return;
     }
 
@@ -906,10 +890,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (result['success'] == true) {
       await OrderFlowDialogs.showOrderCancelSuccess(context);
       if (mounted) _loadOrders();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? '주문 취소에 실패했습니다.')),
-      );
     }
   }
 
@@ -919,11 +899,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       // 로그인 확인
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
-        }
         return;
       }
       final userId = user.id;
@@ -935,11 +910,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       );
       
       if (result['success'] != true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? '주문 정보를 불러올 수 없습니다.')),
-          );
-        }
         return;
       }
       
@@ -949,48 +919,21 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       
       // 택배사와 운송장번호 확인
       if (companyName == null || companyName.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('택배사 정보가 없습니다.')),
-          );
-        }
         return;
       }
       
       if (trackingNumber == null || trackingNumber.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('운송장번호가 없습니다.')),
-          );
-        }
         return;
       }
       
       // 지원하는 택배사인지 확인
       if (!DeliveryTracker.isSupported(companyName)) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$companyName은(는) 지원하지 않는 택배사입니다.')),
-          );
-        }
         return;
       }
       
       // 배송 조회 페이지 열기
-      final success = await DeliveryTracker.openTrackingPage(companyName, trackingNumber);
-      
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('배송 조회 페이지를 열 수 없습니다.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('배송 조회 중 오류가 발생했습니다: $e')),
-        );
-      }
-    }
+      await DeliveryTracker.openTrackingPage(companyName, trackingNumber);
+    } catch (e) {}
   }
 
   /// 배송확정 (구매 확정)
@@ -1000,11 +943,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     final user = await AuthService.getUser();
     if (user == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인이 필요합니다.')),
-        );
-      }
       return;
     }
 
@@ -1014,12 +952,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     );
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message'] ?? '수령 확인 처리되었습니다.'),
-        backgroundColor: result['success'] == true ? Colors.green : Colors.red,
-      ),
-    );
 
     if (result['success'] == true) {
       _loadOrders();
@@ -1032,11 +964,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       // 로그인 확인
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
-        }
         return;
       }
       final userId = user.id;
@@ -1048,11 +975,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       );
       
       if (result['success'] != true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? '주문 정보를 불러올 수 없습니다.')),
-          );
-        }
         return;
       }
       
@@ -1075,13 +997,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           _loadOrders();
         }
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('리뷰 작성 화면을 열 수 없습니다: $e')),
-        );
-      }
-    }
+    } catch (e) {}
   }
 
   Future<void> _changeDeliveryAddress(String odId) async {
@@ -1207,11 +1123,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       // 로그인 확인
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
-        }
         return;
       }
 
@@ -1222,14 +1133,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       );
 
       if (result['success'] != true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? '주문 정보를 불러올 수 없습니다.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
         return;
       }
 
@@ -1237,14 +1140,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
       // 예약 정보 확인
       if (orderDetail.reservationDate == null || orderDetail.reservationTime == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('예약 정보가 없는 주문입니다.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
         return;
       }
 
@@ -1278,16 +1173,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       if (changeResult == true && mounted) {
         _loadOrders();
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('예약 시간 변경 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    } catch (e) {}
   }
 
   /// 예약 시간 변경 (예약 정보를 이미 알고 있는 경우)

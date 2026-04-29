@@ -155,14 +155,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
     final now = DateTime.now();
     if (_selectedDateTime.isAfter(now)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('현재 시각 이후로는 기록할 수 없습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
       return;
     }
 
@@ -211,29 +203,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
       if (mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
-              backgroundColor: Colors.green,
-            ),
-          );
           Navigator.pop(context, true); // 성공
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('저장에 실패했습니다. 다시 시도해주세요.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -268,28 +241,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
       if (mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('기록이 삭제되었습니다'),
-              backgroundColor: Colors.green,
-            ),
-          );
           Navigator.pop(context, true); // 성공
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('삭제에 실패했습니다. 다시 시도해주세요.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('삭제 실패: $e')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -827,14 +782,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       });
     } catch (e) {
       print('이미지 선택 오류: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('이미지 선택 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -872,21 +819,9 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           }
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('이미지가 삭제되었습니다'),
-            backgroundColor: Colors.green,
-          ),
-        );
       }
     } catch (e) {
       print('이미지 삭제 오류: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('이미지 삭제 중 오류가 발생했습니다: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 

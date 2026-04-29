@@ -61,14 +61,6 @@ class _CouponScreenState extends State<CouponScreen> {
         await _loadCoupons();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('데이터 로드 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -125,9 +117,6 @@ class _CouponScreenState extends State<CouponScreen> {
 
   Future<void> _registerCoupon() async {
     if (_couponCodeController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('쿠폰 코드를 입력해주세요.')),
-      );
       return;
     }
 
@@ -151,24 +140,8 @@ class _CouponScreenState extends State<CouponScreen> {
         _couponCodeController.clear();
         await _loadCoupons();
         if (mounted) await _showCouponRegisteredDialog();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']?.toString() ?? '등록에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('쿠폰 등록 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    } catch (e) {}
   }
 
   @override

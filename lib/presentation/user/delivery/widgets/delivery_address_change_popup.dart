@@ -403,11 +403,6 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
-        }
         return;
       }
 
@@ -431,13 +426,6 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
       if (!mounted) return;
       if (result['success'] == true) {
         Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '배송지 저장에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);

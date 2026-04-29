@@ -116,14 +116,6 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
     final now = DateTime.now();
     if (_selectedDateTime.isAfter(now)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('현재 시각 이후로는 기록할 수 없습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
       return;
     }
 
@@ -168,29 +160,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
       if (mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text(widget.record == null ? '기록이 추가되었습니다' : '기록이 수정되었습니다'),
-              backgroundColor: Colors.green,
-            ),
-          );
           Navigator.pop(context, true); // 성공
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('저장에 실패했습니다. 다시 시도해주세요.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -225,28 +198,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
       if (mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('기록이 삭제되었습니다'),
-              backgroundColor: Colors.green,
-            ),
-          );
           Navigator.pop(context, true); // 성공
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('삭제에 실패했습니다. 다시 시도해주세요.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('삭제 실패: $e')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

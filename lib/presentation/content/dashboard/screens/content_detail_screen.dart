@@ -138,9 +138,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     final user = await AuthService.getUser();
     if (!mounted) return;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 후 찜할 수 있습니다.')),
-      );
       return;
     }
     setState(() => _wishBusy = true);
@@ -149,11 +146,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       final wished = r['is_wished'] == true;
       if (mounted) setState(() => _isWished = wished);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
-      }
     } finally {
       if (mounted) setState(() => _wishBusy = false);
     }
@@ -166,9 +158,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     final user = await AuthService.getUser();
     if (!mounted) return;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 후 추천할 수 있습니다.')),
-      );
       return;
     }
     int pfNo = _recommendPfNo;
@@ -205,12 +194,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             _recommendCount = n;
             _userRecommended = true;
           });
-        }
-        final errMsg = r['message']?.toString().trim() ?? '';
-        if (errMsg.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errMsg)),
-          );
         }
       }
     } finally {

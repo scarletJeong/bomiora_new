@@ -8,7 +8,7 @@ import '../../../data/services/coupon_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../../../core/utils/snackbar_utils.dart';
+
 /// 리뷰 상세보기 화면
 class ReviewDetailScreen extends StatefulWidget {
   final ReviewModel review;
@@ -624,9 +624,6 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
       // 현재 사용자 정보 가져오기
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          SnackBarUtils.showError(context, '로그인이 필요합니다.');
-        }
         return;
       }
       
@@ -673,16 +670,9 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
             odId: _review.odId,
           );
         });
-        
-        SnackBarUtils.showSuccess(context, result['message'] ?? '쿠폰이 발급되었습니다.');
-      } else {
-        SnackBarUtils.showError(context, result['message'] ?? '쿠폰 다운로드에 실패했습니다.');
       }
     } catch (e) {
       print('❌ 도움쿠폰 다운로드 에러: $e');
-      if (mounted) {
-        SnackBarUtils.showError(context, '쿠폰 다운로드 중 오류가 발생했습니다.');
-      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -795,9 +785,6 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
       // 현재 사용자 정보 가져오기
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          SnackBarUtils.showError(context, '로그인이 필요합니다.');
-        }
         setState(() => _isLoading = false);
         return;
       }
@@ -842,16 +829,9 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
           setState(() {
             _hasUserHelpful = true; // 추천 상태 업데이트
           });
-          SnackBarUtils.showSuccess(context, '추천했어요');
-        } else {
-          // 중복 클릭 시
-          SnackBarUtils.showWarning(context, result['message'] ?? '이미 추천 하신 리뷰 입니다.');
         }
       }
     } catch (e) {
-      if (mounted) {
-        SnackBarUtils.showError(context, '처리 중 오류가 발생했습니다.');
-      }
     } finally {
       if (mounted) {
         setState(() {

@@ -225,11 +225,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('리뷰를 불러오는데 실패했습니다.')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -862,12 +857,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       if (user == null) return;
       final result = await ReviewService.deleteReview(review.isId!, user.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? '처리되었습니다.'),
-          backgroundColor: result['success'] == true ? Colors.green : Colors.red,
-        ),
-      );
       if (result['success'] == true) {
         setState(() {
           _historyHeadId = null;
@@ -875,13 +864,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         });
         _loadReviews(refresh: true);
       }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('리뷰 삭제 중 오류가 발생했습니다.'), backgroundColor: Colors.red),
-        );
-      }
-    }
+    } catch (_) {}
   }
 
   @override

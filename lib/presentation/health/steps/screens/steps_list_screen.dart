@@ -64,9 +64,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
       if (user == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다')),
-          );
           Navigator.pop(context);
         }
         return;
@@ -96,11 +93,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     } catch (e, st) {
       debugPrint('StepsTodayScreen._loadData: $e\n$st');
       setState(() => isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 로딩 실패: $e')),
-        );
-      }
     }
   }
 

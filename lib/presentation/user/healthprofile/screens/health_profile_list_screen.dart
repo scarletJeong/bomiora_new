@@ -57,16 +57,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         await _loadHealthProfile();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('데이터 로드 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
     } finally {
       setState(() {
         _isLoading = false;

@@ -93,11 +93,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
         _ownerController.text = holder;
       }
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('환불계좌를 불러오지 못했습니다.')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _loadingRefund = false);
@@ -114,9 +109,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
 
   Future<void> _submit() async {
     if (_selectedBank.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('은행을 선택해주세요.')),
-      );
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -124,17 +116,11 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
     final user = await AuthService.getUser();
     if (!mounted) return;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인이 필요합니다.')),
-      );
       return;
     }
 
     final digitsOnly = _accountController.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digitsOnly.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('계좌번호를 확인해 주세요.')),
-      );
       return;
     }
 
@@ -147,22 +133,9 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       );
       if (!mounted) return;
       if (data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${data['message'] ?? '환불계좌가 저장되었습니다.'}')),
-        );
         Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${data['message'] ?? '저장에 실패했습니다.'}')),
-        );
       }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('네트워크 오류로 저장하지 못했습니다.')),
-        );
-      }
-    }
+    } catch (_) {}
   }
 
   @override

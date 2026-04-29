@@ -107,9 +107,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Future<void> _goToEditSelected() async {
     final selectedId = _selectedAddressId;
     if (selectedId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('수정할 배송지를 선택해주세요.')),
-      );
       return;
     }
     final selected = _addresses.firstWhere(
@@ -136,9 +133,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     if (_currentUser == null) return;
     final id = _selectedAddressId;
     if (id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('삭제할 배송지를 선택해주세요.')),
-      );
       return;
     }
 
@@ -157,18 +151,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     });
     await _loadAddresses();
     if (!mounted) return;
-    if (deleteResult['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('삭제되었습니다.')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(deleteResult['message'] ?? '삭제에 실패했습니다.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   Future<void> _setDefaultAddress(Map<String, dynamic> address) async {

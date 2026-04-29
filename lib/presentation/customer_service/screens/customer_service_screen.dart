@@ -58,20 +58,9 @@ class _CustomerServiceScreenState extends State<CustomerServiceScreen>
       
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('카카오톡을 열 수 없습니다.')),
-          );
-        }
       }
     } catch (e) {
       print('❌ 카카오톡 상담 열기 에러: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('카카오톡 상담 연결에 실패했습니다.')),
-        );
-      }
     }
   }
 

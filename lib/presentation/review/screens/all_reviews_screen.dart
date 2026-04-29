@@ -199,11 +199,6 @@ class _AllReviewsScreenState extends State<AllReviewsScreen>
         });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('리뷰를 불러오는데 실패했습니다.')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() {

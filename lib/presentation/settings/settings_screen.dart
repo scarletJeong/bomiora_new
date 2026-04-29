@@ -268,18 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _openKakaoChannel() async {
     final uri = Uri.parse('https://pf.kakao.com/_NdxgAG');
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('카카오톡 상담 페이지를 열 수 없습니다.')),
-      );
-    }
-  }
-
-  void _showPreparingSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('준비 중인 메뉴입니다.')),
-    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   /// 로그아웃 처리
@@ -296,13 +285,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await AuthService.logout();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('로그아웃되었습니다.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
           // 로그인 화면으로 이동
           Navigator.pushNamedAndRemoveUntil(
             context,
@@ -310,16 +292,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             (route) => false,
           );
         }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('로그아웃 중 오류가 발생했습니다: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      } catch (e) {}
     }
   }
 }

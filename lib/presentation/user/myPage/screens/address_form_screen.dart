@@ -148,11 +148,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     try {
       final user = await AuthService.getUser();
       if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인이 필요합니다.')),
-          );
-        }
         return;
       }
 
@@ -188,30 +183,9 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '배송지가 저장되었습니다.'),
-            backgroundColor: Colors.green,
-          ),
-        );
         Navigator.of(context).pop(true); // 성공 시 true 반환
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '배송지 저장에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('배송지 저장 중 오류가 발생했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

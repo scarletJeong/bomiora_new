@@ -140,7 +140,6 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
           widget.mealKey,
         );
         if (created == null) {
-          if (mounted) _showSnackBar('식사 기록 추가에 실패했습니다.');
           return;
         }
         record = created;
@@ -148,25 +147,16 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       final ok = await FoodRepository.addItemToRecord(record.id, item);
       if (mounted) {
         if (ok) {
-          _showSnackBar('${item.foodName}을(를) 식사 기록에 추가했습니다.');
           widget.onItemAdded?.call();
           setState(() {
             _results = [];
             _searchController.clear();
           });
-        } else {
-          _showSnackBar('식사 기록 추가에 실패했습니다.');
         }
       }
     } finally {
       if (mounted) setState(() => _isAdding = false);
     }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
   }
 
   Future<void> _deleteItem(BuildContext context, String foodRecordId, String itemId, String foodName) async {
@@ -179,10 +169,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     final ok = await FoodRepository.deleteRecordItem(foodRecordId, itemId);
     if (!mounted) return;
     if (ok) {
-      _showSnackBar('삭제되었습니다.');
       widget.onItemAdded?.call();
-    } else {
-      _showSnackBar('삭제에 실패했습니다.');
     }
   }
 

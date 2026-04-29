@@ -145,11 +145,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final phoneDigits = _digitsOnly(_currentUser!.phone ?? '');
     if (name.isEmpty || phoneDigits.length < 10) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('등록된 연락처로 인증번호를 보낼 수 없습니다. 고객센터로 문의해 주세요.'),
-        ),
-      );
       return;
     }
     final phoneApi = phoneDigits.length == 11
@@ -193,28 +188,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _contactOtpErrorText = null;
     });
     _startVerificationCountdown(ttlSeconds);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('인증번호가 발송되었습니다.')),
-    );
   }
 
   Future<void> _confirmContactChangeOtp() async {
     final token = _contactOtpToken;
     if (token == null || token.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('먼저 [변경하기]로 인증번호를 요청해 주세요.')),
-      );
       return;
     }
     final code = _verificationController.text.trim();
     if (code.length < 4) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('인증번호를 입력해 주세요.')),
-      );
       return;
     }
 
@@ -245,11 +229,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       _contactOtpErrorText = null;
     });
     _verifyTimer?.cancel();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('인증이 완료되었습니다. 연락처를 수정한 뒤 저장해 주세요.')),
-    );
   }
 
   void _recomputePasswordMismatch() {
@@ -275,9 +254,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (_currentUser == null) return;
 
     if (_passwordMismatch) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
-      );
       return;
     }
     
@@ -285,11 +261,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       final phone = _enteredPhoneDigits;
       if (phone != _originalPhoneDigits && !_contactPhoneVerified) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('연락처를 변경하려면 [변경하기]로 인증 후 [확인]까지 완료해 주세요.'),
-          ),
-        );
         return;
       }
       final result = await AuthService.updateProfile(
@@ -307,23 +278,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
         if (newPw.isNotEmpty || confirmPw.isNotEmpty) {
           if (newPw.isEmpty || confirmPw.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('새 비밀번호/확인을 모두 입력해 주세요.')),
-            );
             return;
           }
           if (!_isValidPassword(newPw)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('비밀번호는 8~16자이며 문자/숫자/특수문자를 모두 포함해야 합니다.'),
-              ),
-            );
             return;
           }
           if (newPw != confirmPw) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
-            );
             return;
           }
 
@@ -333,14 +293,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           );
           if (!mounted) return;
           if (pwResult['success'] != true) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  pwResult['message']?.toString() ?? '비밀번호 변경에 실패했습니다.',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
             return;
           }
 
@@ -348,33 +300,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           _confirmPasswordController.clear();
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '프로필이 수정되었습니다.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
         // 사용자 정보 새로고침
         await _loadCurrentUser();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? '프로필 수정에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } catch (e) {
       print('❌ 프로필 저장 에러: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('프로필 수정 중 오류가 발생했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -403,11 +333,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           _ProfileHeader(
             name: '${_currentUser!.name} 님',
             email: _currentUser!.email,
-            onAddPhoto: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('프로필 사진 변경 기능은 추후 구현 예정입니다')),
-              );
-            },
+            onAddPhoto: () {},
           ),
           const SizedBox(height: 20),
 

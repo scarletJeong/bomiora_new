@@ -36,18 +36,12 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
   Future<void> _onWithdraw() async {
     if (_selectedIndex == null || _isSubmitting) return;
     if (_isEtcSelected && _etcController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('탈퇴 사유를 입력해 주세요.')),
-      );
       return;
     }
 
     final user = await AuthService.getUser();
     if (user == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인해 주세요.')),
-      );
       return;
     }
 
@@ -65,12 +59,6 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
     setState(() => _isSubmitting = false);
 
     if (result['success'] != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? '회원 탈퇴 처리에 실패했습니다.'),
-          backgroundColor: Colors.red,
-        ),
-      );
       return;
     }
 

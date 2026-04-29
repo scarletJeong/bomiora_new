@@ -41,29 +41,10 @@ class _FoodRecognitionScreenState extends State<FoodRecognitionScreen> {
         _isLoading = false;
       });
 
-      if (!success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('FoodLens SDK 초기화에 실패했습니다.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('초기화 오류: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -81,16 +62,7 @@ class _FoodRecognitionScreenState extends State<FoodRecognitionScreen> {
         
         await _recognizeFood(image.path);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('이미지 선택 오류: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    } catch (e) {}
   }
 
   /// 카메라로 사진 촬영
@@ -107,27 +79,12 @@ class _FoodRecognitionScreenState extends State<FoodRecognitionScreen> {
         
         await _recognizeFood(image.path);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('사진 촬영 오류: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    } catch (e) {}
   }
 
   /// 음식 인식
   Future<void> _recognizeFood(String imagePath) async {
     if (!_isInitialized) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('SDK가 초기화되지 않았습니다.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
       return;
     }
 
@@ -146,29 +103,10 @@ class _FoodRecognitionScreenState extends State<FoodRecognitionScreen> {
         _isLoading = false;
       });
 
-      if (result == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('음식을 인식할 수 없습니다.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('음식 인식 실패: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -322,7 +260,7 @@ class _FoodRecognitionScreenState extends State<FoodRecognitionScreen> {
           if (result['confidence'] != null)
             _buildInfoRow(
               '신뢰도',
-              '${(result['confidence'] as num * 100).toStringAsFixed(1)}%',
+              '${((result['confidence'] as num) * 100).toStringAsFixed(1)}%',
             ),
           
           // 영양정보
