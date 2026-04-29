@@ -56,16 +56,15 @@ class WeightRecord {
 
   factory WeightRecord.fromJson(Map<String, dynamic> json) {
     return WeightRecord(
-      id: json['recordId'] ?? json['record_id'] ?? json['id'],
+      id: _toInt(json['recordId'] ?? json['record_id'] ?? json['id']),
       mbId: _parseString(json['mbId'] ?? json['mb_id']) ?? '',
       measuredAt: ApiDateTime.parseInstant(
             json['measuredAt'] ?? json['measured_at'],
           ) ??
           DateTime.now(),
-      weight: (json['weight'] as num).toDouble(),
-      height:
-          json['height'] != null ? (json['height'] as num).toDouble() : null,
-      bmi: json['bmi'] != null ? (json['bmi'] as num).toDouble() : null,
+      weight: _toDouble(json['weight']) ?? 0,
+      height: _toDouble(json['height']),
+      bmi: _toDouble(json['bmi']),
       notes: _parseString(json['notes']),
       frontImagePath: _parseString(
         json['frontImagePath'] ?? json['front_image_path'],
@@ -104,6 +103,20 @@ class WeightRecord {
     }
 
     return value.toString();
+  }
+
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    final parsed = double.tryParse(value.toString().trim());
+    return parsed;
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString().trim());
   }
 
   Map<String, dynamic> toJson() {
