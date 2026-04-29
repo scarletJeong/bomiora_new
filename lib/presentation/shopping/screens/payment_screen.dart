@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:convert';
 
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/daum_postcode_search_dialog.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -19,6 +21,14 @@ import '../../../data/services/address_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
 import '../../../data/services/point_service.dart';
+
+/// 서버에서 내려오는 KCP 결제 모듈(라이브러리) 미설치 등 메시지 — 스낵바로는 띄우지 않음.
+bool _isKcpLibraryMissingServerMessage(String text) {
+  final c = text.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+  return c.contains('kcp') &&
+      c.contains('라이브러리') &&
+      c.contains('찾을수없');
+}
 
 class PaymentScreen extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -209,8 +219,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return v < 0 ? 0 : v;
   }
 
-  int get _pointDiscount =>
-      _usedPoint > _maxUsablePoint ? _maxUsablePoint : _usedPoint;
+  int get _maxUsablePointHundreds => (_maxUsablePoint ~/ 100) * 100;
+
+  int get _pointDiscount {
+    final capped =
+        _usedPoint > _maxUsablePointHundreds ? _maxUsablePointHundreds : _usedPoint;
+    return (capped ~/ 100) * 100;
+  }
 
   int get _finalAmount {
     final amount = _purchaseAmount +
@@ -226,8 +241,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_syncingPoint) return;
     final raw = _pointController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final value = int.tryParse(raw) ?? 0;
-    final safe = value > _maxUsablePoint ? _maxUsablePoint : value;
-    if (safe != _usedPoint || raw != safe.toString()) {
+    final capped =
+        value > _maxUsablePointHundreds ? _maxUsablePointHundreds : value;
+    // 1224 입력 → 1200 처럼 100점 단위로 자동 절삭 (단, 0~99는 그대로 입력 유지)
+    final safe = capped >= 100 ? (capped ~/ 100) * 100 : capped;
+
+    if (raw != safe.toString()) {
       _syncingPoint = true;
       _pointController.value = TextEditingValue(
         text: safe == 0 ? '' : '$safe',
@@ -235,9 +254,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
             TextSelection.collapsed(offset: safe == 0 ? 0 : '$safe'.length),
       );
       _syncingPoint = false;
+    }
+
+    if (safe != _usedPoint) {
       setState(() {
         _usedPoint = safe;
-        _useAllPoints = _usedPoint > 0 && _usedPoint == _maxUsablePoint;
+        _useAllPoints = _usedPoint > 0 && _usedPoint == _maxUsablePointHundreds;
       });
     }
   }
@@ -521,17 +543,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
         if (kIsWeb && message.contains('3017')) {
           _showWebPopupBlockedDialog();
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message.isEmpty ? '결제가 완료되지 않았습니다.' : message),
-          ),
-        );
+        if (!_isKcpLibraryMissingServerMessage(message)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message.isEmpty ? '결제가 완료되지 않았습니다.' : message),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('결제 처리 중 오류가 발생했습니다: $e')),
-      );
+      final errText = e.toString();
+      if (!_isKcpLibraryMissingServerMessage(errText)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('결제 처리 중 오류가 발생했습니다: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -792,7 +819,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return MobileAppLayoutWrapper(
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: const HealthAppBar(title: '주문/결제', centerTitle: true),
+        appBar: const HealthAppBar(title: '주문/결제', centerTitle: false),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
@@ -886,18 +913,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         _couponDropdown(),
                       const SizedBox(height: 8),
                       ..._selectedCoupons.map((c) => _selectedCouponRow(c)),
-                      Text(
-                        _hasCategoryCoupon
-                            ? '카테고리 쿠폰 ${_selectedCoupons.where((c) => c.method == 1).length}/2 선택'
-                            : (_selectedCoupons.isEmpty
-                                ? '쿠폰 미선택'
-                                : '쿠폰 1개 선택'),
-                        style: const TextStyle(
-                          color: _muted,
-                          fontSize: 10,
-                          fontFamily: 'Gmarket Sans TTF',
-                        ),
-                      ),
                       const SizedBox(height: 20),
                       const Divider(
                           height: 1, thickness: 1.5, color: Color(0xFFD9D9D9)),
@@ -907,7 +922,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       _summaryRow(
                           '보유 포인트', '${PointService.formatPoint(_myPoint)} 점'),
                       _summaryRow('최대 사용 가능 포인트',
-                          '${PointService.formatPoint(_maxUsablePoint)} 점'),
+                          '${PointService.formatPoint(_maxUsablePointHundreds)} 점'),
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
@@ -917,14 +932,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           children: [
                             const SizedBox(
                               width: 137.08,
-                              child: Text(
-                                '포인트 사용',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 11.70,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w300,
-                                ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '포인트 사용',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 12,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '(100점단위)',
+                                    style: TextStyle(
+                                      color: _muted,
+                                      fontSize: 12,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             Container(
@@ -1017,7 +1046,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                       final all = checked ?? false;
                                       setState(() {
                                         _useAllPoints = all;
-                                        _usedPoint = all ? _maxUsablePoint : 0;
+                                        _usedPoint = all ? _maxUsablePointHundreds : 0;
                                         _pointController.text = _usedPoint == 0
                                             ? ''
                                             : '$_usedPoint';
@@ -1045,37 +1074,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       _summaryRow('구매금액',
                           '${PriceFormatter.format(_purchaseAmount)} 원'),
                       _summaryRow('쿠폰할인',
-                          '-${PriceFormatter.format(_couponDiscount)} 원'),
+                          _discountAmountText(_couponDiscount)),
                       _summaryRow('포인트할인',
-                          '-${PriceFormatter.format(_pointDiscount)} 원'),
+                          _discountAmountText(_pointDiscount)),
                       _summaryRow('배송비',
                           '${PriceFormatter.format(widget.shippingCost)} 원'),
                       const SizedBox(height: 6),
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Color(0xFFD9D9D9),
+                      ),
+                      const SizedBox(height: 15),
                       _strongRow(
                           '총 결제비용', '${PriceFormatter.format(_finalAmount)}원'),
-                      const SizedBox(height: 2),
-                      const Text(
-                        '*최소 결제 금액 3,000원',
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: 8,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
+                      const SizedBox(height: 15),
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Color(0xFFD9D9D9),
                       ),
-
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       _summaryRow('예상 적립 포인트',
                           '${PointService.formatPoint(_expectedPoint)} 점'),
-                      const Text(
-                        '*상품별 포인트 설정 기준 예상 적립',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 8,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
+                      _footnoteWithPinkLeadingAsterisk(
+                          '상품별 포인트 설정 기준 예상 적립'),
                       
                       const SizedBox(height: 20),
                       const Divider(
@@ -1091,6 +1114,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           const SizedBox(width: 10),
                           Expanded(child: _methodButton('가상계좌', 2)),
                         ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '※ 할부 결제는 일반카드 결제만 가능합니다.',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 12,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              '※ 최소 결제금액은 3,000원입니다.',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 12,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       if (_paymentMethodIndex == 1 ||
                           _paymentMethodIndex == 2) ...[
@@ -1112,6 +1164,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                         const SizedBox(height: 10),
                         _escrowNotice(),
+                        const SizedBox(height: 4),
+                        const Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '2006.4.1 제정, 2013.11.29 개정 전자상거래 등에서의 소비자 보호에 관한 법률',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 6.82,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                        ),
                       ],
                       const SizedBox(height: 20),
                       SizedBox(
@@ -1216,15 +1281,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '우편번호*',
-            style: TextStyle(
-              color: _ink,
-              fontSize: 12,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          _fieldLabelWithPinkAsterisk('우편번호*'),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -1291,6 +1348,61 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  /// 라벨이 `*`로 끝나면 별만 핑크(웹 등에서 TextSpan 색 병합 이슈 회피용 WidgetSpan).
+  Widget _fieldLabelWithPinkAsterisk(String label) {
+    const baseStyle = TextStyle(
+      color: _ink,
+      fontSize: 12,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+    );
+    if (!label.endsWith('*')) {
+      return Text(label, style: baseStyle);
+    }
+    final body = label.substring(0, label.length - 1);
+    return Text.rich(
+      TextSpan(
+        style: baseStyle,
+        children: [
+          TextSpan(text: body),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: Text(
+              '*',
+              style: baseStyle.copyWith(color: const Color(0xFFFF5A8D)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _footnoteWithPinkLeadingAsterisk(String afterStar) {
+    const baseStyle = TextStyle(
+      color: Colors.black,
+      fontSize: 8,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+    );
+    return Text.rich(
+      TextSpan(
+        style: baseStyle,
+        children: [
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: Text(
+              '*',
+              style: baseStyle.copyWith(color: const Color(0xFFFF5A8D)),
+            ),
+          ),
+          TextSpan(text: afterStar),
+        ],
+      ),
+    );
+  }
+
   Widget _inputField(
     String label,
     TextEditingController controller,
@@ -1301,15 +1413,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 12,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          _fieldLabelWithPinkAsterisk(label),
           const SizedBox(height: 6),
           SizedBox(
             height: _fieldHeight,
@@ -1409,13 +1513,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        height: 0.5,
-                        color: const Color(0xFFD2D2D2),
-                      ),
                       if (reservationLine != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          height: 0.5,
+                          color: Color(0xFFD2D2D2),
+                        ),
                         const SizedBox(height: 8),
                         reservationLine,
                       ],
@@ -1611,7 +1715,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             color: _ink,
             fontSize: 12,
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w300,
           ),
         ),
         const SizedBox(height: 6),
@@ -1698,32 +1802,38 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerRight,
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedCoupons.removeWhere((c) => c.no == coupon.no);
-                  if (_usedPoint > _maxUsablePoint) {
-                    _usedPoint = _maxUsablePoint;
-                    _pointController.text =
-                        _usedPoint == 0 ? '' : '$_usedPoint';
-                  }
-                });
-              },
-              child: const Text(
-                '삭제',
-                style: TextStyle(
-                  color: _muted,
-                  fontSize: 10,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+              Padding(
+                padding: const EdgeInsets.only(top: 1, right: 6),
+                child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedCoupons.removeWhere((c) => c.no == coupon.no);
+                    if (_usedPoint > _maxUsablePointHundreds) {
+                      _usedPoint = _maxUsablePointHundreds;
+                      _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
+                    }
+                  });
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFEFEFEF),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    '삭제',
+                    style: TextStyle(
+                      color: _muted,
+                      fontSize: 10,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1745,14 +1855,37 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  String _discountAmountText(int amount) {
+    if (amount <= 0) {
+      return '${PriceFormatter.format(amount)} 원';
+    }
+    return '-${PriceFormatter.format(amount)} 원';
+  }
+
   Widget _summaryRow(String left, String right) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(left),
-          Text(right),
+          Text(
+            left,
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              color: _ink,
+            ),
+          ),
+          Text(
+            right,
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              color: _ink,
+            ),
+          ),
         ],
       ),
     );
@@ -1784,8 +1917,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  String _paymentMethodIconAsset(int index) {
+    switch (index) {
+      case 0:
+        return AppAssets.payCredit;
+      case 1:
+      case 2:
+        return AppAssets.payCash;
+      default:
+        return AppAssets.payCredit;
+    }
+  }
+
   Widget _methodButton(String label, int index) {
     final selected = _paymentMethodIndex == index;
+    final iconAsset = _paymentMethodIconAsset(index);
+    final iconColor = selected ? Colors.white : _ink;
     return InkWell(
       onTap: () => setState(() => _paymentMethodIndex = index),
       borderRadius: BorderRadius.circular(10),
@@ -1800,14 +1947,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
             width: selected ? 1 : 0.5,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : _ink,
-            fontSize: 12,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w300,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              iconAsset,
+              width: 28,
+              height: 28,
+              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : _ink,
+                fontSize: 12,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w300,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1852,11 +2011,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 65.95,
-            height: 65.95,
-            decoration: const BoxDecoration(color: Colors.white),
-            child: const Icon(Icons.verified_user_outlined, color: _muted),
+          SizedBox(
+            width: 74,
+            height: 74,
+            child: Image.asset(
+              AppAssets.escrow,
+              fit: BoxFit.contain,
+            ),
           ),
           const SizedBox(width: 10),
           const Expanded(
