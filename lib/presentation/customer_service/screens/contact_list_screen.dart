@@ -13,10 +13,10 @@ class ContactListScreen extends StatefulWidget {
   const ContactListScreen({super.key});
 
   @override
-  State<ContactListScreen> createState() => _ContactListScreenState();
+  State<ContactListScreen> createState() => ContactListScreenState();
 }
 
-class _ContactListScreenState extends State<ContactListScreen> {
+class ContactListScreenState extends State<ContactListScreen> {
   List<Contact> _contacts = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -68,6 +68,9 @@ class _ContactListScreenState extends State<ContactListScreen> {
       });
     }
   }
+
+  /// 탭 전환 등에서 목록을 다시 불러올 때 호출합니다.
+  Future<void> refresh() => _loadContacts();
 
   Future<void> _openContactForm() async {
     final result = await Navigator.push(
