@@ -1081,13 +1081,24 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       final message =
           (data['message'] ?? data['res_msg'] ?? '본인인증에 실패했습니다.').toString();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.red,
-          ),
-        );
-        debugPrint('[KCP] _pollKcpResult: SnackBar 표시 msg=$message');
+        final compact =
+            message.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+        final suppressKcpLibrarySnack = compact.contains('kcp') &&
+            compact.contains('라이브러리') &&
+            compact.contains('찾을수없');
+        if (!suppressKcpLibrarySnack) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.red,
+            ),
+          );
+          debugPrint('[KCP] _pollKcpResult: SnackBar 표시 msg=$message');
+        } else {
+          debugPrint(
+            '[KCP] _pollKcpResult: KCP 라이브러리 미설치류 메시지 → SnackBar 생략 msg=$message',
+          );
+        }
       } else {
         debugPrint('[KCP] _pollKcpResult: 실패인데 unmounted → SnackBar 스킵');
       }
