@@ -22,12 +22,14 @@ import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
+import '../../../data/models/cart/cart_item_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
 import '../widgets/producrt_normal_review.dart';
 import '../utils/get_review.dart';
-import 'webview_screen.dart';
+import 'cart_general_screen.dart' as cart_general;
+import 'payment_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
@@ -294,31 +296,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       if (wasFavorite) {
         // 찜하기 해제
         await WishService.removeFromWish(widget.productId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('찜하기 해제 완료'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              width: 568, // 600px - 32px (양쪽 16px 여백)
-              duration: Duration(milliseconds: 500),
-            ),
-          );
-        }
       } else {
         // 찜하기 추가
         await WishService.addToWish(widget.productId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('찜하기 완료'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              width: 568, // 600px - 32px (양쪽 16px 여백)
-              duration: Duration(milliseconds: 500),
-            ),
-          );
-        }
       }
     } catch (e) {
       // 실패 시 원래 상태로 되돌리기
@@ -477,7 +457,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   ),
                   Tab(
                     child: Text(
-                      '일반리뷰 $generalReviewCount',
+                      '일반 리뷰 ($generalReviewCount)',
                       style: const TextStyle(
                         fontSize: 14,
                         fontFamily: _kGmarketSans,
@@ -548,21 +528,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             // 가격 정보
             _buildPriceSection(),
 
-            // 가격 아래 구분선
-            const Divider(
-              height: 32,
-              thickness: 1,
-              color: Color(0xFFD9D9D9),
-            ),
-
             // 제품 스펙
             _buildProductSpecs(),
             const SizedBox(height: 16),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: Colors.grey[300],
-            ),
           ],
         ),
       ),
@@ -580,13 +548,17 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           // 상세페이지 HTML 미리보기 + 자세히 보기
           _buildDetailPreviewSection(),
 
-          const Divider(height: 1, thickness: 1),
-
           // 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
-          const ProductTailInfoSection(),
+          ProductTailInfoSection(
+            showCertification: false,
+            showWarning: false,
+            showPrescriptionProcess: false,
+            deliveryText: _product?.additionalInfo?['it_baesong_content']?.toString(),
+            changeContentText:
+                _product?.additionalInfo?['it_change_content']?.toString(),
+          ),
 
           const SizedBox(height: 16),
-          const Divider(height: 1, thickness: 1),
 
           // 하단 여백
           const SizedBox(height: 56),
@@ -605,6 +577,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       visibleCount: _visibleNormalReviewCount,
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
+      showCategoryScores: false,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;
@@ -1374,15 +1347,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         if (!mounted) return;
 
         if (result['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('장바구니에 추가되었습니다.'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              width: 568,
-              duration: Duration(seconds: 2),
-            ),
-          );
           _safeSetState(() {
             _selectedOptions.clear();
           });
@@ -1424,7 +1388,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           setState(() {
             _selectedOptions.clear();
           });
-          _navigateToCheckoutPage();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const cart_general.CartScreen(),
+            ),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1458,27 +1427,37 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (!mounted) return false;
 
     final success = result['success'] == true;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? '장바구니에 추가되었습니다.'
-              : (result['message'] ?? '장바구니 추가에 실패했습니다.'),
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? '장바구니 추가에 실패했습니다.'),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: success ? Colors.green : Colors.red,
-      ),
-    );
+      );
+    }
     return success;
   }
 
-  void _navigateToCheckoutPage() {
+  Future<void> _goToGeneralPaymentScreen() async {
+    final cart = await CartService.getCart();
+    if (cart['success'] != true) return;
+
+    final rawItems = (cart['items'] as List?) ?? const [];
+    final List<CartItem> items = rawItems
+        .whereType<Map>()
+        .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
+        .where((e) => !e.isPrescription)
+        .toList();
+    if (!mounted || items.isEmpty) return;
+
+    final shippingCost = (cart['shipping_cost'] as num?)?.toInt() ?? 0;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const WebViewScreen(
-          url:
-              'https://bomiora.kr/shop/orderform.php?mobile_app=1&hide_header=1&hide_footer=1',
-          title: '결제 페이지',
+        builder: (_) => PaymentScreen(
+          cartItems: items,
+          shippingCost: shippingCost,
+          sourceTitle: '일반상품 결제',
         ),
       ),
     );
@@ -1635,12 +1614,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                                 );
                                                 if (!mounted || !success)
                                                   return;
-                                                Navigator.pushNamed(
+                                                Navigator.push(
                                                   this.context,
-                                                  '/cart',
-                                                  arguments: const {
-                                                    'initialTabIndex': 1,
-                                                  },
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        const cart_general.CartScreen(),
+                                                  ),
                                                 );
                                               },
                                               style: OutlinedButton.styleFrom(
@@ -1673,7 +1652,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                                 );
                                                 if (!mounted || !success)
                                                   return;
-                                                _navigateToCheckoutPage();
+                                                await _goToGeneralPaymentScreen();
                                               },
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor:

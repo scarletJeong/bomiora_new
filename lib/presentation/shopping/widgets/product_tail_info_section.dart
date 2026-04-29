@@ -1,19 +1,40 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../core/constants/app_assets.dart';
+
+const TextStyle _kTailBodyStyle = TextStyle(
+  fontSize: 13,
+  color: Colors.black87,
+  height: 1.55,
+  letterSpacing: -0.2,
+);
+
+const TextStyle _kTailH2Style = TextStyle(
+  fontSize: 14,
+  fontWeight: FontWeight.w700,
+  color: Colors.black87,
+  height: 1.35,
+  letterSpacing: -0.2,
+);
+
+const TextStyle _kTailPStyle = TextStyle(
+  fontSize: 12.5,
+  fontWeight: FontWeight.w300,
+  color: Color(0xFF444444),
+  height: 1.6,
+  letterSpacing: -0.15,
+);
+
+const double _kTailSectionContentIndent = 10;
 
 /// 섹션 하단 회색 구분선 (화면 대비 짧게, 가운데)
 Widget _sectionBottomDivider(BuildContext context) {
-  final screenW = MediaQuery.sizeOf(context).width;
-  final lineW = (screenW * 0.9).clamp(200.0, screenW - 24);
-  return Center(
-    child: SizedBox(
-      width: lineW,
-      child: Divider(
-        height: 1,
-        thickness: 0.5,
-        color: Colors.grey.shade300,
-      ),
-    ),
-  );
+  // 디자인 요청: 상세 하단 섹션들의 회색 구분선 제거
+  return const SizedBox.shrink();
 }
 
 /// 접이식 섹션 제목 앞 세로 구분 표시 (`| 배송` 형태)
@@ -24,7 +45,7 @@ Widget _expandableSectionTitle(String title) {
         '|',
         style: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w300,
           color: Colors.black87,
         ),
       ),
@@ -34,7 +55,7 @@ Widget _expandableSectionTitle(String title) {
           title,
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w300,
             color: Colors.black87,
           ),
           maxLines: 2,
@@ -48,10 +69,24 @@ Widget _expandableSectionTitle(String title) {
 /// 제품 상세페이지 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
 class ProductTailInfoSection extends StatelessWidget {
   final bool initialExpanded;
+  final bool showCertification;
+  final bool showWarning;
+  final bool showPrescriptionProcess;
+  final String? warningText;
+  final String? deliveryText;
+  final String? prescriptionProcessText;
+  final String? changeContentText;
 
   const ProductTailInfoSection({
     super.key,
     this.initialExpanded = false,
+    this.showCertification = true,
+    this.showWarning = true,
+    this.showPrescriptionProcess = true,
+    this.warningText,
+    this.deliveryText,
+    this.prescriptionProcessText,
+    this.changeContentText,
   });
 
   @override
@@ -64,15 +99,21 @@ class ProductTailInfoSection extends StatelessWidget {
           _buildDeliverySection(),
           const SizedBox(height: 12),
 
-          // 기관인증/주의사항
-          _buildCertificationSection(),
-          const SizedBox(height: 12),
-          _buildWarningSection(),
-          const SizedBox(height: 12),
-
-          // 처방 프로세스
-          _buildPrescriptionProcessSection(),
-          const SizedBox(height: 12),
+          if (showCertification) ...[
+            // 기관인증
+            _buildCertificationSection(),
+            const SizedBox(height: 12),
+          ],
+          if (showWarning) ...[
+            // 주의사항
+            _buildWarningSection(),
+            const SizedBox(height: 12),
+          ],
+          if (showPrescriptionProcess) ...[
+            // 처방 프로세스
+            _buildPrescriptionProcessSection(),
+            const SizedBox(height: 12),
+          ],
 
           // 교환/환불
           _buildExchangeRefundSection(),
@@ -84,179 +125,88 @@ class ProductTailInfoSection extends StatelessWidget {
 
   /// 배송 정보 섹션
   Widget _buildDeliverySection() {
-    return _DeliverySection(initialExpanded: initialExpanded);
+    return _DeliverySection(
+      initialExpanded: initialExpanded,
+      deliveryText: deliveryText,
+    );
   }
 
   /// 처방 프로세스 섹션
   Widget _buildPrescriptionProcessSection() {
-    return _PrescriptionProcessSection(initialExpanded: initialExpanded);
+    return _PrescriptionProcessSection(
+      initialExpanded: initialExpanded,
+      processText: prescriptionProcessText,
+    );
   }
 
   /// 기관인증 섹션
   Widget _buildCertificationSection() {
-    return _SimpleExpandableSection(
-      title: '기관인증',
-      rows: const [
-        _SimpleInfoRow(label: '기관인증', value: '임시'),
-      ],
-      initialExpanded: initialExpanded,
-    );
+    return _CertificationSection(initialExpanded: initialExpanded);
   }
 
   /// 주의사항 섹션
   Widget _buildWarningSection() {
     return _SimpleExpandableSection(
       title: '주의사항',
-      rows: const [
-        _SimpleInfoRow(label: '주의사항', value: '임시'),
+      rows: [
+        _SimpleInfoRow(
+          label: '',
+          value: warningText ?? '',
+        ),
       ],
       initialExpanded: initialExpanded,
+      customBodyBuilder: () => _buildNoticeList(
+        warningText,
+        pipeAsNewlineFallback: false,
+      ),
     );
   }
 
   /// 교환/환불 섹션
   Widget _buildExchangeRefundSection() {
-    return _ExchangeRefundSection(initialExpanded: initialExpanded);
+    return _ExchangeRefundSection(
+      initialExpanded: initialExpanded,
+      changeContentText: changeContentText,
+    );
   }
 
   /// 프로세스 단계 위젯
   Widget _buildProcessStep(String step, String title, String description) {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFF4081),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              step,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Text.rich(
+          TextSpan(
             children: [
-              Text(
-                title,
+              TextSpan(
+                text: '$step ',
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                  height: 1.5,
+              TextSpan(
+                text: title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
                 ),
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  /// 환불 항목 위젯
-  Widget _buildRefundItem(String title, String cost, String address) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildInfoRow('배송비', cost),
-          const SizedBox(height: 4),
-          _buildInfoRow('반품 주소', address),
-        ],
-      ),
-    );
-  }
-
-  /// 정보 행 위젯
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.black87,
-              height: 1.5,
-            ),
+        const SizedBox(height: 4),
+        Text(
+          description,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[700],
+            height: 1.5,
           ),
         ),
       ],
-    );
-  }
-
-  /// 불릿 포인트 위젯
-  Widget _buildBulletPoint(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 6, right: 8),
-            width: 4,
-            height: 4,
-            decoration: const BoxDecoration(
-              color: Colors.black87,
-              shape: BoxShape.circle,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[700],
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -264,9 +214,11 @@ class ProductTailInfoSection extends StatelessWidget {
 /// 배송 섹션을 위한 StatefulWidget
 class _DeliverySection extends StatefulWidget {
   final bool initialExpanded;
+  final String? deliveryText;
 
   const _DeliverySection({
     this.initialExpanded = false,
+    this.deliveryText,
   });
 
   @override
@@ -286,6 +238,7 @@ class _DeliverySectionState extends State<_DeliverySection> {
   Widget build(BuildContext context) {
     // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InkWell(
           splashColor: Colors.transparent,
@@ -317,53 +270,14 @@ class _DeliverySectionState extends State<_DeliverySection> {
           child: _isExpanded
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildInfoRow(
-                        '배송비',
-                        '30,000원 미만 주문시 3,000원, 30,000원 이상 무료배송',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(
-                        '배송 안내',
-                        '평일 오후 2시 이전 처방 완료 시 당일 발송 또는 익일 배송 가능',
-                      ),
-                    ],
+                  child: _buildNoticeList(
+                    widget.deliveryText,
+                    pipeAsNewlineFallback: true,
                   ),
                 )
               : const SizedBox.shrink(),
         ),
         _sectionBottomDivider(context),
-      ],
-    );
-  }
-
-  /// 정보 행 위젯
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.black87,
-              height: 1.5,
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -376,15 +290,278 @@ class _SimpleInfoRow {
   const _SimpleInfoRow({required this.label, required this.value});
 }
 
+String _normalizeCmsText(
+  String? raw, {
+  bool pipeAsNewline = true,
+}) {
+  if (raw == null) return '';
+  var s = raw.trim();
+  if (s.isEmpty) return '';
+
+  // 1) 먼저 "줄바꿈/문단" 의미를 갖는 태그를 개행으로 치환
+  s = s
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n\n')
+      .replaceAll(RegExp(r'</div\s*>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'</li\s*>', caseSensitive: false), '\n');
+
+  // 2) 리스트 아이템은 앞에 점을 붙여 가독성 유지
+  s = s.replaceAll(RegExp(r'<li[^>]*>', caseSensitive: false), '• ');
+
+  // 3) HTML 제거 및 구분자 정리
+  s = s
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('|', pipeAsNewline ? '\n' : ' | ')
+      .replaceAll(RegExp(r'<[^>]+>'), '')
+      .replaceAll(RegExp(r'\r\n?'), '\n');
+
+  // 4) 라인 단위 트림 + 과도한 공백/개행 정리
+  final lines = s
+      .split('\n')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      // 빈 불릿/구분자 라인 제거 (교환/환불에서 자주 발생)
+      .where((e) => e != '•' && e != '·' && e != '-' && e != '—')
+      .toList();
+  s = lines.join('\n');
+  s = s.replaceAll(RegExp(r'[ \t]+\n'), '\n');
+  s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+
+  return s;
+}
+
+class _NoticeBlock {
+  final String title;
+  final List<String> paragraphs;
+
+  const _NoticeBlock({
+    required this.title,
+    required this.paragraphs,
+  });
+}
+
+String _stripTags(String input) {
+  return input
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll(RegExp(r'<[^>]+>'), '')
+      .replaceAll(RegExp(r'\r\n?'), '\n')
+      .trim();
+}
+
+List<_NoticeBlock> _parseNoticeHtml(String? raw) {
+  if (raw == null) return const [];
+  final html = raw.trim();
+  if (html.isEmpty) return const [];
+
+  final liMatches =
+      RegExp(r'<li[^>]*>([\s\S]*?)</li>', caseSensitive: false)
+          .allMatches(html)
+          .toList();
+  if (liMatches.isEmpty) return const [];
+
+  final blocks = <_NoticeBlock>[];
+  for (final m in liMatches) {
+    final li = m.group(1) ?? '';
+    final h2 =
+        RegExp(r'<h2[^>]*>([\s\S]*?)</h2>', caseSensitive: false).firstMatch(li);
+    final title = _stripTags(h2?.group(1) ?? '').replaceAll('\n', ' ').trim();
+
+    final pMatches =
+        RegExp(r'<p[^>]*>([\s\S]*?)</p>', caseSensitive: false)
+            .allMatches(li)
+            .toList();
+    final paragraphs = pMatches
+        .map((pm) => _stripTags(pm.group(1) ?? ''))
+        .map((t) => t.replaceAll(RegExp(r'\s+'), ' ').trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    if (title.isEmpty && paragraphs.isEmpty) continue;
+    blocks.add(_NoticeBlock(title: title, paragraphs: paragraphs));
+  }
+  return blocks;
+}
+
+Widget _buildNoticeList(
+  String? raw, {
+  bool pipeAsNewlineFallback = true,
+}) {
+  final blocks = _parseNoticeHtml(raw);
+  if (blocks.isEmpty) {
+    final text = _normalizeCmsText(raw, pipeAsNewline: pipeAsNewlineFallback);
+    return Padding(
+      padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
+      child: Text(
+        text.isEmpty ? '-' : text,
+        textAlign: TextAlign.start,
+        style: _kTailBodyStyle,
+      ),
+    );
+  }
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final b in blocks) ...[
+        if (b.title.trim().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
+            child: Text(
+              b.title.trim(),
+              style: _kTailH2Style,
+            ),
+          ),
+        if (b.paragraphs.isNotEmpty) const SizedBox(height: 6),
+        for (final p in b.paragraphs) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
+            child: Text(
+              p,
+              style: _kTailPStyle,
+            ),
+          ),
+          const SizedBox(height: 6),
+        ],
+        const SizedBox(height: 14),
+      ],
+    ],
+  );
+}
+
+/// 기관인증 섹션 (아이콘 1장 표시)
+class _CertificationSection extends StatefulWidget {
+  final bool initialExpanded;
+
+  const _CertificationSection({this.initialExpanded = false});
+
+  @override
+  State<_CertificationSection> createState() => _CertificationSectionState();
+}
+
+class _CertificationSectionState extends State<_CertificationSection> {
+  late bool _isExpanded;
+  Future<Uint8List?>? _embeddedPngFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.initialExpanded;
+  }
+
+  Future<Uint8List?> _loadEmbeddedPngFromSvgAsset() async {
+    final svg = await rootBundle.loadString(AppAssets.productDetailCertification);
+    final match = RegExp(r'data:image/png;base64,([A-Za-z0-9+/=]+)')
+        .firstMatch(svg);
+    if (match == null) return null;
+    final b64 = match.group(1);
+    if (b64 == null || b64.isEmpty) return null;
+    return base64Decode(b64);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
+          onTap: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: _expandableSectionTitle('기관인증')),
+                Icon(
+                  _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.grey[600],
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: _isExpanded
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: _kTailSectionContentIndent,
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final w = constraints.maxWidth.isFinite
+                                ? constraints.maxWidth
+                                : MediaQuery.sizeOf(context).width - 32;
+                            // 너무 커 보이지 않도록 1/4 수준으로 축소
+                            final targetW = (w * 0.20).clamp(70.0, 160.0);
+                            final h = (targetW * 0.55).clamp(35.0, 80.0);
+
+                            _embeddedPngFuture ??= _loadEmbeddedPngFromSvgAsset();
+
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(
+                                width: targetW,
+                                height: h,
+                                child: FutureBuilder<Uint8List?>(
+                                  future: _embeddedPngFuture,
+                                  builder: (context, snapshot) {
+                                    final bytes = snapshot.data;
+                                    if (bytes != null && bytes.isNotEmpty) {
+                                      return Image.memory(
+                                        bytes,
+                                        fit: BoxFit.contain,
+                                      );
+                                    }
+                                    // 폴백: flutter_svg로 렌더링 시도 (지원되는 SVG면 표시됨)
+                                    return SvgPicture.asset(
+                                      AppAssets.productDetailCertification,
+                                      fit: BoxFit.contain,
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        _sectionBottomDivider(context),
+      ],
+    );
+  }
+}
+
 class _SimpleExpandableSection extends StatefulWidget {
   final bool initialExpanded;
   final String title;
   final List<_SimpleInfoRow> rows;
+  final Widget Function()? customBodyBuilder;
 
   const _SimpleExpandableSection({
     required this.title,
     required this.rows,
     this.initialExpanded = false,
+    this.customBodyBuilder,
   });
 
   @override
@@ -404,6 +581,7 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InkWell(
           splashColor: Colors.transparent,
@@ -437,15 +615,16 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
           child: _isExpanded
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: widget.rows
-                        .map((row) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _buildInfoRow(row.label, row.value),
-                            ))
-                        .toList(),
-                  ),
+                  child: widget.customBodyBuilder?.call() ??
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: widget.rows
+                            .map((row) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: _buildInfoRow(row.label, row.value),
+                                ))
+                            .toList(),
+                      ),
                 )
               : const SizedBox.shrink(),
         ),
@@ -455,6 +634,13 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
   }
 
   Widget _buildInfoRow(String label, String value) {
+    if (label.trim().isEmpty) {
+      return Text(
+        value,
+        textAlign: TextAlign.start,
+        style: _kTailBodyStyle,
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -486,9 +672,11 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
 /// 처방 프로세스 섹션을 위한 StatefulWidget
 class _PrescriptionProcessSection extends StatefulWidget {
   final bool initialExpanded;
+  final String? processText;
 
   const _PrescriptionProcessSection({
     this.initialExpanded = false,
+    this.processText,
   });
 
   @override
@@ -510,6 +698,7 @@ class _PrescriptionProcessSectionState
   Widget build(BuildContext context) {
     // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InkWell(
           splashColor: Colors.transparent,
@@ -541,96 +730,11 @@ class _PrescriptionProcessSectionState
           child: _isExpanded
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildProcessStep(
-                        '01',
-                        '건강프로필 작성',
-                        '원하는 제품을 선택하고 "처방 예약하기" 버튼을 클릭하여 건강프로필를 작성하세요.\n건강프로필 정보는 담당 의사에게만 제공되며, 개인정보 노출 위험은 없습니다.',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildProcessStep(
-                        '02',
-                        '결제',
-                        '결제 후 진료 예약이 등록되며, 담당 의사 안내는 문자 또는 카카오톡으로 받으실 수 있습니다.',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildProcessStep(
-                        '03',
-                        '상담 및 진료',
-                        '예약된 시간에 담당 의사가 전화를 드리며, 상담 및 진료가 진행됩니다.\n비대면 상담, 재진, 초진 모두 가능합니다.',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildProcessStep(
-                        '04',
-                        '처방 및 배송',
-                        '오후 2시 이전 처방 완료 시 당일 발송 또는 익일 배송이 가능합니다.',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildProcessStep(
-                        '05',
-                        '복용 후 리뷰',
-                        '제품 복용 후 리뷰를 작성하시면 최대 2,000 포인트를 적립 받으실 수 있습니다.',
-                      ),
-                    ],
-                  ),
+                  child: _buildNoticeList(widget.processText),
                 )
               : const SizedBox.shrink(),
         ),
         _sectionBottomDivider(context),
-      ],
-    );
-  }
-
-  /// 프로세스 단계 위젯
-  Widget _buildProcessStep(String step, String title, String description) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFF4081),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              step,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -639,9 +743,11 @@ class _PrescriptionProcessSectionState
 /// 교환/환불 섹션을 위한 StatefulWidget
 class _ExchangeRefundSection extends StatefulWidget {
   final bool initialExpanded;
+  final String? changeContentText;
 
   const _ExchangeRefundSection({
     this.initialExpanded = false,
+    this.changeContentText,
   });
 
   @override
@@ -661,6 +767,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
   Widget build(BuildContext context) {
     // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InkWell(
           splashColor: Colors.transparent,
@@ -692,153 +799,12 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
           child: _isExpanded
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 반품/교환 사유에 따른 요청 가능 기간
-                      const Text(
-                        '반품/교환 사유에 따른 요청 가능 기간',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        '처방 의약품의 경우 개인별 증상/효과의 차이가 있을 수 있어, 담당 한의사와 충분한 상담 후 환불 처리됩니다. 고객님께서는 먼저 담당 의사와 연락하여 반품 사유, 택배, 배송비, 반품 주소를 상담한 후 제품을 발송해주세요. 처방 의원의 정책에 따라 환불 절차가 달라질 수 있습니다.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.black87,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // 1. 처방완료 후, 환자 단순 변심은 10일 이내
-                      _buildRefundItem(
-                        '1. 처방완료 후, 환자 단순 변심은 10일 이내',
-                        '반품/교환 배송비 6,000원 구매자 부담',
-                        '반품 주소: 서울 강남구 봉은사로 109, 6층(논현동)',
-                      ),
-                      const SizedBox(height: 16),
-
-                      // 2. 표시와 상이, 의약품 문제의 경우
-                      _buildRefundItem(
-                        '2. 표시와 상이, 의약품 문제의 경우, 담당 한의사와 상담 후 반품 방법을 안내 받아 환불 진행',
-                        '반품 배송비 무료 (한의원 부담)',
-                        '반품 주소: 서울 강남구 봉은사로 109, 6층(논현동)',
-                      ),
-                      const SizedBox(height: 20),
-
-                      // 환불/교환 불가능 사유
-                      const Text(
-                        '환불/교환 불가능 사유',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildBulletPoint('반품 요청기간이 지난 경우'),
-                      _buildBulletPoint('환자의 책임 있는 사유로 의약품 등이 멸실 또는 훼손된 경우'),
-                    ],
-                  ),
+                  child: _buildNoticeList(widget.changeContentText),
                 )
               : const SizedBox.shrink(),
         ),
         _sectionBottomDivider(context),
       ],
-    );
-  }
-
-  /// 환불 항목 위젯
-  Widget _buildRefundItem(String title, String cost, String address) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildInfoRow('배송비', cost),
-          const SizedBox(height: 4),
-          _buildInfoRow('반품 주소', address),
-        ],
-      ),
-    );
-  }
-
-  /// 정보 행 위젯
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.black87,
-              height: 1.5,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 불릿 포인트 위젯
-  Widget _buildBulletPoint(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 6, right: 8),
-            width: 4,
-            height: 4,
-            decoration: const BoxDecoration(
-              color: Colors.black87,
-              shape: BoxShape.circle,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[700],
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

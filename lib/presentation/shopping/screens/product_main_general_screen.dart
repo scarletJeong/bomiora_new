@@ -514,37 +514,52 @@ class _PriceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dr = product.discountRate;
-    return Text.rich(
-      TextSpan(
-        children: [
-          if (dr != null && dr > 0) ...[
-            TextSpan(
-              text: dr.round().toString(),
-              style: TextStyle(
-                color: const Color(0xFFFF5A8D),
-                fontSize: 11.7 * scale,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            TextSpan(
-              text: '%  ',
-              style: TextStyle(
-                color: const Color(0xFFFF5A8D),
-                fontSize: 12 * scale,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-          TextSpan(
-            text: product.formattedPrice,
+    final showRating =
+        (product.rating ?? 0) > 0 || (product.reviewCount ?? 0) > 0;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (dr != null && dr > 0) ...[
+          Text(
+            '${dr.round()}%',
             style: TextStyle(
-              color: const Color(0xFF231F20),
+              color: const Color(0xFFFF5A8D),
               fontSize: 12 * scale,
               fontWeight: FontWeight.w700,
             ),
           ),
+          SizedBox(width: 6 * scale),
         ],
-      ),
+        Text(
+          product.formattedPrice,
+          style: TextStyle(
+            color: const Color(0xFF231F20),
+            fontSize: 12 * scale,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (showRating) ...[
+          SizedBox(width: 8 * scale),
+          Icon(
+            Icons.star,
+            size: 12 * scale,
+            color: const Color(0xFFFF5A8D),
+          ),
+          SizedBox(width: 2 * scale),
+          Text(
+            '${(product.rating ?? 0).toStringAsFixed(1)}'
+            '(${product.reviewCount ?? 0})',
+            style: TextStyle(
+              color: const Color(0xFF777777),
+              fontSize: 10.5 * scale,
+              fontWeight: FontWeight.w600,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -972,14 +987,11 @@ class _CategoryProductCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final namePlain = _stripHtmlTags(product.name);
     final subjectPlain = _stripHtmlTags(product.itSubject);
-    // 카드 한줄 설명: DB `it_basic` (API `it_basic`). 없으면 `it_explain` 매핑 description
-    final descPlain = _stripHtmlTags(product.itBasic ?? product.description ?? '');
     // `ProductListScreen._buildProductCard`와 동일한 폰트·이미지 비율 (390폭, 이미지 높이 = 셀의 2/3)
     final screenW = MediaQuery.sizeOf(context).width;
     final tScale = (screenW / 390.0).clamp(0.88, 1.18);
     final nameFs = (12.5 * tScale).clamp(11.0, 15.0);
     final subjectFs = (10.0 * tScale).clamp(9.0, 12.0);
-    final descFs = (10.5 * tScale).clamp(9.5, 12.5);
     final origFs = (10.5 * tScale).clamp(9.5, 12.5);
 
     return LayoutBuilder(
@@ -1065,21 +1077,6 @@ class _CategoryProductCell extends StatelessWidget {
                                     height: 1.25,
                                   ),
                                 ),
-                                if (descPlain.isNotEmpty) ...[
-                                  SizedBox(height: 4 * tScale),
-                                  Text(
-                                    descPlain,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.grey[700],
-                                      fontSize: descFs,
-                                      fontWeight: FontWeight.w300,
-                                      fontFamily: _gmarket,
-                                      height: 1.25,
-                                    ),
-                                  ),
-                                ],
                               ],
                             ),
                           ),

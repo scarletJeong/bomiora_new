@@ -11,6 +11,9 @@ class ProductNormalReview extends StatelessWidget {
   final ValueChanged<ReviewModel> onReviewTap;
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
+  /// true: (처방약 리뷰) 효과/가성비/맛/향/편리함 항목 표시
+  /// false: (일반상품 리뷰) 항목 없이 총점/별점만 표시
+  final bool showCategoryScores;
 
   const ProductNormalReview({
     super.key,
@@ -21,6 +24,7 @@ class ProductNormalReview extends StatelessWidget {
     required this.onReviewTap,
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
+    this.showCategoryScores = true,
   });
 
   @override
@@ -50,7 +54,7 @@ class ProductNormalReview extends StatelessWidget {
               child: Center(child: CircularProgressIndicator()),
             )
           else ...[
-            _NormalStatsCard(stats: stats),
+            _NormalStatsCard(stats: stats, showCategoryScores: showCategoryScores),
             const SizedBox(height: 14),
             if (visibleReviews.isNotEmpty)
               Padding(
@@ -61,6 +65,7 @@ class ProductNormalReview extends StatelessWidget {
                   itemCount: visibleReviews.length,
                   onReviewTap: onReviewTap,
                   visibleReviews: visibleReviews,
+                  showCategoryScores: showCategoryScores,
                 ),
               ),
             if (cappedCount < sorted.length)
@@ -98,8 +103,12 @@ class ProductNormalReview extends StatelessWidget {
 
 class _NormalStatsCard extends StatelessWidget {
   final _ReviewStats stats;
+  final bool showCategoryScores;
 
-  const _NormalStatsCard({required this.stats});
+  const _NormalStatsCard({
+    required this.stats,
+    required this.showCategoryScores,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -108,13 +117,12 @@ class _NormalStatsCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: Colors.grey[200]!),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
           const Text(
-            '일반 리뷰 평가',
+            '전체 리뷰 평가',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w400,
@@ -122,49 +130,102 @@ class _NormalStatsCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 96,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+          if (showCategoryScores)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 96,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        stats.average.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 50,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFFF5A95),
+                          height: 0.95,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _buildStars(stats.average),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 84,
+                  color: Colors.grey[300],
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      _ratingBar('효과', stats.score1Percent),
+                      const SizedBox(height: 8),
+                      _ratingBar('가성비', stats.score2Percent),
+                      const SizedBox(height: 8),
+                      _ratingBar('맛/향', stats.score3Percent),
+                      const SizedBox(height: 8),
+                      _ratingBar('편리함', stats.score4Percent),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          else
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  stats.average.toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontSize: 50,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFFF5A95),
+                    height: 0.95,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _buildStars(stats.average),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      stats.average.toStringAsFixed(1),
+                      '만족 ${stats.satisfiedCount}건',
                       style: const TextStyle(
-                        fontSize: 50,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFFF5A95),
-                        height: 0.95,
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1A),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    _buildStars(stats.average),
+                    const SizedBox(width: 10),
+                    const Text(
+                      '/',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '불만족 ${stats.dissatisfiedCount}건',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              Container(
-                width: 1,
-                height: 84,
-                color: Colors.grey[300],
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    _ratingBar('효과', stats.score1Percent),
-                    const SizedBox(height: 8),
-                    _ratingBar('가성비', stats.score2Percent),
-                    const SizedBox(height: 8),
-                    _ratingBar('맛/향', stats.score3Percent),
-                    const SizedBox(height: 8),
-                    _ratingBar('편리함', stats.score4Percent),
-                  ],
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
@@ -238,14 +299,22 @@ class _NormalStatsCard extends StatelessWidget {
 class _ReviewGridCard extends StatelessWidget {
   final ReviewModel review;
   final VoidCallback onTap;
+  final bool showCategoryScores;
 
   const _ReviewGridCard({
     required this.review,
     required this.onTap,
+    required this.showCategoryScores,
   });
 
   @override
   Widget build(BuildContext context) {
+    final total = review.totalIsScore ?? review.averageScore ?? 0.0;
+    final score1 = review.score1;
+    final score2 = review.score2;
+    final score3 = review.score3;
+    final score4 = review.score4;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -306,57 +375,172 @@ class _ReviewGridCard extends StatelessWidget {
               flex: 1,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            review.isName ?? '익명',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final h = constraints.maxHeight;
+                    final compact = h < 92;
+                    final tiny = h < 78;
+
+                    Widget ratingBox({required bool compact}) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: compact ? 4 : 8,
+                        ),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(
+                              width: 0.50,
+                              color: Color(0xFFFF5A8D),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: List.generate(5, (index) {
-                            final rating = review.averageScore ?? 0;
-                            return Icon(
-                              index < rating.round()
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              size: 12,
-                              color: Colors.amber,
-                            );
-                          }),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox.square(
+                              dimension: compact ? 20 : 24,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  total.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF5A8D),
+                                    fontSize: 24,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              '|',
+                              style: TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 24,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            if (!showCategoryScores)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: List.generate(5, (index) {
+                                  final starIndex = index + 1;
+                                  if (total >= starIndex) {
+                                    return const Icon(
+                                      Icons.star,
+                                      color: Color(0xFFFFCC00),
+                                      size: 14,
+                                    );
+                                  }
+                                  if (total >= starIndex - 0.5) {
+                                    return const Icon(
+                                      Icons.star_half,
+                                      color: Color(0xFFFFCC00),
+                                      size: 14,
+                                    );
+                                  }
+                                  return Icon(
+                                    Icons.star,
+                                    color: const Color(0xFFFFCC00)
+                                        .withValues(alpha: 0.25),
+                                    size: 14,
+                                  );
+                                }),
+                              )
+                            else if (!compact)
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _ScoreMini(
+                                        label: '효과',
+                                        value: score1,
+                                        labelWidth: 26,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      _ScoreMini(label: '가성비', value: score2),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _ScoreMini(
+                                        label: '맛/향',
+                                        value: score3,
+                                        labelWidth: 26,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      _ScoreMini(label: '편리함', value: score4),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            else
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _ScoreMini(label: '효과', value: score1),
+                                  const SizedBox(width: 8),
+                                  _ScoreMini(label: '가성비', value: score2),
+                                ],
+                              ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: review.isPositiveReviewText != null &&
-                                review.isPositiveReviewText!.isNotEmpty
-                            ? Text(
-                                review.isPositiveReviewText!,
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '| ${review.isName ?? '익명'}',
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ),
-                  ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: review.isPositiveReviewText != null &&
+                                    review.isPositiveReviewText!.isNotEmpty
+                                ? Text(
+                                    review.isPositiveReviewText!,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black87,
+                                    ),
+                                    maxLines: tiny ? 1 : 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ),
+                        if (!tiny) ratingBox(compact: compact),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -367,12 +551,65 @@ class _ReviewGridCard extends StatelessWidget {
   }
 }
 
+class _ScoreMini extends StatelessWidget {
+  final String label;
+  final int value;
+  final double? labelWidth;
+
+  const _ScoreMini({
+    required this.label,
+    required this.value,
+    this.labelWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final labelWidget = Text(
+      label,
+      textAlign: labelWidth != null ? TextAlign.right : TextAlign.left,
+      style: const TextStyle(
+        color: Colors.black,
+        fontSize: 9,
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w300,
+      ),
+    );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (labelWidth != null)
+          SizedBox(width: labelWidth, child: labelWidget)
+        else
+          labelWidget,
+        const SizedBox(width: 3),
+        const Icon(
+          Icons.star,
+          size: 10,
+          color: Color(0xFFFFCC00),
+        ),
+        const SizedBox(width: 1),
+        Text(
+          value.toString(),
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 9,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _GuestAwareReviewGridNormal extends StatelessWidget {
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
   final int itemCount;
   final ValueChanged<ReviewModel> onReviewTap;
   final List<ReviewModel> visibleReviews;
+  final bool showCategoryScores;
 
   const _GuestAwareReviewGridNormal({
     required this.guestLoginLocked,
@@ -380,6 +617,7 @@ class _GuestAwareReviewGridNormal extends StatelessWidget {
     required this.itemCount,
     required this.onReviewTap,
     required this.visibleReviews,
+    required this.showCategoryScores,
   });
 
   @override
@@ -398,6 +636,7 @@ class _GuestAwareReviewGridNormal extends StatelessWidget {
         return _ReviewGridCard(
           review: visibleReviews[index],
           onTap: () => onReviewTap(visibleReviews[index]),
+          showCategoryScores: showCategoryScores,
         );
       },
     );
@@ -492,6 +731,8 @@ class _ReviewStats {
   final int score2Percent;
   final int score3Percent;
   final int score4Percent;
+  final int satisfiedCount;
+  final int dissatisfiedCount;
 
   const _ReviewStats({
     required this.average,
@@ -499,6 +740,8 @@ class _ReviewStats {
     required this.score2Percent,
     required this.score3Percent,
     required this.score4Percent,
+    required this.satisfiedCount,
+    required this.dissatisfiedCount,
   });
 
   factory _ReviewStats.fromReviews(List<ReviewModel> reviews) {
@@ -509,13 +752,20 @@ class _ReviewStats {
         score2Percent: 0,
         score3Percent: 0,
         score4Percent: 0,
+        satisfiedCount: 0,
+        dissatisfiedCount: 0,
       );
     }
-    final withScore = reviews.where((r) => r.averageScore != null).toList();
-    final average = withScore.isEmpty
+    final scoreValues = reviews
+        .map((r) => r.totalIsScore ?? r.averageScore)
+        .whereType<double>()
+        .toList();
+    final average = scoreValues.isEmpty
         ? 0.0
-        : withScore.map((r) => r.averageScore!).reduce((a, b) => a + b) /
-            withScore.length;
+        : scoreValues.reduce((a, b) => a + b) / scoreValues.length;
+
+    final satisfiedCount = reviews.where((r) => r.isRecommend == 'y').length;
+    final dissatisfiedCount = reviews.where((r) => r.isRecommend == 'n').length;
 
     double avgScore(int Function(ReviewModel) pick) {
       return reviews.map((r) => pick(r).toDouble()).reduce((a, b) => a + b) /
@@ -528,6 +778,8 @@ class _ReviewStats {
       score2Percent: (avgScore((r) => r.score2) * 20).round(),
       score3Percent: (avgScore((r) => r.score3) * 20).round(),
       score4Percent: (avgScore((r) => r.score4) * 20).round(),
+      satisfiedCount: satisfiedCount,
+      dissatisfiedCount: dissatisfiedCount,
     );
   }
 }

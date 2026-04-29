@@ -109,13 +109,12 @@ class _SupportStatsCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: Colors.grey[200]!),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
           const Text(
-            '서포터 리뷰 평가',
+            '서포터즈 리뷰 평가',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w400,
@@ -247,6 +246,12 @@ class _ReviewGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final total = review.totalIsScore ?? review.averageScore ?? 0.0;
+    final score1 = review.score1;
+    final score2 = review.score2;
+    final score3 = review.score3;
+    final score4 = review.score4;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -307,63 +312,205 @@ class _ReviewGridCard extends StatelessWidget {
               flex: 1,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            review.isName ?? '익명',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // 높이가 낮아질수록 별점박스는 축소/간소화해서
+                    // "이름 + 리뷰 텍스트" 영역이 사라지지 않게 우선권을 줌.
+                    final h = constraints.maxHeight;
+                    final compact = h < 92;
+                    final tiny = h < 78;
+
+                    Widget ratingBox({required bool compact}) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: compact ? 4 : 8,
+                        ),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(
+                              width: 0.50,
+                              color: Color(0xFFFF5A8D),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: List.generate(5, (index) {
-                            final rating = review.averageScore ?? 0;
-                            return Icon(
-                              index < rating.round()
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              size: 12,
-                              color: Colors.amber,
-                            );
-                          }),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox.square(
+                              dimension: compact ? 20 : 24,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  total.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF5A8D),
+                                    fontSize: 24,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              '|',
+                              style: TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 24,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            if (!compact)
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _ScoreMini(
+                                        label: '효과',
+                                        value: score1,
+                                        labelWidth: 26,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      _ScoreMini(label: '가성비', value: score2),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _ScoreMini(
+                                        label: '맛/향',
+                                        value: score3,
+                                        labelWidth: 26,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      _ScoreMini(label: '편리함', value: score4),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            else
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _ScoreMini(label: '효과', value: score1),
+                                  const SizedBox(width: 8),
+                                  _ScoreMini(label: '가성비', value: score2),
+                                ],
+                              ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: review.isPositiveReviewText != null &&
-                                review.isPositiveReviewText!.isNotEmpty
-                            ? Text(
-                                review.isPositiveReviewText!,
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '| ${review.isName ?? '익명'}',
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ),
-                  ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: review.isPositiveReviewText != null &&
+                                    review.isPositiveReviewText!.isNotEmpty
+                                ? Text(
+                                    review.isPositiveReviewText!,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black87,
+                                    ),
+                                    maxLines: tiny ? 1 : 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ),
+                        if (!tiny) ratingBox(compact: compact),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ScoreMini extends StatelessWidget {
+  final String label;
+  final int value;
+  final double? labelWidth;
+
+  const _ScoreMini({
+    required this.label,
+    required this.value,
+    this.labelWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final labelWidget = Text(
+      label,
+      textAlign: labelWidth != null ? TextAlign.right : TextAlign.left,
+      style: const TextStyle(
+        color: Colors.black,
+        fontSize: 9,
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w300,
+      ),
+    );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (labelWidth != null)
+          SizedBox(width: labelWidth, child: labelWidget)
+        else
+          labelWidget,
+        const SizedBox(width: 3),
+        const Icon(
+          Icons.star,
+          size: 10,
+          color: Color(0xFFFFCC00),
+        ),
+        const SizedBox(width: 1),
+        Text(
+          value.toString(),
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 9,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -652,7 +652,7 @@ class ProductMainTrustSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        const ProductMainCategoryTap(),
+        const ProductMainCategoryTap(productKind: 'prescription'),
         const SizedBox(height: 28),
         const Text(
           '믿을 수 있는 든든한 주치의가',

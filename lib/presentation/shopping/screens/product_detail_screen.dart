@@ -27,7 +27,6 @@ import '../widgets/producrt_support_review.dart';
 import '../widgets/producrt_normal_review.dart';
 import '../widgets/recommend_product.dart';
 import '../utils/get_review.dart';
-import 'webview_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
@@ -355,31 +354,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       if (wasFavorite) {
         // 찜하기 해제
         await WishService.removeFromWish(widget.productId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('찜하기 해제 완료'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              width: 568, // 600px - 32px (양쪽 16px 여백)
-              duration: Duration(milliseconds: 500),
-            ),
-          );
-        }
       } else {
         // 찜하기 추가
         await WishService.addToWish(widget.productId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('찜하기 완료'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              width: 568, // 600px - 32px (양쪽 16px 여백)
-              duration: Duration(milliseconds: 500),
-            ),
-          );
-        }
       }
     } catch (e) {
       // 실패 시 원래 상태로 되돌리기
@@ -539,7 +516,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   ),
                   Tab(
                     child: Text(
-                      '서포터리뷰 $supporterReviewCount',
+                      '서포터리뷰 ($supporterReviewCount)',
                       style: const TextStyle(
                         fontSize: 14,
                         fontFamily: _kGmarketSans,
@@ -548,7 +525,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   ),
                   Tab(
                     child: Text(
-                      '일반리뷰 $generalReviewCount',
+                      '일반 리뷰 ($generalReviewCount)',
                       style: const TextStyle(
                         fontSize: 14,
                         fontFamily: _kGmarketSans,
@@ -643,21 +620,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             // 가격 정보
             _buildPriceSection(),
 
-            // 가격 아래 구분선
-            const Divider(
-              height: 32,
-              thickness: 1,
-              color: Color(0xFFD9D9D9),
-            ),
-
             // 제품 스펙
             _buildProductSpecs(),
             const SizedBox(height: 16),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: Colors.grey[300],
-            ),
           ],
         ),
       ),
@@ -666,6 +631,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   /// 상품정보 탭
   Widget _buildProductInfoTab() {
+    final precautionsText = _formatPrecautionsForDisplay(
+      _product?.additionalInfo?['it_precautions']?.toString(),
+    );
     return SingleChildScrollView(
       key: const PageStorageKey<String>('product_info_tab'),
       child: Column(
@@ -675,13 +643,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           // 상세페이지 HTML 미리보기 + 자세히 보기
           _buildDetailPreviewSection(),
 
-          const Divider(height: 1, thickness: 1),
-
           // 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
-          const ProductTailInfoSection(),
+          ProductTailInfoSection(
+            warningText: precautionsText,
+            deliveryText: _product?.additionalInfo?['it_baesong_content']?.toString(),
+            prescriptionProcessText:
+                _product?.additionalInfo?['it_shipping_process']?.toString(),
+            changeContentText:
+                _product?.additionalInfo?['it_change_content']?.toString(),
+          ),
 
           const SizedBox(height: 16),
-          const Divider(height: 1, thickness: 1),
 
           _buildRecommendedSection(),
 
@@ -693,6 +665,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         ],
       ),
     );
+  }
+
+  String _formatPrecautionsForDisplay(String? raw) {
+    if (raw == null) return '';
+    var s = raw.trim();
+    if (s.isEmpty) return '';
+
+    // DB 값 예: "과다복용<br />주의|노약자<br />금지|..."
+    s = s
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    final parts = s
+        .split('|')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    return parts.join(' | ');
   }
 
   Widget _buildSupportReviewTab() {
@@ -1502,15 +1495,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         if (!mounted) return;
 
         if (result['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('장바구니에 추가되었습니다.'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              width: 568,
-              duration: Duration(seconds: 2),
-            ),
-          );
           _safeSetState(() {
             _selectedOptions.clear();
           });
@@ -1555,7 +1539,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           setState(() {
             _selectedOptions.clear();
           });
-          _navigateToCheckoutPage();
+          // 처방 상품 구매 플로우는 "임시 장바구니 → 문진표 → 장바구니"를 거침
+          await _addPrescriptionItemsToTempCart();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1565,19 +1550,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           );
         }
       },
-    );
-  }
-
-  void _navigateToCheckoutPage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const WebViewScreen(
-          url:
-              'https://bomiora.kr/shop/orderform.php?mobile_app=1&hide_header=1&hide_footer=1',
-          title: '결제 페이지',
-        ),
-      ),
     );
   }
 

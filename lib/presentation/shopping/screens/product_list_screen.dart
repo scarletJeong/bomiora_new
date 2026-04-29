@@ -248,8 +248,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
           const SliverToBoxAdapter(
             child: SizedBox(height: 14),
           ),
-          const SliverToBoxAdapter(
-            child: ProductMainCategoryTap(),
+          SliverToBoxAdapter(
+            child: ProductMainCategoryTap(
+              productKind: widget.productKind ?? 'prescription',
+            ),
           ),
           const SliverToBoxAdapter(
             child: SizedBox(height: 20),
@@ -447,12 +449,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
         final tScale = (screenW / 390.0).clamp(0.88, 1.18);
         final namePlain = _productListStripHtml(product.name);
         final subjectPlain = _productListStripHtml(product.itSubject);
-        final descPlain = _productListStripHtml(
-          product.itBasic ?? product.description ?? '',
-        );
         final nameFs = (12.5 * tScale).clamp(11.0, 15.0);
         final subjectFs = (10.0 * tScale).clamp(9.0, 12.0);
-        final descFs = (10.5 * tScale).clamp(9.5, 12.5);
         final origFs = (10.5 * tScale).clamp(9.5, 12.5);
         final discFs = (11.5 * tScale).clamp(10.5, 14.0);
         final priceFs = (13.5 * tScale).clamp(12.0, 16.0);
@@ -552,21 +550,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   height: 1.25,
                                 ),
                               ),
-                              if (descPlain.isNotEmpty) ...[
-                                SizedBox(height: 4 * tScale),
-                                Text(
-                                  descPlain,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontSize: descFs,
-                                    fontWeight: FontWeight.w300,
-                                    fontFamily: _gmarket,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),
@@ -611,6 +594,35 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            if ((product.rating ?? 0) > 0 ||
+                                (product.reviewCount ?? 0) > 0) ...[
+                              SizedBox(width: 6 * tScale),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.star,
+                                    size: (12.5 * tScale).clamp(11.0, 14.0),
+                                    color: const Color(0xFFFFCC00),
+                                  ),
+                                  SizedBox(width: 2 * tScale),
+                                  Text(
+                                    '${(product.rating ?? 0).toStringAsFixed(1)}'
+                                    '(${product.reviewCount ?? 0})',
+                                    style: TextStyle(
+                                      fontSize:
+                                          (10.5 * tScale).clamp(9.5, 12.0),
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: _gmarket,
+                                      height: 1.1,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ],

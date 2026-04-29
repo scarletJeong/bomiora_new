@@ -207,7 +207,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
 
     // 리뷰 통계
     final stats = isSupporter ? _supporterStats : _generalStats;
-    final title = isSupporter ? '서포터 리뷰 평가' : '일반 리뷰 평가';
+    final title = isSupporter ? '서포터즈 리뷰 평가' : '일반 리뷰 평가';
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
