@@ -2530,12 +2530,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         }
         return Column(
           children: question.options!.map((option) {
-            // 성별 변환 (M/F -> 남성/여성)
+            // 성별 변환 (M/F -> 남/여)
             // 다이어트 약 변환 (1 -> 없음, 2 -> 있음)
             String? groupValue = _formData[question.id];
             if (question.id == 'answer_2') {
-              if (groupValue == 'M') groupValue = '남성';
-              if (groupValue == 'F') groupValue = '여성';
+              if (groupValue == 'M') groupValue = '남';
+              if (groupValue == 'F') groupValue = '여';
             } else if (question.id == 'answer_13') {
               if (groupValue == '1') groupValue = '없음';
               if (groupValue == '2') groupValue = '있음';
@@ -2549,7 +2549,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 setState(() {
                   // 성별 저장 시 M/F로 변환
                   if (question.id == 'answer_2') {
-                    _formData[question.id] = value == '남성' ? 'M' : (value == '여성' ? 'F' : value ?? '');
+                    _formData[question.id] = value == '남' ? 'M' : (value == '여' ? 'F' : value ?? '');
                   } else if (question.id == 'answer_13') {
                     // 다이어트 약 저장 시 1/2로 변환 (없음=1, 있음=2)
                     final newValue = value == '없음' ? '1' : (value == '있음' ? '2' : value ?? '');
@@ -2738,17 +2738,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           }
         }
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('저장 중 오류가 발생했습니다: $e'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              width: 568, // 600px - 32px (양쪽 16px 여백)
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
       } finally {
         if (mounted) {
           setState(() {
