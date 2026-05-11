@@ -9,7 +9,8 @@ import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import 'health_profile_done_screen.dart';
 
 class HealthProfileFormScreen extends StatefulWidget {
@@ -52,10 +53,10 @@ class _Answer6MenuLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         decoration: BoxDecoration(
           border: showBottomDivider
               ? const Border(
@@ -119,10 +120,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   static const Color _pfBorder = Color(0x7FD2D2D2);
   static const int _answer6MenuMaxVisibleRows = 4;
   static const double _answer6MenuRowGap = 5;
-  static const double _answer6MenuRowExtent =
-      46; // vertical padding 10*2 + fontSize 16 × height 1.2
+  static const double _answer6MenuRowExtent = 46; // vertical padding 10*2 + fontSize 16 × height 1.2
   static const List<String> _stepLabels = [
-    '기본정보',
+    '기본 정보',
     '식습관',
     '운동습관',
     '질병',
@@ -581,26 +581,47 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ? _sections[_currentPage].title
             : '');
 
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         _popAllHealthProfileFormRoutes(context);
       },
-      child: MobileAppLayoutWrapper(
-        appBar: HealthAppBar(
-          title: isSubsetEdit ? '$appBarEditTitle' : '문진표',
-          onBack: () => _popAllHealthProfileFormRoutes(context),
-        ),
-        child: DefaultTextStyle.merge(
-          style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-          child: _currentUser == null
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF3787)))
-              : isMultiSubsetMode
-                  ? _buildMultiSubsetFormMode()
-                  : isSingleSectionMode
-                      ? _buildSingleSectionMode()
-                      : _buildFullFormMode(),
+      child: Theme(
+        data: gmarketTheme,
+        child: MobileAppLayoutWrapper(
+          appBar: HealthAppBar(
+            title: isSubsetEdit ? '$appBarEditTitle' : '문진표',
+            titleFontSize: healthSp(context, 18),
+            leadingIconSize: healthDp(context, 24),
+            onBack: () => _popAllHealthProfileFormRoutes(context),
+          ),
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScale),
+            ),
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+              child: _currentUser == null
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Color(0xFFFF3787)),
+                    )
+                  : isMultiSubsetMode
+                      ? _buildMultiSubsetFormMode()
+                      : isSingleSectionMode
+                          ? _buildSingleSectionMode()
+                          : _buildFullFormMode(),
+            ),
+          ),
         ),
       ),
     );
@@ -622,14 +643,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     Widget body;
     if (mergeDietExercise) {
       body = SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(27, 20, 27, 16),
+        padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 20), healthDp(context, 27), healthDp(context, 16)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _wizardStepQuestionsColumn(_sections[1], 1),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Divider(height: 1, thickness: 1, color: _pfBorder),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: healthDp(context, 20)),
+              child: Divider(
+                height: healthDp(context, 1),
+                thickness: healthDp(context, 1),
+                color: _pfBorder,
+              ),
             ),
             _wizardStepQuestionsColumn(_sections[2], 2),
           ],
@@ -670,7 +695,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(27, 4, 27, 20),
+                padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 4), healthDp(context, 27), healthDp(context, 20)),
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -678,7 +703,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF3787),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(
+                        vertical: healthDp(context, 16),
+                      ),
                     ),
                     child: const Text(
                       '수정하기',
@@ -714,7 +741,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(27, 12, 27, 22),
+                padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 12), healthDp(context, 27), healthDp(context, 22)),
                 child: _buildWizardStepIndicator(),
               ),
               Expanded(
@@ -752,25 +779,29 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     );
   }
 
-  /// 전체/부분 수정 모두 동일한 탭 높이
-  double get _wizardStepTabHeight => 45.0;
-
   Widget _buildWizardStepIndicator() {
-    final tabH = _wizardStepTabHeight;
+    final tabH = healthDp(context, 45);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: List.generate(_sections.length, (i) {
-        return Expanded(
+        // 현재 탭만 살짝 더 넓게(나머지는 동일 비율로 조금씩 줄어듦)
+        return Flexible(
+          flex: i == _currentPage ? 15 : 8,
           child: Padding(
-            padding: EdgeInsets.only(right: i < _sections.length - 1 ? 6 : 0),
+            padding: EdgeInsets.only(
+              right: i < _sections.length - 1 ? healthDp(context, 6) : 0,
+            ),
             child: i == _currentPage
                 ? Container(
                     height: tabH,
                     alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 4),
+                    ),
                     decoration: BoxDecoration(
                       color: _pfPink,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
                     ),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -794,10 +825,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       height: tabH,
                       decoration: BoxDecoration(
                         border: Border.all(color: _pfPink),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
                       ),
                       alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 2),
+                      ),
                       child: Semantics(
                         label: _stepLabels[i],
                         button: true,
@@ -809,8 +843,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                               i < _wizardStepIconAssets.length
                                   ? _wizardStepIconAssets[i]
                                   : AppAssets.profile1,
-                              width: 20,
-                              height: 20,
+                              width: healthDp(context, 20),
+                              height: healthDp(context, 20),
                               fit: BoxFit.contain,
                             ),
                           ],
@@ -851,10 +885,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           _buildFigmaQuestionBlock(visible[i], stepIndex),
           if (i < visible.length - 1)
             Padding(
-              padding: const EdgeInsets.only(top: 8, bottom: 16),
+              padding: EdgeInsets.only(
+                top: healthDp(context, 8),
+                bottom: healthDp(context, 16),
+              ),
               child: Divider(
-                height: 1,
-                thickness: 1,
+                height: healthDp(context, 1),
+                thickness: healthDp(context, 1),
                 color: _pfBorder,
               ),
             ),
@@ -865,7 +902,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Widget _buildWizardStepScrollable(HealthProfileSection section, int stepIndex) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(27, 20, 27, 16),
+      padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 20), healthDp(context, 27), healthDp(context, 16)),
       child: _wizardStepQuestionsColumn(section, stepIndex),
     );
   }
@@ -874,7 +911,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     final last = _currentPage >= _sections.length - 1;
     final canFinish = last ? _isAllWizardStepsFilled() : true;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(27, 4, 27, 20),
+      padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 4), healthDp(context, 27), healthDp(context, 20)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -883,11 +920,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               behavior: HitTestBehavior.opaque,
               onTap: _isLoading ? null : _previousPage,
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                padding: EdgeInsets.symmetric(
+                  vertical: healthDp(context, 8),
+                  horizontal: healthDp(context, 4),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.chevron_left, color: Colors.grey[700], size: 20),
+                    Icon(
+                      Icons.chevron_left,
+                      color: Colors.grey[700],
+                      size: healthDp(context, 20),
+                    ),
                     const Text(
                       '이전',
                       style: TextStyle(
@@ -901,14 +945,17 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               ),
             )
           else
-            const SizedBox(width: 72),
+            SizedBox(width: healthDp(context, 72)),
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _isLoading || !canFinish
                 ? null
                 : (last ? _submitForm : _nextPage),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              padding: EdgeInsets.symmetric(
+                vertical: healthDp(context, 8),
+                horizontal: healthDp(context, 4),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -922,13 +969,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: healthDp(context, 4)),
                   Icon(
                     last ? Icons.check : Icons.chevron_right,
                     color: canFinish
                         ? const Color(0xFFFF5A8D)
                         : const Color(0xFFBDBDBD),
-                    size: 20,
+                    size: healthDp(context, 20),
                   ),
                 ],
               ),
@@ -1078,7 +1125,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         showInlineMultipleHint && inlineHintRightAlignedIds.contains(question.id);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(bottom: healthDp(context, 24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1086,7 +1133,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   widget.initialSectionIndices!.isEmpty) &&
               _isFirstVisibleInStep(stepIndex, question.id)) ...[
             _buildFigmaStepHeading(stepIndex),
-            const SizedBox(height: 12),
+            SizedBox(height: healthDp(context, 12)),
           ],
           if (_showPerQuestionCaption(question, stepIndex) &&
               question.type != 'mealtime') ...[
@@ -1100,12 +1147,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                             Expanded(
                               child: Text(
                                 question.question,
-                                style: _figmaBlockTitleStyle,
+                                style: _figmaSectionTitleStyle(),
                               ),
                             ),
-                            const Padding(
-                              padding: EdgeInsets.only(left: 8),
-                              child: Text(
+                            Padding(
+                              padding: EdgeInsets.only(left: healthDp(context, 8)),
+                              child: const Text(
                                 '*중복선택가능',
                                 style: _figmaMultiHintStyle,
                               ),
@@ -1114,12 +1161,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         )
                       : Wrap(
                           crossAxisAlignment: WrapCrossAlignment.end,
-                          spacing: 5,
-                          runSpacing: 4,
+                          spacing: healthDp(context, 5),
+                          runSpacing: healthDp(context, 4),
                           children: [
                             Text(
                               question.question,
-                              style: _figmaBlockTitleStyle,
+                              style: _figmaSectionTitleStyle(),
                             ),
                             const Text(
                               '*중복선택가능',
@@ -1133,13 +1180,14 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         Expanded(
                           child: Text(
                             question.question,
-                            style: _figmaBlockTitleStyle,
+                            style: _figmaSectionTitleStyle(),
                           ),
                         ),
                         if (question.allowMultiple)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8),
-                            child: Text(
+                          Padding(
+                            padding:
+                                EdgeInsets.only(left: healthDp(context, 8)),
+                            child: const Text(
                               '*중복선택가능',
                               style: _figmaMultiHintStyle,
                             ),
@@ -1147,20 +1195,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       ],
                     ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: healthDp(context, 12)),
           ],
           if (question.type == 'mealtime') ...[
-            const SizedBox(height: 8),
+            SizedBox(height: healthDp(context, 8)),
             _figmaTitleLeadingBarRow(
               crossAxisAlignment: CrossAxisAlignment.center,
               child: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: 5,
-                runSpacing: 4,
+                spacing: healthDp(context, 5),
+                runSpacing: healthDp(context, 4),
                 children: [
-                  const Text(
+                  Text(
                     '식사 시간',
-                    style: _figmaBlockTitleStyle,
+                    style: _figmaSectionTitleStyle(),
                   ),
                   const Text(
                     '*해당되는 입력란에만 입력하세요',
@@ -1169,7 +1217,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 34),
+            SizedBox(height: healthDp(context, 22)),
           ],
           _buildFigmaInput(question),
         ],
@@ -1195,7 +1243,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               children: [
                 Text(
                   title,
-                  style: _figmaBlockTitleStyle,
+                  style: _figmaSectionTitleStyle(),
                 ),
                 const Text(
                   '*중복선택가능',
@@ -1205,8 +1253,19 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             )
           : Text(
               title,
-              style: _figmaBlockTitleStyle,
+              style: _figmaSectionTitleStyle(),
             ),
+    );
+  }
+
+  TextStyle _figmaSectionTitleStyle() {
+    // 섹션 타이틀("|" 뒤 텍스트): 375 기준 20 / w300
+    return TextStyle(
+      color: const Color(0xFF1A1A1A),
+      fontSize: healthSp(context, 18),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      height: 1.25,
     );
   }
 
@@ -1219,11 +1278,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       crossAxisAlignment: crossAxisAlignment,
       children: [
         Container(
-          width: 2,
-          height: 18,
+          width: healthDp(context, 2),
+          height: healthDp(context, 18),
           color: Colors.black,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: healthDp(context, 10)),
         Expanded(child: child),
       ],
     );
@@ -1258,6 +1317,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       children: [
         _figmaLabeledRow(
           label: '생년월일',
+          includeLabelToFieldGap: false,
+          labelBoxHeight: healthDp(context, 50),
           field: TextFormField(
             key: ValueKey<int>(_wizardBirthFieldKeySeed),
             initialValue: _birthYyyymmddDisplayForWizardField(),
@@ -1267,7 +1328,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               LengthLimitingTextInputFormatter(8),
             ],
             style: _figmaFieldTextStyle,
-            decoration: _figmaInputDecoration(hint: 'YYYYMMDD'),
+            decoration: _figmaInputDecoration(context, hint: 'YYYYMMDD'),
             onChanged: (v) {
               final s = (v ?? '').trim();
               if (!mounted) return;
@@ -1309,10 +1370,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             },
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         _figmaLabeledRow(
           label: '성별',
           labelAlign: TextAlign.right,
+          labelBoxHeight: healthDp(context, 50),
           field: FormField<String>(
             initialValue: _formData['answer_2']?.toString(),
             validator: (v) {
@@ -1337,7 +1399,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: healthDp(context, 10)),
                       Expanded(
                         child: _genderChip(
                           label: '남',
@@ -1351,7 +1413,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     ],
                   ),
                   if (state.hasError) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: healthDp(context, 4)),
                     SizedBox(
                       height: 16,
                       child: Align(
@@ -1374,7 +1436,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             },
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         _figmaLabeledRow(
           label: '키/\n몸무게',
           labelAlign: TextAlign.right,
@@ -1389,7 +1451,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   requiredMsg: '키를 입력해주세요',
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: healthDp(context, 10)),
               Expanded(
                 child: _suffixField(
                   questionId: 'answer_5',
@@ -1401,7 +1463,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         _figmaLabeledRow(
           label: '목표감량\n체중',
           labelAlign: TextAlign.right,
@@ -1412,7 +1474,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             requiredMsg: '목표 감량 체중을 입력해주세요',
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         _figmaLabeledRow(
           label: '다이어트\n목표 기간',
           labelAlign: TextAlign.right,
@@ -1442,23 +1504,35 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     fontWeight: FontWeight.w300,
   );
 
-  InputDecoration _figmaInputDecoration({String? hint}) {
+  InputDecoration _figmaInputDecoration(BuildContext context, {String? hint}) {
     return InputDecoration(
       isDense: true,
       hintText: hint,
       hintStyle: const TextStyle(color: Color(0xFF898686), fontSize: 14),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 10),
+        vertical: healthDp(context, 14),
+      ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: const BorderSide(color: _pfBorder),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: BorderSide(
+          width: healthDp(context, 1),
+          color: _pfBorder,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: const BorderSide(color: _pfBorder),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: BorderSide(
+          width: healthDp(context, 1),
+          color: _pfBorder,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: const BorderSide(color: _pfPink),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: BorderSide(
+          width: healthDp(context, 1),
+          color: _pfPink,
+        ),
       ),
     );
   }
@@ -1471,13 +1545,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 50,
+        height: healthDp(context, 50),
         alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: selected ? _pfPinkSoft : Colors.transparent,
           shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1, color: selected ? _pfPink : _pfBorder),
-            borderRadius: BorderRadius.circular(7),
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: selected ? _pfPink : _pfBorder,
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
           ),
         ),
         child: Text(
@@ -1515,7 +1592,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: _figmaFieldTextStyle,
-              decoration: _figmaInputDecoration(hint: hint).copyWith(
+              decoration: _figmaInputDecoration(context, hint: hint).copyWith(
                 suffixText: suffix,
                 suffixStyle: _figmaFieldTextStyle,
                 errorStyle: const TextStyle(height: 0, fontSize: 0),
@@ -1531,9 +1608,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               onSaved: (_) {},
             ),
             if (state.hasError) ...[
-              const SizedBox(height: 4),
+              SizedBox(height: healthDp(context, 4)),
               SizedBox(
-                height: 16,
+                height: healthDp(context, 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -1579,26 +1656,29 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           children: [
             Container(
               key: _answer6FieldKey,
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              height: healthDp(context, 50),
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
               decoration: ShapeDecoration(
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: _pfBorder),
-                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(
+                    width: healthDp(context, 1),
+                    color: _pfBorder,
+                  ),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
-                shadows: const [
+                shadows: [
                   BoxShadow(
-                    color: Color(0x19000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 0),
+                    color: const Color(0x19000000),
+                    blurRadius: healthDp(context, 4),
+                    offset: Offset.zero,
                     spreadRadius: 0,
                   ),
                 ],
               ),
               alignment: Alignment.center,
               child: InkWell(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 onTap: () => _openAnswer6Menu(
                   options: options,
                   onSelected: (v) {
@@ -1620,15 +1700,15 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                           color: selected == null
                               ? const Color(0xFF898686)
                               : const Color(0xFF1A1A1A),
-                          fontSize: 16,
+                          fontSize: healthSp(context, 16),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      size: 18,
+                      size: healthDp(context, 18),
                       color: Colors.black87,
                     ),
                   ],
@@ -1637,7 +1717,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ),
             if (state.hasError)
               Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
+                padding: EdgeInsets.only(
+                  top: healthDp(context, 4),
+                  left: healthDp(context, 4),
+                ),
                 child: Text(
                   state.errorText ?? '',
                   style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
@@ -1669,18 +1752,40 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
     final overlay = Overlay.of(context);
     final pos = box.localToGlobal(Offset.zero);
-    final top = pos.dy + box.size.height + 4;
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final menuWidth = box.size.width.clamp(160.0, screenWidth - 16.0);
-    const visibleRowCap = _answer6MenuMaxVisibleRows;
-    final menuScrolls = options.length > visibleRowCap;
-    final menuViewportHeight = menuScrolls
-        ? (visibleRowCap * _answer6MenuRowExtent +
-            (visibleRowCap - 1) * _answer6MenuRowGap)
-        : null;
-    
+    final topCandidate = pos.dy + box.size.height + healthDp(context, 4);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final menuWidth = box.size.width.clamp(
+      healthDp(context, 160),
+      screenWidth - healthDp(context, 16),
+    );
+    final rowExtent = healthDp(context, _answer6MenuRowExtent);
+    final rowGapScaled = healthDp(context, _answer6MenuRowGap);
+    final edgePad = healthDp(context, 8);
+
+    final totalListHeight = options.isEmpty
+        ? rowExtent
+        : (options.length * rowExtent + (options.length - 1) * rowGapScaled);
+
+    final cappedHeight = (_answer6MenuMaxVisibleRows * rowExtent) +
+        ((_answer6MenuMaxVisibleRows - 1) * rowGapScaled);
+    final desiredHeight = totalListHeight > cappedHeight ? cappedHeight : totalListHeight;
+
+    final screenHeight = MediaQuery.of(context).size.height;
+    final availableBelow = screenHeight - topCandidate - edgePad;
+    final availableAbove = pos.dy - edgePad;
+    final minUsableHeight = rowExtent * 2;
+
+    final openUp = availableBelow < minUsableHeight && availableAbove > availableBelow;
+    final maxHeight = openUp ? availableAbove : availableBelow;
+    final menuHeight = desiredHeight.clamp(rowExtent, maxHeight);
+    final menuScrolls = totalListHeight > menuHeight;
+
+    final top = openUp
+        ? (pos.dy - healthDp(context, 4) - menuHeight)
+        : topCandidate;
+
     _answer6MenuOverlay = OverlayEntry(
-      builder: (context) => Stack(
+      builder: (overlayContext) => Stack(
         children: [
           Positioned.fill(
             child: GestureDetector(
@@ -1690,35 +1795,38 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ),
           ),
           Positioned(
-            left: pos.dx
-                .clamp(8.0, MediaQuery.sizeOf(context).width - menuWidth - 8),
+            left: pos.dx.clamp(
+              edgePad,
+              MediaQuery.sizeOf(overlayContext).width - menuWidth - edgePad,
+            ),
             top: top,
             width: menuWidth,
             child: Material(
               color: Colors.transparent,
               child: DefaultTextStyle(
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
                   color: Colors.black,
                   height: 1.2,
                 ),
                 child: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(healthDp(overlayContext, 10)),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
+                    borderRadius:
+                        BorderRadius.circular(healthDp(overlayContext, 10)),
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x19000000),
-                        blurRadius: 4,
-                        offset: Offset(0, 0),
+                        color: const Color(0x19000000),
+                        blurRadius: healthDp(overlayContext, 4),
+                        offset: Offset.zero,
                       ),
                     ],
                   ),
                   child: SizedBox(
-                    height: menuViewportHeight,
+                    height: menuHeight,
                     child: Scrollbar(
                       controller: _answer6MenuScrollController,
                       thumbVisibility: menuScrolls,
@@ -1729,7 +1837,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             for (var i = 0; i < options.length; i++) ...[
-                              if (i > 0) const SizedBox(height: 5),
+                              if (i > 0)
+                                SizedBox(height: rowGapScaled),
                               _Answer6MenuLine(
                                 label: options[i],
                                 showBottomDivider: i < options.length - 1,
@@ -1758,24 +1867,49 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     required String label,
     required Widget field,
     TextAlign labelAlign = TextAlign.left,
+    /// 생년월일 행은 Figma 간격 유지(0). 나머지 기본정보는 라벨–필드 사이 스케일 간격.
+    bool includeLabelToFieldGap = true,
+    /// 라벨을 입력칸 높이 중앙에 맞추기 위한 고정 박스 높이 (ex: 생년월일/성별)
+    double? labelBoxHeight,
   }) {
     // 오류 문구로 필드 열 높이가 늘어나도 라벨이 세로 중앙으로 밀리지 않도록 상단 정렬
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 72,
-          child: Text(
-            label,
-            textAlign: labelAlign,
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              height: 1,
-            ),
-          ),
+          width: healthDp(context, 72),
+          child: labelBoxHeight == null
+              ? Text(
+                  label,
+                  textAlign: labelAlign,
+                  style: const TextStyle(
+                    color: Color(0xFF1A1A1A),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                )
+              : SizedBox(
+                  height: labelBoxHeight,
+                  child: Align(
+                    alignment: labelAlign == TextAlign.right
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Text(
+                      label,
+                      textAlign: labelAlign,
+                      style: const TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
         ),
+        if (includeLabelToFieldGap)
+          SizedBox(width: healthDp(context, 10)),
         Expanded(child: field),
       ],
     );
@@ -1797,7 +1931,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             color: const Color(0xFF1A1A1A),
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         Row(
           children: [
             Expanded(
@@ -1824,20 +1958,23 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   });
                 },
                 child: Container(
-                  height: 50,
+                  height: healthDp(context, 50),
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
                     color: isYes ? _pfPinkSoft : Colors.transparent,
                     shape: RoundedRectangleBorder(
-                      side: BorderSide(width: 1, color: isYes ? _pfPink : _pfBorder),
-                      borderRadius: BorderRadius.circular(7),
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: isYes ? _pfPink : _pfBorder,
+                      ),
+                      borderRadius: BorderRadius.circular(healthDp(context, 7)),
                     ),
                   ),
                   child: const Text('있음', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -1846,13 +1983,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   });
                 },
                 child: Container(
-                  height: 50,
+                  height: healthDp(context, 50),
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
                     color: isNo ? _pfPinkSoft : Colors.transparent,
                     shape: RoundedRectangleBorder(
-                      side: BorderSide(width: 1, color: isNo ? _pfPink : _pfBorder),
-                      borderRadius: BorderRadius.circular(7),
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: isNo ? _pfPink : _pfBorder,
+                      ),
+                      borderRadius: BorderRadius.circular(healthDp(context, 7)),
                     ),
                   ),
                   child: Text(
@@ -1876,7 +2016,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             isRequired: false,
           ),
         )) ...[
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
           _buildDietDrugDetailCard(),
         ],
       ],
@@ -1885,7 +2025,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Widget _buildDietDrugDetailCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(healthDp(context, 20)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
           side: const BorderSide(color: _pfBorder),
@@ -1921,7 +2061,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
                     height: 28,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
                     clipBehavior: Clip.antiAlias,
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
@@ -1974,7 +2114,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ],
           ),
           const Divider(color: _pfBorder),
-          const SizedBox(height: 8),
+          SizedBox(height: healthDp(context, 8)),
           _detailRow('복용 약명', 'answer_13_medicine', '약명'),
           _detailRow('복용 기간', 'answer_13_period', '예: 3개월'),
           _detailRow('복용 횟수', 'answer_13_dosage', '예: 1-2회'),
@@ -1986,24 +2126,24 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Widget _detailRow(String label, String id, String hint) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 72,
+            width: healthDp(context, 72),
             child: Text(
               label,
               textAlign: TextAlign.right,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: healthDp(context, 12)),
           Expanded(
             child: TextFormField(
               key: ValueKey<String>('diet_$id:$_dietDetailResetTick'),
               initialValue: _formData[id]?.toString() ?? '',
-              decoration: _figmaInputDecoration(hint: hint),
+              decoration: _figmaInputDecoration(context, hint: hint),
               style: _figmaFieldTextStyle,
               onChanged: (v) {
                 _formData[id] = v;
@@ -2028,7 +2168,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       return TableCell(
         verticalAlignment: TableCellVerticalAlignment.middle,
         child: SizedBox(
-          height: 36,
+          height: healthDp(context, 36),
           child: Center(
             child: Text(
               label,
@@ -2043,15 +2183,19 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     TableCell fieldCell(
       String fieldKey, {
       int maxLines = 1,
-      double minHeight = 36,
+      double? minHeight,
       String? hint,
     }) {
+      final h = minHeight ?? healthDp(context, 36);
       return TableCell(
         verticalAlignment: TableCellVerticalAlignment.middle,
         child: SizedBox(
-          height: minHeight,
+          height: h,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 6),
+              vertical: healthDp(context, 4),
+            ),
             child: TextFormField(
               initialValue: _formData[fieldKey]?.toString() ?? '',
               maxLines: maxLines,
@@ -2239,7 +2383,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 () => toggle(gridOptions[i]),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             if (i + 1 < gridOptions.length)
               Expanded(
                 child: _figmaOptionCell(
@@ -2253,12 +2397,14 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           ],
         ),
       );
-      if (i + 2 < gridOptions.length) rows.add(const SizedBox(height: 10));
+      if (i + 2 < gridOptions.length) {
+        rows.add(SizedBox(height: healthDp(context, 10)));
+      }
     }
 
     if (fullWidthNoneLabel != null) {
       final noneLabel = fullWidthNoneLabel;
-      rows.add(const SizedBox(height: 10));
+      rows.add(SizedBox(height: healthDp(context, 10)));
       rows.add(
         Row(
           children: [
@@ -2290,14 +2436,23 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       onTap: onTap,
       child: Container(
         width: stretchWidth ? double.infinity : null,
-        constraints: const BoxConstraints(minHeight: 45, maxHeight: 45),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        constraints: BoxConstraints(
+          minHeight: healthDp(context, 45),
+          maxHeight: healthDp(context, 45),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 8),
+          vertical: healthDp(context, 6),
+        ),
         alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: selected ? _pfPinkSoft : Colors.transparent,
           shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1, color: selected ? _pfPink : _pfBorder),
-            borderRadius: BorderRadius.circular(7),
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: selected ? _pfPink : _pfBorder,
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
           ),
         ),
         child: Text(
@@ -2340,7 +2495,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         
         // 완료 버튼 (바로 표시)
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(healthDp(context, 16)),
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -2348,7 +2503,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF3787),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 16)),
               ),
               child: const Text(
                 '수정하기',
@@ -2366,7 +2521,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Widget _buildSectionPage(HealthProfileSection section) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(27, 16, 27, 20),
+      padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 16), healthDp(context, 27), healthDp(context, 20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2399,7 +2554,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     final showBlockTitle = question.type != 'wizard_basic';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: EdgeInsets.only(bottom: healthDp(context, 24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2418,7 +2573,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ),
                 if (question.allowMultiple == true)
                   Padding(
-                    padding: const EdgeInsets.only(left: 4),
+                    padding: EdgeInsets.only(left: healthDp(context, 4)),
                     child: Text(
                       '*중복 선택 가능',
                       style: TextStyle(
@@ -2430,7 +2585,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               ],
             ),
             if (question.hint != null) ...[
-              const SizedBox(height: 4),
+              SizedBox(height: healthDp(context, 4)),
               Text(
                 question.hint!,
                 style: TextStyle(
@@ -2439,7 +2594,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            SizedBox(height: healthDp(context, 12)),
           ],
           _buildInputWidget(question),
         ],
@@ -2463,11 +2618,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           decoration: InputDecoration(
             hintText: question.placeholder,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 16),
+              vertical: healthDp(context, 12),
             ),
           ),
           validator: question.isRequired
@@ -2497,11 +2652,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           decoration: InputDecoration(
             hintText: question.placeholder,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 16),
+              vertical: healthDp(context, 12),
             ),
           ),
           validator: question.isRequired
@@ -2649,7 +2804,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 color: isSelected ? const Color(0xFFFF3787) : Colors.grey.shade300,
                 width: isSelected ? 2 : 1,
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
             ),
             child: Center(
               child: Text(
@@ -2842,11 +2997,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   labelText: '년',
                   hintText: '1990',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 16),
+                    vertical: healthDp(context, 12),
                   ),
                 ),
                 validator: (value) {
@@ -2870,7 +3025,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 },
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: healthDp(context, 8)),
             Expanded(
               child: TextFormField(
                 initialValue: m,
@@ -2883,11 +3038,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   labelText: '월',
                   hintText: '01',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 16),
+                    vertical: healthDp(context, 12),
                   ),
                 ),
                 validator: (value) {
@@ -2905,7 +3060,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 },
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: healthDp(context, 8)),
             Expanded(
               child: TextFormField(
                 initialValue: d,
@@ -2918,11 +3073,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   labelText: '일',
                   hintText: '01',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 16),
+                    vertical: healthDp(context, 12),
                   ),
                 ),
                 validator: (value) {
@@ -2980,18 +3135,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: healthDp(context, 4)),
                   TextFormField(
                     initialValue: _formData['meal_1'] ?? '',
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: '예: 08:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 16),
+                        vertical: healthDp(context, 12),
                       ),
                     ),
                     onSaved: (value) {
@@ -3001,7 +3156,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: healthDp(context, 8)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3013,18 +3168,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: healthDp(context, 4)),
                   TextFormField(
                     initialValue: _formData['meal_2'] ?? '',
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: '예: 12:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 16),
+                        vertical: healthDp(context, 12),
                       ),
                     ),
                     onSaved: (value) {
@@ -3034,7 +3189,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: healthDp(context, 8)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3046,18 +3201,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: healthDp(context, 4)),
                   TextFormField(
                     initialValue: _formData['meal_3'] ?? '',
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: '예: 19:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 16),
+                        vertical: healthDp(context, 12),
                       ),
                     ),
                     onSaved: (value) {
@@ -3067,7 +3222,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: healthDp(context, 8)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3079,18 +3234,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: healthDp(context, 4)),
                   TextFormField(
                     initialValue: _formData['meal_other'] ?? '',
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: '예: 21:00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(healthDp(context, 8)),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 16),
+                        vertical: healthDp(context, 12),
                       ),
                     ),
                     onSaved: (value) {
@@ -3102,7 +3257,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         Text(
           '*해당되는 입력란에만 입력하세요.',
           style: TextStyle(

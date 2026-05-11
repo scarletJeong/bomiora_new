@@ -6,8 +6,9 @@ import '../../../../core/utils/date_formatter.dart';
 import '../models/health_profile_model.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 
 class HealthProfileListScreen extends StatefulWidget {
   const HealthProfileListScreen({super.key});
@@ -75,11 +76,34 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '문진표'),
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildContent(),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: '문진표',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(color: _kPink),
+                )
+              : _buildContent(),
+        ),
+      ),
     );
   }
 
@@ -105,10 +129,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   children: [
                     Icon(
                       Icons.assignment_outlined,
-                      size: 80,
+                      size: healthDp(context, 80),
                       color: Colors.grey[400],
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: healthDp(context, 24)),
                     Text(
                       '문진표가 없습니다',
                       style: TextStyle(
@@ -117,7 +141,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: healthDp(context, 8)),
                     Text(
                       '다이어트 상담을 위해\n문진표를 작성해주세요',
                       textAlign: TextAlign.center,
@@ -126,17 +150,21 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                         color: Colors.grey[500],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: healthDp(context, 32)),
                     ElevatedButton.icon(
                       onPressed: _navigateToForm,
-                      icon: const Icon(Icons.add),
+                      icon: Icon(Icons.add, size: healthDp(context, 22)),
                       label: const Text('문진표 작성하기'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5A8D),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 24),
+                          vertical: healthDp(context, 12),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 8)),
                         ),
                       ),
                     ),
@@ -161,7 +189,12 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       child: ColoredBox(
         color: Colors.white,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 16),
+            healthDp(context, 20),
+            healthDp(context, 16),
+            healthDp(context, 24),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -172,7 +205,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     showBottomDivider: true,
                     child: _buildBasicInfoBody(profile),
                   ),
-                  const SizedBox(height: 34),
+                  SizedBox(height: healthDp(context, 34)),
                   _buildFigmaSection(
                     title: '식습관',
                     onEdit: () => _openSectionForEdit(
@@ -183,7 +216,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     showBottomDivider: true,
                     child: _buildDietHabitsBody(profile),
                   ),
-                  const SizedBox(height: 34),
+                  SizedBox(height: healthDp(context, 34)),
                   _buildFigmaSection(
                     title: '운동',
                     onEdit: () => _openSectionForEdit(
@@ -194,7 +227,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     showBottomDivider: true,
                     child: _buildExerciseHabitsBody(profile),
                   ),
-                  const SizedBox(height: 34),
+                  SizedBox(height: healthDp(context, 34)),
                   _buildFigmaSection(
                     title: '건강 상태',
                     onEdit: () => _openSectionForEdit([3], screenTitle: '건강 상태'),
@@ -202,21 +235,24 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     showBottomDivider: true,
                     child: _buildHealthBody(profile),
                   ),
-                  const SizedBox(height: 34),
+                  SizedBox(height: healthDp(context, 34)),
                   _buildDietExperienceSection(profile),
-                  const SizedBox(height: 24),
+                  SizedBox(height: healthDp(context, 24)),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: healthDp(context, 50),
                     child: FilledButton(
                       onPressed: _navigateToEditForm,
                       style: FilledButton.styleFrom(
                         backgroundColor: _kPink,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 10),
+                        ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(7),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 7)),
                         ),
                       ),
                       child: const Text(
@@ -229,7 +265,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                       ),
                     ),
                   ),
-              const SizedBox(height: 100),
+              SizedBox(height: healthDp(context, 100)),
             ],
           ),
         ),
@@ -254,14 +290,15 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 5,
-                    height: 24,
+                    width: healthDp(context, 5),
+                    height: healthDp(context, 24),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 7)),
                       color: _kPink,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: healthDp(context, 8)),
                   Expanded(
                     child: Text(
                       title,
@@ -279,9 +316,12 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: onEdit,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                child: Text(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  vertical: healthDp(context, 4),
+                  horizontal: healthDp(context, 4),
+                ),
+                child: const Text(
                   '수정',
                   style: TextStyle(
                     color: _kPink,
@@ -294,16 +334,16 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 20)),
         Padding(
           padding: innerPadding,
           child: child,
         ),
         if (showBottomDivider) ...[
-          const SizedBox(height: 24),
+          SizedBox(height: healthDp(context, 24)),
           Container(
             width: double.infinity,
-            height: 1,
+            height: healthDp(context, 1),
             color: _kBorderField,
           ),
         ],
@@ -322,14 +362,15 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 5,
-                    height: 24,
+                    width: healthDp(context, 5),
+                    height: healthDp(context, 24),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 7)),
                       color: _kPink,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: healthDp(context, 8)),
                   const Expanded(
                     child: Text(
                       '다이어트 경험',
@@ -350,9 +391,12 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                 [4],
                 screenTitle: '다이어트 경험',
               ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                child: Text(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  vertical: healthDp(context, 4),
+                  horizontal: healthDp(context, 4),
+                ),
+                child: const Text(
                   '수정',
                   style: TextStyle(
                     color: _kPink,
@@ -365,22 +409,25 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 20)),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(healthDp(context, 20)),
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: _kBorderField),
-              borderRadius: BorderRadius.circular(7),
+              side: BorderSide(
+                width: healthDp(context, 1),
+                color: _kBorderField,
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           child: _buildDietDrugBody(profile),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: healthDp(context, 24)),
         Container(
           width: double.infinity,
-          height: 1,
+          height: healthDp(context, 1),
           color: _kBorderField,
         ),
       ],
@@ -400,7 +447,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             color: _kInk,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: healthDp(context, 10)),
         Expanded(
           child: Text(
             value,
@@ -445,21 +492,22 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   Widget _basicInfoLabeledRow({
     required String label,
     required Widget child,
-    double labelWidth = 72,
+    double? labelWidth,
     Color? labelColor,
   }) {
+    final lw = labelWidth ?? healthDp(context, 72);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: labelWidth,
+          width: lw,
           child: Text(
             label,
             textAlign: TextAlign.right,
             style: _listLabelStyle.copyWith(color: labelColor ?? _kInk),
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: healthDp(context, 16)),
         Expanded(child: child),
       ],
     );
@@ -468,12 +516,12 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   Widget _readMetricBox(String value, String unit) {
     final v = value.trim().isEmpty ? '-' : value.trim();
     return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: healthDp(context, 50),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorderField),
-          borderRadius: BorderRadius.circular(7),
+          side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Row(
@@ -514,13 +562,13 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         _basicInfoLabeledRow(
           label: '생년월일',
           child: Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            height: healthDp(context, 50),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             alignment: Alignment.centerLeft,
             decoration: ShapeDecoration(
               shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _kBorderField),
-                borderRadius: BorderRadius.circular(7),
+                side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
+                borderRadius: BorderRadius.circular(healthDp(context, 7)),
               ),
             ),
             child: Text(
@@ -534,24 +582,24 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: healthDp(context, 24)),
         _basicInfoLabeledRow(
           label: '성별',
-          labelWidth: 56,
+          labelWidth: healthDp(context, 56),
           child: _genderReadSegment(g == 'M', g == 'F'),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: healthDp(context, 24)),
         _basicInfoLabeledRow(
           label: '목표',
-          labelWidth: 56,
+          labelWidth: healthDp(context, 56),
           labelColor: _kPink,
           child: Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            height: healthDp(context, 50),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             decoration: ShapeDecoration(
               shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _kBorderField),
-                borderRadius: BorderRadius.circular(7),
+                side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
+                borderRadius: BorderRadius.circular(healthDp(context, 7)),
               ),
             ),
             child: Row(
@@ -580,14 +628,14 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: healthDp(context, 24)),
         _basicInfoLabeledRow(
           label: '키/\n몸무게',
-          labelWidth: 56,
+          labelWidth: healthDp(context, 56),
           child: Row(
             children: [
               Expanded(child: _readMetricBox(profile.answer4, 'cm')),
-              const SizedBox(width: 10),
+              SizedBox(width: healthDp(context, 10)),
               Expanded(child: _readMetricBox(profile.answer5, 'kg')),
             ],
           ),
@@ -598,10 +646,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   Widget _genderReadSegment(bool male, bool female) {
     return Container(
-      height: 50,
+      height: healthDp(context, 50),
       decoration: BoxDecoration(
         color: _kGenderTrack,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Row(
@@ -616,14 +664,14 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   Widget _genderReadSide(String label, bool selected) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.all(4),
+      margin: EdgeInsets.all(healthDp(context, 4)),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
         border: Border.all(
           color: selected ? const Color(0x7F898686) : Colors.transparent,
-          width: 0.5,
+          width: healthDp(context, 0.5),
         ),
       ),
       child: Text(
@@ -641,11 +689,14 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   /// 식습관·음식 등: 흰 배경 + 흰 테두리(카드 위에서 은은히 구분), 글자 검정
   Widget _chipWhitePlain(String text, {FontWeight fontWeight = FontWeight.w500}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 10),
+        vertical: healthDp(context, 12),
+      ),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorderField),
-          borderRadius: BorderRadius.circular(7),
+          side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Text(
@@ -665,11 +716,14 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   /// 운동 빈도(일주일 …)만 연한 테두리
   Widget _chipLightBorder(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 10),
+        vertical: healthDp(context, 12),
+      ),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorderField),
-          borderRadius: BorderRadius.circular(7),
+          side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Text(
@@ -698,8 +752,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       );
     }
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: healthDp(context, 6),
+      runSpacing: healthDp(context, 6),
       children: items.map((t) => _chipWhitePlain(t)).toList(),
     );
   }
@@ -714,31 +768,31 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
           child: Text('평균 식사 횟수 및 빈도', style: _listSubsectionStyle),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         _wrapChipsWhite(mealItems),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
           child: Text('식사 시간', style: _listSubsectionStyle),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         _buildMealTimeRowFigma(profile.answer71),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
           child: Text('식습관 정보', style: _listSubsectionStyle),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         _wrapChipsWhite(_listItemsFromPipe(profile.answer8)),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
           child: Text('자주 먹는 음식', style: _listSubsectionStyle),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         _wrapChipsWhite(_listItemsFromPipe(profile.answer9)),
       ],
     );
@@ -753,17 +807,17 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
           child: Text('운동 빈도', style: _listSubsectionStyle),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         _buildExerciseFrequencyChips(freq),
-        const SizedBox(height: 16),
+        SizedBox(height: healthDp(context, 16)),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
           child: Text('주로 하는 운동', style: _listSubsectionStyle),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         types.isEmpty
             ? const Text(
                 '-',
@@ -818,8 +872,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         freq.contains('매일') ||
         RegExp(r'주\s*\d').hasMatch(freq);
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: healthDp(context, 6),
+      runSpacing: healthDp(context, 6),
       children: [
         looksLikeWeeklyFreq ? _chipLightBorder(freq) : _chipWhitePlain(freq),
       ],
@@ -841,12 +895,15 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     Widget slot(String tag, String time) {
       return Expanded(
         child: Container(
-          height: 50,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          height: healthDp(context, 50),
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 5),
+          ),
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: _kBorderField),
-              borderRadius: BorderRadius.circular(7),
+              side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           child: Column(
@@ -863,7 +920,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   height: 1.3,
                 ),
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: healthDp(context, 2)),
               Text(
                 time,
                 style: const TextStyle(
@@ -884,47 +941,33 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         slot('1식', at(0)),
-        const SizedBox(width: 6),
+        SizedBox(width: healthDp(context, 6)),
         slot('2식', at(1)),
-        const SizedBox(width: 6),
+        SizedBox(width: healthDp(context, 6)),
         slot('3식', at(2)),
-        const SizedBox(width: 6),
+        SizedBox(width: healthDp(context, 6)),
         slot('4식', at(3)),
       ],
     );
   }
 
   Widget _buildHealthBody(HealthProfileModel profile) {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text('현재 질환', style: _listSubsectionStyle),
-              ),
-              const SizedBox(height: 8),
-              _healthDataChipsPipe(profile.answer11),
-            ],
-          ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
+          child: Text('현재 질환', style: _listSubsectionStyle),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text('복용 약물', style: _listSubsectionStyle),
-              ),
-              const SizedBox(height: 8),
-              _healthDataChipsPipe(profile.answer12),
-            ],
-          ),
+        SizedBox(height: healthDp(context, 8)),
+        _healthDataChipsPipe(profile.answer11),
+        SizedBox(height: healthDp(context, 16)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
+          child: Text('복용 약물', style: _listSubsectionStyle),
         ),
+        SizedBox(height: healthDp(context, 8)),
+        _healthDataChipsPipe(profile.answer12),
       ],
     );
   }
@@ -945,19 +988,22 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     final parts = _pipeParts(t);
     final items = parts.isEmpty ? [t] : parts;
     return Wrap(
-      spacing: 4,
-      runSpacing: 4,
+      spacing: healthDp(context, 4),
+      runSpacing: healthDp(context, 4),
       children: items.map(_healthDataChip).toList(),
     );
   }
 
   Widget _healthDataChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 10),
+        vertical: healthDp(context, 12),
+      ),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorderField),
-          borderRadius: BorderRadius.circular(7),
+          side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Text(
@@ -981,18 +1027,18 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     return Container(
       alignment: Alignment.center,
       padding: EdgeInsets.symmetric(
-        vertical: compact ? 5 : 10,
-        horizontal: compact ? 4 : 8,
+        vertical: compact ? healthDp(context, 5) : healthDp(context, 10),
+        horizontal: compact ? healthDp(context, 4) : healthDp(context, 8),
       ),
       decoration: BoxDecoration(
         color: selected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(healthDp(context, 4)),
         boxShadow: selected
-            ? const [
+            ? [
                 BoxShadow(
-                  color: Color(0x0C000000),
-                  blurRadius: 2,
-                  offset: Offset(0, 1),
+                  color: const Color(0x0C000000),
+                  blurRadius: healthDp(context, 2),
+                  offset: Offset(0, healthDp(context, 1)),
                 ),
               ]
             : null,
@@ -1002,8 +1048,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: compact ? 10 : 12,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-          color: selected ? Colors.black : _kMuted.withValues(alpha: 0.55),
+          fontWeight: selected ? FontWeight.w400 : FontWeight.w300,
+          color: selected ? Color(0xFFFF5A8D) : _kMuted.withValues(alpha: 0.55),
           height: 1.33,
         ),
       ),
@@ -1024,23 +1070,26 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           children: [
             Expanded(
               child: Text(
-                '최근 1년 내 다이어트 약 복용',
+                '최근 1년 내\n다이어트 약 복용',
                 style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                   color: _kInk,
                   height: 1.33,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 128, minWidth: 100),
+              constraints: BoxConstraints(
+                maxWidth: healthDp(context, 128),
+                minWidth: healthDp(context, 100),
+              ),
               child: Container(
-                padding: const EdgeInsets.all(2),
+                padding: EdgeInsets.all(healthDp(context, 2)),
                 decoration: BoxDecoration(
                   color: _kBorderField,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(healthDp(context, 6)),
                 ),
                 child: Row(
                   children: [
@@ -1051,7 +1100,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                         compact: true,
                       ),
                     ),
-                    const SizedBox(width: 2),
+                    SizedBox(width: healthDp(context, 2)),
                     Expanded(
                       child: _dietYesNoCell(
                         label: '아니오',
@@ -1066,11 +1115,16 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           ],
         ),
         if (isYes) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
           Container(
-            padding: const EdgeInsets.only(top: 8),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: _kBorderField)),
+            padding: EdgeInsets.only(top: healthDp(context, 8)),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  width: healthDp(context, 1),
+                  color: _kBorderField,
+                ),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1084,7 +1138,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                         profile.answer13Medicine,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: healthDp(context, 8)),
                     Expanded(
                       child: _dietDetailField(
                         '복용 기간',
@@ -1093,7 +1147,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: healthDp(context, 8)),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1103,7 +1157,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                         profile.answer13Dosage,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: healthDp(context, 8)),
                     Expanded(
                       child: _dietDetailField(
                         '부작용 여부',
@@ -1125,20 +1179,20 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     final display = value.trim().isEmpty ? '-' : value.trim();
 
     return SizedBox(
-      height: 53,
+      height: healthDp(context, 53),
       width: double.infinity,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            left: 4,
+            left: healthDp(context, 4),
             top: 0,
             child: Text(
               label,
               style: const TextStyle(
                 color: _kMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
                 height: 1.5, // line ~15px
               ),
             ),
@@ -1146,12 +1200,15 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           Positioned(
             left: 0,
             right: 0,
-            top: 21,
+            top: healthDp(context, 21),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 12),
+                vertical: healthDp(context, 8),
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
               ),
               child: Text(
                 display,
