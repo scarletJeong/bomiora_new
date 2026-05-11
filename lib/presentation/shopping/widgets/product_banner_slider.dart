@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 
 class ProductBannerSlider extends StatefulWidget {
   const ProductBannerSlider({super.key});
@@ -16,38 +17,38 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
 
   final List<_BannerItem> banners = [
     _BannerItem(
-      imageUrl: AppAssets.bomioraLogo,
+      imageUrl: AppAssets.bomioraPinkLogo,
       title: '보미오라 다이어트',
       subtitle: '건강한 체중감량의 시작',
       productId: '1686290723',
     ),
     _BannerItem(
-      imageUrl: AppAssets.bomioraLogo,
+      imageUrl: AppAssets.bomioraPinkLogo,
       title: '다이어트 왜 자꾸 실패할까요?',
       subtitle: '공중파, 종편 TV출연 몸짱 한의사 다이어트',
     ),
     _BannerItem(
-      imageUrl: AppAssets.bomioraLogo,
+      imageUrl: AppAssets.bomioraPinkLogo,
       title: '다이어트환/디톡스환 특허 등록',
       subtitle: '정대진 대표원장이 연구 배합,개발 후 특허등록',
     ),
     _BannerItem(
-      imageUrl: AppAssets.bomioraLogo,
+      imageUrl: AppAssets.bomioraPinkLogo,
       title: '2024 대한민국 베스트브랜드 시상식',
       subtitle: '한방다이어트부문 대상 보미오라한의원',
     ),
     _BannerItem(
-      imageUrl: AppAssets.bomioraLogo,
+      imageUrl: AppAssets.bomioraPinkLogo,
       title: '빠르고 효과적인 다이어트를 위한 디톡스환',
       subtitle: '간편하고 빠르게 독소배출',
     ),
     _BannerItem(
-      imageUrl: AppAssets.bomioraLogo,
+      imageUrl: AppAssets.bomioraPinkLogo,
       title: '1:1 맞춤 전문 다이어트 솔루션',
       subtitle: '수많은 인플루언서의 선택! 보미 다이어트환',
     ),
     _BannerItem(
-      imageUrl: AppAssets.bomioraLogo,
+      imageUrl: AppAssets.bomioraPinkLogo,
       title: '보미오라 프리미엄 케어',
       subtitle: '전문가가 함께하는 다이어트 여정',
     ),
@@ -68,13 +69,13 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 300,
-      decoration: const BoxDecoration(
+      height: healthDp(context, 300),
+      decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFFF5A8D),
-            width: 3,
+            color: const Color(0xFFFF5A8D),
+            width: healthDp(context, 3),
           ),
         ),
       ),
@@ -124,42 +125,48 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                Colors.black.withOpacity(0.45),
+                                Colors.black.withValues(alpha: 0.45),
                               ],
                             ),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(healthDp(context, 20)),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.end,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 banner.title,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 20,
+                                  fontSize: healthSp(context, 20),
                                   fontWeight: FontWeight.bold,
                                   shadows: [
                                     Shadow(
-                                      offset: Offset(1, 1),
-                                      blurRadius: 3,
+                                      offset: Offset(
+                                        healthDp(context, 1),
+                                        healthDp(context, 1),
+                                      ),
+                                      blurRadius: healthDp(context, 3),
                                       color: Colors.black54,
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: healthDp(context, 8)),
                               Text(
                                 banner.subtitle,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 14,
+                                  fontSize: healthSp(context, 14),
                                   shadows: [
                                     Shadow(
-                                      offset: Offset(1, 1),
-                                      blurRadius: 3,
+                                      offset: Offset(
+                                        healthDp(context, 1),
+                                        healthDp(context, 1),
+                                      ),
+                                      blurRadius: healthDp(context, 3),
                                       color: Colors.black54,
                                     ),
                                   ],
@@ -176,7 +183,7 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
             ),
           ),
           Positioned(
-            bottom: 10,
+            bottom: healthDp(context, 10),
             left: 0,
             right: 0,
             child: Row(
@@ -189,14 +196,14 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
                     curve: Curves.easeInOut,
                   ),
                   child: Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: healthDp(context, 8),
+                    height: healthDp(context, 8),
+                    margin: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _currentIndex == entry.key
                           ? Colors.white
-                          : Colors.white.withOpacity(0.4),
+                          : Colors.white.withValues(alpha: 0.4),
                     ),
                   ),
                 );

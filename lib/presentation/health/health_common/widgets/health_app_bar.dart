@@ -6,6 +6,10 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool centerTitle;
   final List<Widget>? actions;
   final VoidCallback? onBack;
+  /// null이면 기본 18. [MobileAppLayoutWrapper] 바깥에서도 제목 스케일을 맞출 때 사용.
+  final double? titleFontSize;
+  /// null이면 기본 아이콘 크기.
+  final double? leadingIconSize;
 
   const HealthAppBar({
     super.key,
@@ -13,6 +17,8 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.centerTitle = false,
     this.actions,
     this.onBack,
+    this.titleFontSize,
+    this.leadingIconSize,
   });
 
   @override
@@ -22,16 +28,20 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       leading: IconButton(
-        icon: const Icon(Icons.chevron_left, color: Colors.black),
+        icon: Icon(
+          Icons.chevron_left,
+          color: Colors.black,
+          size: leadingIconSize,
+        ),
         onPressed: onBack ?? () => Navigator.pop(context),
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w700,
           color: Colors.black,
-          fontSize: 18,
+          fontSize: titleFontSize ?? 18,
         ),
       ),
       centerTitle: centerTitle,

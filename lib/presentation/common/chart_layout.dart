@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 /// 차트 관련 공통 상수들
@@ -13,9 +11,12 @@ class ChartConstants {
     double parentMaxHeight, {
     double topReserve = 8,
     double bottomLegendReserve = 34,
+    double minChartHeight = 160.0,
+    double? maxChartHeight,
   }) {
+    final cap = maxChartHeight ?? healthChartHeight;
     return (parentMaxHeight - topReserve - bottomLegendReserve)
-        .clamp(160.0, healthChartHeight);
+        .clamp(minChartHeight, cap);
   }
 
   // Y축 관련 상수

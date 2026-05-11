@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import '../widgets/main_banner_slider.dart';
 import '../widgets/review_section.dart';
-import '../widgets/bottom_banner.dart';
 import '../widgets/new_product.dart';
 import '../widgets/wellness_section.dart';
 import '../widgets/category_section.dart';
 import '../widgets/guidebook_section.dart';
 import '../widgets/home_quick_tab_section.dart';
-import '../../../core/constants/app_assets.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
+import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/appbar_menutap.dart';
-import '../../common/widgets/app_footer.dart';
-import '../../common/widgets/footer_bar.dart';
+import '../../common/widgets/navi_bar.dart';
+import '../../common/widgets/app_footer.dart';  
+import '../../common/responsive_scale.dart';
 import '../widgets/notice_section.dart';
 import '../widgets/event_section.dart';
 
@@ -34,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   UserModel? _currentUser;
   int _currentIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -44,7 +45,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadCurrentUser() async {
-      final user = await AuthService.getUser();
+    final user = await AuthService.getUser();
+    if (!mounted) return;
     setState(() {
       _currentUser = user;
     });
@@ -81,10 +83,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     try {
       // 임시로 더미 데이터 사용 (API 연동 전)
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
@@ -99,28 +103,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return MobileAppLayoutWrapper(
       child: Scaffold(
+      key: _scaffoldKey,
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: !isMyPage,
+      extendBodyBehindAppBar: false,
       appBar: isMyPage
           ? null
-          : AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              surfaceTintColor: Colors.transparent,
-              leading: Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu, color: Colors.black),
-                  onPressed: () {
-                    Scaffold.of(context).openDrawer();
-                  },
-                ),
-              ),
-              title: Image.asset(
-                AppAssets.bomioraAppbarLogo,
-                height: 40,
-              ),
-              centerTitle: true,
+          : AppBarMenu(
+              onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
             ),
       drawer: isMyPage
           ? null
@@ -153,7 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomePage() {
-    const sectionGap = SizedBox(height: 24);
+    final rs = context.rs;
+    final sectionGap = SizedBox(height: rs.dp(24));
 
     return isLoading
         ? const Center(child: CircularProgressIndicator())
@@ -195,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
     
                 // Footer
                 // const AppFooter(),
+                const AppFooter(),
               ],
             ),
           );
