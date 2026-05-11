@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -63,12 +62,11 @@ Future<void> showProductOptionBottomup({
       ),
     ),
     builder: (context) {
-      final screenWidth = MediaQuery.of(context).size.width;
-      final constrainedWidth = math.min(screenWidth - 12, 600.0);
+      final screenWidth = MediaQuery.sizeOf(context).width;
       return Align(
         alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: constrainedWidth),
+        child: SizedBox(
+          width: screenWidth,
           child: OptionSelectorBottomSheet(
             options: options,
             selectedOptions: selectedOptions,
@@ -88,3 +86,4 @@ Future<void> showProductOptionBottomup({
     },
   );
 }
+

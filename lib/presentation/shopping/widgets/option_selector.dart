@@ -37,6 +37,23 @@ class OptionSelectorBottomSheet extends StatefulWidget {
 
 enum _ExpandedType { step, months }
 
+const String _kGmarketSans = 'Gmarket Sans TTF';
+
+/// 펼친 옵션 행·선택 필드 본문
+const TextStyle _kOptionChoiceTextStyle = TextStyle(
+  color: Colors.black,
+  fontSize: 15.54,
+  fontFamily: _kGmarketSans,
+  fontWeight: FontWeight.w500,
+);
+
+/// 선택한 옵션 카드 내 제품명
+const TextStyle _kSelectedCardProductTextStyle = TextStyle(
+  fontSize: 11.65,
+  fontFamily: _kGmarketSans,
+  fontWeight: FontWeight.w500,
+);
+
 class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   final Map<String, List<ProductOption>> _groupedOptionsByStep = {};
   final Map<int, List<ProductOption>> _groupedOptionsByMonths = {};
@@ -159,7 +176,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    return SizedBox(
+      width: double.infinity,
+      child: ClipRRect(
       borderRadius: const BorderRadius.only(
         topLeft: Radius.circular(30),
         topRight: Radius.circular(30),
@@ -221,6 +240,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -305,10 +325,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             Expanded(
               child: Text(
                 text,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: enabled ? Colors.black87 : Colors.grey[400],
-                  fontWeight: FontWeight.w500,
+                style: _kOptionChoiceTextStyle.copyWith(
+                  color: enabled ? Colors.black : Colors.grey[400],
                 ),
               ),
             ),
@@ -354,12 +372,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 children: [
                   Text(
                     step,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
-                    ),
+                    style: _kOptionChoiceTextStyle,
                   ),
                   if (isSelected)
                     const Icon(
@@ -403,11 +416,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               children: [
                 Text(
                   '${months}개월',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                  style: _kOptionChoiceTextStyle,
                 ),
                 Row(
                   children: [
@@ -416,7 +425,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                         '+${optionForMonths.formattedPrice.replaceAll('원', '')}',
                         style: const TextStyle(
                           fontSize: 13,
+                          fontFamily: _kGmarketSans,
                           fontWeight: FontWeight.w600,
+                          color: Colors.black87,
                         ),
                       ),
                     if (isSelected) ...[
@@ -466,9 +477,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                           children: [
                             Text(
                               option.displayText,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                              style: _kSelectedCardProductTextStyle.copyWith(
+                                color: Colors.black87,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -543,10 +553,11 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    '총 결제금액',
+                    '총 구매 금액',
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 19.49,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
@@ -555,9 +566,10 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                           (Match m) => '${m[1]},',
                         )}원',
                     style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFFFF4081),
+                      fontSize: 24.37,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFFFF5A8D),
                     ),
                   ),
                 ],
@@ -574,15 +586,15 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                           (Match m) => '${m[1]},',
                         )}P',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w600,
+                      fontSize: 11.70,
+                      fontFamily: 'Gmarket Sans TTF',
+                      color: Colors.black,
+                      fontWeight: FontWeight.w300,
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
           ],
           Padding(
             padding: const EdgeInsets.all(16),
@@ -604,7 +616,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                           child: const Text(
                             '장바구니',
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 17.54,
+                              fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -627,7 +640,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                           child: const Text(
                             '구매하기',
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 17.54,
+                              fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -653,8 +667,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                         '처방예약하기',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 17.54,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
