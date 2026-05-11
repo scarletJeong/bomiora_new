@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/kakao_auth_service.dart';
@@ -6,6 +7,7 @@ import '../../../data/models/user/user_model.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -55,166 +57,245 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height - 40,
-            ),
-            child: Center(
-              child: Form(
-                key: _formKey,
-                child: Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(37),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: Color(0xFF1A1A1A),
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 27),
+                  vertical: healthDp(context, 20),
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.sizeOf(context).height -
+                        healthDp(context, 40),
+                  ),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Form(
+                      key: _formKey,
+                      child: Container(
+                        width: double.infinity,
+                        constraints:
+                            const BoxConstraints(maxWidth: 650),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Image.asset(
-                              AppAssets.bomioraPinkLogo,
-                              height: 22,
-                              fit: BoxFit.contain,
-                            ),
-                            const SizedBox(height: 48),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildInputField(
-                                  controller: _emailController,
-                                  hintText: '이메일',
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: (value) {
-                                    if (value == null || value.trim().isEmpty) {
-                                      return '이메일을 입력해주세요';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 10),
-                                _buildPasswordField(),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 180),
-                                  curve: Curves.easeInOut,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      if (_loginErrorText != null) ...[
-                                        const SizedBox(height: 14),
-                                        Text(
-                                          _loginErrorText!,
-                                          style: const TextStyle(
-                                            color: Color(0xFFEF4444),
-                                            fontSize: 12,
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                      SizedBox(height: _loginErrorText != null ? 14 : 10),
-                                    ],
+                            // 375 기준 로고 위 간격(기존 체감값): 331
+                            SizedBox(height: healthDp(context, 130)),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                healthDp(context, 37),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.center,
+                                children: [
+                                  SvgPicture.asset(
+                                    AppAssets.bomioraPinkLogo,
+                                    height: healthDp(context, 22),
+                                    fit: BoxFit.contain,
                                   ),
-                                ),
-                                InkWell(
-                                  onTap: _isLoading
-                                      ? null
-                                      : () => setState(() => _autoLogin = !_autoLogin),
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                  SizedBox(height: healthDp(context, 40)),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      AnimatedContainer(
-                                        duration: const Duration(milliseconds: 150),
-                                        width: 20,
-                                        height: 20,
-                                        decoration: ShapeDecoration(
-                                          color: _autoLogin
-                                              ? const Color(0xFFFF5A8D)
-                                              : Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            side: BorderSide(
-                                              width: 0.5,
-                                              color: _autoLogin
-                                                  ? const Color(0xFFFF5A8D)
-                                                  : const Color(0xFF898383),
+                                      _buildInputField(
+                                        controller: _emailController,
+                                        hintText: '이메일',
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.trim().isEmpty) {
+                                            return '이메일을 입력해주세요';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      SizedBox(height: healthDp(context, 10)),
+                                      _buildPasswordField(),
+                                      AnimatedSize(
+                                        duration: const Duration(
+                                            milliseconds: 180),
+                                        curve: Curves.easeInOut,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (_loginErrorText != null) ...[
+                                              SizedBox(
+                                                  height: healthDp(
+                                                      context, 14)),
+                                              Text(
+                                                _loginErrorText!,
+                                                style: TextStyle(
+                                                  color: const Color(
+                                                      0xFFEF4444),
+                                                  fontSize: healthSp(
+                                                      context, 12),
+                                                  fontFamily:
+                                                      'Gmarket Sans TTF',
+                                                  fontWeight:
+                                                      FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                            SizedBox(
+                                              height: healthDp(
+                                                context,
+                                                _loginErrorText != null
+                                                    ? 14
+                                                    : 10,
+                                              ),
                                             ),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
+                                          ],
                                         ),
-                                        child: _autoLogin
-                                            ? const Icon(
-                                                Icons.check,
-                                                size: 14,
-                                                color: Colors.white,
-                                              )
-                                            : null,
                                       ),
-                                      const SizedBox(width: 4),
-                                      const Text(
-                                        '자동로그인',
-                                        style: TextStyle(
-                                          color: Color(0xFF898383),
-                                          fontSize: 12,
-                                          fontFamily: 'Gmarket Sans TTF',
-                                          fontWeight: FontWeight.w500,
+                                      InkWell(
+                                        onTap: _isLoading
+                                            ? null
+                                            : () => setState(() =>
+                                                _autoLogin = !_autoLogin),
+                                        borderRadius:
+                                            BorderRadius.circular(
+                                          healthDp(context, 6),
                                         ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            AnimatedContainer(
+                                              duration: const Duration(
+                                                  milliseconds: 150),
+                                              width:
+                                                  healthDp(context, 20),
+                                              height:
+                                                  healthDp(context, 20),
+                                              decoration: ShapeDecoration(
+                                                color: _autoLogin
+                                                    ? const Color(
+                                                        0xFFFF5A8D)
+                                                    : Colors.white,
+                                                shape:
+                                                    RoundedRectangleBorder(
+                                                  side: BorderSide(
+                                                    width: healthDp(
+                                                        context, 0.5),
+                                                    color: _autoLogin
+                                                        ? const Color(
+                                                            0xFFFF5A8D)
+                                                        : const Color(
+                                                            0xFF898383),
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                    healthDp(context, 4),
+                                                  ),
+                                                ),
+                                              ),
+                                              child: _autoLogin
+                                                  ? Icon(
+                                                      Icons.check,
+                                                      size: healthDp(
+                                                          context, 14),
+                                                      color: Colors.white,
+                                                    )
+                                                  : null,
+                                            ),
+                                            SizedBox(
+                                                width: healthDp(context, 4)),
+                                            Text(
+                                              '자동로그인',
+                                              style: TextStyle(
+                                                color: const Color(
+                                                    0xFF898383),
+                                                fontSize:
+                                                    healthSp(context, 12),
+                                                fontFamily:
+                                                    'Gmarket Sans TTF',
+                                                fontWeight:
+                                                    FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(height: healthDp(context, 24)),
+                                      _buildLoginButton(),
+                                      SizedBox(height: healthDp(context, 20)),
+                                      _buildLinkRow(),
+                                    ],
+                                  ),
+                                  SizedBox(height: healthDp(context, 48)),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _buildSocialButton(
+                                        backgroundColor:
+                                            const Color(0xFF03C75A),
+                                        imagePath: AppAssets.loginNaver,
+                                        onTap: null,
+                                        imageSize: 42,
+                                      ),
+                                      SizedBox(width: healthDp(context, 10)),
+                                      _buildSocialButton(
+                                        backgroundColor:
+                                            const Color(0xFFFFE812),
+                                        imagePath: AppAssets.loginKakao,
+                                        onTap: _isLoading
+                                            ? null
+                                            : _handleKakaoLogin,
+                                        imageSize: 42,
+                                      ),
+                                      SizedBox(width: healthDp(context, 10)),
+                                      _buildSocialButton(
+                                        backgroundColor: Colors.white,
+                                        imagePath: AppAssets.loginGoogle,
+                                        onTap: null,
+                                        // Google 로고는 원본 자산 여백이 커서 다른 소셜과 시각 크기가 달라 보임
+                                        imageSize: 44,
+                                        imageScale: 1.25,
+                                      ),
+                                      SizedBox(width: healthDp(context, 10)),
+                                      _buildSocialButton(
+                                        backgroundColor: Colors.black,
+                                        imagePath: AppAssets.loginApple,
+                                        onTap: null,
+                                        imageSize: 42,
                                       ),
                                     ],
                                   ),
-                                ),
-                                const SizedBox(height: 24),
-                                _buildLoginButton(),
-                                const SizedBox(height: 20),
-                                _buildLinkRow(),
-                              ],
-                            ),
-                            const SizedBox(height: 48),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _buildSocialButton(
-                                  backgroundColor: const Color(0xFF03C75A),
-                                  imagePath: AppAssets.loginNaver,
-                                  onTap: null,
-                                  imageSize: 42,
-                                ),
-                                const SizedBox(width: 10),
-                                _buildSocialButton(
-                                  backgroundColor: const Color(0xFFFFE812),
-                                  imagePath: AppAssets.loginKakao,
-                                  onTap: _isLoading ? null : _handleKakaoLogin,
-                                  imageSize: 42,
-                                ),
-                                const SizedBox(width: 10),
-                                _buildSocialButton(
-                                  backgroundColor: Colors.white,
-                                  imagePath: AppAssets.loginGoogle,
-                                  onTap: null,
-                                  imageSize: 42,
-                                  imageScale: 1.15,
-                                ),
-                                const SizedBox(width: 10),
-                                _buildSocialButton(
-                                  backgroundColor: Colors.black,
-                                  imagePath: AppAssets.loginApple,
-                                  onTap: null,
-                                  imageSize: 42,
-                                ),
-                              ],
+                                  SizedBox(height: healthDp(context, 6)),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -317,7 +398,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: healthDp(context, 52),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
@@ -327,42 +408,51 @@ class _LoginScreenState extends State<LoginScreen> {
             setState(() => _loginErrorText = null);
           }
         },
-        style: const TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: 16,
+        style: TextStyle(
+          color: const Color(0xFF1A1A1A),
+          fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(
-            color: Color(0x7F707070),
-            fontSize: 16,
+          hintStyle: TextStyle(
+            color: const Color(0x7F707070),
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 14),
+          ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
             borderSide: const BorderSide(color: Color(0xFFD2D2D2)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
             borderSide: const BorderSide(color: Color(0xFFD2D2D2)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-            borderSide: const BorderSide(color: Color(0xFFFF5A8D), width: 1.2),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderSide: BorderSide(
+              color: const Color(0xFFFF5A8D),
+              width: healthDp(context, 1.2),
+            ),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
             borderSide: const BorderSide(color: Color(0xFFEF4444)),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-            borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderSide: BorderSide(
+              color: const Color(0xFFEF4444),
+              width: healthDp(context, 1.2),
+            ),
           ),
           errorStyle: const TextStyle(height: 0, fontSize: 0),
         ),
@@ -373,7 +463,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildPasswordField() {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: healthDp(context, 52),
       child: TextFormField(
         controller: _passwordController,
         obscureText: _obscurePassword,
@@ -388,42 +478,51 @@ class _LoginScreenState extends State<LoginScreen> {
             setState(() => _loginErrorText = null);
           }
         },
-        style: const TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: 16,
+        style: TextStyle(
+          color: const Color(0xFF1A1A1A),
+          fontSize: healthSp(context, 16),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: '비밀번호',
-          hintStyle: const TextStyle(
-            color: Color(0x7F707070),
-            fontSize: 16,
+          hintStyle: TextStyle(
+            color: const Color(0x7F707070),
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 14),
+          ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
             borderSide: const BorderSide(color: Color(0xFFD2D2D2)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
             borderSide: const BorderSide(color: Color(0xFFD2D2D2)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-            borderSide: const BorderSide(color: Color(0xFFFF5A8D), width: 1.2),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderSide: BorderSide(
+              color: const Color(0xFFFF5A8D),
+              width: healthDp(context, 1.2),
+            ),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
             borderSide: const BorderSide(color: Color(0xFFEF4444)),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(7),
-            borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderSide: BorderSide(
+              color: const Color(0xFFEF4444),
+              width: healthDp(context, 1.2),
+            ),
           ),
           errorStyle: const TextStyle(height: 0, fontSize: 0),
           suffixIcon: IconButton(
@@ -445,7 +544,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginButton() {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: healthDp(context, 52),
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
@@ -454,23 +553,23 @@ class _LoginScreenState extends State<LoginScreen> {
           elevation: 0,
           shadowColor: const Color(0x3F000000),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
           ),
         ),
         child: _isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
+            ? SizedBox(
+                height: healthDp(context, 10),
+                width: healthDp(context, 20),
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
+                  strokeWidth: healthDp(context, 2),
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
+            : Text(
                 '로그인',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: healthSp(context, 18),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
@@ -488,20 +587,20 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton(
             onPressed: () => Navigator.pushNamed(context, '/find-account'),
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
-            child: const Text(
+            child: Text(
               '아이디/비밀번호 찾기',
               style: TextStyle(
                 color: Color(0xFF898383),
-                fontSize: 14,
+                fontSize: healthSp(context, 16),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           Container(
-            width: 1,
-            height: 15,
-            margin: const EdgeInsets.symmetric(horizontal: 20),
+            width: healthDp(context, 1),
+            height: healthDp(context, 15),
+            margin: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
             color: const Color(0xFF898383),
           ),
           TextButton(
@@ -512,11 +611,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
-            child: const Text(
+            child: Text(
               '회원가입',
               style: TextStyle(
                 color: Color(0xFF898383),
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -538,18 +637,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(45),
+      borderRadius: BorderRadius.circular(healthDp(context, 45)),
       child: Container(
-        width: 54,
-        height: 54,
-        padding: const EdgeInsets.all(6.43),
+        width: healthDp(context, 54),
+        height: healthDp(context, 54),
+        padding: EdgeInsets.all(healthDp(context, 6.43)),
         decoration: ShapeDecoration(
           color: backgroundColor,
           shape: RoundedRectangleBorder(
             side: borderColor != null
-                ? BorderSide(width: 1, color: borderColor)
+                ? BorderSide(width: healthDp(context, 1), color: borderColor)
                 : BorderSide.none,
-            borderRadius: BorderRadius.circular(45),
+            borderRadius: BorderRadius.circular(healthDp(context, 45)),
           ),
         ),
         child: Center(
@@ -557,12 +656,19 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: imagePadding,
             child: Transform.scale(
               scale: imageScale,
-              child: Image.asset(
-                imagePath,
-                width: imageSize,
-                height: imageSize,
-                fit: BoxFit.contain,
-              ),
+              child: imagePath.toLowerCase().endsWith('.svg')
+                  ? SvgPicture.asset(
+                      imagePath,
+                      width: healthDp(context, imageSize),
+                      height: healthDp(context, imageSize),
+                      fit: BoxFit.contain,
+                    )
+                  : Image.asset(
+                      imagePath,
+                      width: healthDp(context, imageSize),
+                      height: healthDp(context, imageSize),
+                      fit: BoxFit.contain,
+                    ),
             ),
           ),
         ),

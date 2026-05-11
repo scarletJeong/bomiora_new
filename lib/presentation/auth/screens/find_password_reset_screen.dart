@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/validation/app_password_validator.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 
 class FindPasswordResetScreen extends StatefulWidget {
   const FindPasswordResetScreen({
@@ -125,22 +126,49 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: const HealthAppBar(title: '비밀번호 재설정'),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 5),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: Color(0xFF1A1A1A),
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '비밀번호 재설정',
+              titleFontSize: healthSp(context, 18),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 27),
+                  vertical: healthDp(context, 20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(height: healthDp(context, 5)),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                       _buildPasswordSection(
                         title: '새 비밀번호를 입력해 주세요',
                         controller: _passwordController,
@@ -154,7 +182,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
                             : '*8~16자/문자,숫자,특수문자 모두 혼용',
                         helperColor: const Color(0xFF898686),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: healthDp(context, 20)),
                       _buildPasswordSection(
                         title: '새 비밀번호를 다시 한번 입력해 주세요',
                         controller: _confirmController,
@@ -213,7 +241,9 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+));
   }
 
   Widget _buildPasswordSection({

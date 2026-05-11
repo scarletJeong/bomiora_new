@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../data/repositories/auth/auth_repository.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../utils/find_id_accounts.dart';
 import '../widgets/find_account_btn.dart';
 import '../widgets/registered_account_ui.dart';
@@ -487,13 +488,42 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: const HealthAppBar(title: '아이디/비밀번호찾기'),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    // Web hot-reload 환경에서 `MediaQuery.sizeOf`(내부적으로 View.of 사용)가
+    // 간헐적으로 window assert를 유발할 수 있어, 안정적인 `MediaQuery.of`를 사용한다.
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: Color(0xFF1A1A1A),
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '아이디/비밀번호찾기',
+              titleFontSize: healthSp(context, 18),
+              leadingIconSize: healthDp(context, 24),
+            ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 27),
+            vertical: healthDp(context, 20),
+          ),
           child: Column(
             children: [
               Expanded(
@@ -502,7 +532,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       if (_step == _FindAccountStep.form) ...[
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,18 +541,18 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                                 '회원가입 시 등록한 정보를 입력해 주세요',
                                 style: TextStyle(
                                   color: Colors.black,
-                                  fontSize: 16,
+                                  fontSize: healthSp(context, 16),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: -1.44,
                                 ),
                               ),
-                              SizedBox(height: 5),
+                              SizedBox(height: healthDp(context, 5)),
                               Text(
                                 '소셜 로그인 계정은 각 플랫폼의 계정 찾기 기능을 이용해 주세요.',
                                 style: TextStyle(
-                                  color: Color(0xFF898686),
-                                  fontSize: 12,
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 12),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
                                   letterSpacing: -1.08,
@@ -531,13 +561,13 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 30),
+                        SizedBox(height: healthDp(context, 30)),
                         _buildTabSelector(),
-                        const SizedBox(height: 20),
+                        SizedBox(height: healthDp(context, 20)),
                         _buildActiveForm(),
-                        const SizedBox(height: 20),
+                        SizedBox(height: healthDp(context, 20)),
                         _buildPhoneCertCard(),
-                        const SizedBox(height: 16),
+                        SizedBox(height: healthDp(context, 16)),
                         const SizedBox.shrink(),
                       ] else ...[
                         _buildFindIdResultView(),
@@ -586,7 +616,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+));
   }
 
   Widget _buildTabSelector() {
@@ -633,13 +665,16 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         decoration: selected
             ? ShapeDecoration(
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 0.5, color: Color(0x7F898686)),
-                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    width: healthDp(context, 0.5),
+                    color: const Color(0x7F898686),
+                  ),
+                  borderRadius: BorderRadius.circular(healthDp(context, 20)),
                 ),
               )
             : const ShapeDecoration(shape: RoundedRectangleBorder()),
@@ -648,7 +683,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
             label,
             style: TextStyle(
               color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898686),
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
@@ -669,7 +704,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               child: Column(
                 children: [
                   _buildFieldLabel('이름'),
-                  const SizedBox(height: 10),
+                  SizedBox(height: healthDp(context, 10)),
                   _buildTextField(
                     controller: _idNameController,
                     hintText: '이름을 입력해 주세요',
@@ -680,9 +715,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: healthDp(context, 10)),
                   _buildFieldLabel('휴대폰 번호'),
-                  const SizedBox(height: 10),
+                  SizedBox(height: healthDp(context, 10)),
                   _buildPhoneSection(),
                 ],
               ),
@@ -699,23 +734,23 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '가입 이메일을 입력해 주세요.',
-              style: const TextStyle(
+              '아이디(이메일)를 입력해 주세요.',
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 5)),
           _buildEmailFieldWithError(),
           _buildMethodCard(
             title: '등록된 휴대폰으로 찾기',
             child: Column(
               children: [
                 _buildFieldLabel('이름'),
-                const SizedBox(height: 10),
+                SizedBox(height: healthDp(context, 10)),
                 _buildTextField(
                   controller: _passwordNameController,
                   hintText: '이름을 입력해 주세요',
@@ -726,9 +761,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: healthDp(context, 10)),
                 _buildFieldLabel('휴대폰 번호'),
-                const SizedBox(height: 10),
+                SizedBox(height: healthDp(context, 10)),
                 _buildPhoneSection(),
               ],
             ),
@@ -746,8 +781,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       width: double.infinity,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(width: healthDp(context, 1), color: const Color(0x7FD2D2D2)),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
@@ -759,9 +794,12 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               _isRegisteredPhoneExpanded = !_isRegisteredPhoneExpanded;
             });
           },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 12),
+              vertical: healthDp(context, 12),
+            ),
             child: Column(
               children: [
                 Row(
@@ -769,9 +807,9 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.black,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
@@ -780,16 +818,16 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       _isRegisteredPhoneExpanded
                           ? Icons.keyboard_arrow_up
                           : Icons.keyboard_arrow_down,
-                      size: 18,
+                      size: healthDp(context, 18),
                       color: Colors.black,
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                const Divider(
-                  height: 1,
-                  thickness: 0.5,
-                  color: Color(0xFFD2D2D2),
+                SizedBox(height: healthDp(context, 10)),
+                Divider(
+                  height: healthDp(context, 1),
+                  thickness: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
                 ),
               ],
             ),
@@ -801,7 +839,12 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               ? CrossFadeState.showFirst
               : CrossFadeState.showSecond,
           firstChild: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 12),
+              0,
+              healthDp(context, 12),
+              healthDp(context, 12),
+            ),
             child: Column(
               children: [
                 child,
@@ -835,21 +878,21 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
           child: _emailLookupErrorText == null
-              ? const SizedBox(height: 10)
+              ? SizedBox(height: healthDp(context, 10))
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 14),
+                    SizedBox(height: healthDp(context, 14)),
                     Text(
                       _emailLookupErrorText!,
-                      style: const TextStyle(
-                        color: Color(0xFFEF4444),
-                        fontSize: 12,
+                      style: TextStyle(
+                        color: const Color(0xFFEF4444),
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: healthDp(context, 14)),
                   ],
                 ),
         ),
@@ -1253,8 +1296,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       width: double.infinity,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(width: healthDp(context, 1), color: const Color(0x7FD2D2D2)),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
@@ -1266,19 +1309,22 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               _isPhoneCertExpanded = !_isPhoneCertExpanded;
             });
           },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 12),
+              vertical: healthDp(context, 12),
+            ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       '휴대폰 본인인증으로 찾기',
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
@@ -1287,16 +1333,16 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                       _isPhoneCertExpanded
                           ? Icons.keyboard_arrow_up
                           : Icons.keyboard_arrow_down,
-                      size: 18,
+                      size: healthDp(context, 18),
                       color: Colors.black,
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                const Divider(
-                  height: 1,
-                  thickness: 0.5,
-                  color: Color(0xFFD2D2D2),
+                SizedBox(height: healthDp(context, 10)),
+                Divider(
+                  height: healthDp(context, 1),
+                  thickness: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
                 ),
               ],
             ),
@@ -1308,48 +1354,57 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               ? CrossFadeState.showFirst
               : CrossFadeState.showSecond,
           firstChild: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 12),
+              0,
+              healthDp(context, 12),
+              healthDp(context, 12),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 5),
-                const Text(
+                SizedBox(height: healthDp(context, 5)),
+                Text(
                   '본인 명의의 휴대폰으로 인증이 가능합니다.',
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                     letterSpacing: -1.08,
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: healthDp(context, 20)),
                 SizedBox(
                   width: double.infinity,
-                  height: 43,
+                  height: healthDp(context, 43),
                   child: ElevatedButton(
                     onPressed: _handlePhoneCertNavigation,
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
                       backgroundColor: const Color(0xFFFF5A8D),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           '본인인증 바로가기',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: healthSp(context, 16),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white),
+                        SizedBox(width: healthDp(context, 6)),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: healthDp(context, 14),
+                          color: Colors.white,
+                        ),
                       ],
                     ),
                   ),

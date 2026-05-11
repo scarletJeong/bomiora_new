@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/repositories/auth/auth_repository.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../utils/find_id_accounts.dart';
 import '../widgets/find_account_btn.dart';
 import '../widgets/registered_account_ui.dart';
@@ -94,67 +95,103 @@ class _FindAccountResultScreenState
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: const HealthAppBar(title: '아이디/비밀번호찾기'),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorText != null
-                  ? _buildErrorView()
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                RegisteredAccountList(
-                                  accounts: _accounts,
-                                  selectedIndex: _selectedAccountIndex,
-                                  onSelect: (index) => setState(
-                                    () => _selectedAccountIndex = index,
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: Color(0xFF1A1A1A),
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '아이디/비밀번호찾기',
+              titleFontSize: healthSp(context, 18),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 27),
+                  vertical: healthDp(context, 20),
+                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _errorText != null
+                        ? _buildErrorView()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      RegisteredAccountList(
+                                        accounts: _accounts,
+                                        selectedIndex: _selectedAccountIndex,
+                                        onSelect: (index) => setState(
+                                          () => _selectedAccountIndex = index,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: healthDp(context, 20),
+                                      ),
+                                      FindAccountResultActions(
+                                        onPasswordFind: () {
+                                          if (_accounts.isEmpty) return;
+                                          final i = _selectedAccountIndex
+                                              .clamp(0, _accounts.length - 1);
+                                          Navigator.pushReplacementNamed(
+                                            context,
+                                            '/find-account',
+                                            arguments: {
+                                              'tab': 'password',
+                                              'prefillEmail': _accounts[i],
+                                            },
+                                          );
+                                        },
+                                        onLogin: () {
+                                          if (_accounts.isEmpty) {
+                                            Navigator.pushReplacementNamed(
+                                                context, '/login');
+                                            return;
+                                          }
+                                          final i = _selectedAccountIndex
+                                              .clamp(0, _accounts.length - 1);
+                                          Navigator.pushReplacementNamed(
+                                            context,
+                                            '/login',
+                                            arguments: {
+                                              'prefillEmail': _accounts[i],
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 20),
-                                FindAccountResultActions(
-                          onPasswordFind: () {
-                            if (_accounts.isEmpty) return;
-                            final i = _selectedAccountIndex
-                                .clamp(0, _accounts.length - 1);
-                            Navigator.pushReplacementNamed(
-                              context,
-                              '/find-account',
-                              arguments: {
-                                'tab': 'password',
-                                'prefillEmail': _accounts[i],
-                              },
-                            );
-                          },
-                          onLogin: () {
-                            if (_accounts.isEmpty) {
-                              Navigator.pushReplacementNamed(context, '/login');
-                              return;
-                            }
-                            final i = _selectedAccountIndex
-                                .clamp(0, _accounts.length - 1);
-                            Navigator.pushReplacementNamed(
-                              context,
-                              '/login',
-                              arguments: {'prefillEmail': _accounts[i]},
-                            );
-                          },
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
+              ),
+            ),
+          ),
         ),
       ),
     );

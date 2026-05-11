@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_assets.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 
 /// 아이디/비밀번호 찾기 공통 — 일치 회원 없음
 /// 인자: `retryTab` `'password'` | `'id'` (생략 시 `'id'`), 하위 호환으로 `mode: 'password'` 도 동일 처리
@@ -36,13 +37,40 @@ class FindAccountNotFoundScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: const HealthAppBar(title: '아이디/비밀번호찾기'),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: Color(0xFF1A1A1A),
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '아이디/비밀번호찾기',
+              titleFontSize: healthSp(context, 18),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 27),
+                  vertical: healthDp(context, 20),
+                ),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -164,6 +192,8 @@ class FindAccountNotFoundScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  ),
+));
   }
 }

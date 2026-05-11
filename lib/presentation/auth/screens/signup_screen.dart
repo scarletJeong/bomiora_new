@@ -5,8 +5,9 @@ import '../../../core/validation/app_password_validator.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../user/healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/agreement_widget.dart';
 import '../widgets/kcp_cert.dart';
@@ -404,29 +405,57 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: HealthAppBar(
-        title: '회원가입',
-        onBack: _handleBack,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-          child: switch (_step) {
-            _SignupStep.form => _buildFormStep(),
-            _SignupStep.agreement => AgreementWidget(
-                isLoading: _isLoading,
-                onNext: _handleAgreementNext,
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: Color(0xFF1A1A1A),
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '회원가입',
+              onBack: _handleBack,
+              titleFontSize: healthSp(context, 18),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 27),
+                  vertical: healthDp(context, 20),
+                ),
+                child: switch (_step) {
+                  _SignupStep.form => _buildFormStep(),
+                  _SignupStep.agreement => AgreementWidget(
+                      isLoading: _isLoading,
+                      onNext: _handleAgreementNext,
+                    ),
+                  _SignupStep.complete => _SignupCompleteView(
+                      onGoHome: _goHome,
+                      onGoHealthDashboard: _goHealthDashboard,
+                      onGoHealthQuestionnaire: _goHealthQuestionnaire,
+                      onGoShoppingMall: _goShoppingMall,
+                    ),
+                },
               ),
-            _SignupStep.complete => _SignupCompleteView(
-                onGoHome: _goHome,
-                onGoHealthDashboard: _goHealthDashboard,
-                onGoHealthQuestionnaire: _goHealthQuestionnaire,
-                onGoShoppingMall: _goShoppingMall,
-              ),
-          },
+            ),
+          ),
         ),
       ),
     );
