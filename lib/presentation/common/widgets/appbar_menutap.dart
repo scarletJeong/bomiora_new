@@ -6,6 +6,8 @@ import '../../../data/services/auth_service.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/utils/get_product.dart';
 import '../../settings/settings_screen.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import 'cart_dropdown_menu.dart';
 import 'confirm_dialog.dart';
 
 /// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
@@ -220,13 +222,13 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                               child: InkWell(
                                 onTap: () =>
                                     _popAndPushNamed(context, '/product-main'),
-                                child: const Padding(
+                                child: Padding(
                                   padding: EdgeInsets.symmetric(vertical: 12),
                                   child: Text(
                                     '비대면 치료',
                                     style: TextStyle(
                                       color: _inkTitle,
-                                      fontSize: 16,
+                                      fontSize: healthSp(context, 16),
                                       fontFamily: _fontFamily,
                                       fontWeight: FontWeight.w500,
                                       letterSpacing: -1.44,
@@ -297,13 +299,13 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                     '/healthcare-store',
                                   );
                                 },
-                                child: const Padding(
+                                child: Padding(
                                   padding: EdgeInsets.symmetric(vertical: 12),
                                   child: Text(
                                     '헬스케어 스토어',
                                     style: TextStyle(
                                       color: _inkTitle,
-                                      fontSize: 16,
+                                      fontSize: healthSp(context, 16),
                                       fontFamily: _fontFamily,
                                       fontWeight: FontWeight.w500,
                                       letterSpacing: -1.44,
@@ -368,13 +370,13 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             Expanded(
                               child: InkWell(
                                 onTap: () => _popAndPushNamed(context, '/content'),
-                                child: const Padding(
+                                child: Padding(
                                   padding: EdgeInsets.symmetric(vertical: 12),
                                   child: Text(
                                     '건강 콘텐츠',
                                     style: TextStyle(
                                       color: _inkTitle,
-                                      fontSize: 16,
+                                      fontSize: healthSp(context, 16),
                                       fontFamily: _fontFamily,
                                       fontWeight: FontWeight.w500,
                                       letterSpacing: -1.44,
@@ -455,11 +457,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               const SizedBox(height: 10),
               const Divider(height: 1, thickness: 1, color: _divider),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '최근에 본 상품',
                 style: TextStyle(
                   color: _inkMuted,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: _fontFamily,
                   fontWeight: FontWeight.w500,
                   height: 1.32,
@@ -486,11 +488,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   '로그인을 하세요.',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     color: Colors.black,
                     fontWeight: FontWeight.w700,
@@ -520,11 +522,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     '로그인',
                     style: TextStyle(
                       fontFamily: _fontFamily,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -549,11 +551,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     '회원가입',
                     style: TextStyle(
                       fontFamily: _fontFamily,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -574,8 +576,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             Expanded(
               child: Text.rich(
                 TextSpan(
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: healthSp(context, 16),
                     fontFamily: _fontFamily,
                     color: Colors.black,
                   ),
@@ -606,10 +608,10 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             foregroundColor: const Color(0xFF898686),
           ),
-          child: const Text(
+          child: Text(
             '로그아웃',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: healthSp(context, 10),
               fontFamily: _fontFamily,
               fontWeight: FontWeight.w500,
             ),
@@ -766,11 +768,13 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
     final overlayBox = overlay.context.findRenderObject() as RenderBox?;
     final anchorTopLeft = anchorBox.localToGlobal(Offset.zero);
 
-    double left = anchorTopLeft.dx + anchorBox.size.width - 82;
+    final menuW = cartDropdownWidth(context);
+    double left = anchorTopLeft.dx + anchorBox.size.width - menuW;
     double top = anchorTopLeft.dy + anchorBox.size.height + 6;
     if (overlayBox != null) {
-      left = left.clamp(8, overlayBox.size.width - 82 - 8);
-      top = top.clamp(8, overlayBox.size.height - 90);
+      left = left.clamp(8, overlayBox.size.width - menuW - 8);
+      final menuH = healthDp(context, 96);
+      top = top.clamp(8, overlayBox.size.height - menuH - 8);
     }
 
     _cartDropdownEntry = OverlayEntry(
@@ -788,7 +792,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
             top: top,
             child: Material(
               color: Colors.transparent,
-              child: _CartShortcutDropdown(
+              child: CartDropdownMenuPanel(
                 onPrescriptionTap: () =>
                     _onSelectCartOption(widget.onCartPrescriptionTap),
                 onShoppingTap: () =>
@@ -833,7 +837,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
         _highlight ? _DrawerShortcut._hoverPink : _DrawerShortcut._muted;
     final labelStyle = TextStyle(
       color: color,
-      fontSize: 9.5,
+      fontSize: healthSp(context, 9.5),
       fontFamily: _DrawerShortcut._fontFamily,
       fontWeight: _highlight ? FontWeight.w700 : FontWeight.w500,
       height: 1.35,
@@ -888,7 +892,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                                   'P',
                                   style: TextStyle(
                                     color: color,
-                                    fontSize: 16,
+                                    fontSize: healthSp(context, 16),
                                     fontFamily: _DrawerShortcut._fontFamily,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -974,9 +978,9 @@ class _SectionRow extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Color(0xFF1A1A1A),
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontFamily: _fontFamily,
                   fontWeight: FontWeight.w500,
                   letterSpacing: -1.44,
@@ -989,106 +993,6 @@ class _SectionRow extends StatelessWidget {
                   size: 20, color: Color(0xFF1A1A1A)),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CartShortcutDropdown extends StatelessWidget {
-  final VoidCallback onPrescriptionTap;
-  final VoidCallback onShoppingTap;
-
-  const _CartShortcutDropdown({
-    required this.onPrescriptionTap,
-    required this.onShoppingTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 82,
-      padding: const EdgeInsets.all(10),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 4,
-            offset: Offset(0, 0),
-            spreadRadius: 0,
-          )
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _CartDropdownItem(
-            label: '진료담기',
-            onTap: onPrescriptionTap,
-          ),
-          const SizedBox(height: 5),
-          _CartDropdownItem(
-            label: '구매담기',
-            onTap: onShoppingTap,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CartDropdownItem extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _CartDropdownItem({
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  State<_CartDropdownItem> createState() => _CartDropdownItemState();
-}
-
-class _CartDropdownItemState extends State<_CartDropdownItem> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(6),
-        hoverColor: Colors.transparent,
-        splashColor: const Color(0xFFFF5A8D).withValues(alpha: 0.12),
-        highlightColor: const Color(0xFFFF5A8D).withValues(alpha: 0.08),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          decoration: BoxDecoration(
-            color: _hover ? const Color(0xFFFFF1F6) : Colors.white,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Center(
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                color: _hover ? const Color(0xFFFF5A8D) : Colors.black,
-                fontSize: 10,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -1113,9 +1017,9 @@ class _SubLink extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: Color(0xFF898686),
-              fontSize: 14,
+              fontSize: healthSp(context, 14),
               fontFamily: _fontFamily,
               fontWeight: FontWeight.w500,
               letterSpacing: -1.26,
@@ -1266,11 +1170,11 @@ class _RecentProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     '보미오라한의원',
                     style: TextStyle(
                       color: Color(0xFF1A1A1A),
-                      fontSize: 8,
+                      fontSize: healthSp(context, 8),
                       fontFamily: _fontFamily,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1280,9 +1184,9 @@ class _RecentProductCard extends StatelessWidget {
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Color(0xFF1A1A1A),
-                      fontSize: 10,
+                      fontSize: healthSp(context, 10),
                       fontFamily: _fontFamily,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.90,
@@ -1291,11 +1195,11 @@ class _RecentProductCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         '0%',
                         style: TextStyle(
                           color: Color(0xFFFF5A8D),
-                          fontSize: 8,
+                          fontSize: healthSp(context, 8),
                           fontFamily: _fontFamily,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1303,9 +1207,9 @@ class _RecentProductCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         price,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Color(0xFF1A1A1A),
-                          fontSize: 8,
+                          fontSize: healthSp(context, 8),
                           fontFamily: _fontFamily,
                           fontWeight: FontWeight.w700,
                         ),
