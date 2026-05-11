@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_footer.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/services/coupon_service.dart';
@@ -120,11 +119,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
               // 사용자 정보
               if (_review.isWeight != null || _review.isHeight != null)
                 _buildUserInfo(),
-              
-              const SizedBox(height: 300),
-              
-              // Footer
-              const AppFooter(),
+
             ],
           ),
         ),

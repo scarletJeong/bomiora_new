@@ -76,34 +76,4 @@ class FaqService {
       };
     }
   }
-
-  static Future<Map<String, dynamic>> getFaqDetail(int id) async {
-    try {
-      final endpoint = '${ApiEndpoints.getFaqDetail}/$id';
-      final response = await ApiClient.get(endpoint);
-      if (response.statusCode != 200) {
-        return {
-          'success': false,
-          'message': 'FAQ 상세를 불러오지 못했습니다.',
-          'item': null,
-        };
-      }
-
-      final body = json.decode(response.body) as Map<String, dynamic>;
-      final itemRaw = body['data'];
-      return {
-        'success': body['success'] == true,
-        'message': body['message']?.toString(),
-        'item': itemRaw is Map
-            ? FaqModel.fromJson(Map<String, dynamic>.from(itemRaw))
-            : null,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'FAQ 상세 조회 오류: $e',
-        'item': null,
-      };
-    }
-  }
 }
