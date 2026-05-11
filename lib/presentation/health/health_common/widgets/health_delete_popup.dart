@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../health_responsive_scale.dart';
+
 Future<bool?> showHealthDeletePopup({
   required BuildContext context,
   required String title,
@@ -54,135 +56,156 @@ class HealthDeletePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(32),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x24000000),
-                blurRadius: 24,
-                offset: Offset(0, 8),
-              ),
-            ],
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final r = healthDp(context, 32);
+    final rBtn = healthDp(context, 20);
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: TextScaler.linear(textScale),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(r),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: healthDp(context, 8),
+            sigmaY: healthDp(context, 8),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                child: Column(
-                  children: [
-                    Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF1F2937),
-                        fontSize: 22,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      message,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 15,
-                        height: 1.5,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(r),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0x24000000),
+                  blurRadius: healthDp(context, 24),
+                  offset: Offset(0, healthDp(context, 8)),
                 ),
-              ),
-              const Divider(height: 1, thickness: 1, color: Color(0xFFF1F1F1)),
-              SizedBox(
-                height: 62,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context, false),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 24),
+                    healthDp(context, 32),
+                    healthDp(context, 24),
+                    healthDp(context, 24),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF1F2937),
+                          fontSize: 22,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w700,
                         ),
-                        child: Container(
-                          width: double.infinity,
-                          height: double.infinity,
-                          decoration: const ShapeDecoration(
-                            color: Color(0xFFF8F8F8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(20),
-                              ),
-                            ),
+                      ),
+                      SizedBox(height: healthDp(context, 14)),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 15,
+                          height: 1.5,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(
+                  height: healthDp(context, 1),
+                  thickness: healthDp(context, 1),
+                  color: const Color(0xFFF1F1F1),
+                ),
+                SizedBox(
+                  height: healthDp(context, 62),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context, false),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(rBtn),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                cancelText,
-                                style: const TextStyle(
-                                  color: Color(0xFF898686),
-                                  fontSize: 16,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
+                          child: Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFF8F8F8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(rBtn),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context, true),
-                        borderRadius: const BorderRadius.only(
-                          bottomRight: Radius.circular(20),
-                        ),
-                        child: Container(
-                          width: double.infinity,
-                          height: double.infinity,
-                          decoration: const ShapeDecoration(
-                            color: Color(0xFFFF5A8D),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.only(
-                                bottomRight: Radius.circular(20),
-                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  cancelText,
+                                  style: const TextStyle(
+                                    color: Color(0xFF898686),
+                                    fontSize: 16,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                deleteText,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context, true),
+                          borderRadius: BorderRadius.only(
+                            bottomRight: Radius.circular(rBtn),
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFFF5A8D),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.only(
+                                  bottomRight: Radius.circular(rBtn),
                                 ),
                               ),
-                            ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  deleteText,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
