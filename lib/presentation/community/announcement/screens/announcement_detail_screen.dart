@@ -7,6 +7,7 @@ import '../../../../data/services/announcement_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 
 class AnnouncementDetailScreen extends StatefulWidget {
   final int announcementId;
@@ -69,20 +70,20 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               ? Center(
                   child: Text(
                     _error!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _kMuted,
-                      fontSize: 14,
+                      fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                     ),
                   ),
                 )
               : _item == null
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         '공지사항을 찾을 수 없습니다.',
                         style: TextStyle(
                           color: _kMuted,
-                          fontSize: 14,
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                         ),
                       ),
@@ -101,9 +102,9 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         Text(
           formattedTitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: _kText,
-            fontSize: 20,
+            fontSize: healthSp(context, 20),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
           ),
@@ -166,10 +167,10 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               }
               Navigator.pushNamed(context, '/announcement');
             },
-            child: const Text(
+            child: Text(
               '목록',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -186,9 +187,9 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
       final plain = ContentService.normalizeHtmlToText(rawHtml);
       return Text(
         plain,
-        style: const TextStyle(
+        style: TextStyle(
           color: _kText,
-          fontSize: 14,
+          fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
           height: 1.7,
@@ -208,7 +209,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               margin: Margins.zero,
               padding: HtmlPaddings.zero,
               fontFamily: 'Gmarket Sans TTF',
-              fontSize: FontSize(14),
+              fontSize: FontSize(healthSp(context, 14)),
               fontWeight: FontWeight.w500,
               lineHeight: const LineHeight(1.7),
               textAlign: TextAlign.start,
@@ -262,9 +263,9 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _kMuted,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -275,9 +276,9 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.black,
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),

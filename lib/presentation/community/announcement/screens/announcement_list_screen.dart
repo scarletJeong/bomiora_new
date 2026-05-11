@@ -5,6 +5,7 @@ import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import 'announcement_detail_screen.dart';
 
 class AnnouncementListScreen extends StatefulWidget {
@@ -137,12 +138,18 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
               controller: _searchController,
               textInputAction: TextInputAction.search,
               onSubmitted: (_) => _submitSearch(),
-              decoration: const InputDecoration(
+              style: TextStyle(
+                color: _kText,
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w400,
+              ),
+              decoration: InputDecoration(
                 hintText: '검색',
                 border: InputBorder.none,
                 hintStyle: TextStyle(
                   color: _kMuted,
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
                 ),
@@ -167,29 +174,29 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
         Text.rich(
           TextSpan(
             children: [
-              const TextSpan(
+              TextSpan(
                 text: '총 ',
                 style: TextStyle(
                   color: _kMuted,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
               ),
               TextSpan(
                 text: '$_total',
-                style: const TextStyle(
+                style: TextStyle(
                   color: _kPink,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const TextSpan(
+              TextSpan(
                 text: '건',
                 style: TextStyle(
                   color: _kMuted,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
@@ -244,9 +251,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _kText,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -264,11 +271,11 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       '공지',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
@@ -277,9 +284,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                 ],
                 Text(
                   date,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kMuted,
-                    fontSize: 10,
+                    fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -287,9 +294,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                 const SizedBox(width: 10),
                 Text(
                   '조회 : ${item.viewCount}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kMuted,
-                    fontSize: 10,
+                    fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -337,7 +344,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                     '$p',
                     style: TextStyle(
                       color: p == _page ? Colors.white : const Color(0xFF898383),
-                      fontSize: 14,
+                      fontSize: healthSp(context, 14),
                       fontFamily: 'Pretendard Variable',
                       fontWeight: FontWeight.w700,
                     ),
@@ -360,9 +367,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
       child: Text(
         _error ?? '오류가 발생했습니다.',
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           color: _kMuted,
-          fontSize: 14,
+          fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
         ),
@@ -371,14 +378,14 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   }
 
   Widget _buildEmpty() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 40),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
       child: Center(
         child: Text(
           '공지사항이 없습니다.',
           style: TextStyle(
             color: _kMuted,
-            fontSize: 14,
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
