@@ -1,39 +1,59 @@
 import 'package:flutter/material.dart';
+import '../responsive_scale.dart';
 
 /// 모바일 앱처럼 600px 고정 너비로 감싸는 공통 위젯
 class MobileLayoutWrapper extends StatelessWidget {
   final Widget child;
   final bool showShadow;
   final Color? backgroundColor;
+  final double maxWidth;
 
   const MobileLayoutWrapper({
     super.key,
     required this.child,
     this.showShadow = true,
     this.backgroundColor,
+    this.maxWidth = 650,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100], // 외부 배경색
-      body: Center(
-        child: Container(
-          width: 650, // 모바일 화면 크기로 고정
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: backgroundColor ?? Colors.white, // 기본값: 하얀색
-            boxShadow: showShadow ? [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                spreadRadius: 5,
+      body: LayoutBuilder(builder: (context, constraints) {
+        final rs = buildResponsiveScale(
+          constraints: constraints,
+          maxWidth: maxWidth,
+        );
+        return Center(
+          child: ResponsiveScaleScope(
+            data: rs,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                // 전역 텍스트 스케일은 고정. (폰트 반응형은 rs.sp()로만 제어)
+                textScaler: const TextScaler.linear(1.0),
               ),
-            ] : null,
+              child: Container(
+                width: rs.width, // 최대 maxWidth, 작아지면 화면폭에 맞춤
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: backgroundColor ?? Colors.white, // 기본값: 하얀색
+                  boxShadow: showShadow
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            spreadRadius: 5,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: child,
+              ),
+            ),
           ),
-          child: child,
-        ),
-      ),
+        );
+      }),
     );
   }
 }
@@ -48,6 +68,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   final bool showShadow;
   final Color? backgroundColor;
   final Color? outerBackgroundColor;
+  final double maxWidth;
 
   const MobileAppLayoutWrapper({
     super.key,
@@ -59,6 +80,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     this.showShadow = true,
     this.backgroundColor,
     this.outerBackgroundColor,
+    this.maxWidth = 650,
   });
 
   @override
@@ -100,30 +122,48 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     
     return Scaffold(
       backgroundColor: outerBackgroundColor ?? Colors.grey[100], // 외부 배경색
-      body: Center(
-        child: Container(
-          width: 650, // 모바일 화면 크기로 고정
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: backgroundColor ?? Colors.white, // 기본값: 하얀색
-            boxShadow: showShadow ? [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                spreadRadius: 5,
+      body: LayoutBuilder(builder: (context, constraints) {
+        final rs = buildResponsiveScale(
+          constraints: constraints,
+          maxWidth: maxWidth,
+        );
+        return Center(
+          child: ResponsiveScaleScope(
+            data: rs,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                // 전역 텍스트 스케일은 고정. (폰트 반응형은 rs.sp()로만 제어)
+                textScaler: const TextScaler.linear(1.0),
               ),
-            ] : null,
+              child: Container(
+                width: rs.width, // 최대 maxWidth, 작아지면 화면폭에 맞춤
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: backgroundColor ?? Colors.white, // 기본값: 하얀색
+                  boxShadow: showShadow
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            spreadRadius: 5,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Scaffold(
+                  key: scaffoldKey,
+                  backgroundColor:
+                      backgroundColor ?? Colors.white, // 기본값: 하얀색
+                  appBar: wrappedAppBar ?? appBar,
+                  drawer: drawer,
+                  endDrawer: endDrawer,
+                  body: child,
+                ),
+              ),
+            ),
           ),
-          child: Scaffold(
-            key: scaffoldKey,
-            backgroundColor: backgroundColor ?? Colors.white, // 기본값: 하얀색
-            appBar: wrappedAppBar ?? appBar,
-            drawer: drawer,
-            endDrawer: endDrawer,
-            body: child,
-          ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
