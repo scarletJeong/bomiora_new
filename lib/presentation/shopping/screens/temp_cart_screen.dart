@@ -10,6 +10,7 @@ import '../../../data/services/cart_service.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/recommend_product.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 
@@ -271,11 +272,13 @@ class _TempCartScreenState extends State<TempCartScreen> {
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: const Color(0x7FD2D2D2)),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               '임시 장바구니가 비어 있습니다.',
                               style: TextStyle(
-                                  fontSize: 13, color: Color(0xFF666666)),
+                                fontSize: healthSp(context, 13),
+                                color: const Color(0xFF666666),
+                              ),
                             ),
                           ),
                         ),
@@ -302,10 +305,10 @@ class _TempCartScreenState extends State<TempCartScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text(
-                                  '처방 예약하기',
+                              : Text(
+                                  '처방 예약 하기',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: healthSp(context, 17.54),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -377,11 +380,11 @@ class _TempCartScreenState extends State<TempCartScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (item.ctKind == 'prescription')
-                      const Text(
+                      Text(
                         '한의약품',
                         style: TextStyle(
-                          color: Color(0xFF898686),
-                          fontSize: 8,
+                          color: const Color(0xFF898686),
+                          fontSize: healthSp(context, 8),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -389,9 +392,9 @@ class _TempCartScreenState extends State<TempCartScreen> {
                       item.itName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 14,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(context, 14),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -401,9 +404,9 @@ class _TempCartScreenState extends State<TempCartScreen> {
                         item.ctOption,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF898383),
-                          fontSize: 10,
+                        style: TextStyle(
+                          color: const Color(0xFF898383),
+                          fontSize: healthSp(context, 10),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -411,11 +414,11 @@ class _TempCartScreenState extends State<TempCartScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text(
+                        Text(
                           '수량',
                           style: TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 14,
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(context, 14),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -440,8 +443,8 @@ class _TempCartScreenState extends State<TempCartScreen> {
                                     const EdgeInsets.symmetric(horizontal: 6),
                                 child: Text(
                                   '${item.ctQty}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
+                                  style: TextStyle(
+                                    fontSize: healthSp(context, 12),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -474,9 +477,9 @@ class _TempCartScreenState extends State<TempCartScreen> {
               alignment: Alignment.centerRight,
               child: Text(
                 PriceFormatter.format(item.ctPrice),
-                style: const TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 16,
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w700,
                 ),
               ),

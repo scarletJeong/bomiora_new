@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/app_bar.dart';
@@ -432,10 +433,10 @@ class _CartScreenState extends State<CartScreen> {
                               color: Colors.grey,
                             ),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               '장바구니가 비어있습니다.',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: healthSp(context, 16),
                                 color: Colors.grey,
                               ),
                             ),
@@ -474,7 +475,7 @@ class _CartScreenState extends State<CartScreen> {
                                         child: Text(
                                           '선택한 탭에 상품이 없습니다.',
                                           style: TextStyle(
-                                            fontSize: 14,
+                                            fontSize: healthSp(context, 14),
                                             color: Colors.grey[600],
                                           ),
                                         ),
@@ -490,10 +491,10 @@ class _CartScreenState extends State<CartScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
                                         children: [
-                                          const Text(
+                                          Text(
                                             '*진료예약자와 시간을 다시 한번 확인해주세요.',
                                             style: TextStyle(
-                                              fontSize: 11,
+                                              fontSize: healthSp(context, 11),
                                               color: Colors.black87,
                                             ),
                                             textAlign: TextAlign.center,
@@ -501,11 +502,11 @@ class _CartScreenState extends State<CartScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 4),
-                                          const Text(
+                                          Text(
                                             '결제가 완료되셔야 예약이 확정됩니다.',
                                             style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFFFF3787),
+                                              fontSize: healthSp(context, 12),
+                                              color: const Color(0xFFFF3787),
                                             ),
                                             textAlign: TextAlign.center,
                                             maxLines: 2,
@@ -567,23 +568,23 @@ class _CartScreenState extends State<CartScreen> {
                                           alignment: Alignment.centerLeft,
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
-                                            children: const [
+                                            children: [
                                               Text(
                                                 '|',
                                                 style: TextStyle(
-                                                  color: Color(0xFF1A1A1A),
-                                                  fontSize: 16,
+                                                  color: const Color(0xFF1A1A1A),
+                                                  fontSize: healthSp(context, 16),
                                                   fontFamily: 'Gmarket Sans TTF',
                                                   fontWeight: FontWeight.w700,
                                                   letterSpacing: -1.44,
                                                 ),
                                               ),
-                                              SizedBox(width: 6),
+                                              const SizedBox(width: 6),
                                               Text(
                                                 '추가 상품 구매하기',
                                                 style: TextStyle(
-                                                  color: Color(0xFF1A1A1A),
-                                                  fontSize: 16,
+                                                  color: const Color(0xFF1A1A1A),
+                                                  fontSize: healthSp(context, 16),
                                                   fontFamily: 'Gmarket Sans TTF',
                                                   fontWeight: FontWeight.w700,
                                                   letterSpacing: -1.44,
@@ -594,16 +595,16 @@ class _CartScreenState extends State<CartScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 6),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
                                             horizontal: 16),
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Text(
                                             '함께 구매하면 좋은 상품을 확인해보세요 !',
                                             style: TextStyle(
-                                              color: Color(0xFF898686),
-                                              fontSize: 12,
+                                              color: const Color(0xFF898686),
+                                              fontSize: healthSp(context, 12),
                                               fontFamily: 'Gmarket Sans TTF',
                                               fontWeight: FontWeight.w500,
                                               height: 1.32,
@@ -660,15 +661,15 @@ class _CartScreenState extends State<CartScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _summaryRow('구매금액', '${PriceFormatter.format(selectedPrice)}원',
-              fontSize: 16, fontWeight: FontWeight.w500),
+              fontSize: healthSp(context, 16), fontWeight: FontWeight.w500),
           const SizedBox(height: 10),
           _summaryRow('배송비', '${PriceFormatter.format(selectedShipping)}원',
-              fontSize: 14, fontWeight: FontWeight.w500),
+              fontSize: healthSp(context, 14), fontWeight: FontWeight.w500),
           const SizedBox(height: 10),
           const Divider(height: 1, thickness: 1, color: Color(0x7F1A1A1A)),
           const SizedBox(height: 10),
           _summaryRow('결제 금액', '${PriceFormatter.format(payable)}원',
-              fontSize: 16, fontWeight: FontWeight.w700),
+              fontSize: healthSp(context, 16), fontWeight: FontWeight.w700),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
@@ -682,10 +683,10 @@ class _CartScreenState extends State<CartScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 '결제하기',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
@@ -735,10 +736,10 @@ class _CartScreenState extends State<CartScreen> {
                 },
               ),
               const SizedBox(width: 4),
-              const Text(
+              Text(
                 '전체선택',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: healthSp(context, 13),
                   color: Colors.black87,
                 ),
               ),
@@ -761,7 +762,7 @@ class _CartScreenState extends State<CartScreen> {
                 child: Text(
                   '선택삭제',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     color: _selectedDisplayedItemIds.isEmpty
                         ? Colors.grey
                         : Colors.red,
@@ -828,13 +829,13 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  static const TextStyle _kCartOptionMuted = TextStyle(
-    color: Color(0xFF898383),
-    fontSize: 10,
-    fontFamily: 'Gmarket Sans TTF',
-    fontWeight: FontWeight.w500,
-    letterSpacing: -0.90,
-  );
+  TextStyle _cartOptionMutedStyle() => TextStyle(
+        color: const Color(0xFF898383),
+        fontSize: healthSp(context, 10),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.90,
+      );
 
   bool _isPrescriptionKind(CartItem item) =>
       item.ctKind.trim().toLowerCase() == 'prescription';
@@ -844,7 +845,7 @@ class _CartScreenState extends State<CartScreen> {
     final opt = _buildCartItemOptionRow(item);
     final qtyText = Text(
       '수량 : ${item.ctQty}개',
-      style: _kCartOptionMuted,
+      style: _cartOptionMutedStyle(),
     );
     if (opt == null) {
       return qtyText;
@@ -867,21 +868,21 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  static const TextStyle _kPrescriptionMetaLabel = TextStyle(
-    color: Color(0xFF1A1A1A),
-    fontSize: 12,
-    fontFamily: 'Gmarket Sans TTF',
-    fontWeight: FontWeight.w500,
-    height: 1.35,
-  );
+  TextStyle _prescriptionMetaLabelStyle() => TextStyle(
+        color: const Color(0xFF1A1A1A),
+        fontSize: healthSp(context, 12),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        height: 1.35,
+      );
 
-  static const TextStyle _kPrescriptionMetaValue = TextStyle(
-    color: Color(0xFFFF5A8D),
-    fontSize: 12,
-    fontFamily: 'Gmarket Sans TTF',
-    fontWeight: FontWeight.w500,
-    height: 1.35,
-  );
+  TextStyle _prescriptionMetaValueStyle() => TextStyle(
+        color: const Color(0xFFFF5A8D),
+        fontSize: healthSp(context, 12),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        height: 1.35,
+      );
 
   String _formatCartReservationDate(CartItem item) {
     final d = item.reservationDate;
@@ -912,7 +913,7 @@ class _CartScreenState extends State<CartScreen> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('$left ', style: _kCartOptionMuted),
+            Text('$left ', style: _cartOptionMutedStyle()),
             Container(
               width: 0.5,
               height: 10,
@@ -922,7 +923,7 @@ class _CartScreenState extends State<CartScreen> {
             Flexible(
               child: Text(
                 right,
-                style: _kCartOptionMuted,
+                style: _cartOptionMutedStyle(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -938,7 +939,7 @@ class _CartScreenState extends State<CartScreen> {
           Flexible(
             child: Text(
               '$sub ',
-              style: _kCartOptionMuted,
+              style: _cartOptionMutedStyle(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -952,7 +953,7 @@ class _CartScreenState extends State<CartScreen> {
           Flexible(
             child: Text(
               opt,
-              style: _kCartOptionMuted,
+              style: _cartOptionMutedStyle(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -963,7 +964,7 @@ class _CartScreenState extends State<CartScreen> {
     if (opt.isNotEmpty) {
       return Text(
         opt,
-        style: _kCartOptionMuted,
+        style: _cartOptionMutedStyle(),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       );
@@ -971,7 +972,7 @@ class _CartScreenState extends State<CartScreen> {
     if (sub.isNotEmpty) {
       return Text(
         sub,
-        style: _kCartOptionMuted,
+        style: _cartOptionMutedStyle(),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       );
@@ -1057,9 +1058,9 @@ class _CartScreenState extends State<CartScreen> {
                       if (categoryLabel != null) ...[
                         Text(
                           categoryLabel,
-                          style: const TextStyle(
-                            color: Color(0xFF898686),
-                            fontSize: 8,
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 8),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
@@ -1068,9 +1069,9 @@ class _CartScreenState extends State<CartScreen> {
                       ],
                       Text(
                         item.itName,
-                        style: const TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 14,
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1A),
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w700,
                           letterSpacing: -1.26,
@@ -1084,9 +1085,9 @@ class _CartScreenState extends State<CartScreen> {
                         const SizedBox(height: 10),
                         Text(
                           '${PriceFormatter.format(item.ctPrice)}원',
-                          style: const TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 16,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(context, 16),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w700,
                           ),
@@ -1099,15 +1100,15 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                         const SizedBox(height: 10),
                         RichText(
-                          text: const TextSpan(
+                          text: TextSpan(
                             children: [
                               TextSpan(
                                 text: '담당 한의사 ',
-                                style: _kPrescriptionMetaLabel,
+                                style: _prescriptionMetaLabelStyle(),
                               ),
                               TextSpan(
                                 text: '정대진',
-                                style: _kPrescriptionMetaValue,
+                                style: _prescriptionMetaValueStyle(),
                               ),
                             ],
                           ),
@@ -1116,13 +1117,13 @@ class _CartScreenState extends State<CartScreen> {
                         RichText(
                           text: TextSpan(
                             children: [
-                              const TextSpan(
+                              TextSpan(
                                 text: '예약 일자 ',
-                                style: _kPrescriptionMetaLabel,
+                                style: _prescriptionMetaLabelStyle(),
                               ),
                               TextSpan(
                                 text: _formatCartReservationDate(item),
-                                style: _kPrescriptionMetaValue,
+                                style: _prescriptionMetaValueStyle(),
                               ),
                             ],
                           ),
@@ -1131,13 +1132,13 @@ class _CartScreenState extends State<CartScreen> {
                         RichText(
                           text: TextSpan(
                             children: [
-                              const TextSpan(
+                              TextSpan(
                                 text: '예약 시간 ',
-                                style: _kPrescriptionMetaLabel,
+                                style: _prescriptionMetaLabelStyle(),
                               ),
                               TextSpan(
                                 text: _formatCartReservationTime(item),
-                                style: _kPrescriptionMetaValue,
+                                style: _prescriptionMetaValueStyle(),
                               ),
                             ],
                           ),
@@ -1151,11 +1152,11 @@ class _CartScreenState extends State<CartScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               '수량',
                               style: TextStyle(
-                                color: Color(0xFF1A1A1A),
-                                fontSize: 14,
+                                color: const Color(0xFF1A1A1A),
+                                fontSize: healthSp(context, 14),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1196,9 +1197,9 @@ class _CartScreenState extends State<CartScreen> {
                 children: [
                   Text(
                     '${PriceFormatter.format(item.ctPrice)}원',
-                    style: const TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 16,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 16),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w700,
                     ),
@@ -1233,9 +1234,9 @@ class _CartScreenState extends State<CartScreen> {
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 12,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w600,
                 height: 0.79,
@@ -1291,7 +1292,8 @@ class _CartScreenState extends State<CartScreen> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: isTotal ? 15 : 13,
+              fontSize:
+                  isTotal ? healthSp(context, 15) : healthSp(context, 13),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               color: Colors.black87,
             ),
@@ -1303,7 +1305,8 @@ class _CartScreenState extends State<CartScreen> {
           child: Text(
             '$price원',
             style: TextStyle(
-              fontSize: isTotal ? 16 : 13,
+              fontSize:
+                  isTotal ? healthSp(context, 16) : healthSp(context, 13),
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
