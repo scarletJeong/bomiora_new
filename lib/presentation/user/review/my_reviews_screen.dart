@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/review/review_model.dart';
@@ -163,9 +163,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       _historyHeadId = _activeReview?.isId;
       _activeReview = tapped;
     });
-    if (kDebugMode) {
-      _debugLogReviewProductImage(tapped, tag: '.select');
-    }
   }
 
   Future<void> _loadReviews({bool refresh = false}) async {
@@ -214,15 +211,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
           final vis = _visibleReviews();
           _ensureActiveInVisible(vis);
         });
-        if (kDebugMode) {
-          for (final r in newReviews) {
-            _debugLogReviewProductImage(r, tag: '.load');
-          }
-          final active = _activeReview;
-          if (active != null) {
-            _debugLogReviewProductImage(active, tag: '.activeAfterLoad');
-          }
-        }
       }
     } catch (e) {
     } finally {
@@ -275,26 +263,26 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     final s = score.clamp(0, 5);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(healthDp(context, 12)),
       decoration: BoxDecoration(
         color: _kGrayBox,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: _kMuted2,
-              fontSize: 10,
+              fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
               height: 1.65,
             ),
           ),
-          const SizedBox(height: 4),
-          _starsRow(s, size: 16),
+          SizedBox(height: healthDp(context, 4)),
+          _starsRow(s, size: healthDp(context, 16)),
         ],
       ),
     );
@@ -306,7 +294,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(child: _prescriptionRatingCell(a, sa)),
-          const SizedBox(width: 8),
+          SizedBox(width: healthDp(context, 8)),
           Expanded(child: _prescriptionRatingCell(b, sb)),
         ],
       );
@@ -315,7 +303,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     return Column(
       children: [
         pair('효과', r.isScore1, '가성비', r.isScore2),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         pair('향/맛', r.isScore3, '복용 편의성', r.isScore4),
       ],
     );
@@ -327,27 +315,31 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: _kInk,
-            fontSize: 14,
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 20),
+            vertical: healthDp(context, 10),
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(width: 1, color: _kBorder),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
+            border: Border.all(
+                width: healthDp(context, 1), color: _kBorder),
           ),
           child: Text(
             body,
-            style: const TextStyle(
+            style: TextStyle(
               color: _kInk,
-              fontSize: 12,
+              fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
               height: 1.50,
@@ -379,29 +371,14 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     return null;
   }
 
-  /// 디버그: API에서 온 `it_id`·원본 썸네일·최종 로드 URL 확인
-  void _debugLogReviewProductImage(ReviewModel r, {String tag = ''}) {
-    if (!kDebugMode) return;
-    final rawThumb = r.productImage;
-    final resolved = _reviewListImageUrl(r);
-    final firstReviewImg = r.images.isNotEmpty ? r.images.first : null;
-    final resolvedReviewFirst =
-        firstReviewImg != null ? ImageUrlHelper.getReviewImageUrl(firstReviewImg) : null;
-    debugPrint(
-      '[MyReviews$tag] it_id=${r.itId} isId=${r.isId} '
-      'productImage(raw)=$rawThumb '
-      'images.count=${r.images.length} firstReviewImg=$firstReviewImg '
-      'resolvedListUrl=$resolved (reviewFirstResolved=$resolvedReviewFirst)',
-    );
-  }
-
   Widget _productImage(ReviewModel r) {
     final url = _reviewListImageUrl(r);
+    final side = healthDp(context, 80);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: SizedBox(
-        width: 80,
-        height: 80,
+        width: side,
+        height: side,
         child: url != null && url.isNotEmpty
             ? Image.network(
                 url,
@@ -417,63 +394,75 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     return Container(
       color: const Color(0xFFE8E8E8),
       alignment: Alignment.center,
-      child: const Icon(Icons.image_outlined, color: _kMuted, size: 32),
+      child: Icon(
+        Icons.image_outlined,
+        color: _kMuted,
+        size: healthDp(context, 32),
+      ),
     );
   }
 
   Widget _productHeaderRow(ReviewModel r) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // 수정|삭제 액션은 레이아웃(상품명 줄)과 분리해서 카드 우상단에 고정한다.
+    // (텍스트 우측에 붙어 줄바꿈/정렬이 깨지는 것을 방지)
+    final rightGutter = healthDp(context, 54);
+
+    return Stack(
       children: [
-        _productImage(r),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _productImage(r),
+            SizedBox(width: healthDp(context, 20)),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: rightGutter),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       _kBrandFallback,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kInk,
-                        fontSize: 10,
+                        fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ),
-                  _headerActionsInline(r),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _productTitle(r),
-                style: const TextStyle(
-                  color: _kInk,
-                  fontSize: 14,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1.26,
-                  height: 1.25,
+                    SizedBox(height: healthDp(context, 2)),
+                    Text(
+                      _productTitle(r),
+                      style: TextStyle(
+                        color: _kInk,
+                        fontSize: healthSp(context, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -1.26,
+                        height: 1.25,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: healthDp(context, 10)),
+                    Text(
+                      _writtenLine(r),
+                      style: TextStyle(
+                        color: _kMuted2,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 10),
-              Text(
-                _writtenLine(r),
-                style: const TextStyle(
-                  color: _kMuted2,
-                  fontSize: 10,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: _headerActionsInline(r),
         ),
       ],
     );
@@ -491,30 +480,30 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             '수정',
             style: TextStyle(
               color: actionColor,
-              fontSize: 12,
+              fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        const Text(
+        SizedBox(width: healthDp(context, 8)),
+        Text(
           '|',
           style: TextStyle(
             color: _kHeaderAction,
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: healthDp(context, 6)),
         GestureDetector(
           onTap: enabled ? () => _deleteReview(r) : null,
           child: Text(
             '삭제',
             style: TextStyle(
               color: actionColor,
-              fontSize: 12,
+              fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
@@ -528,11 +517,14 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     final n = r.czDownload ?? 0;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 20),
+        vertical: healthDp(context, 5),
+      ),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kPink),
-          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(width: healthDp(context, 1), color: _kPink),
+          borderRadius: BorderRadius.circular(healthDp(context, 4)),
         ),
       ),
       child: Row(
@@ -544,29 +536,35 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.local_offer_outlined, color: _kPink, size: 20),
-                    const SizedBox(width: 5),
-                    const Text(
+                    Icon(
+                      Icons.local_offer_outlined,
+                      color: _kPink,
+                      size: healthDp(context, 20),
+                    ),
+                    SizedBox(width: healthDp(context, 5)),
+                    Text(
                       '5% 할인 도움 쿠폰',
                       style: TextStyle(
                         color: _kPink,
-                        fontSize: 12,
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: healthDp(context, 6)),
                 Text.rich(
                   TextSpan(
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
-                      fontSize: 10,
+                      fontSize: healthSp(context, 10),
                     ),
                     children: [
-                      TextSpan(text: '$n', style: const TextStyle(color: _kPink)),
+                      TextSpan(
+                          text: '$n',
+                          style: const TextStyle(color: _kPink)),
                       const TextSpan(
                         text: '명이 받았어요!',
                         style: TextStyle(color: _kMuted),
@@ -574,12 +572,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
+                SizedBox(height: healthDp(context, 4)),
+                Text(
                   '유효기간 : 발급일로부터 7일',
                   style: TextStyle(
                     color: _kMuted,
-                    fontSize: 8,
+                    fontSize: healthSp(context, 8),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
@@ -588,13 +586,17 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             ),
           ),
           Container(
-            width: 40,
-            height: 40,
+            width: healthDp(context, 40),
+            height: healthDp(context, 40),
             decoration: BoxDecoration(
               color: const Color(0x19FF5A8D),
-              borderRadius: BorderRadius.circular(50),
+              borderRadius: BorderRadius.circular(healthDp(context, 50)),
             ),
-            child: const Icon(Icons.download_rounded, color: _kPink, size: 22),
+            child: Icon(
+              Icons.download_rounded,
+              color: _kPink,
+              size: healthDp(context, 22),
+            ),
           ),
         ],
       ),
@@ -604,14 +606,14 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Widget _expandedPrescriptionCard(ReviewModel r) {
     final children = <Widget>[
       _productHeaderRow(r),
-      const SizedBox(height: 10),
+      SizedBox(height: healthDp(context, 10)),
       _prescriptionRatingGrid(r),
     ];
 
     void appendTextSection(String title, String? raw) {
       final text = (raw ?? '').trim();
       if (text.isEmpty) return;
-      children.add(const SizedBox(height: 10));
+      children.add(SizedBox(height: healthDp(context, 10)));
       children.add(_prescriptionTextSection(title, text));
     }
 
@@ -620,16 +622,19 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     appendTextSection('꿀팁', r.isMoreReviewText);
 
     children
-      ..add(const SizedBox(height: 10))
+      ..add(SizedBox(height: healthDp(context, 10)))
       ..add(_couponBanner(r));
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 15),
+        vertical: healthDp(context, 20),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(width: 1, color: _kBorder),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        border: Border.all(width: healthDp(context, 1), color: _kBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,31 +653,34 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 15),
+        vertical: healthDp(context, 20),
+      ),
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _productHeaderRow(r),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _starsRowFromRating(starScore, size: 18),
-                const SizedBox(width: 8),
+                _starsRowFromRating(starScore, size: healthDp(context, 18)),
+                SizedBox(width: healthDp(context, 8)),
                 Text(
                   starScore < 0.5 ? '0.0' : starScore.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kInk,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                   ),
@@ -680,23 +688,26 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Container(
             width: double.infinity,
-            constraints: const BoxConstraints(minHeight: 76),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            constraints: BoxConstraints(minHeight: healthDp(context, 76)),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 20),
+              vertical: healthDp(context, 10),
+            ),
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _kBorder),
-                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+                borderRadius: BorderRadius.circular(healthDp(context, 12)),
               ),
             ),
             child: Text(
               body.isEmpty ? '작성된 리뷰 내용이 없습니다.' : body,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _kInk,
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
                 height: 1.50,
@@ -715,49 +726,57 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _selectReview(r),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(healthDp(context, 16)),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(healthDp(context, 16)),
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: _kBorder),
-              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+              borderRadius: BorderRadius.circular(healthDp(context, 16)),
             ),
           ),
           child: Row(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 child: SizedBox(
-                  width: 40,
-                  height: 40,
+                  width: healthDp(context, 40),
+                  height: healthDp(context, 40),
                   child: listThumb != null && listThumb.isNotEmpty
                       ? Image.network(
                           listThumb,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             color: const Color(0x4CD2D2D2),
-                            child: const Icon(Icons.image_outlined, size: 18, color: _kMuted),
+                            child: Icon(
+                              Icons.image_outlined,
+                              size: healthDp(context, 18),
+                              color: _kMuted,
+                            ),
                           ),
                         )
                       : Container(
                           color: const Color(0x4CD2D2D2),
                           alignment: Alignment.center,
-                          child: const Icon(Icons.image_outlined, size: 18, color: _kMuted),
+                          child: Icon(
+                            Icons.image_outlined,
+                            size: healthDp(context, 18),
+                            color: _kMuted,
+                          ),
                         ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: healthDp(context, 16)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       r.isTime == null ? '-' : DateDisplayFormatter.formatYmd(r.isTime!),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kDateBrown,
-                        fontSize: 10,
+                        fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                         height: 1.65,
@@ -765,9 +784,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     ),
                     Text(
                       _productTitle(r),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kInk,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                         letterSpacing: -1.44,
@@ -778,7 +797,11 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: _kMuted, size: 22),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: _kMuted,
+                size: healthDp(context, 22),
+              ),
             ],
           ),
         ),
@@ -788,7 +811,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
   Widget _filterField() {
     return SizedBox(
-      width: 140,
+      width: healthDp(context, 140),
       child: TextField(
         onChanged: (v) {
           setState(() {
@@ -796,33 +819,37 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             _ensureActiveInVisible(_visibleReviews());
           });
         },
-        style: const TextStyle(
+        style: TextStyle(
           color: _kMuted,
-          fontSize: 10,
+          fontSize: healthSp(context, 10),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w300,
         ),
         decoration: InputDecoration(
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 8),
+          ),
           hintText: '상품명',
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             color: _kMuted,
-            fontSize: 10,
+            fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: const BorderSide(color: _kBorderStrong),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             borderSide: const BorderSide(color: _kBorderStrong),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _kPink, width: 1),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            borderSide:
+                BorderSide(color: _kPink, width: healthDp(context, 1)),
           ),
         ),
       ),
@@ -871,92 +898,156 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   Widget build(BuildContext context) {
     final visible = _visibleReviews();
     final collapsed = _collapsedOrdered();
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
-      child: MobileAppLayoutWrapper(
-        backgroundColor: Colors.white,
-        appBar: const HealthAppBar(title: '내 리뷰'),
-        child: _isLoading && _reviews.isEmpty
-            ? const Center(child: CircularProgressIndicator(color: _kPink))
-            : _requiresLogin
-                ? _buildLoginMessage()
-                : _reviews.isEmpty
-                ? _buildEmpty()
-                : RefreshIndicator(
-                    color: _kPink,
-                    onRefresh: () => _loadReviews(refresh: true),
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(27, 20, 27, 0),
-                          sliver: SliverList(
-                            delegate: SliverChildListDelegate([
-                              _buildCountAndFilterRow(visible.length),
-                              const SizedBox(height: 20),
-                              if (_activeReview != null)
-                                _isPrescriptionStyle(_activeReview!)
-                                    ? _expandedPrescriptionCard(_activeReview!)
-                                    : _expandedGeneralCard(_activeReview!),
-                              const SizedBox(height: 24),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8),
-                                child: Text(
-                                  '이전 리뷰 내역',
-                                  style: TextStyle(
-                                    color: _kMuted,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.67,
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '내 리뷰',
+              titleFontSize: healthSp(context, 18),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: _isLoading && _reviews.isEmpty
+                ? Center(
+                    child: SizedBox(
+                      width: healthDp(context, 36),
+                      height: healthDp(context, 36),
+                      child: const CircularProgressIndicator(color: _kPink),
+                    ),
+                  )
+                : _requiresLogin
+                    ? _buildLoginMessage()
+                    : _reviews.isEmpty
+                        ? _buildEmpty()
+                        : RefreshIndicator(
+                            color: _kPink,
+                            onRefresh: () => _loadReviews(refresh: true),
+                            child: CustomScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              slivers: [
+                                SliverPadding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    healthDp(context, 27),
+                                    healthDp(context, 20),
+                                    healthDp(context, 27),
+                                    0,
+                                  ),
+                                  sliver: SliverList(
+                                    delegate: SliverChildListDelegate([
+                                      _buildCountAndFilterRow(visible.length),
+                                      SizedBox(height: healthDp(context, 20)),
+                                      if (_activeReview != null)
+                                        _isPrescriptionStyle(_activeReview!)
+                                            ? _expandedPrescriptionCard(
+                                                _activeReview!)
+                                            : _expandedGeneralCard(
+                                                _activeReview!),
+                                      SizedBox(height: healthDp(context, 24)),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: healthDp(context, 8)),
+                                        child: Text(
+                                          '이전 리뷰 내역',
+                                          style: TextStyle(
+                                            color: _kMuted,
+                                            fontSize:
+                                                healthSp(context, 12),
+                                            fontWeight: FontWeight.w500,
+                                            height: 1.67,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: healthDp(context, 12)),
+                                    ]),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                            ]),
-                          ),
-                        ),
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                if (index == collapsed.length) {
-                                  if (_hasMore && !_isLoading) {
-                                    scheduleMicrotask(() {
-                                      if (mounted) _loadReviews();
-                                    });
-                                  }
-                                  if (_isLoading && _reviews.isNotEmpty) {
-                                    return const Padding(
-                                      padding: EdgeInsets.all(24),
-                                      child: Center(child: CircularProgressIndicator(color: _kPink)),
-                                    );
-                                  }
-                                  return const SizedBox(height: 24);
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _collapsedTile(collapsed[index]),
-                                );
-                              },
-                              childCount: collapsed.length + 1,
+                                SliverPadding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    healthDp(context, 27),
+                                    0,
+                                    healthDp(context, 27),
+                                    healthDp(context, 20),
+                                  ),
+                                  sliver: SliverList(
+                                    delegate: SliverChildBuilderDelegate(
+                                      (context, index) {
+                                        if (index == collapsed.length) {
+                                          if (_hasMore && !_isLoading) {
+                                            scheduleMicrotask(() {
+                                              if (mounted) _loadReviews();
+                                            });
+                                          }
+                                          if (_isLoading &&
+                                              _reviews.isNotEmpty) {
+                                            return Padding(
+                                              padding: EdgeInsets.all(
+                                                  healthDp(context, 24)),
+                                              child: Center(
+                                                child: SizedBox(
+                                                  width: healthDp(
+                                                      context, 36),
+                                                  height: healthDp(
+                                                      context, 36),
+                                                  child:
+                                                      const CircularProgressIndicator(
+                                                          color: _kPink),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                          return SizedBox(
+                                              height:
+                                                  healthDp(context, 24));
+                                        }
+                                        return Padding(
+                                          padding: EdgeInsets.only(
+                                              bottom:
+                                                  healthDp(context, 12)),
+                                          child: _collapsedTile(
+                                              collapsed[index]),
+                                        );
+                                      },
+                                      childCount: collapsed.length + 1,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildCountAndFilterRow(int count) {
+    final divH = healthDp(context, 1);
+    final countStyle = TextStyle(
+      color: _kMuted,
+      fontSize: healthSp(context, 12),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(height: 1, color: _kBorder),
-        const SizedBox(height: 5),
+        Container(height: divH, color: _kBorder),
+        SizedBox(height: healthDp(context, 5)),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -964,20 +1055,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             Text.rich(
               TextSpan(
                 children: [
-                  const TextSpan(
-                    text: '총 리뷰수 ',
-                    style: TextStyle(
-                      color: _kMuted,
-                      fontSize: 12,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  TextSpan(text: '총 리뷰수 ', style: countStyle),
                   TextSpan(
                     text: '$count',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _kPink,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w700,
                     ),
@@ -988,8 +1071,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             _filterField(),
           ],
         ),
-        const SizedBox(height: 5),
-        Container(height: 1, color: _kBorder),
+        SizedBox(height: healthDp(context, 5)),
+        Container(height: divH, color: _kBorder),
       ],
     );
   }
@@ -999,11 +1082,19 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.rate_review_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          Icon(
+            Icons.rate_review_outlined,
+            size: healthDp(context, 64),
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: healthDp(context, 16)),
           Text(
             '작성한 리뷰가 없습니다',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600], fontFamily: 'Gmarket Sans TTF'),
+            style: TextStyle(
+              fontSize: healthSp(context, 16),
+              color: Colors.grey[600],
+              fontFamily: 'Gmarket Sans TTF',
+            ),
           ),
         ],
       ),
@@ -1015,11 +1106,19 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.rate_review_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          Icon(
+            Icons.rate_review_outlined,
+            size: healthDp(context, 64),
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: healthDp(context, 16)),
           Text(
             '로그인 후 이용 가능합니다.',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600], fontFamily: 'Gmarket Sans TTF'),
+            style: TextStyle(
+              fontSize: healthSp(context, 16),
+              color: Colors.grey[600],
+              fontFamily: 'Gmarket Sans TTF',
+            ),
           ),
         ],
       ),
