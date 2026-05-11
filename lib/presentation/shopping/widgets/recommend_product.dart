@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
-import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/product/product_model.dart';
+import '../../common/widgets/product_card.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+
+/// [ProductListScreen] 그리드와 동일 비율: 열 간격 `healthDp(12)`, `childAspectRatio: 0.58`.
+/// 부모가 이미 좌우 패딩을 두었으므로 여기서는 `maxWidth` 전체로 2열 폭을 맞춤.
+({double cellWidth, double cellHeight, double crossGap})
+    _recommendCatalogMetrics(BuildContext context, double maxWidth) {
+  final crossGap = healthDp(context, 12);
+  final inner = maxWidth.clamp(0.0, double.infinity);
+  final cellWidth = inner > crossGap
+      ? (inner - crossGap) / 2
+      : (inner * 0.45).clamp(80.0, 200.0);
+  final cellHeight = cellWidth / 0.58;
+  return (
+    cellWidth: cellWidth,
+    cellHeight: cellHeight,
+    crossGap: crossGap,
+  );
+}
 
 enum _RecommendGroup { diet, detox, calm }
 
@@ -109,23 +127,22 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
           SizedBox(height: widget.topSpacingBefore),
         if (hasHeader) ...[
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (widget.showLeadingBar)
-                const Text(
-                  '|',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                Container(
+                  width: 1,
+                  height: 14,
+                  margin: const EdgeInsets.only(right: 6),
+                  color: const Color(0xFF1A1A1A),
                 ),
-              if (widget.showLeadingBar) const SizedBox(width: 6),
               if (widget.title.trim().isNotEmpty)
                 Text(
                   widget.title,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 15.43,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Gmarket Sans TTF',
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
@@ -148,43 +165,61 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
             ),
           )
         else if (widget.useGrid2)
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: recommended.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              // 카드가 셀을 꽉 채우도록 비율 조정
-              childAspectRatio: 0.90,
-            ),
-            itemBuilder: (context, index) => _RecommendCard(
-              product: recommended[index],
-              onTap: () => widget.onProductTap(recommended[index]),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final m =
+                  _recommendCatalogMetrics(context, constraints.maxWidth);
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: recommended.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: m.crossGap,
+                  mainAxisSpacing: healthDp(context, 16),
+                  childAspectRatio: 0.58,
+                ),
+                itemBuilder: (context, index) => ProductCatalogCard(
+                  product: recommended[index],
+                  onTap: () => widget.onProductTap(recommended[index]),
+                ),
+              );
+            },
           )
         else
-          SizedBox(
-            height: 198,
-            child: ScrollConfiguration(
-              behavior: const _HorizontalDragScrollBehavior(),
-              child: Scrollbar(
-                controller: _horizontalScroll,
-                thumbVisibility: true,
-                child: ListView.separated(
-                  controller: _horizontalScroll,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  itemBuilder: (context, index) => _RecommendCard(
-                    product: recommended[index],
-                    onTap: () => widget.onProductTap(recommended[index]),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final m =
+                  _recommendCatalogMetrics(context, constraints.maxWidth);
+              return SizedBox(
+                height: m.cellHeight,
+                child: ScrollConfiguration(
+                  behavior: const _HorizontalDragScrollBehavior(),
+                  child: Scrollbar(
+                    controller: _horizontalScroll,
+                    thumbVisibility: true,
+                    child: ListView.separated(
+                      controller: _horizontalScroll,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      itemBuilder: (context, index) {
+                        return SizedBox(
+                          width: m.cellWidth,
+                          child: ProductCatalogCard(
+                            product: recommended[index],
+                            onTap: () =>
+                                widget.onProductTap(recommended[index]),
+                          ),
+                        );
+                      },
+                      separatorBuilder: (_, __) =>
+                          SizedBox(width: m.crossGap),
+                      itemCount: recommended.length,
+                    ),
                   ),
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
-                  itemCount: recommended.length,
                 ),
-              ),
-            ),
+              );
+            },
           ),
       ],
     );
@@ -200,216 +235,4 @@ class _HorizontalDragScrollBehavior extends MaterialScrollBehavior {
         PointerDeviceKind.mouse,
         PointerDeviceKind.trackpad,
       };
-}
-
-class _RecommendCard extends StatelessWidget {
-  final Product product;
-  final VoidCallback onTap;
-
-  const _RecommendCard({
-    required this.product,
-    required this.onTap,
-  });
-
-  String _stripHtml(String? value) {
-    if (value == null) return '';
-    return value
-        .replaceAll(RegExp(r'<[^>]+>'), ' ')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-
-  Widget _placeholder() {
-    return const ColoredBox(
-      color: Color(0xFFEFEFEF),
-      child: Center(
-        child: Icon(Icons.image_not_supported, color: Color(0xFFBDBDBD)),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, itemConstraints) {
-        final screenW = MediaQuery.sizeOf(context).width;
-        final tScale = (screenW / 390.0).clamp(0.88, 1.18);
-        const gmarket = 'Gmarket Sans TTF';
-        const brandPink = Color(0xFFFF5A8D);
-
-        final namePlain = _stripHtml(product.name);
-        final subjectPlain =
-            _stripHtml(product.additionalInfo?['it_subject']?.toString());
-
-        final nameFs = (12.5 * tScale).clamp(11.0, 15.0);
-        final subjectFs = (10.0 * tScale).clamp(9.0, 12.0);
-        final origFs = (10.5 * tScale).clamp(9.5, 12.5);
-        final discFs = (11.5 * tScale).clamp(10.5, 14.0);
-        final priceFs = (13.5 * tScale).clamp(12.0, 16.0);
-
-        final imageHeight = itemConstraints.hasBoundedHeight
-            ? itemConstraints.maxHeight * 2 / 3
-            : 220.0;
-
-        return GestureDetector(
-          onTap: onTap,
-          child: Card(
-            elevation: 2,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: imageHeight,
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
-                    ),
-                    child: (product.imageUrl ?? '').trim().isEmpty
-                        ? _placeholder()
-                        : Image.network(
-                            product.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _placeholder(),
-                            loadingBuilder: (context, child, progress) {
-                              if (progress == null) return child;
-                              return const Center(
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              );
-                            },
-                          ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              if (subjectPlain.isNotEmpty) ...[
-                                Text(
-                                  subjectPlain,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: subjectFs,
-                                    fontWeight: FontWeight.w400,
-                                    fontFamily: gmarket,
-                                  ),
-                                ),
-                                SizedBox(height: 3 * tScale),
-                              ],
-                              Text(
-                                namePlain,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: const Color(0xFF231F20),
-                                  fontSize: nameFs,
-                                  fontWeight: FontWeight.w500,
-                                  fontFamily: gmarket,
-                                  height: 1.25,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (product.originalPrice != null &&
-                            product.originalPrice! > product.price) ...[
-                          Text(
-                            PriceFormatter.format(product.originalPrice!),
-                            style: TextStyle(
-                              fontSize: origFs,
-                              color: Colors.grey[600],
-                              decoration: TextDecoration.lineThrough,
-                              fontFamily: gmarket,
-                            ),
-                          ),
-                          SizedBox(height: 4 * tScale),
-                        ],
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (product.originalPrice != null &&
-                                product.originalPrice! > product.price)
-                              Text(
-                                '${(((product.originalPrice! - product.price) / product.originalPrice!) * 100).round()}%',
-                                style: TextStyle(
-                                  fontSize: discFs,
-                                  color: brandPink,
-                                  fontWeight: FontWeight.w800,
-                                  fontFamily: gmarket,
-                                ),
-                              ),
-                            if (product.originalPrice != null &&
-                                product.originalPrice! > product.price)
-                              SizedBox(width: 5 * tScale),
-                            Expanded(
-                              child: Text(
-                                PriceFormatter.format(product.price),
-                                style: TextStyle(
-                                  fontSize: priceFs,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                  fontFamily: gmarket,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if ((product.rating ?? 0) > 0 ||
-                                (product.reviewCount ?? 0) > 0) ...[
-                              SizedBox(width: 6 * tScale),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.star,
-                                    size: (12.5 * tScale).clamp(11.0, 14.0),
-                                    color: const Color(0xFFFFCC00),
-                                  ),
-                                  SizedBox(width: 2 * tScale),
-                                  Text(
-                                    '${(product.rating ?? 0).toStringAsFixed(1)}'
-                                    '(${product.reviewCount ?? 0})',
-                                    style: TextStyle(
-                                      fontSize:
-                                          (10.5 * tScale).clamp(9.5, 12.0),
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: gmarket,
-                                      height: 1.1,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
