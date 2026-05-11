@@ -5,29 +5,30 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 
-const TextStyle _kTailBodyStyle = TextStyle(
-  fontSize: 13,
-  color: Colors.black87,
-  height: 1.55,
-  letterSpacing: -0.2,
-);
+TextStyle _tailBodyStyle(BuildContext context) => TextStyle(
+      fontSize: healthSp(context, 13),
+      color: Colors.black87,
+      height: 1.55,
+      letterSpacing: -0.2,
+    );
 
-const TextStyle _kTailH2Style = TextStyle(
-  fontSize: 14,
-  fontWeight: FontWeight.w700,
-  color: Colors.black87,
-  height: 1.35,
-  letterSpacing: -0.2,
-);
+TextStyle _tailH2Style(BuildContext context) => TextStyle(
+      fontSize: healthSp(context, 14),
+      fontWeight: FontWeight.w700,
+      color: Colors.black87,
+      height: 1.35,
+      letterSpacing: -0.2,
+    );
 
-const TextStyle _kTailPStyle = TextStyle(
-  fontSize: 12.5,
-  fontWeight: FontWeight.w300,
-  color: Color(0xFF444444),
-  height: 1.6,
-  letterSpacing: -0.15,
-);
+TextStyle _tailPStyle(BuildContext context) => TextStyle(
+      fontSize: healthSp(context, 12.5),
+      fontWeight: FontWeight.w300,
+      color: const Color(0xFF444444),
+      height: 1.6,
+      letterSpacing: -0.15,
+    );
 
 const double _kTailSectionContentIndent = 10;
 
@@ -38,25 +39,26 @@ Widget _sectionBottomDivider(BuildContext context) {
 }
 
 /// 접이식 섹션 제목 앞 세로 구분 표시 (`| 배송` 형태)
-Widget _expandableSectionTitle(String title) {
+Widget _expandableSectionTitle(BuildContext context, String title) {
   return Row(
     children: [
-      const Text(
+      Text(
         '|',
         style: TextStyle(
-          fontSize: 16,
+          fontSize: healthSp(context, 16),
           fontWeight: FontWeight.w300,
-          color: Colors.black87,
+          color: Colors.black,
         ),
       ),
       const SizedBox(width: 2),
       Flexible(
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: healthSp(context, 15.59),
+            fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
-            color: Colors.black87,
+            color: Colors.black,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -106,7 +108,7 @@ class ProductTailInfoSection extends StatelessWidget {
           ],
           if (showWarning) ...[
             // 주의사항
-            _buildWarningSection(),
+            _buildWarningSection(context),
             const SizedBox(height: 12),
           ],
           if (showPrescriptionProcess) ...[
@@ -145,7 +147,7 @@ class ProductTailInfoSection extends StatelessWidget {
   }
 
   /// 주의사항 섹션
-  Widget _buildWarningSection() {
+  Widget _buildWarningSection(BuildContext context) {
     return _SimpleExpandableSection(
       title: '주의사항',
       rows: [
@@ -156,6 +158,7 @@ class ProductTailInfoSection extends StatelessWidget {
       ],
       initialExpanded: initialExpanded,
       customBodyBuilder: () => _buildNoticeList(
+        context,
         warningText,
         pipeAsNewlineFallback: false,
       ),
@@ -171,7 +174,12 @@ class ProductTailInfoSection extends StatelessWidget {
   }
 
   /// 프로세스 단계 위젯
-  Widget _buildProcessStep(String step, String title, String description) {
+  Widget _buildProcessStep(
+    BuildContext context,
+    String step,
+    String title,
+    String description,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -180,16 +188,16 @@ class ProductTailInfoSection extends StatelessWidget {
             children: [
               TextSpan(
                 text: '$step ',
-                style: const TextStyle(
-                  fontSize: 15,
+                style: TextStyle(
+                  fontSize: healthSp(context, 15),
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
                 ),
               ),
               TextSpan(
                 text: title,
-                style: const TextStyle(
-                  fontSize: 15,
+                style: TextStyle(
+                  fontSize: healthSp(context, 15),
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
                 ),
@@ -201,7 +209,7 @@ class ProductTailInfoSection extends StatelessWidget {
         Text(
           description,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: healthSp(context, 13),
             color: Colors.grey[700],
             height: 1.5,
           ),
@@ -255,7 +263,7 @@ class _DeliverySectionState extends State<_DeliverySection> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: _expandableSectionTitle('배송')),
+                Expanded(child: _expandableSectionTitle(context, '배송')),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
@@ -271,6 +279,7 @@ class _DeliverySectionState extends State<_DeliverySection> {
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: _buildNoticeList(
+                    context,
                     widget.deliveryText,
                     pipeAsNewlineFallback: true,
                   ),
@@ -384,6 +393,7 @@ List<_NoticeBlock> _parseNoticeHtml(String? raw) {
 }
 
 Widget _buildNoticeList(
+  BuildContext context,
   String? raw, {
   bool pipeAsNewlineFallback = true,
 }) {
@@ -395,7 +405,7 @@ Widget _buildNoticeList(
       child: Text(
         text.isEmpty ? '-' : text,
         textAlign: TextAlign.start,
-        style: _kTailBodyStyle,
+        style: _tailBodyStyle(context),
       ),
     );
   }
@@ -409,7 +419,7 @@ Widget _buildNoticeList(
             padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
             child: Text(
               b.title.trim(),
-              style: _kTailH2Style,
+              style: _tailH2Style(context),
             ),
           ),
         if (b.paragraphs.isNotEmpty) const SizedBox(height: 6),
@@ -418,7 +428,7 @@ Widget _buildNoticeList(
             padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
             child: Text(
               p,
-              style: _kTailPStyle,
+              style: _tailPStyle(context),
             ),
           ),
           const SizedBox(height: 6),
@@ -479,7 +489,7 @@ class _CertificationSectionState extends State<_CertificationSection> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: _expandableSectionTitle('기관인증')),
+                Expanded(child: _expandableSectionTitle(context, '기관인증')),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
@@ -599,7 +609,7 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: _expandableSectionTitle(widget.title),
+                  child: _expandableSectionTitle(context, widget.title),
                 ),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -638,7 +648,7 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
       return Text(
         value,
         textAlign: TextAlign.start,
-        style: _kTailBodyStyle,
+        style: _tailBodyStyle(context),
       );
     }
     return Row(
@@ -649,7 +659,7 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: healthSp(context, 13),
               color: Colors.grey[600],
             ),
           ),
@@ -658,7 +668,7 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: healthSp(context, 13),
               color: Colors.black87,
               height: 1.4,
             ),
@@ -715,7 +725,7 @@ class _PrescriptionProcessSectionState
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: _expandableSectionTitle('처방 프로세스')),
+                Expanded(child: _expandableSectionTitle(context, '처방 프로세스')),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
@@ -730,7 +740,7 @@ class _PrescriptionProcessSectionState
           child: _isExpanded
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: _buildNoticeList(widget.processText),
+                  child: _buildNoticeList(context, widget.processText),
                 )
               : const SizedBox.shrink(),
         ),
@@ -784,7 +794,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: _expandableSectionTitle('교환/환불')),
+                Expanded(child: _expandableSectionTitle(context, '교환/환불')),
                 Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
@@ -799,7 +809,7 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
           child: _isExpanded
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: _buildNoticeList(widget.changeContentText),
+                  child: _buildNoticeList(context, widget.changeContentText),
                 )
               : const SizedBox.shrink(),
         ),
