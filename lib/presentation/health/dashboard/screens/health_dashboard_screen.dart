@@ -30,6 +30,7 @@ import '../../steps/screens/steps_list_screen.dart';
 import '../../food/screens/food_list_screen.dart';
 import 'health_connect_screen.dart';
 import 'health_goal_screen.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_status_label.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -147,7 +148,17 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       final menstrualCycleRecord = results[4] as MenstrualCycleRecord?;
       final stepsRecord = results[5] as StepsRecord?;
       final healthGoal = results[6] as HealthGoalRecordModel?;
-      final weightRecord = _latestOfDate(weightRecords, (e) => e.measuredAt);
+      WeightRecord? weightRecord = _latestOfDate(
+        weightRecords,
+        (e) => e.measuredAt,
+      );
+      if (weightRecord == null &&
+          _isSameDay(selectedDate, DateTime.now()) &&
+          weightRecords.isNotEmpty) {
+        final sorted = List<WeightRecord>.from(weightRecords)
+          ..sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+        weightRecord = sorted.first;
+      }
       final bloodPressureRecord =
           _latestOfDate(bpRecords, (e) => e.measuredAt);
       final bloodSugarRecord =
@@ -238,6 +249,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
     return MobileAppLayoutWrapper(
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
@@ -245,74 +257,77 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         },
       ),
       backgroundColor: Colors.white,
-      child: Column(
-        children: [
-          Expanded(
-            child: isLoading
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: Color(0xFFFF5A8D)),
-                        SizedBox(height: 16),
-                        Text('Loading data...'),
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    color: const Color(0xFFFF5A8D),
-                    onRefresh: () => _loadData(showBlockingLoader: false),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: isLoading
+                  ? const Center(
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildHeaderSection(),
-                          Transform.translate(
-                            offset: const Offset(0, -36),
-                            child: Container(
-                              margin: const EdgeInsets.only(top: 0),
-                              padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(44)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  HealthDateSelector(
-                                    selectedDate: selectedDate,
-                                    onDateChanged: (newDate) {
-                                      setState(() {
-                                        selectedDate = newDate;
-                                      });
-                                      _loadData();
-                                    },
-                                    monthTextColor: const Color(0xFF898686),
-                                    selectedTextColor: const Color(0xFFFF5A8D),
-                                    unselectedTextColor:
-                                        const Color(0xFFB7B7B7),
-                                    iconColor: const Color(0xFF898686),
-                                  ),
-                                  const SizedBox(height: 18),
-                                  _buildBodyMetricsSection(),
-                                  const SizedBox(height: 24),
-                                  _buildMealSection(),
-                                  const SizedBox(height: 24),
-                                  _buildHealthMetricsSection(),
-                                  const SizedBox(height: 18),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+                          CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+                          SizedBox(height: 16),
+                          Text('Loading data...'),
                         ],
                       ),
+                    )
+                  : RefreshIndicator(
+                      color: const Color(0xFFFF5A8D),
+                      onRefresh: () => _loadData(showBlockingLoader: false),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          children: [
+                            _buildHeaderSection(),
+                            Transform.translate(
+                              offset: const Offset(0, -36),
+                              child: Container(
+                                margin: const EdgeInsets.only(top: 0),
+                                padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(44)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    HealthDateSelector(
+                                      selectedDate: selectedDate,
+                                      onDateChanged: (newDate) {
+                                        setState(() {
+                                          selectedDate = newDate;
+                                        });
+                                        _loadData();
+                                      },
+                                      monthTextColor: const Color(0xFF898686),
+                                      selectedTextColor: const Color(0xFFFF5A8D),
+                                      unselectedTextColor:
+                                          const Color(0xFFB7B7B7),
+                                      iconColor: const Color(0xFF898686),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    _buildBodyMetricsSection(),
+                                    const SizedBox(height: 24),
+                                    _buildMealSection(),
+                                    const SizedBox(height: 24),
+                                    _buildHealthMetricsSection(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-          ),
-          const FooterBar(),
-        ],
+            ),
+            const FooterBar(),
+          ],
+        ),
       ),
     );
   }
@@ -320,7 +335,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   Widget _buildHeaderSection() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 56),
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 18),
+        healthDp(context, 18),
+        healthDp(context, 18),
+        healthDp(context, 35),
+      ),
       color: const Color(0xFFFFACC6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,33 +351,43 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 62,
-                    height: 62,
+                    width: healthDp(context, 62),
+                    height: healthDp(context, 62),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(0.35),
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(
+                        color: Colors.white,
+                        width: healthDp(context, 2),
+                      ),
                     ),
                     child:
-                        const Icon(Icons.person, color: Colors.white, size: 38),
+                        Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: healthDp(context, 38),
+                        ),
                   ),
                   Positioned(
                     right: -2,
                     bottom: -2,
                     child: Container(
-                      width: 20,
-                      height: 20,
+                      width: healthDp(context, 20),
+                      height: healthDp(context, 20),
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.add,
-                          size: 14, color: Color(0xFFFF5A8D)),
+                      child: Icon(
+                        Icons.add,
+                        size: healthDp(context, 14),
+                        color: const Color(0xFFFF5A8D),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: healthDp(context, 14)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,9 +416,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               const SizedBox.shrink(),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
           _buildWeightProgressBar(),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -413,16 +443,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white70),
                   foregroundColor: Colors.white,
-                  minimumSize: const Size(0, 30),
+                  minimumSize: Size(0, healthDp(context, 30)),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 8),
+                        vertical: healthDp(context, 6),
+                      ),
                   visualDensity:
                       const VisualDensity(horizontal: -2, vertical: -2),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
                 ),
-                child: const Text('목표설정',
+                child: const Text('목표설정 >',
                     style:
                         TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w500)),
               ),
@@ -433,16 +466,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   backgroundColor: const Color(0xFFFF5A8D),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  minimumSize: const Size(0, 30),
+                  minimumSize: Size(0, healthDp(context, 30)),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 8),
+                        vertical: healthDp(context, 6),
+                      ),
                   visualDensity:
                       const VisualDensity(horizontal: -2, vertical: -2),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
                 ),
-                child: const Text('연동하기',
+                child: const Text('연동하기 >',
                     style:
                         TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w500)),
               ),
@@ -476,10 +512,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double barHeight = 14;
-        final double arrowTipWidth = 10;
-        const double bubbleWidth = 40;
-        const double bubbleTopSpace = 28;
+        final double barHeight = healthDp(context, 14);
+        final double arrowTipWidth = healthDp(context, 10);
+        final double bubbleWidth = healthDp(context, 40);
+        final double bubbleTopSpace = healthDp(context, 28);
         final double markerX = constraints.maxWidth * ratio;
         final double bubbleLeft = (markerX - bubbleWidth / 2).clamp(
           0.0,
@@ -540,18 +576,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: healthDp(context, 6),
+                              vertical: healthDp(context, 3),
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 6)),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
+                                  blurRadius: healthDp(context, 6),
+                                  offset: Offset(0, healthDp(context, 2)),
                                 ),
                               ],
                             ),
@@ -566,9 +603,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                             ),
                           ),
                           Transform.translate(
-                            offset: const Offset(0, -2),
+                            offset: Offset(0, -healthDp(context, 2)),
                             child: CustomPaint(
-                              size: const Size(12, 6),
+                              size: Size(healthDp(context, 12), healthDp(context, 6)),
                               painter: _BubbleDownTailPainter(
                                 color: Colors.white,
                               ),
@@ -580,7 +617,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: healthDp(context, 8)),
             // 체중 프로그레스 바 체중 표시 텍스트
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -741,10 +778,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         _loadData();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -754,20 +791,26 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               children: [
                 Row(
                   children: [
-                    const SizedBox(
-                      width: 2,
-                      height: 22,
+                    SizedBox(
+                      width: healthDp(context, 2),
+                      height: healthDp(context, 22),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: Color(0xFF1A1A1A),
-                          borderRadius: BorderRadius.all(Radius.circular(3)),
+                          color: const Color(0xFF1A1A1A),
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(healthDp(context, 3)),
+                          ),
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    SizedBox(width: healthDp(context, 8)),
                     RichText(
+                      textScaler: TextScaler.noScaling,
                       text: TextSpan(
-                        style: TextStyle(fontSize: 20, color: Colors.black),
+                        style: TextStyle(
+                          fontSize: healthSp(context, 16),
+                          color: Colors.black,
+                        ),
                         children: [
                           TextSpan(
                             text: '오늘의 ',
@@ -787,20 +830,22 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   children: [
                     Text(
                       '$consumedCalories',
-                      style: const TextStyle(
-                        color: Color(0xFFFF5A8D),
-                        fontSize: 16,
-                        fontFamily: 'Gmarket Sans TTF', 
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 16),
+                        fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                         height: 1,
                       ),
                     ),
                     Text(
                       ' / $targetCalories kcal',
-                      style: const TextStyle(
-                        color: Color(0xFF9CA3AF),
-                        fontSize: 10,
-                        fontFamily: 'Gmarket Sans TTF', 
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFF9CA3AF),
+                        fontSize: healthSp(context, 10),
+                        fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                       ),
                     ),
@@ -809,37 +854,37 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               ],
             ),
             // 오늘의 식사 - 색상 
-            const SizedBox(height: 12),
+            SizedBox(height: healthDp(context, 12)),
             _buildMacroBar(),
-            const SizedBox(height: 12),
-            const Row(
+            SizedBox(height: healthDp(context, 12)),
+            Row(
               children: [
                 _LegendDot('탄수화물', Color(0xFFFFDFC3)),
-                SizedBox(width: 12),
+                SizedBox(width: healthDp(context, 12)),
                 _LegendDot('단백질', Color(0xFFFEA38E)),
-                SizedBox(width: 12),
+                SizedBox(width: healthDp(context, 12)),
                 _LegendDot('지방', Color(0xFFFCF4C1)),
-                SizedBox(width: 12),
+                SizedBox(width: healthDp(context, 12)),
                 _LegendDot('기타', Color(0xFFD6DEE8)),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(context, 16)),
             Row(
               children: [
                 Expanded(
                     child: _buildMealItemCard(
                         '아침', mealCalories['Breakfast']!, (mealCalories['Breakfast'] ?? 0) > 0,
                         centerText: true)),
-                const SizedBox(width: 8),
+                SizedBox(width: healthDp(context, 8)),
                 Expanded(
                     child: _buildMealItemCard(
                         '점심', mealCalories['Lunch']!, (mealCalories['Lunch'] ?? 0) > 0,
                         centerText: true)),
-                const SizedBox(width: 8),
+                SizedBox(width: healthDp(context, 8)),
                 Expanded(
                     child: _buildMealItemCard(
                         '저녁', mealCalories['Dinner']!, (mealCalories['Dinner'] ?? 0) > 0)),
-                const SizedBox(width: 8),
+                SizedBox(width: healthDp(context, 8)),
                 Expanded(
                     child: _buildMealItemCard(
                   '간식',
@@ -882,7 +927,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
       child: SizedBox(
-        height: 12,
+        height: healthDp(context, 8),
         child: Row(
           children: [
             if (filledFlex > 0)
@@ -922,7 +967,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       aspectRatio: 0.75,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(healthDp(context, 16)),
           border: Border.all(color: const Color(0xFFEAEAEA)),
           gradient: hasMeal
               ? const LinearGradient(
@@ -935,28 +980,36 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         ),
         child: hasMeal
             ? Container(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(healthDp(context, 6)),
                 alignment: Alignment.bottomCenter,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(healthDp(context, 15)),
                   color: Colors.black.withOpacity(0.25),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(mealName,
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w800),
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 2),
+                    Text(
+                      mealName,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 12),
+                        fontWeight: FontWeight.w800,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: healthDp(context, 2)),
                     Text(
                       '$calories kcal',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontFamily: 'Gmarket Sans TTF', 
-                          fontWeight: FontWeight.w800),
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 11),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w800,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -966,15 +1019,20 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(mealName,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  const Icon(
+                  Text(
+                    mealName,
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: healthSp(context, 12),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 6)),
+                  Icon(
                     Icons.add,
                     color: Colors.white,
-                    size: 28,
+                    size: healthDp(context, 28),
                   ),
                 ],
               ),
@@ -1003,7 +1061,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               const SizedBox(width: 8),
               RichText(
                 text: TextSpan(
-                  style: TextStyle(fontSize: 20, color: Colors.black),
+                  style: TextStyle(
+                    fontSize: healthSp(context, 16),
+                    color: Colors.black,
+                  ),
                   children: [
                     TextSpan(
                       text: '오늘의 ',
@@ -1036,17 +1097,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       _buildRecordCard(
                         title: '혈당',
                         value: latestBloodSugarRecord != null
-                            ? '${latestBloodSugarRecord!.bloodSugar.toStringAsFixed(1)} mg/dL'
+                            ? '${BloodSugarRecord.getMeasurementTypeKorean(latestBloodSugarRecord!.measurementType)}\n'
+                                '${latestBloodSugarRecord!.bloodSugar.toStringAsFixed(1)} mg/dL'
                             : '입력하세요.',
-                        subtitle: latestBloodSugarRecord != null
-                            ? BloodSugarRecord.getMeasurementTypeKorean(
-                                latestBloodSugarRecord!.measurementType)
-                            : '',
+                        subtitle: '',
                         statusText: _bloodSugarStatusLabel(),
                         icon: Icons.favorite,
                         compact: true,
                         titleFontSize: 13,
-                        valueFontSize: 15,
+                        valueFontSize: 12,
                         statusFontSize: 8,
                         onMore: () {
                           if (currentUser == null) {
@@ -1199,13 +1258,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     bool compact = false,
     double titleFontSize = 14,
     double valueFontSize = 12,
+    double? subtitleFontSize,
     double statusFontSize = 10,
   }) {
     final pad = compact ? 10.0 : 14.0;
     final iconBox = compact ? 26.0 : 30.0;
     final iconSz = compact ? 16.0 : 18.0;
     final afterHeader = compact ? 6.0 : 10.0;
-    final subtitleFs = compact ? 11.0 : 12.0;
+    final subtitleFs = subtitleFontSize ?? (compact ? 11.0 : 12.0);
 
     return GestureDetector(
       onTap: onMore,
@@ -1269,9 +1329,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     ),
                   ),
                 ),
-                HealthStatusLabel(
-                  label: statusText,
-                  fontSize: statusFontSize,
+                Transform.translate(
+                  offset: const Offset(0, 2),
+                  child: HealthStatusLabel(
+                    label: statusText,
+                    fontSize: statusFontSize,
+                  ),
                 ),
               ],
             ),
@@ -1366,10 +1429,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(healthDp(context, 10)),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(healthDp(context, 18)),
           border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Column(
@@ -1383,7 +1446,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             Expanded(
               child: Center(
                 child: SizedBox.square(
-                  dimension: 72,
+                  dimension: healthDp(context, 72),
                   child: Stack(
                     fit: StackFit.expand,
                     alignment: Alignment.center,
@@ -1393,7 +1456,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                           progress: ratio,
                           trackColor: const Color(0xFFF3F4F6),
                           progressColor: const Color(0xFFFF5A8D),
-                          strokeWidth: 7,
+                          strokeWidth: healthDp(context, 7),
                         ),
                       ),
                       Center(
@@ -1466,7 +1529,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         fontSize: titleFontSize, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w700)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 10.53),
             Align(
               alignment: Alignment.centerLeft,
               child: valueWidget ??
@@ -1584,13 +1647,21 @@ class _LegendDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: healthDp(context, 10),
+          height: healthDp(context, 10),
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
-        Text(label,
-            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300)),
+        SizedBox(width: healthDp(context, 4)),
+        Text(
+          label,
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            color: const Color(0xFF6B7280),
+            fontSize: healthSp(context, 10),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+          ),
+        ),
       ],
     );
   }

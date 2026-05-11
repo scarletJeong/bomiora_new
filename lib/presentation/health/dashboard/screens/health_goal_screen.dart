@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../data/repositories/health/health_goal/health_goal_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/health_responsive_scale.dart';
 
 class HealthGoalScreen extends StatefulWidget {
   const HealthGoalScreen({super.key});
@@ -18,7 +19,8 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
   static const int _stepMin = 0;
   static const int _stepMax = 20000;
   static const int _stepUnit = 100;
-  static const double _stepsItemExtent = 30;
+  /// 375 기준 한 줄 높이; 실제 값은 [healthDp]로 스케일.
+  static const double _stepsItemExtentBase = 30;
   static const int _wheelTickDebounceMs = 70;
 
   final TextEditingController _currentWeightController =
@@ -163,10 +165,15 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
     return MobileLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: () => Navigator.pop(context),
@@ -185,10 +192,10 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
         ),
-        body: SafeArea(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
+          body: SafeArea(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
                   children: [
                     Expanded(
                       child: SingleChildScrollView(
@@ -259,12 +266,15 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                     ),
                   ],
                 ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildStepsPickerSection() {
+    final itemExtent = healthDp(context, _stepsItemExtentBase);
+    final wheelViewportH = healthDp(context, 150);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -277,12 +287,12 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         Container(
           width: double.infinity,
-          height: 150,
+          height: wheelViewportH,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             border: Border.all(color: const Color(0x7FD2D2D2)),
             color: Colors.white,
           ),
@@ -299,7 +309,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             },
             child: ListWheelScrollView.useDelegate(
               controller: _stepsWheelController,
-              itemExtent: _stepsItemExtent,
+              itemExtent: itemExtent,
               diameterRatio: 2.6,
               perspective: 0.003,
               physics: kIsWeb

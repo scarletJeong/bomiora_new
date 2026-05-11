@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart'
 
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/widgets/health_app_bar.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../../../data/services/health_sync_service.dart';
 
 class HealthConnectScreen extends StatefulWidget {
@@ -77,14 +78,19 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
       appBar: const HealthAppBar(title: '연동하기'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(27, 20, 27, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -159,9 +165,9 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
-            child: SafeArea(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+              child: SafeArea(
               top: false,
               child: SizedBox(
                 width: double.infinity,
@@ -187,9 +193,10 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
                   ),
                 ),
               ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
