@@ -148,12 +148,14 @@ class ApiEndpoints {
 
   // FAQ 관련
   static const String getFaqList = '/api/faq/list';
-  static const String getFaqDetail = '/api/faq';
 
   // 콘텐츠 관련
   static const String getContentList = '/api/content/list';
   static const String getContentDetail = '/api/content';
   static String contentRecommend(int id) => '/api/content/$id/recommend';
+
+  // 통합 검색
+  static const String search = '/api/search';
 
   // 공통 카테고리 관련
   static const String getCategoryList = '/api/get-category/list';
