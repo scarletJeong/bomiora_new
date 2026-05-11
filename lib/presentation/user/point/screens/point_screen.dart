@@ -6,7 +6,8 @@ import '../../../../data/services/point_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/point/point_history_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 
 class PointScreen extends StatefulWidget {
   const PointScreen({super.key});
@@ -95,57 +96,85 @@ class _PointScreenState extends State<PointScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(
-        title: '포인트',
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: Color(0xFF1A1A1A),
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '포인트',
+              titleFontSize: healthSp(context, 18),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFFF5A8D),
+                    ),
+                  )
+                : _buildContent(),
+          ),
+        ),
       ),
-      child: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFFF5A8D),
-              ),
-            )
-          : _buildContent(),
     );
   }
 
   Widget _buildContent() {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildCurrentPointCard(),
-              const SizedBox(height: 10),
-              _buildRulesText(),
-              const SizedBox(height: 20),
-                if (_displayedHistory.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text(
-                        '포인트 내역이 없습니다.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                          fontFamily: 'Gmarket Sans TTF',
-                        ),
-                      ),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: healthDp(context, 27),
+          right: healthDp(context, 27),
+          bottom: healthDp(context, 20),
+          top: healthDp(context, 20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildCurrentPointCard(),
+            SizedBox(height: healthDp(context, 10)),
+            _buildRulesText(),
+            SizedBox(height: healthDp(context, 20)),
+            if (_displayedHistory.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
+                child: Center(
+                  child: Text(
+                    '포인트 내역이 없습니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
+                      color: Colors.grey[600],
+                      fontFamily: 'Gmarket Sans TTF',
                     ),
-                  )
-                else ...[
-                  ..._displayedHistory.map(_buildHistoryCard),
-                  if (_displayedHistory.length < _pointHistory.length) ...[
-                    const SizedBox(height: 10),
-                    _buildLoadMoreButton(),
-                  ],
-                ],
+                  ),
+                ),
+              )
+            else ...[
+              ..._displayedHistory.map(_buildHistoryCard),
+              if (_displayedHistory.length < _pointHistory.length) ...[
+                SizedBox(height: healthDp(context, 10)),
+                _buildLoadMoreButton(),
+              ],
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -183,20 +212,20 @@ class _PointScreenState extends State<PointScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 '포인트',
                 style: TextStyle(
                   color: Color(0xFF1A1A1A),
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(width: 2),
               Text(
                 pointText,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Color(0xFFFF5A8D),
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -210,30 +239,30 @@ class _PointScreenState extends State<PointScreen> {
   Widget _buildRulesText() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
+      children: [
         Text(
           '*100P = 100원 입니다.(1P = 1원)',
           style: TextStyle(
             color: Color(0xFF1A1A1A),
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontWeight: FontWeight.w300,
           ),
         ),
-        SizedBox(height: 5),
+        const SizedBox(height: 5),
         Text(
           '*2025년 8월 8일 이후 지급된 포인트는 지급일자 기준으로\n 1년 후 자동소멸됩니다.',
           style: TextStyle(
             color: Color(0xFF1A1A1A),
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontWeight: FontWeight.w300,
           ),
         ),
-        SizedBox(height: 5),
+        const SizedBox(height: 5),
         Text(
           '*할인 적용 및 프로모션 페이지를 통한 결제 시 \n 포인트 사용이 불가합니다.(중복 할인 불가) ',
           style: TextStyle(
             color: Color(0xFFEF4444),
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontWeight: FontWeight.w300,
           ),
         ),
@@ -266,17 +295,17 @@ class _PointScreenState extends State<PointScreen> {
               children: [
                 Text(
                   history.formattedDate,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFF1A1A1A),
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
                   '만료 : ${history.formattedExpireDate}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFF898686),
-                    fontSize: 10,
+                    fontSize: healthSp(context, 10),
                     fontWeight: FontWeight.w300,
                   ),
                 ),
@@ -291,9 +320,9 @@ class _PointScreenState extends State<PointScreen> {
                 Expanded(
                   child: Text(
                     history.content.isNotEmpty ? history.content : '포인트 내역',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Color(0xFF1A1A1A),
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -301,9 +330,9 @@ class _PointScreenState extends State<PointScreen> {
                 const SizedBox(width: 10),
                 Text(
                   amountText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFFFF5A8D),
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -326,12 +355,12 @@ class _PointScreenState extends State<PointScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           backgroundColor: Colors.white,
         ),
-        child: const Text(
+        child: Text(
           '더보기',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Color(0xFF898686),
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontWeight: FontWeight.w500,
           ),
         ),
