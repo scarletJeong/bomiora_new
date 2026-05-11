@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../health/health_common/health_responsive_scale.dart';
+
 /// 마이페이지 프로필 — 분홍 테두리 원형 아바타 프레임 (77×77 내부)
 class MyPageAvatarFrame extends StatelessWidget {
   const MyPageAvatarFrame({
@@ -77,14 +79,14 @@ class MyPageLineMenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 6)),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              width: isLast ? 1 : 0.5,
+              width: healthDp(context, isLast ? 1 : 0.5),
               color: const Color(0xFF1A1A1A),
             ),
           ),
@@ -95,26 +97,26 @@ class MyPageLineMenuItem extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 1,
-                  height: 16,
+                  width: healthDp(context, 1),
+                  height: healthDp(context, 16),
                   color: const Color(0xFF1A1A1A),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: healthDp(context, 8)),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 16,
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.w300,
                     letterSpacing: -1.44,
                   ),
                 ),
               ],
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right,
-              size: 16,
-              color: Color(0xFF1A1A1A),
+              size: healthDp(context, 16),
+              color: const Color(0xFF1A1A1A),
             ),
           ],
         ),

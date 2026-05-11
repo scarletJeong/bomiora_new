@@ -17,7 +17,7 @@ import 'refund_account_screen.dart';
 import 'cancel_member_screen.dart';
 import '../../healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/my_page_common.dart';
-import '../../../common/widgets/app_footer.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -134,187 +134,215 @@ class _MyPageScreenState extends State<MyPageScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setLocalState) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: Container(
-                width: 272,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.all(Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x19000000),
-                      blurRadius: 8.14,
-                      offset: Offset(0, 0),
-                      spreadRadius: 0,
+      builder: (dialogContext) {
+        final baseTheme = Theme.of(dialogContext);
+        final gmarketTheme = baseTheme.copyWith(
+          textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+          primaryTextTheme:
+              baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+        );
+        final textScale =
+            healthTextScaleByWidth(MediaQuery.sizeOf(dialogContext).width);
+
+        return Theme(
+          data: gmarketTheme,
+          child: MediaQuery(
+            data: MediaQuery.of(dialogContext).copyWith(
+              textScaler: TextScaler.linear(textScale),
+            ),
+            child: StatefulBuilder(
+              builder: (ctx, setLocalState) {
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  child: Container(
+                    width: healthDp(ctx, 272),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius:
+                          BorderRadius.all(Radius.circular(healthDp(ctx, 20))),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0x19000000),
+                          blurRadius: healthDp(ctx, 8.14),
+                          offset: Offset.zero,
+                          spreadRadius: 0,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                      child: DefaultTextStyle.merge(
-                        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Text(
-                              '비밀번호 확인',
-                              style: TextStyle(
-                                color: Color(0xFF1A1A1A),
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            const Text(
-                              '***',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Color(0xFFD2D2D2),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 1.57,
-                                letterSpacing: 4.90,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            const Text(
-                              '안전한 정보 변경을 위해,\n비밀번호를 한 번 더 입력해 주세요.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Color(0xFF898686),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 1.57,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            healthDp(ctx, 20),
+                            healthDp(ctx, 20),
+                            healthDp(ctx, 20),
+                            healthDp(ctx, 20),
+                          ),
+                          child: DefaultTextStyle.merge(
+                            style: const TextStyle(
+                                fontFamily: 'Gmarket Sans TTF'),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Container(
-                                  width: double.infinity,
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10),
-                                  decoration: ShapeDecoration(
-                                    shape: RoundedRectangleBorder(
-                                      side: BorderSide(
-                                        width: 1,
-                                        color: mismatch
-                                            ? const Color(0xFFEF4444)
-                                            : const Color(0xFFD2D2D2),
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  alignment: Alignment.centerLeft,
-                                  child: TextField(
-                                    controller: controller,
-                                    obscureText: true,
-                                    onChanged: (_) {
-                                      if (mismatch)
-                                        setLocalState(() => mismatch = false);
-                                    },
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      isCollapsed: true,
-                                      hintText: '비밀번호를 입력해 주세요',
-                                      hintStyle: TextStyle(
-                                        color: Color(0xFF898686),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    style: const TextStyle(
-                                      color: Color(0xFF1A1A1A),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                Text(
+                                  '비밀번호 확인',
+                                  style: TextStyle(
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(ctx, 20),
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                if (mismatch) ...[
-                                  const SizedBox(height: 5),
-                                  const Text(
-                                    '비밀번호가 일치하지 않습니다.',
-                                    style: TextStyle(
-                                      color: Color(0xFFEF4444),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w300,
-                                    ),
+                                SizedBox(height: healthDp(ctx, 20)),
+                                Text(
+                                  '***',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: const Color(0xFFD2D2D2),
+                                    fontSize: healthSp(ctx, 14),
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.57,
+                                    letterSpacing: 4.90,
                                   ),
-                                ],
+                                ),
+                                SizedBox(height: healthDp(ctx, 20)),
+                                Text(
+                                  '안전한 정보 변경을 위해,\n비밀번호를 한 번 더 입력해 주세요.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: const Color(0xFF898686),
+                                    fontSize: healthSp(ctx, 14),
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.57,
+                                  ),
+                                ),
+                                SizedBox(height: healthDp(ctx, 20)),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: double.infinity,
+                                      height: healthDp(ctx, 40),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: healthDp(ctx, 10),
+                                      ),
+                                      decoration: ShapeDecoration(
+                                        shape: RoundedRectangleBorder(
+                                          side: BorderSide(
+                                            width: healthDp(ctx, 1),
+                                            color: mismatch
+                                                ? const Color(0xFFEF4444)
+                                                : const Color(0xFFD2D2D2),
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                              healthDp(ctx, 10)),
+                                        ),
+                                      ),
+                                      alignment: Alignment.centerLeft,
+                                      child: TextField(
+                                        controller: controller,
+                                        obscureText: true,
+                                        onChanged: (_) {
+                                          if (mismatch) {
+                                            setLocalState(
+                                                () => mismatch = false);
+                                          }
+                                        },
+                                        decoration: InputDecoration(
+                                          border: InputBorder.none,
+                                          isCollapsed: true,
+                                          hintText: '비밀번호를 입력해 주세요',
+                                          hintStyle: TextStyle(
+                                            color: const Color(0xFF898686),
+                                            fontSize: healthSp(ctx, 12),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        style: TextStyle(
+                                          color: const Color(0xFF1A1A1A),
+                                          fontSize: healthSp(ctx, 12),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    if (mismatch) ...[
+                                      SizedBox(height: healthDp(ctx, 5)),
+                                      Text(
+                                        '비밀번호가 일치하지 않습니다.',
+                                        style: TextStyle(
+                                          color: const Color(0xFFEF4444),
+                                          fontSize: healthSp(ctx, 10),
+                                          fontWeight: FontWeight.w300,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 50,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: Material(
-                              color: const Color(0xFFF7F7F7),
-                              child: InkWell(
-                                onTap: submitting
-                                    ? null
-                                    : () => Navigator.of(context).pop(),
-                                child: const Center(
-                                  child: Text(
-                                    '취소',
-                                    style: TextStyle(
-                                      color: Color(0xFF898686),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'Gmarket Sans TTF',
+                        SizedBox(
+                          height: healthDp(ctx, 50),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: Material(
+                                  color: const Color(0xFFF7F7F7),
+                                  child: InkWell(
+                                    onTap: submitting
+                                        ? null
+                                        : () => Navigator.of(ctx).pop(),
+                                    child: Center(
+                                      child: Text(
+                                        '취소',
+                                        style: TextStyle(
+                                          color: const Color(0xFF898686),
+                                          fontSize: healthSp(ctx, 16),
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'Gmarket Sans TTF',
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Material(
-                              color: const Color(0xFFFF5A8D),
-                              child: InkWell(
-                                onTap: submitting
-                                    ? null
-                                    : () => submit(setLocalState),
-                                child: Center(
-                                  child: Text(
-                                    submitting ? '확인 중...' : '확인',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'Gmarket Sans TTF',
+                              Expanded(
+                                child: Material(
+                                  color: const Color(0xFFFF5A8D),
+                                  child: InkWell(
+                                    onTap: submitting
+                                        ? null
+                                        : () => submit(setLocalState),
+                                    child: Center(
+                                      child: Text(
+                                        submitting ? '확인 중...' : '확인',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: healthSp(ctx, 16),
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'Gmarket Sans TTF',
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
+                  ),
+                );
+              },
+            ),
+          ),
         );
       },
     );
@@ -347,148 +375,177 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      drawer: AppBarMenuTapDrawer(
-        onHealthDashboardTap: () {
-          Navigator.pop(context);
-          Navigator.pushNamed(context, '/health');
-        },
-      ),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: Builder(
-          builder: (ctx) => AppBarMenu(
-            onMenuPressed: () {
-              if (!ctx.mounted) return;
-              Scaffold.of(ctx).openDrawer();
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: MobileAppLayoutWrapper(
+          drawer: AppBarMenuTapDrawer(
+            onHealthDashboardTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/health');
             },
           ),
-        ),
-      ),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: ColoredBox(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(27, 24, 27, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                if (_currentUser == null)
-                  _buildGuestHeader()
-                else
-                  _buildProfileHeader(),
-                const SizedBox(height: 40),
-                _buildStatsRow(),
-                const SizedBox(height: 30),
-                MyPageLineMenuItem(
-                  title: '찜 목록',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const WishListScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                MyPageLineMenuItem(
-                  title: '배송지 관리',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const AddressManagementScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                MyPageLineMenuItem(
-                  title: '환불 계좌 등록',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const RefundAccountScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                MyPageLineMenuItem(
-                  title: '내 리뷰 활동',
-                  onTap: () => Navigator.pushNamed(context, '/my_reviews'),
-                ),
-                const SizedBox(height: 10),
-                MyPageLineMenuItem(
-                  title: '1:1 문의',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ContactListScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                MyPageLineMenuItem(
-                  title: '문진표 관리',
-                  isLast: true,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const HealthProfileListScreen()),
-                  ),
-                ),
-                if (_currentUser != null) ...[
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: InkWell(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const CancelMemberScreen()),
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: Builder(
+              builder: (ctx) => AppBarMenu(
+                onMenuPressed: () {
+                  if (!ctx.mounted) return;
+                  Scaffold.of(ctx).openDrawer();
+                },
+              ),
+            ),
+          ),
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+            child: ColoredBox(
+              color: Colors.white,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 27),
+                        healthDp(context, 24),
+                        healthDp(context, 27),
+                        0,
                       ),
-                      borderRadius: BorderRadius.circular(8),
-                      child: const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '회원탈퇴',
-                              style: TextStyle(
-                                color: Color(0xFF898686),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: healthDp(context, 20)),
+                          if (_currentUser == null)
+                            _buildGuestHeader()
+                          else
+                            _buildProfileHeader(),
+                          SizedBox(height: healthDp(context, 40)),
+                          _buildStatsRow(),
+                          SizedBox(height: healthDp(context, 30)),
+                          MyPageLineMenuItem(
+                            title: '찜 목록',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const WishListScreen()),
+                              );
+                            },
+                          ),
+                          SizedBox(height: healthDp(context, 10)),
+                          MyPageLineMenuItem(
+                            title: '배송지 관리',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AddressManagementScreen()),
+                              );
+                            },
+                          ),
+                          SizedBox(height: healthDp(context, 10)),
+                          MyPageLineMenuItem(
+                            title: '환불 계좌 등록',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const RefundAccountScreen()),
+                              );
+                            },
+                          ),
+                          SizedBox(height: healthDp(context, 10)),
+                          MyPageLineMenuItem(
+                            title: '내 리뷰 활동',
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/my_reviews'),
+                          ),
+                          SizedBox(height: healthDp(context, 10)),
+                          MyPageLineMenuItem(
+                            title: '1:1 문의',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ContactListScreen()),
+                              );
+                            },
+                          ),
+                          SizedBox(height: healthDp(context, 10)),
+                          MyPageLineMenuItem(
+                            title: '문진표 관리',
+                            isLast: true,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const HealthProfileListScreen()),
+                            ),
+                          ),
+                          if (_currentUser != null) ...[
+                            SizedBox(height: healthDp(context, 10)),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: InkWell(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const CancelMemberScreen()),
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                    healthDp(context, 8)),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: healthDp(context, 6),
+                                    vertical: healthDp(context, 6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '회원탈퇴',
+                                        style: TextStyle(
+                                          color: const Color(0xFF898686),
+                                          fontSize: healthSp(context, 12),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      SizedBox(width: healthDp(context, 2)),
+                                      Icon(
+                                        Icons.chevron_right,
+                                        size: healthDp(context, 18),
+                                        color: const Color(0xFF898686),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                            SizedBox(width: 2),
-                            Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: Color(0xFF898686),
-                            ),
                           ],
-                        ),
+                          SizedBox(height: healthDp(context, 24)),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                  ],
                 ),
-                const AppFooter(),
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
           ),
         ),
@@ -504,29 +561,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
         Row(
           children: [
             MyPageAvatarFrame(
-              child: const Icon(
+              child: Icon(
                 Icons.person,
-                size: 44,
-                color: Color(0xFFD2D2D2),
+                size: healthDp(context, 44),
+                color: const Color(0xFFD2D2D2),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '${_currentUser?.name ?? ''} 님',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
                   _currentUser?.email ?? '',
-                  style: const TextStyle(
-                    color: Color(0xFF898686),
-                    fontSize: 12,
+                  style: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w300,
                   ),
                 ),
@@ -536,15 +593,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
         InkWell(
           onTap: _showPasswordConfirmDialog,
-          borderRadius: BorderRadius.circular(8),
-          child: const Column(
+          borderRadius: BorderRadius.circular(healthDp(context, 8)),
+          child: Column(
             children: [
-              Icon(Icons.settings_outlined, color: Color(0xFFD2D2D2), size: 30),
+              Icon(
+                Icons.settings_outlined,
+                color: const Color(0xFFD2D2D2),
+                size: healthDp(context, 30),
+              ),
               Text(
                 '개인정보수정',
                 style: TextStyle(
-                  color: Color(0xFFD2D2D2),
-                  fontSize: 8,
+                  color: const Color(0xFFD2D2D2),
+                  fontSize: healthSp(context, 8),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -563,29 +624,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
         Row(
           children: [
             MyPageAvatarFrame(
-              child: const Icon(
+              child: Icon(
                 Icons.person_outline,
-                size: 44,
-                color: Color(0xFFD2D2D2),
+                size: healthDp(context, 44),
+                color: const Color(0xFFD2D2D2),
               ),
             ),
-            const SizedBox(width: 10),
-            const Column(
+            SizedBox(width: healthDp(context, 10)),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '로그인이 필요해요',
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
                   '로그인 후 마이페이지 기능을 이용해보세요',
                   style: TextStyle(
-                    color: Color(0xFF898686),
-                    fontSize: 9,
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 9),
                     fontWeight: FontWeight.w300,
                   ),
                 ),
@@ -597,16 +658,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
           onPressed: () => Navigator.pushNamed(context, '/login'),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFF3787),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 14),
+              vertical: healthDp(context, 10),
+            ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
             ),
             elevation: 0,
           ),
-          child: const Text(
+          child: Text(
             '로그인',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: healthSp(context, 13),
               fontWeight: FontWeight.w600,
               color: Colors.white,
             ),
@@ -632,7 +696,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       return Expanded(
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(healthDp(context, 8)),
           child: AspectRatio(
             aspectRatio: 1.1,
             child: LayoutBuilder(
@@ -666,7 +730,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                     Padding(
                       padding: EdgeInsets.fromLTRB(
-                          10, contentTop, 10, contentBottom),
+                        healthDp(context, 10),
+                        contentTop,
+                        healthDp(context, 10),
+                        contentBottom,
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -676,32 +744,32 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             children: [
                               Text(
                                 value,
-                                style: const TextStyle(
-                                  color: Color(0xFFFF5A8D),
-                                  fontSize: 16,
+                                style: TextStyle(
+                                  color: const Color(0xFFFF5A8D),
+                                  fontSize: healthSp(context, 16),
                                   fontWeight: FontWeight.w700,
                                   height: 1,
                                 ),
                               ),
-                              const SizedBox(width: 2),
+                              SizedBox(width: healthDp(context, 2)),
                               Text(
                                 unit,
-                                style: const TextStyle(
-                                  color: Color(0xFF898686),
-                                  fontSize: 12,
+                                style: TextStyle(
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 12),
                                   fontWeight: FontWeight.w300,
                                   height: 1,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: healthDp(context, 4)),
                           Text(
                             label,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.black,
-                              fontSize: 10,
+                              fontSize: healthSp(context, 10),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -727,7 +795,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           label: '주문/배송내역',
           onTap: () => Navigator.pushNamed(context, '/order'),
         ),
-        const SizedBox(width: 20),
+        SizedBox(width: healthDp(context, 20)),
         statCard(
           icon: AppAssets.couponMain,
           value: couponVal,
@@ -735,7 +803,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           label: '내쿠폰',
           onTap: () => Navigator.pushNamed(context, '/coupon'),
         ),
-        const SizedBox(width: 20),
+        SizedBox(width: healthDp(context, 20)),
         statCard(
           icon: AppAssets.pointMain,
           value: pointVal,

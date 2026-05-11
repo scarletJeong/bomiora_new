@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import '../widgets/my_page_common.dart';
 import '../../../../data/repositories/auth/auth_repository.dart';
 import '../../../../data/services/auth_service.dart';
@@ -337,11 +338,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             '닉네임',
             style: TextStyle(
               color: Colors.black,
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -349,30 +350,30 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           _InputBox(
             child: TextField(
               controller: _nicknameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 isCollapsed: true,
                 hintText: '닉네임을 입력해 주세요',
                 hintStyle: TextStyle(
                   color: Color(0xFF898686),
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             '연락처',
             style: TextStyle(
               color: Colors.black,
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -398,17 +399,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             border: InputBorder.none,
                             isCollapsed: true,
                           ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.black,
-                            fontSize: 16,
+                            fontSize: healthSp(context, 16),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 5),
-                    const _Hyphen(),
-                    const SizedBox(width: 5),
+                    SizedBox(width: healthDp(context, 5)),
+                    _Hyphen(),
+                    SizedBox(width: healthDp(context, 5)),
                     Expanded(
                       child: _InputBox(
                         child: TextField(
@@ -425,17 +426,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             border: InputBorder.none,
                             isCollapsed: true,
                           ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.black,
-                            fontSize: 16,
+                            fontSize: healthSp(context, 16),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 5),
-                    const _Hyphen(),
-                    const SizedBox(width: 5),
+                    SizedBox(width: healthDp(context, 5)),
+                    _Hyphen(),
+                    SizedBox(width: healthDp(context, 5)),
                     Expanded(
                       child: _InputBox(
                         child: TextField(
@@ -452,9 +453,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             border: InputBorder.none,
                             isCollapsed: true,
                           ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.black,
-                            fontSize: 16,
+                            fontSize: healthSp(context, 16),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -463,20 +464,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: healthDp(context, 10)),
               SizedBox(
-                height: 40,
+                height: healthDp(context, 40),
                 child: ElevatedButton(
                   onPressed:
                       _contactOtpSending ? null : _requestContactChangeOtp,
                   style: MyPageButtonStyles.pinkElevated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
                   ),
                   child: Text(
                     _contactOtpSending ? '발송 중…' : '변경하기',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: healthSp(context, 16),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -503,48 +504,50 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         setState(() => _contactOtpErrorText = null);
                       }
                     },
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       border: InputBorder.none,
                       isCollapsed: true,
                       hintText: '인증번호를 입력해 주세요',
                       hintStyle: TextStyle(
                         color: Color(0xFF898686),
-                        fontSize: 12,
+                        fontSize: healthSp(context, 12),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.black,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                _secondsLeft > 0 ? _formatTime(_secondsLeft) : '--:--',
-                style: const TextStyle(
-                  color: Color(0xFFFF5A8D),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+              if (_secondsLeft > 0) ...[
+                SizedBox(width: healthDp(context, 10)),
+                Text(
+                  _formatTime(_secondsLeft),
+                  style: TextStyle(
+                    color: Color(0xFFFF5A8D),
+                    fontSize: healthSp(context, 12),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
+              ],
+              SizedBox(width: healthDp(context, 10)),
               SizedBox(
-                height: 40,
+                height: healthDp(context, 40),
                 child: ElevatedButton(
                   onPressed: (_contactOtpVerifying || _contactOtpSending)
                       ? null
                       : _confirmContactChangeOtp,
                   style: MyPageButtonStyles.pinkElevated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
                   ),
                   child: Text(
                     _contactOtpVerifying ? '확인 중…' : '확인',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: healthSp(context, 16),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -556,20 +559,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             const SizedBox(height: 6),
             Text(
               _contactOtpErrorText!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Color(0xFFEF4444),
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ],
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             '비밀번호 설정',
             style: TextStyle(
               color: Colors.black,
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -579,29 +582,29 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               controller: _newPasswordController,
               obscureText: true,
               onChanged: (_) => _recomputePasswordMismatch(),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 isCollapsed: true,
                 hintText: '새 비밀번호를 입력해 주세요.',
                 hintStyle: TextStyle(
                   color: Color(0xFF898686),
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             '*8~16자/문자,숫자,특수문자 모두 혼용',
             style: TextStyle(
               color: Color(0xFF898686),
-              fontSize: 10,
+              fontSize: healthSp(context, 10),
               fontWeight: FontWeight.w300,
             ),
           ),
@@ -612,30 +615,30 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               controller: _confirmPasswordController,
               obscureText: true,
               onChanged: (_) => _recomputePasswordMismatch(),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 isCollapsed: true,
                 hintText: '다시 한번 입력해 주세요.',
                 hintStyle: TextStyle(
                   color: Color(0xFF898686),
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           if (_passwordMismatch) ...[
             const SizedBox(height: 6),
-            const Text(
+            Text(
               '비밀번호가 일치하지 않습니다',
               style: TextStyle(
                 color: Color(0xFFEF4444),
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -647,11 +650,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             child: ElevatedButton(
               onPressed: _saveProfile,
               style: MyPageButtonStyles.pinkElevated(),
-              child: const Text(
+              child: Text(
                 '저장',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -691,18 +694,18 @@ class _ProfileHeader extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   email,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFF898686),
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w300,
                   ),
                 ),
@@ -742,7 +745,11 @@ class _Hyphen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(width: 10, height: 1, color: const Color(0xFFD9D9D9));
+    return Container(
+      width: healthDp(context, 10),
+      height: 1,
+      color: const Color(0xFFD9D9D9),
+    );
   }
 }
 
@@ -757,14 +764,17 @@ class _InputBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final h = healthDp(context, 40);
+    final pad = healthDp(context, 10);
+    final radius = healthDp(context, 10);
     return Container(
-      height: 40,
-      padding: const EdgeInsets.all(10),
+      height: h,
+      padding: EdgeInsets.all(pad),
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(width: 1, color: borderColor),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(radius),
         ),
       ),
       child: Align(
