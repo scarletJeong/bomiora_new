@@ -17,13 +17,13 @@ abstract final class AppAssets {
   static const String pointMain = '${_img}pointMain.svg';
   static const String mypageMenuBorder = '${_img}mypage_menu_border.svg';
 
-  /// 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 `assets/img/review_card_overlay.png`
+  /// 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 assets/img/review_card_overlay.png`
   static const String reviewCardOverlay = '${_img}review_card_overlay.png';
 
-  /// 앱 로고 (PNG)
-  static const String bomioraLogo = '${_img}bomiora-logo.png';
-  static const String bomioraPinkLogo = '${_img}bomiora-logo-pink.png';
-  static const String bomioraAppbarLogo = '${_img}bomiora-appbar-logo.png';
+  /// 앱 로고 (SVG)
+  static const String bomioraLogo = '${_img}bomiora-appbar-logo.svg';
+  static const String bomioraPinkLogo = '${_img}bomiora-logo-pink.svg';
+  static const String bomioraAppbarLogo = '${_img}bomiora-appbar-logo.svg';
   static const String bomioraBottomLogo = '${_img}bomiora-bottom-logo.png';
 
   // 앱바(app_bar_menu.dart) 아이콘
@@ -58,10 +58,10 @@ abstract final class AppAssets {
   static const String profile5 = '${_img}profile_5.svg';
 
   // 간편로그인 아이콘
-  static const String loginNaver = '${_img}login_naver.png';
-  static const String loginKakao = '${_img}login_kakao.png';
-  static const String loginGoogle = '${_img}login_google.png';
-  static const String loginApple = '${_img}login_apple.png'; 
+  static const String loginNaver = '${_img}login_naver.svg';
+  static const String loginKakao = '${_img}login_kakao.svg';
+  static const String loginGoogle = '${_img}login_google.svg';
+  static const String loginApple = '${_img}login_apple.svg'; 
 
   // 아이디/비밀번호 찾기 실패 아이콘
   static const String loginFail = '${_img}login_fail.png';
