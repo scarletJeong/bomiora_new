@@ -6,9 +6,13 @@ import '../../../../data/services/faq_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 
 class FaqListScreen extends StatefulWidget {
-  const FaqListScreen({super.key});
+  /// `true`이면 [MobileAppLayoutWrapper]·앱바 없이 본문만 그립니다. (고객센터 탭 등)
+  const FaqListScreen({super.key, this.embedInTabView = false});
+
+  final bool embedInTabView;
 
   @override
   State<FaqListScreen> createState() => _FaqListScreenState();
@@ -99,44 +103,55 @@ class _FaqListScreenState extends State<FaqListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final list = RefreshIndicator(
+      onRefresh: () => _load(page: 1),
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          27,
+          widget.embedInTabView ? 8 : 16,
+          27,
+          20,
+        ),
+        children: [
+          _buildCategoryChips(),
+          const SizedBox(height: 12),
+          _buildSearchBar(),
+          const SizedBox(height: 12),
+          Text(
+            '총 ${_visibleItems.length}건',
+            style: TextStyle(
+              color: _kMuted,
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 60),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_error != null)
+            _buildError()
+          else if (_items.isEmpty)
+            _buildEmpty()
+          else
+            ..._visibleItems.map(_buildFaqCard),
+        ],
+      ),
+    );
+
+    if (widget.embedInTabView) {
+      return ColoredBox(color: Colors.white, child: list);
+    }
+
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: 'FAQ',
         centerTitle: false,
       ),
-      child: RefreshIndicator(
-        onRefresh: () => _load(page: 1),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(27, 16, 27, 20),
-          children: [
-            _buildCategoryChips(),
-            const SizedBox(height: 12),
-            _buildSearchBar(),
-            const SizedBox(height: 12),
-            Text(
-              '총 ${_visibleItems.length}건',
-              style: const TextStyle(
-                color: _kMuted,
-                fontSize: 12,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 60),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_error != null)
-              _buildError()
-            else if (_items.isEmpty)
-              _buildEmpty()
-            else
-              ..._visibleItems.map(_buildFaqCard),
-          ],
-        ),
-      ),
+      child: list,
     );
   }
 
@@ -177,7 +192,7 @@ class _FaqListScreenState extends State<FaqListScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: selected ? Colors.white : _kMuted,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                   height: 1.67,
@@ -228,19 +243,19 @@ class _FaqListScreenState extends State<FaqListScreen> {
                     textInputAction: TextInputAction.search,
                     onSubmitted: (_) =>
                         _load(page: 1, query: _searchController.text.trim()),
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w400,
                       color: _kText,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
                       hintText: '검색',
                       border: InputBorder.none,
                       hintStyle: TextStyle(
                         color: _kMuted,
-                        fontSize: 14,
+                        fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                       ),
@@ -295,9 +310,9 @@ class _FaqListScreenState extends State<FaqListScreen> {
                   Expanded(
                     child: Text(
                       item.question,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kText,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                         letterSpacing: -1.2,
@@ -323,9 +338,9 @@ class _FaqListScreenState extends State<FaqListScreen> {
               decoration: const BoxDecoration(color: Colors.white),
               child: Text(
                 _normalizeHtmlToText(item.answer),
-                style: const TextStyle(
+                style: TextStyle(
                   color: _kText,
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w400,
                   height: 1.6,
@@ -366,9 +381,9 @@ class _FaqListScreenState extends State<FaqListScreen> {
         child: Text(
           _error!,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: _kMuted,
-            fontSize: 14,
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
@@ -378,14 +393,14 @@ class _FaqListScreenState extends State<FaqListScreen> {
   }
 
   Widget _buildEmpty() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 50),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 50),
       child: Center(
         child: Text(
           '조건에 맞는 FAQ가 없습니다.',
           style: TextStyle(
             color: _kMuted,
-            fontSize: 14,
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
