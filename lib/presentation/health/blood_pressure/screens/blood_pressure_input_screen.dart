@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_date_selector.dart';
@@ -225,30 +226,42 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: widget.record == null ? '혈압 기록하기' : '혈압 수정하기',
+          titleFontSize: healthSp(context, 16),
+          leadingIconSize: healthDp(context, 24),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDateTimeCard(),
-                const SizedBox(height: 20),
-                _buildSystolicInput(),
-                const SizedBox(height: 20),
-                _buildDiastolicInput(),
-                const SizedBox(height: 20),
-                _buildPulseInput(),
-                const SizedBox(height: 24),
-                _buildActionButtons(),
-              ],
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 27),
+              vertical: healthDp(context, 20),
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDateTimeCard(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildSystolicInput(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildDiastolicInput(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildPulseInput(),
+                  SizedBox(height: healthDp(context, 24)),
+                  _buildActionButtons(),
+                ],
+              ),
             ),
           ),
         ),
@@ -263,21 +276,22 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '측정 일시',
           style: TextStyle(
             color: Colors.black,
             fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         Row(
           children: [
             Expanded(
               child: _buildDateTimeBox(text: dateText, onTap: _selectDate),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: _buildDateTimeBox(text: timeText, onTap: _selectTime),
             ),
@@ -293,23 +307,27 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(7),
+      borderRadius: BorderRadius.circular(healthDp(context, 7)),
       child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: healthDp(context, 40),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
         decoration: ShapeDecoration(
           shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
-            borderRadius: BorderRadius.circular(7),
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0x7FD2D2D2),
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
           ),
         ),
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
             text,
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
+            style: TextStyle(
+              color: const Color(0xFF1A1A1A),
               fontSize: 16,
+              fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
             ),
           ),
@@ -347,20 +365,24 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
             fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: healthDp(context, 40),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
-              borderRadius: BorderRadius.circular(7),
+              side: BorderSide(
+                width: healthDp(context, 1),
+                color: const Color(0x7FD2D2D2),
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           child: TextFormField(
@@ -369,22 +391,26 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             validator: validator,
             textAlignVertical: const TextAlignVertical(y: 0.45),
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 18,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1A),
+              fontSize: 16,
+              fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
             ),
             decoration: InputDecoration(
               hintText: hintText,
-              hintStyle: const TextStyle(
-                color: Color(0xFF1A1A1A),
+              hintStyle: TextStyle(
+                color: const Color(0xFF1A1A1A),
                 fontSize: 16,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
               border: InputBorder.none,
               isDense: true,
-              contentPadding: const EdgeInsets.only(top: 8, bottom: 1),
+              contentPadding: EdgeInsets.only(
+                top: healthDp(context, 8),
+                bottom: healthDp(context, 1),
+              ),
             ),
           ),
         ),
@@ -433,59 +459,71 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       children: [
         Expanded(
           child: SizedBox(
-            height: 44,
+            height: healthDp(context, 44),
             child: OutlinedButton(
               onPressed: (widget.record != null && !_isSaving)
                   ? _showDeleteConfirmDialog
                   : null,
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(
-                  width: 0.5,
-                  color: Color(0xFF898383),
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 8),
+                  vertical: healthDp(context, 12),
+                ),
+                side: BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: const Color(0xFF898383),
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 '삭제',
+                textScaler: TextScaler.noScaling,
                 style: TextStyle(
-                  color: Color(0xFF898383),
-                  fontSize: 16,
+                  fontFamily: 'Gmarket Sans TTF',
+                  color: const Color(0xFF898383),
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: healthDp(context, 10)),
         Expanded(
           child: SizedBox(
-            height: 44,
+            height: healthDp(context, 44),
             child: ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 8),
+                  vertical: healthDp(context, 12),
+                ),
                 backgroundColor: const Color(0xFFFF5A8D),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
                 elevation: 0,
               ),
               child: _isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
+                  ? SizedBox(
+                      width: healthDp(context, 18),
+                      height: healthDp(context, 18),
                       child: CircularProgressIndicator(
-                        strokeWidth: 2,
+                        strokeWidth: healthDp(context, 2),
                         color: Colors.white,
                       ),
                     )
                   : Text(
                       widget.record == null ? '등록' : '수정',
-                      style: const TextStyle(
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        fontFamily: 'Gmarket Sans TTF',
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -520,16 +558,20 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(healthDp(context, 16)),
       decoration: BoxDecoration(
         color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
         border: Border.all(color: statusColor),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: statusColor),
-          const SizedBox(width: 12),
+          Icon(
+            Icons.info_outline,
+            color: statusColor,
+            size: healthDp(context, 24),
+          ),
+          SizedBox(width: healthDp(context, 12)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,7 +584,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
                     color: statusColor,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: healthDp(context, 4)),
                 Text(
                   _getStatusDescription(_calculatedStatus!),
                   style: TextStyle(

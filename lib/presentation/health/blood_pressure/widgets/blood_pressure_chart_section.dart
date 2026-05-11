@@ -3,8 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_responsive_scale.dart';
 
-const double bloodPressureYAxisUnitBandHeight = 16.0;
+/// `(mmHg)` 상단 밴드 높이 (375 기준 16).
+double bloodPressureYAxisUnitBandHeight(BuildContext context) =>
+    healthDp(context, 16);
 
 /// 체중 그래프 Y축 스트립과 동일 레이아웃: 상단 단위 밴드 + 숫자 눈금
 Widget buildBloodPressureYAxisStrip({
@@ -15,8 +18,9 @@ Widget buildBloodPressureYAxisStrip({
   return LayoutBuilder(
     builder: (context, constraints) {
       final totalH = constraints.maxHeight;
-      final unitBand =
-          showYAxisHeader && yLabels.length > 1 ? bloodPressureYAxisUnitBandHeight : 0.0;
+      final unitBand = showYAxisHeader && yLabels.length > 1
+          ? bloodPressureYAxisUnitBandHeight(context)
+          : 0.0;
 
       Widget numericLabels(double forHeight) {
         final n = yLabels.length;
@@ -26,8 +30,9 @@ Widget buildBloodPressureYAxisStrip({
           child: LayoutBuilder(
             builder: (context, lc) {
               // 플롯 그리드(top/bottom 20)와 Y축 숫자 위치를 일치시킨다.
-              const plotTopPad = 20.0;
-              const plotBottomPad = 20.0;
+              final plotTopPad = healthDp(context, 20);
+              final plotBottomPad = healthDp(context, 20);
+              final labelHalf = healthDp(context, 8);
               final h = lc.maxHeight - plotTopPad - plotBottomPad;
               return Stack(
                 clipBehavior: Clip.none,
@@ -36,14 +41,18 @@ Widget buildBloodPressureYAxisStrip({
                   final label = e.value;
                   final y = plotTopPad + h * i / (n - 1);
                   return Positioned(
-                    top: y - 8,
+                    top: y - labelHalf,
                     left: 0,
                     right: 0,
                     child: Text(
                       label.toStringAsFixed(0),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 11,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.clip,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        fontSize: healthSp(context, 12),
                         color: Colors.grey,
                       ),
                     ),
@@ -55,8 +64,12 @@ Widget buildBloodPressureYAxisStrip({
         );
       }
 
+      final yAxisW = healthDp(
+        context,
+        math.max(ChartConstants.weightChartYAxisWidth, 46.0),
+      );
       return SizedBox(
-        width: math.max(ChartConstants.weightChartYAxisWidth, 46.0),
+        width: yAxisW,
         child: showYAxisHeader && yLabels.length > 1
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -69,8 +82,11 @@ Widget buildBloodPressureYAxisStrip({
                         fit: BoxFit.scaleDown,
                         child: Text(
                           unitLabel,
+                          textScaler: TextScaler.noScaling,
+                          maxLines: 1,
+                          softWrap: false,
                           style: TextStyle(
-                            fontSize: 8,
+                            fontSize: healthSp(context, 8),
                             color: Colors.grey[700],
                             fontWeight: FontWeight.w500,
                           ),

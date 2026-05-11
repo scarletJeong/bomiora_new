@@ -6,11 +6,13 @@ import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -304,25 +306,26 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     required Widget labelRow,
     required String unitText,
   }) {
+    final unitReserve =
+        healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Padding(
-          padding: const EdgeInsets.only(
-            right: ChartConstants.weightXAxisUnitReservedWidth,
-          ),
+          padding: EdgeInsets.only(right: unitReserve),
           child: labelRow,
         ),
         Positioned(
-          right: -10,
-          top: 1,
+          right: -healthDp(context, 10),
+          top: healthDp(context, 1),
           bottom: 0,
           child: Align(
             alignment: Alignment.center,
             child: Text(
               unitText,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 9,
+                fontSize: healthSp(context, 9),
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w500,
               ),
@@ -345,7 +348,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         hourLabels.add(
           Text(
             hourLabel,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              fontSize: healthSp(context, 12),
+              color: Colors.grey[600],
+            ),
           ),
         );
       }
@@ -375,7 +382,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.clip,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  fontSize: healthSp(context, 12),
+                  color: Colors.grey[600],
+                ),
               ),
             );
           }),
@@ -396,7 +407,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         return Expanded(
           child: Text(
             DateFormat('M.d').format(date),
-            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              fontSize: healthSp(context, 10),
+              color: Colors.grey[600],
+            ),
             textAlign: TextAlign.center,
           ),
         );
@@ -431,6 +446,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   List<double> getDashedYAxisLabels() {
     return [225, 175, 125, 75];
   }
+
+  EdgeInsets _scaledChartCardPadding(BuildContext context) =>
+      EdgeInsets.fromLTRB(
+        healthDp(context, 8),
+        healthDp(context, 16),
+        healthDp(context, 16),
+        healthDp(context, 16),
+      );
 
   @override
   void initState() {
@@ -569,19 +592,31 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
-        appBar: const HealthAppBar(title: '혈압'),
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
+        appBar: HealthAppBar(
+          title: '혈압',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
                 children: [
                   Expanded(
                     child: SingleChildScrollView(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 27),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 27),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -621,33 +656,54 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                         dividerColor: const Color(0xFFD2D2D2),
                         iconColor: const Color(0xFF898686),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: healthDp(context, 16)),
                       _buildBloodPressureDisplay(),
-                      const SizedBox(height: 25),
+                      SizedBox(height: healthDp(context, 25)),
                       _buildPeriodButtons(),
                       // 그래프와 기간 선택(일자별/월별) 카드 간격
-                      const SizedBox(height: 3),
-                      _buildChart(),
-                      const SizedBox(height: 14),
-                      const Row(
+                      SizedBox(height: healthDp(context, 3)),
+                      _buildChart(
+                        chartHeight: healthDp(
+                              context,
+                              ChartConstants.healthChartHeight,
+                            ) +
+                            healthDp(context, 8),
+                      ),
+                      SizedBox(height: healthDp(context, 14)),
+                      Row(
                         children: [
-                          _GraphSeriesLegend(
+                          const _GraphSeriesLegend(
                               color: Color(0xFF86B0FF), label: '수축기'),
-                          SizedBox(width: 12),
-                          _GraphSeriesLegend(
+                          SizedBox(width: healthDp(context, 12)),
+                          const _GraphSeriesLegend(
                               color: Color(0xFFFFC686), label: '이완기'),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: healthDp(context, 24)),
                     ],
                         ),
                       ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                    padding: EdgeInsets.fromLTRB(
+                      healthDp(context, 27),
+                      0,
+                      healthDp(context, 27),
+                      healthDp(context, 20),
+                    ),
                     child: BtnRecord(
                       text: '+기록하기',
+                      labelTextScaler: TextScaler.noScaling,
+                      textStyle: TextStyle(
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontSize: healthSp(context, 16),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        vertical: healthDp(context, 16),
+                      ),
+                      borderRadius: healthDp(context, 12),
                       onPressed: () async {
                         final result = await Navigator.push(
                           context,
@@ -668,6 +724,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   ),
                 ],
               ),
+        ),
       ),
     );
   }
@@ -691,8 +748,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       onTap: _openSelectedRecordEditor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [          
-          const SizedBox(height: 14),
+        children: [
+          SizedBox(height: healthDp(context, 14)),
           Row(
             children: [
               Expanded(
@@ -704,7 +761,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   diffUp: _isUp(systolicDiff),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: healthDp(context, 10)),
               Expanded(
                 child: _buildPressureSummaryCardNew(
                   label: '이완기',
@@ -716,14 +773,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
+                  spacing: healthDp(context, 4),
+                  runSpacing: healthDp(context, 4),
+                  children: const [
                     _PressureLegend(color: Color(0xFF71D375), label: '정상'),
                     _PressureLegend(color: Color(0xFFFFE78B), label: '주의혈압'),
                     _PressureLegend(color: Color(0xFFFEAF8E), label: '전단계'),
@@ -731,26 +788,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              InkWell(
+              SizedBox(width: healthDp(context, 10)),
+              HealthListEditButton(
                 onTap: _openSelectedRecordEditor,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF5A8D),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    '수정하기',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
@@ -801,41 +841,45 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     required String diffText,
     required bool diffUp,
   }) {
+    final hPad = healthDp(context, 14);
+    final vPad = healthDp(context, 12);
+    final r = healthDp(context, 10);
     return Container(
-      padding: const EdgeInsets.only(bottom: 10),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 0.50, color: Color(0x7FD2D2D2)),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: const Color(0x7FD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(r),
         ),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            decoration: ShapeDecoration(
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
+            decoration: BoxDecoration(
               color: headerColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  topRight: Radius.circular(10),
-                ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(r),
+                topRight: Radius.circular(r),
               ),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16.67,
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                   ),
@@ -843,64 +887,72 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    value,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20.83,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: value == '-' ? FontWeight.w300 : FontWeight.w700,
+          Padding(
+            padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 10), hPad, vPad),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      value,
+                      textAlign: TextAlign.center,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: healthSp(context, 20),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight:
+                            value == '-' ? FontWeight.w300 : FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const Text(
-                    'mmHg',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 12,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
+                    SizedBox(width: healthDp(context, 2)),
+                    Text(
+                      'mmHg',
+                      textAlign: TextAlign.center,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    diffText,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 8,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
+                  ],
+                ),
+                SizedBox(height: healthDp(context, 5)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      diffText,
+                      textAlign: TextAlign.center,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(context, 8),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 5),
-                  Icon(
-                    diffUp ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                    size: 10,
-                    color: const Color(0xFF1A1A1A),
-                  ),
-                ],
-              ),
-            ],
+                    SizedBox(width: healthDp(context, 5)),
+                    Icon(
+                      diffUp ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                      size: healthDp(context, 16),
+                      color: const Color(0xFF1A1A1A),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1062,15 +1114,15 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       children: [
         chartBody,
         Positioned(
-          right: 4,
-          top: 8,
+          right: healthDp(context, 4),
+          top: healthDp(context, 8),
           child: GestureDetector(
             onTap: _openExpandedChartPage,
             behavior: HitTestBehavior.opaque,
             child: SvgPicture.asset(
               AppAssets.healthZoomin,
-              width: 20,
-              height: 20,
+              width: healthDp(context, 20),
+              height: healthDp(context, 20),
               fit: BoxFit.contain,
             ),
           ),
@@ -1108,10 +1160,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       double chartHeight = ChartConstants.healthChartHeight}) {
     return Container(
       height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
+      padding: _scaledChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
@@ -1122,7 +1174,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               final totalH = outerConstraints.maxHeight;
               final showYHeader = yLabels.length > 1;
               final headerBand =
-                  showYHeader ? bloodPressureYAxisUnitBandHeight : 0.0;
+                  showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1131,7 +1183,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                     yLabels: yLabels,
                     showYAxisHeader: showYHeader,
                   ),
-                  SizedBox(width: ChartConstants.yAxisSpacing),
+                  SizedBox(width: healthDp(context, ChartConstants.yAxisSpacing)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1156,12 +1208,18 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               );
             }),
           ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: EdgeInsets.only(
-              left: ChartConstants.weightChartYAxisStripWidth,
+          SizedBox(height: healthDp(context, 10)),
+          SizedBox(
+            height: healthDp(context, 30),
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: healthDp(
+                  context,
+                  ChartConstants.weightChartYAxisStripWidth,
+                ),
+              ),
+              child: _buildBloodPressureXAxisLabels(),
             ),
-            child: _buildBloodPressureXAxisLabels(),
           ),
         ],
       ),
@@ -1291,40 +1349,61 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     await openHealthChartExpandPage(
       context: context,
       periodSelectorBuilder: (_) => _buildPeriodButtons(),
-      chartBuilder: (_) => LayoutBuilder(
-        builder: (context, constraints) {
-          final safeHeight = ChartConstants.healthExpandedChartHeight(
-            constraints.maxHeight,
-            bottomLegendReserve: 34,
-          );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildChart(
-                showExpandButton: false,
-                forExpandedChart: true,
-                chartHeight: safeHeight,
+      chartBuilder: (_) {
+        final base = Theme.of(context);
+        final gmarket = base.copyWith(
+          textTheme: base.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+          primaryTextTheme:
+              base.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+        );
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final scaledChartCap =
+                healthDp(context, ChartConstants.healthChartHeight);
+            final scaledChartMin = healthDp(context, 160);
+            final safeHeight = ChartConstants.healthExpandedChartHeight(
+              constraints.maxHeight,
+              bottomLegendReserve: 34,
+              maxChartHeight: scaledChartCap,
+              minChartHeight: scaledChartMin,
+            );
+            final expandScale =
+                healthTextScaleByWidth(MediaQuery.of(context).size.width);
+            return Theme(
+              data: gmarket,
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(expandScale),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildChart(
+                      showExpandButton: false,
+                      forExpandedChart: true,
+                      chartHeight: safeHeight,
+                    ),
+                    SizedBox(height: healthDp(context, 6)),
+                    Row(
+                      children: [
+                          const _GraphSeriesLegend(
+                          color: Color(0xFF86B0FF),
+                          label: '수축기',
+                        ),
+                        SizedBox(width: healthDp(context, 6)),
+                        const _GraphSeriesLegend(
+                          color: Color(0xFFFFC686),
+                          label: '이완기',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const _GraphSeriesLegend(
-                    color: Color(0xFF86B0FF),
-                    label: '수축기',
-                    compact: true,
-                  ),
-                  const SizedBox(width: 6),
-                  const _GraphSeriesLegend(
-                    color: Color(0xFFFFC686),
-                    label: '이완기',
-                    compact: true,
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+            );
+          },
+        );
+      },
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;
       },
@@ -1347,68 +1426,78 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 Row(
                   children: [
                     Container(
-                      width: 16,
-                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      width: healthDp(context, 16),
+                      padding: EdgeInsets.symmetric(
+                        vertical: healthDp(context, 2),
+                      ),
                       decoration: ShapeDecoration(
                         color: const Color(0xFF85B0FF),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(19),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 19)),
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           '수',
+                          textScaler: TextScaler.noScaling,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    SizedBox(width: healthDp(context, 5)),
                     Text(
                       '${record.systolic}',
-                      style: const TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 16,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(context, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: healthDp(context, 10)),
                 Row(
                   children: [
                     Container(
-                      width: 16,
-                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      width: healthDp(context, 16),
+                      padding: EdgeInsets.symmetric(
+                        vertical: healthDp(context, 2),
+                      ),
                       decoration: ShapeDecoration(
                         color: const Color(0xFFFFBC71),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(19),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 19)),
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           '이',
+                          textScaler: TextScaler.noScaling,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    SizedBox(width: healthDp(context, 5)),
                     Text(
                       '${record.diastolic}',
-                      style: const TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 16,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(context, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
@@ -1492,24 +1581,26 @@ class _PressureLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 22,
+      height: healthDp(context, 18),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 14,
-            height: 14,
+            width: healthDp(context, 10),
+            height: healthDp(context, 10),
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: healthDp(context, 3)),
           Text(
             label,
-            style: const TextStyle(
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
               color: Colors.grey,
-              fontSize: 12.5,
+              fontSize: healthSp(context, 8),
+              fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1522,19 +1613,17 @@ class _PressureLegend extends StatelessWidget {
 class _GraphSeriesLegend extends StatelessWidget {
   final Color color;
   final String label;
-  final bool compact;
 
   const _GraphSeriesLegend({
     required this.color,
     required this.label,
-    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final dot = compact ? 8.0 : 12.0;
-    final gap = compact ? 3.0 : 5.0;
-    final fontSize = compact ? 9.0 : 12.0;
+    final dot = healthDp(context, 10);
+    final gap = healthDp(context, 3);
+    final fontSize = healthSp(context, 8);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1546,9 +1635,11 @@ class _GraphSeriesLegend extends StatelessWidget {
         SizedBox(width: gap),
         Text(
           label,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.black,
             fontSize: fontSize,
+            fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
