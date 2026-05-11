@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../common/widgets/dropdown_btn.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 
 /// 문의 유형(목록 필터·문의 폼 공통)
 const List<String> contactInquiryPrimaryTypes = [
@@ -62,19 +63,23 @@ class _ContactInquiryTypeSelectorRowState
             items: contactInquiryPrimaryTypes,
             value: primary,
             emptyText: '문의 유형',
+            buttonHeight: healthDp(context, 40),
+            panelMaxHeight: healthDp(context, 320),
             onChanged: (v) {
               final details = contactInquiryDetailMap[v] ?? const ['기타'];
               widget.onChanged(v, details.first);
             },
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: healthDp(context, 10)),
         Expanded(
           child: DropdownBtn(
             enabled: primary.isNotEmpty,
             items: detailOpts,
             value: widget.detailType,
             emptyText: '상세 유형',
+            buttonHeight: healthDp(context, 40),
+            panelMaxHeight: healthDp(context, 320),
             onChanged: (v) => widget.onChanged(primary, v),
           ),
         ),
@@ -112,6 +117,8 @@ class _ContactInquiryTypeFiltersState extends State<ContactInquiryTypeFilters> {
             items: contactInquiryPrimaryTypes,
             value: _selectedPrimary ?? '',
             emptyText: '문의 유형 선택',
+            buttonHeight: healthDp(context, 30),
+            panelMaxHeight: healthDp(context, 320),
             onChanged: (v) {
               setState(() {
                 _selectedPrimary = v;
@@ -120,13 +127,15 @@ class _ContactInquiryTypeFiltersState extends State<ContactInquiryTypeFilters> {
             },
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: healthDp(context, 10)),
         Expanded(
           child: DropdownBtn(
             enabled: hasPrimary,
             items: detailOptions,
             value: _selectedDetail ?? '',
             emptyText: '상세 유형 선택',
+            buttonHeight: healthDp(context, 30),
+            panelMaxHeight: healthDp(context, 320),
             onChanged: (v) => setState(() => _selectedDetail = v),
           ),
         ),

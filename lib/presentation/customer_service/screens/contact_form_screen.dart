@@ -6,8 +6,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../widget/contact_inquiry_type_filters.dart';
 
 class ContactFormScreen extends StatefulWidget {
@@ -139,29 +140,53 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
-      child: MobileAppLayoutWrapper(
-        backgroundColor: Colors.white,
-        appBar: const HealthAppBar(title: '1:1 문의하기'),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20),
-            children: [
-              const SizedBox(height: 20),
-              _buildTypeSelectors(),
-              const SizedBox(height: 20),
-              _buildTitleField(),
-              const SizedBox(height: 10),
-              _buildContentBox(),
-              const SizedBox(height: 20),
-              _buildImageBox(),
-              const SizedBox(height: 20),
-              _buildBottomButtons(),
-              const SizedBox(height: 20),
-              // const AppFooter(),
-            ],
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Gmarket Sans TTF', color: _kInk),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '1:1 문의',
+              titleFontSize: healthSp(context, 16),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: EdgeInsets.only(
+                  left: healthDp(context, 27),
+                  right: healthDp(context, 27),
+                  bottom: healthDp(context, 20),
+                ),
+                children: [
+                  SizedBox(height: healthDp(context, 16)),
+                  _buildTypeSelectors(),
+                  SizedBox(height: healthDp(context, 16)),
+                  _buildTitleField(),
+                  SizedBox(height: healthDp(context, 10)),
+                  _buildContentBox(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildImageBox(),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildBottomButtons(),
+                  SizedBox(height: healthDp(context, 20)),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -172,23 +197,33 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: _kBorder),
-              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                  width: healthDp(context, 1), color: _kBorder),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
           ),
           child: TextFormField(
             controller: _titleController,
             maxLength: 120,
-            decoration: const InputDecoration(
+            style: TextStyle(
+              fontSize: healthSp(context, 10), // 확인해봐
+              fontWeight: FontWeight.w500,
+              color: _kInk,
+            ),
+            decoration: InputDecoration(
               border: InputBorder.none,
               counterText: '',
-              hintText: '문의 제목을 입력해주세요.',
-              hintStyle: TextStyle(color: _kMuted, fontSize: 12, fontWeight: FontWeight.w300),
+              hintText: '제목을 입력해주세요.',
+              hintStyle: TextStyle(
+                color: _kMuted,
+                fontSize: healthSp(context, 12),
+                fontWeight: FontWeight.w300,
+              ),
             ),
           ),
         ),
@@ -214,13 +249,14 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          height: 207,
-          padding: const EdgeInsets.all(20),
+          height: healthDp(context, 207),
+          padding: EdgeInsets.all(healthDp(context, 20)),
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: _kSoftBorder),
-              borderRadius: BorderRadius.circular(7),
+              side: BorderSide(
+                  width: healthDp(context, 1), color: _kSoftBorder),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           child: Column(
@@ -231,9 +267,18 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                   controller: _contentController,
                   maxLength: 3000,
                   maxLines: null,
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    fontSize: healthSp(context, 12),
+                    fontWeight: FontWeight.w500,
+                    color: _kInk,
+                  ),
+                  decoration: InputDecoration(
                     hintText: '문의 내용을 입력해주세요.',
-                    hintStyle: TextStyle(color: _kMuted, fontSize: 12, fontWeight: FontWeight.w300),
+                    hintStyle: TextStyle(
+                      color: _kMuted,
+                      fontSize: healthSp(context, 12),
+                      fontWeight: FontWeight.w300,
+                    ),
                     border: InputBorder.none,
                     counterText: '',
                   ),
@@ -249,7 +294,11 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                 alignment: Alignment.centerRight,
                 child: Text(
                   '${_contentController.text.length}/3,000자',
-                  style: const TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w300),
+                  style: TextStyle(
+                    color: _kMuted,
+                    fontSize: healthSp(context, 10),
+                    fontWeight: FontWeight.w300,
+                  ),
                 ),
               ),
             ],
@@ -260,6 +309,8 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   }
 
   Widget _buildImageBox() {
+    final thumb = healthDp(context, 76);
+    final r10 = healthDp(context, 10);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -268,48 +319,67 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
             InkWell(
               onTap: _pickImage,
               child: Container(
-                width: 76,
-                height: 76,
+                width: thumb,
+                height: thumb,
                 decoration: ShapeDecoration(
                   color: const Color(0x99D2D2D2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(r10)),
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_a_photo_outlined, color: Colors.white),
-                    SizedBox(height: 4),
-                    Text('사진추가하기', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500)),
+                    Icon(
+                      Icons.add_a_photo_outlined,
+                      color: Colors.white,
+                      size: healthDp(context, 24),
+                    ),
+                    SizedBox(height: healthDp(context, 4)),
+                    Text(
+                      '사진추가하기',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 10),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: healthDp(context, 5)),
             ..._images.asMap().entries.map((entry) {
               final idx = entry.key;
               final image = entry.value;
               return Padding(
-                padding: const EdgeInsets.only(right: 5),
+                padding: EdgeInsets.only(right: healthDp(context, 5)),
                 child: Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(r10),
                       child: kIsWeb
-                          ? Image.network(image.path, width: 76, height: 76, fit: BoxFit.cover)
-                          : Image.file(File(image.path), width: 76, height: 76, fit: BoxFit.cover),
+                          ? Image.network(image.path,
+                              width: thumb, height: thumb, fit: BoxFit.cover)
+                          : Image.file(File(image.path),
+                              width: thumb, height: thumb, fit: BoxFit.cover),
                     ),
                     Positioned(
-                      right: 3,
-                      top: 3,
+                      right: healthDp(context, 3),
+                      top: healthDp(context, 3),
                       child: InkWell(
                         onTap: () => setState(() => _images.removeAt(idx)),
                         child: Container(
-                          padding: const EdgeInsets.all(2),
+                          padding: EdgeInsets.all(healthDp(context, 2)),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.40),
-                            borderRadius: BorderRadius.circular(9999),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 9999)),
                           ),
-                          child: const Icon(Icons.close, size: 12, color: Colors.white),
+                          child: Icon(
+                            Icons.close,
+                            size: healthDp(context, 12),
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -319,58 +389,83 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
             }),
           ],
         ),
-        const SizedBox(height: 10),
-        const Text(
+        SizedBox(height: healthDp(context, 10)),
+        Text(
           '최대 3장 / 파일당 5MB이하(GIF,JPG,PNG)',
-          style: TextStyle(color: _kMuted, fontSize: 10, fontWeight: FontWeight.w300),
+          style: TextStyle(
+            color: _kMuted,
+            fontSize: healthSp(context, 10),
+            fontWeight: FontWeight.w300,
+          ),
         ),
-        const SizedBox(height: 10),
-        const Text(
+        SizedBox(height: healthDp(context, 10)),
+        Text(
           '*산업안전보건법 제41조, 고객 응대 보호에 따라 욕설 성적 모욕 비하 등\n부적절한 내용은 상담이 제한 되거나 삭제될 수 있습니다.',
-          style: TextStyle(color: Color(0xFF111111), fontSize: 10, fontWeight: FontWeight.w300),
+          style: TextStyle(
+            color: const Color(0xFF111111),
+            fontSize: healthSp(context, 10),
+            fontWeight: FontWeight.w300,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildBottomButtons() {
+    final h = healthDp(context, 40);
+    final r = healthDp(context, 10);
     return Row(
       children: [
         Expanded(
           child: Container(
-            height: 40,
+            height: h,
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 0.5, color: _kBorder),
-                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                    width: healthDp(context, 0.5), color: _kBorder),
+                borderRadius: BorderRadius.circular(r),
               ),
             ),
             child: TextButton(
               onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-              child: const Text('취소', style: TextStyle(color: _kMuted, fontSize: 16, fontWeight: FontWeight.w500)),
+              child: Text(
+                '취소',
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: healthSp(context, 16),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 20),
+        SizedBox(width: healthDp(context, 20)),
         Expanded(
           child: Container(
-            height: 40,
+            height: h,
             decoration: ShapeDecoration(
               color: _kPink,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r)),
             ),
             child: TextButton(
               onPressed: _isSubmitting ? null : _submitContact,
               child: _isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  ? SizedBox(
+                      width: healthDp(context, 18),
+                      height: healthDp(context, 18),
+                      child: CircularProgressIndicator(
+                        strokeWidth: healthDp(context, 2),
+                        color: Colors.white,
+                      ),
                     )
                   : Text(
                       _isEditMode ? '수정' : '등록',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 16),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
             ),
           ),

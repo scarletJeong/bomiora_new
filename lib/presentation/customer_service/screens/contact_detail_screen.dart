@@ -9,6 +9,7 @@ import '../../../data/services/content_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import 'contact_form_screen.dart';
 
 class ContactDetailScreen extends StatefulWidget {
@@ -242,11 +243,11 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                               color: _kPink,
                               shape: BoxShape.circle,
                             ),
-                            child: const Text(
+                            child: Text(
                               'Q',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 20,
+                                fontSize: healthSp(context, 20),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w700,
                                 height: 1,
@@ -260,9 +261,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                               children: [
                                 Text(
                                   c.wrSubject.isEmpty ? '(제목 없음)' : c.wrSubject,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Color(0xFF1A1A1A),
-                                    fontSize: 16,
+                                    fontSize: healthSp(context, 16),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w700,
                                     height: 1.5,
@@ -270,9 +271,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                 ),
                                 Text(
                                   DateDisplayFormatter.formatYmdFromString(c.wrDatetime),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Color(0xFF1A1A1A),
-                                    fontSize: 10,
+                                    fontSize: healthSp(context, 10),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                     height: 1.5,
@@ -298,22 +299,22 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: const Text(
+                              child: Text(
                                 '수정',
                                 style: TextStyle(
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
-                                  fontSize: 11,
+                                  fontSize: healthSp(context, 11),
                                   color: Color(0xFF898383),
                                 ),
                               ),
                             ),
-                            const Text(
+                            Text(
                               '|',
                               style: TextStyle(
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w300,
-                                fontSize: 11,
+                                fontSize: healthSp(context, 11),
                                 color: Color(0xFF898383),
                               ),
                             ),
@@ -327,12 +328,12 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: const Text(
+                              child: Text(
                                 '삭제',
                                 style: TextStyle(
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
-                                  fontSize: 11,
+                                  fontSize: healthSp(context, 11),
                                   color: Color(0xFF898383),
                                 ),
                               ),
@@ -423,11 +424,11 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           color: _kPinkSoft,
                           shape: BoxShape.circle,
                         ),
-                        child: const Text(
+                        child: Text(
                           'A',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: healthSp(context, 20),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w700,
                             height: 1,
@@ -441,9 +442,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           children: [
                             Text(
                               title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Color(0xFF1A1A1A),
-                                fontSize: 14,
+                                fontSize: healthSp(context, 14),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w700,
                                 height: 1.43,
@@ -451,9 +452,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                             ),
                             Text(
                               DateDisplayFormatter.formatYmdFromString(reply.wrDatetime),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Color(0xFF1A1A1A),
-                                fontSize: 10,
+                                fontSize: healthSp(context, 10),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w500,
                                 height: 1.5,
@@ -615,11 +616,11 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                         ),
                                         padding: const EdgeInsets.all(10),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         '추가질문',
                                         style: TextStyle(
                                           color: Color(0xFF898686),
-                                          fontSize: 16,
+                                          fontSize: healthSp(context, 16),
                                           fontFamily: 'Gmarket Sans TTF',
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -641,10 +642,10 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                                         ),
                                         padding: const EdgeInsets.all(10),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         '목록보기',
                                         style: TextStyle(
-                                          fontSize: 16,
+                                          fontSize: healthSp(context, 16),
                                           fontFamily: 'Gmarket Sans TTF',
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -676,9 +677,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     if (processed.trim().isEmpty) {
       return Text(
         ContentService.normalizeHtmlToText(rawHtml),
-        style: const TextStyle(
+        style: TextStyle(
           color: Color(0xFF1A1A1A),
-          fontSize: 14,
+          fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w300,
           height: 1.63,
@@ -698,7 +699,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
               margin: Margins.zero,
               padding: HtmlPaddings.zero,
               fontFamily: 'Gmarket Sans TTF',
-              fontSize: FontSize(14),
+              fontSize: FontSize(healthSp(context, 14)),
               fontWeight: FontWeight.w300,
               lineHeight: const LineHeight(1.63),
               textAlign: TextAlign.start,

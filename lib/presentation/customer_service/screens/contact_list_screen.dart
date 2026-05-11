@@ -4,6 +4,7 @@ import 'contact_form_screen.dart';
 import 'contact_detail_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -105,20 +106,20 @@ class ContactListScreenState extends State<ContactListScreen> {
         Text.rich(
           TextSpan(
             children: [
-              const TextSpan(
+              TextSpan(
                 text: '총 문의수 ',
                 style: TextStyle(
                   color: _kMuted,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
               ),
               TextSpan(
                 text: '$_contactCount',
-                style: const TextStyle(
+                style: TextStyle(
                   color: _kPink,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                 ),
@@ -168,9 +169,9 @@ class ContactListScreenState extends State<ContactListScreen> {
                   children: [
                     Text(
                       DateDisplayFormatter.formatYmdFromString(contact.wrDatetime),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kDateColor,
-                        fontSize: 10,
+                        fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
@@ -178,9 +179,9 @@ class ContactListScreenState extends State<ContactListScreen> {
                     const SizedBox(height: 2),
                     Text(
                       contact.wrSubject.isEmpty ? '(제목 없음)' : contact.wrSubject,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Color(0xFF1A1A1A),
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                         letterSpacing: -1.44,
@@ -192,9 +193,9 @@ class ContactListScreenState extends State<ContactListScreen> {
                     const SizedBox(height: 2),
                     Text(
                       _statusLabel(contact),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kMuted,
-                        fontSize: 12,
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                         letterSpacing: -1.08,
@@ -203,7 +204,7 @@ class ContactListScreenState extends State<ContactListScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: _kMuted, size: 22),
+              const Icon(Icons.chevron_right_rounded, color: _kMuted, size: 12),
             ],
           ),
         ),
@@ -263,7 +264,7 @@ class ContactListScreenState extends State<ContactListScreen> {
             Text(
               '문의내역이 없습니다.',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 color: Colors.grey[600],
                 fontFamily: 'Gmarket Sans TTF',
               ),
@@ -292,11 +293,11 @@ class ContactListScreenState extends State<ContactListScreen> {
                     _visibleCount = (_visibleCount + 8 > total) ? total : _visibleCount + 8;
                   });
                 },
-                child: const Text(
+                child: Text(
                   '더보기',
                   style: TextStyle(
                     color: _kPink,
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w600,
                   ),
@@ -344,21 +345,26 @@ class ContactListScreenState extends State<ContactListScreen> {
               if (!_requiresLogin)
                 SafeArea(
                   top: false,
-                  minimum: const EdgeInsets.fromLTRB(27, 8, 27, 12),
+                  minimum: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 8),
+                    healthDp(context, 27),
+                    healthDp(context, 12),
+                  ),
                   child: GestureDetector(
                     onTap: _openContactForm,
                     child: Container(
                       width: double.infinity,
-                      height: 40,
-                      padding: const EdgeInsets.all(10),
+                      height: healthDp(context, 40),
+                      padding: EdgeInsets.all(healthDp(context, 10)),
                       clipBehavior: Clip.antiAlias,
                       decoration: ShapeDecoration(
                         color: const Color(0xFFFF5A8D),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(healthDp(context, 10)),
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -367,7 +373,7 @@ class ContactListScreenState extends State<ContactListScreen> {
                             '1:1 문의하기',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: healthSp(context, 16),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
@@ -400,7 +406,7 @@ class ContactListScreenState extends State<ContactListScreen> {
             Text(
               '로그인 후 이용 가능합니다.',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 color: Colors.grey[600],
                 fontFamily: 'Gmarket Sans TTF',
               ),
