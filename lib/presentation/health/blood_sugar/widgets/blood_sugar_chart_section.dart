@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart'
@@ -319,18 +320,19 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     final overlayBox = overlay.context.findRenderObject() as RenderBox?;
     if (overlayBox == null) return;
 
-    const menuWidth = 153.0;
-    const rowHeight = 24.0;
+    final menuWidth = healthDp(context, 153);
+    final rowHeight = healthDp(context, 24);
     const visibleRows = 3;
-    const menuPadTop = 10.0;
-    const menuPadBottom = 5.0;
+    final menuPadTop = healthDp(context, 10);
+    final menuPadBottom = healthDp(context, 5);
     final menuHeight = menuPadTop + menuPadBottom + (rowHeight * visibleRows);
 
     final anchorTopLeft = anchorBox.localToGlobal(Offset.zero);
+    final edgePad = healthDp(context, 8);
     var left = anchorTopLeft.dx;
-    var top = anchorTopLeft.dy + anchorBox.size.height + 4;
-    left = left.clamp(8.0, overlayBox.size.width - menuWidth - 8.0);
-    top = top.clamp(8.0, overlayBox.size.height - menuHeight - 8.0);
+    var top = anchorTopLeft.dy + anchorBox.size.height + healthDp(context, 4);
+    left = left.clamp(edgePad, overlayBox.size.width - menuWidth - edgePad);
+    top = top.clamp(edgePad, overlayBox.size.height - menuHeight - edgePad);
 
     final selectedIndex = BloodSugarChartSection.measurementFilters
         .indexOf(widget.selectedMeasurementFilter);
@@ -358,12 +360,18 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
               child: Container(
                 clipBehavior: Clip.antiAlias,
                 width: menuWidth,
-                padding: const EdgeInsets.only(top: menuPadTop, bottom: menuPadBottom),
+                padding: EdgeInsets.only(
+                  top: menuPadTop,
+                  bottom: menuPadBottom,
+                ),
                 decoration: ShapeDecoration(
                   color: Colors.white,
                   shape: RoundedRectangleBorder(
-                    side: const BorderSide(width: 0.50, color: Color(0xFFD2D2D2)),
-                    borderRadius: BorderRadius.circular(7),
+                    side: BorderSide(
+                      width: healthDp(context, 0.5),
+                      color: const Color(0xFFD2D2D2),
+                    ),
+                    borderRadius: BorderRadius.circular(healthDp(context, 7)),
                   ),
                 ),
                 child: SizedBox(
@@ -393,16 +401,16 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                             widget.onSelectionChanged(null, null);
                             widget.onMeasurementFilterChanged?.call(label);
                           },
-                          child: Container(
+                            child: Container(
                             width: double.infinity,
                             height: rowHeight,
-                            padding: const EdgeInsets.all(5),
+                            padding: EdgeInsets.all(healthDp(context, 5)),
                             decoration: ShapeDecoration(
                               shape: RoundedRectangleBorder(
                                 side: hasThinBorder
-                                    ? const BorderSide(
-                                        width: 0.30,
-                                        color: Color(0x7FD2D2D2),
+                                    ? BorderSide(
+                                        width: healthDp(context, 0.3),
+                                        color: const Color(0x7FD2D2D2),
                                       )
                                     : BorderSide.none,
                               ),
@@ -415,7 +423,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                                 color: hovered
                                     ? const Color(0xFFFF5A8D)
                                     : Colors.black,
-                                fontSize: 10,
+                                fontSize: healthSp(context, 10),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w300,
                               ),
@@ -446,39 +454,52 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.showPeriodSelector) ...[
-          const SizedBox(height: 25),
+          SizedBox(height: healthDp(context, 25)),
           BloodSugarPeriodSelector(
             selectedPeriod: widget.selectedPeriod,
             onChanged: (period) => widget.onPeriodChanged?.call(period),
           ),
           // 그래프와 기간 선택(일자별/월별) 카드 간격
-          const SizedBox(height: 3),
+          SizedBox(height: healthDp(context, 3)),
         ],
         chart,
         if (widget.showLegend) ...[
-          SizedBox(height: widget.compactLegend ? 6 : 14),
+          SizedBox(
+            height: healthDp(
+              context,
+              widget.compactLegend ? 6 : 14,
+            ),
+          ),
           Row(
             children: [
               _GlucoseSeriesLegend(
                   color: const Color(0xFF4F82E0),
                   label: '공복',
                   compact: widget.compactLegend),
-              SizedBox(width: widget.compactLegend ? 6 : 10),
+              SizedBox(
+                width: healthDp(context, widget.compactLegend ? 6 : 10),
+              ),
               _GlucoseSeriesLegend(
                   color: const Color(0xFFFC8B3A),
                   label: '식전',
                   compact: widget.compactLegend),
-              SizedBox(width: widget.compactLegend ? 6 : 10),
+              SizedBox(
+                width: healthDp(context, widget.compactLegend ? 6 : 10),
+              ),
               _GlucoseSeriesLegend(
                   color: const Color(0xFF38B769),
                   label: '식후',
                   compact: widget.compactLegend),
-              SizedBox(width: widget.compactLegend ? 6 : 10),
+              SizedBox(
+                width: healthDp(context, widget.compactLegend ? 6 : 10),
+              ),
               _GlucoseSeriesLegend(
                   color: const Color(0xFF4FD1E0),
                   label: '취침전',
                   compact: widget.compactLegend),
-              SizedBox(width: widget.compactLegend ? 6 : 10),
+              SizedBox(
+                width: healthDp(context, widget.compactLegend ? 6 : 10),
+              ),
               _GlucoseSeriesLegend(
                   color: const Color(0xFFB24FE0),
                   label: '평상시',
@@ -494,8 +515,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       {bool showExpandButton = true,
       double chartHeight = ChartConstants.healthChartHeight}) {
     final filteredData = _filteredChartData(widget.chartData);
-    final effectiveChartHeight =
-        chartHeight + (widget.showMeasurementFilter ? 40.0 : 0.0);
+    final filterStripH = healthDp(context, 40);
+    final effectiveChartHeight = chartHeight +
+        (widget.showMeasurementFilter ? filterStripH : 0.0);
     Widget chartBody;
     if (widget.selectedPeriod == '일' && !widget.hasActualDailyData) {
       chartBody = _buildNoDataMessage(chartHeight: effectiveChartHeight);
@@ -521,8 +543,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       children: [
         chartBody,
         Positioned(
-          right: 4,
-          top: 8,
+          right: healthDp(context, 4),
+          top: healthDp(context, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -532,28 +554,30 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                   behavior: HitTestBehavior.opaque,
                   child: SvgPicture.asset(
                     AppAssets.healthZoomin,
-                    width: 20,
-                    height: 20,
+                    width: healthDp(context, 20),
+                    height: healthDp(context, 20),
                     fit: BoxFit.contain,
                   ),
                 ),
               if (widget.showMeasurementFilter) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: healthDp(context, 6)),
                 GestureDetector(
                   key: _filterAnchorKey,
                   onTap: _toggleMeasurementFilterMenu,
                   child: Container(
-                    width: 164,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    width: healthDp(context, 164),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 10),
+                      vertical: healthDp(context, 5),
+                    ),
                     decoration: ShapeDecoration(
                       color: Colors.white,
                       shape: RoundedRectangleBorder(
-                        side: const BorderSide(
-                          width: 0.50,
-                          color: Color(0x7FD2D2D2),
+                        side: BorderSide(
+                          width: healthDp(context, 0.5),
+                          color: const Color(0x7FD2D2D2),
                         ),
-                        borderRadius: BorderRadius.circular(7),
+                        borderRadius: BorderRadius.circular(healthDp(context, 7)),
                       ),
                     ),
                     child: Row(
@@ -563,20 +587,20 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                       children: [
                         Text(
                           widget.selectedMeasurementFilter,
-                          style: const TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 10,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
+                        SizedBox(
+                          width: healthDp(context, 16),
+                          height: healthDp(context, 16),
                           child: Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            size: 16,
-                            color: Color(0xFF1A1A1A),
+                            size: healthDp(context, 16),
+                            color: const Color(0xFF1A1A1A),
                           ),
                         ),
                       ],
@@ -611,19 +635,20 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       padding: ChartConstants.weightChartCardPadding,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.showMeasurementFilter) const SizedBox(height: 34),
+          if (widget.showMeasurementFilter)
+            SizedBox(height: healthDp(context, 34)),
           Expanded(
             child: LayoutBuilder(
               builder: (context, outerConstraints) {
                 final showYHeader = yLabels.length > 1;
                 final headerBand =
-                    showYHeader ? bloodPressureYAxisUnitBandHeight : 0.0;
+                    showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -633,7 +658,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                       showYAxisHeader: showYHeader,
                       unitLabel: '(mg/dL)',
                     ),
-                    SizedBox(width: ChartConstants.yAxisSpacing),
+                    SizedBox(width: healthDp(context, ChartConstants.yAxisSpacing)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -658,14 +683,18 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
               },
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: healthDp(context, 10)),
           SizedBox(
-            height: 20,
+            height: healthDp(context, 30),
             child: Padding(
               padding: EdgeInsets.only(
-                left: ChartConstants.weightChartYAxisStripWidth,
+                left: healthDp(
+                  context,
+                  ChartConstants.weightChartYAxisStripWidth,
+                ),
               ),
               child: buildBloodSugarXAxisLabels(
+                context,
                 selectedPeriod: widget.selectedPeriod,
                 selectedDate: widget.selectedDate,
                 timeOffset: widget.timeOffset,
@@ -947,13 +976,15 @@ Map<String, dynamic> _tooltipRowForChartIndex(
   return chartData.isNotEmpty ? chartData[0] : {};
 }
 
-Widget buildBloodSugarXAxisLabels({
+Widget buildBloodSugarXAxisLabels(
+  BuildContext context, {
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
 }) {
   if (selectedPeriod != '일') {
     return _buildBloodSugarPeriodXAxisLabels(
+      context,
       selectedPeriod: selectedPeriod,
       selectedDate: selectedDate,
       timeOffset: timeOffset,
@@ -970,12 +1001,17 @@ Widget buildBloodSugarXAxisLabels({
     hourLabels.add(
       Text(
         hourLabel,
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        textScaler: TextScaler.noScaling,
+        style: TextStyle(
+          fontSize: healthSp(context, 12),
+          color: Colors.grey[600],
+        ),
       ),
     );
   }
 
   return _buildBloodSugarXAxisWithUnit(
+    context,
     labelRow: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: hourLabels,
@@ -984,7 +1020,8 @@ Widget buildBloodSugarXAxisLabels({
   );
 }
 
-Widget _buildBloodSugarPeriodXAxisLabels({
+Widget _buildBloodSugarPeriodXAxisLabels(
+  BuildContext context, {
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
@@ -996,6 +1033,7 @@ Widget _buildBloodSugarPeriodXAxisLabels({
     final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
 
     return _buildBloodSugarXAxisWithUnit(
+      context,
       labelRow: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(visibleMonths, (i) {
@@ -1006,7 +1044,11 @@ Widget _buildBloodSugarPeriodXAxisLabels({
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.clip,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                fontSize: healthSp(context, 12),
+                color: Colors.grey[600],
+              ),
             ),
           );
         }),
@@ -1032,7 +1074,11 @@ Widget _buildBloodSugarPeriodXAxisLabels({
       return Expanded(
         child: Text(
           label,
-          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            fontSize: healthSp(context, 10),
+            color: Colors.grey[600],
+          ),
           textAlign: TextAlign.center,
         ),
       );
@@ -1040,34 +1086,37 @@ Widget _buildBloodSugarPeriodXAxisLabels({
   );
 
   return _buildBloodSugarXAxisWithUnit(
+    context,
     labelRow: dateRow,
     unitText: '(일)',
   );
 }
 
-Widget _buildBloodSugarXAxisWithUnit({
+Widget _buildBloodSugarXAxisWithUnit(
+  BuildContext context, {
   required Widget labelRow,
   required String unitText,
 }) {
+  final unitReserve =
+      healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
   return Stack(
     clipBehavior: Clip.none,
     children: [
       Padding(
-        padding: const EdgeInsets.only(
-          right: ChartConstants.weightXAxisUnitReservedWidth,
-        ),
+        padding: EdgeInsets.only(right: unitReserve),
         child: labelRow,
       ),
       Positioned(
-        right: -10,
-        top: 1,
+        right: -healthDp(context, 10),
+        top: healthDp(context, 1),
         bottom: 0,
         child: Align(
           alignment: Alignment.center,
           child: Text(
             unitText,
+            textScaler: TextScaler.noScaling,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: healthSp(context, 9),
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
@@ -1091,9 +1140,9 @@ class _GlucoseSeriesLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dot = compact ? 8.0 : 12.0;
-    final gap = compact ? 3.0 : 5.0;
-    final fontSize = compact ? 9.0 : 12.0;
+    final dot = compact ? healthDp(context, 8) : healthDp(context, 12);
+    final gap = compact ? healthDp(context, 3) : healthDp(context, 5);
+    final fontSize = compact ? healthSp(context, 9) : healthSp(context, 12);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1105,9 +1154,11 @@ class _GlucoseSeriesLegend extends StatelessWidget {
         SizedBox(width: gap),
         Text(
           label,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.black,
             fontSize: fontSize,
+            fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
