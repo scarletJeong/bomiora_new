@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/services/content_service.dart';
 import '../../../../data/services/category_service.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../common/widgets/app_bar_menu.dart';
+import '../../../common/widgets/appbar_menutap.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/navi_bar.dart';
 import '../../../common/widgets/app_footer.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 
 /// 콘텐츠 목록 (카테고리 칩, 검색, 리스트, 글쓰기 FAB)
 class ContentListScreen extends StatefulWidget {
@@ -16,6 +18,8 @@ class ContentListScreen extends StatefulWidget {
 }
 
 class _ContentListScreenState extends State<ContentListScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   static const Color _textDark = Color(0xFF1A1A1A);
   static const Color _textMuted = Color(0xFF898686);
   static const Color _pink = Color(0xFFFF5B8C);
@@ -118,66 +122,104 @@ class _ContentListScreenState extends State<ContentListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(
-        title: '건강 콘텐츠',
-        centerTitle: false,
-        leadingType: HealthAppBarLeadingType.back,
-      ),
-      backgroundColor: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCategoryChips(_categories),
-                  const SizedBox(height: 10),
-                  _buildSearchBox(),
-                  const SizedBox(height: 10),
-                  _buildCountRow(),
-                  const SizedBox(height: 10),
-                  if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFFF5B8C),
-                        ),
-                      ),
-                    )
-                  else if (_posts.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: Text(
-                          '게시글이 없습니다.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _textMuted,
-                            fontSize: 14,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    ..._posts.map((e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          child: _buildListCard(context, e),
-                        )),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: MobileAppLayoutWrapper(
+          scaffoldKey: _scaffoldKey,
+          appBar: AppBarMenu(
+            onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
-          const AppFooter(),
-          const FooterBar(),
-        ],
+          drawer: AppBarMenuTapDrawer(
+            onHealthDashboardTap: () {
+              Navigator.pushReplacementNamed(context, '/health');
+            },
+          ),
+          backgroundColor: Colors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(top: healthDp(context, 10)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 27)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildCategoryChips(_categories),
+                            SizedBox(height: healthDp(context, 10)),
+                            _buildSearchBox(),
+                            SizedBox(height: healthDp(context, 10)),
+                            _buildCountRow(),
+                            SizedBox(height: healthDp(context, 10)),
+                            if (_isLoading)
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: healthDp(context, 40)),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: healthDp(context, 36),
+                                    height: healthDp(context, 36),
+                                    child: const CircularProgressIndicator(
+                                      color: Color(0xFFFF5B8C),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else if (_posts.isEmpty)
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: healthDp(context, 24)),
+                                child: Center(
+                                  child: Text(
+                                    '게시글이 없습니다.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: _textMuted,
+                                      fontSize: healthSp(context, 14),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ..._posts.map((e) => Padding(
+                                    padding: EdgeInsets.only(
+                                        bottom: healthDp(context, 20)),
+                                    child: _buildListCard(context, e),
+                                  )),
+                            SizedBox(height: healthDp(context, 24)),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: healthDp(context, 100)),
+                      const AppFooter(),
+                    ],
+                  ),
+                ),
+              ),
+              const FooterBar(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -185,11 +227,11 @@ class _ContentListScreenState extends State<ContentListScreen> {
   Widget _buildCategoryChips(List<String> categories) {
     final tabs = ['전체', ...categories];
     return SizedBox(
-      height: 36,
+      height: healthDp(context, 36),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 5),
+        separatorBuilder: (_, __) => SizedBox(width: healthDp(context, 5)),
         itemBuilder: (context, i) {
           final selected = i == _tabIndex;
           return GestureDetector(
@@ -198,10 +240,15 @@ class _ContentListScreenState extends State<ContentListScreen> {
               await _loadPosts();
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 10),
+                vertical: healthDp(context, 4),
+              ),
               decoration: ShapeDecoration(
                 color: selected ? _pink : Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(healthDp(context, 20))),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -209,7 +256,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: selected ? Colors.white : _chipInactive,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                   height: 1.5,
@@ -225,12 +272,13 @@ class _ContentListScreenState extends State<ContentListScreen> {
   Widget _buildSearchBox() {
     return Container(
       width: double.infinity,
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: healthDp(context, 38),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+              width: healthDp(context, 1), color: const Color(0xFFD2D2D2)),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
       ),
       child: Row(
@@ -239,11 +287,11 @@ class _ContentListScreenState extends State<ContentListScreen> {
             child: TextField(
               controller: _searchController,
               onSubmitted: (_) => _onSearchSubmitted(),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '검색',
                 hintStyle: TextStyle(
                   color: _textMuted,
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
                 ),
@@ -251,9 +299,9 @@ class _ContentListScreenState extends State<ContentListScreen> {
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
-              style: const TextStyle(
+              style: TextStyle(
                 color: _textDark,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -263,8 +311,15 @@ class _ContentListScreenState extends State<ContentListScreen> {
           IconButton(
             onPressed: _onSearchSubmitted,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            icon: const Icon(Icons.search, size: 18, color: _textMuted),
+            constraints: BoxConstraints(
+              minWidth: healthDp(context, 28),
+              minHeight: healthDp(context, 28),
+            ),
+            icon: Icon(
+              Icons.search,
+              size: healthDp(context, 18),
+              color: _textMuted,
+            ),
           ),
         ],
       ),
@@ -272,46 +327,37 @@ class _ContentListScreenState extends State<ContentListScreen> {
   }
 
   Widget _buildCountRow() {
+    final dividerH = healthDp(context, 1);
+    final countStyle = TextStyle(
+      color: _textMuted,
+      fontSize: healthSp(context, 12),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(height: 1, color: const Color(0x7FD2D2D2)),
-        const SizedBox(height: 5),
+        Container(height: dividerH, color: const Color(0x7FD2D2D2)),
+        SizedBox(height: healthDp(context, 5)),
         Text.rich(
           TextSpan(
             children: [
-              TextSpan(
-                text: '총 ',
-                style: TextStyle(
-                  color: _textMuted,
-                  fontSize: 12,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              TextSpan(text: '총 ', style: countStyle),
               TextSpan(
                 text: '$_totalCount',
-                style: const TextStyle(
-                  color: Color(0xFFFF5A8D),
-                  fontSize: 12,
+                style: TextStyle(
+                  color: const Color(0xFFFF5A8D),
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              TextSpan(
-                text: '건',
-                style: TextStyle(
-                  color: _textMuted,
-                  fontSize: 12,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              TextSpan(text: '건', style: countStyle),
             ],
           ),
         ),
-        const SizedBox(height: 5),
-        Container(height: 1, color: const Color(0x7FD2D2D2)),
+        SizedBox(height: healthDp(context, 5)),
+        Container(height: dividerH, color: const Color(0x7FD2D2D2)),
       ],
     );
   }
@@ -341,9 +387,9 @@ class _ContentListScreenState extends State<ContentListScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             child: SizedBox(
-              height: 200,
+              height: healthDp(context, 200),
               width: double.infinity,
               child: Image.network(
                 imageUrl,
@@ -351,21 +397,22 @@ class _ContentListScreenState extends State<ContentListScreen> {
                 errorBuilder: (_, __, ___) => Container(
                   color: const Color(0xFFF2F2F2),
                   alignment: Alignment.center,
-                  child: const Icon(
+                  child: Icon(
                     Icons.broken_image_outlined,
-                    color: Color(0xFFBDBDBD),
+                    size: healthDp(context, 40),
+                    color: const Color(0xFFBDBDBD),
                   ),
                 ),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _textDark,
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
                 height: 0.94,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/services/content_service.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../common/widgets/app_bar_menu.dart';
 import '../../../common/widgets/appbar_menutap.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/category_service.dart';
@@ -66,21 +66,10 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       scaffoldKey: _scaffoldKey,
-      appBar: HealthAppBar(
-        title: '건강 콘텐츠',
-        centerTitle: false,
-        leadingType: HealthAppBarLeadingType.menu,
-        onBack: () => _scaffoldKey.currentState?.openDrawer(),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () => Navigator.pushNamed(context, '/content/list'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
+      appBar: AppBarMenu(
+        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        onSearchPressed: () =>
+            Navigator.pushNamed(context, '/content/list'),
       ),
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
@@ -97,42 +86,50 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
               builder: (context, snapshot) {
                 final categories = snapshot.data ?? const <String>[];
                 return SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 27, vertical: 10),
+                  padding: const EdgeInsets.only(top: 10),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildFeaturedCarousel(),
-                      const SizedBox(height: 10),
-                      if (categories.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text(
-                            '노출할 콘텐츠 카테고리가 없습니다.',
-                            style: TextStyle(
-                              color: Color(0xFF898686),
-                              fontSize: 14,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        )
-                      else
-                        for (final category in categories) ...[
-                          _buildSection(
-                            context,
-                            category: category,
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 27),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFeaturedCarousel(),
+                            const SizedBox(height: 10),
+                            if (categories.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24),
+                                child: Text(
+                                  '노출할 콘텐츠 카테고리가 없습니다.',
+                                  style: TextStyle(
+                                    color: Color(0xFF898686),
+                                    fontSize: 14,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              )
+                            else
+                              for (final category in categories) ...[
+                                _buildSection(
+                                  context,
+                                  category: category,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 100),
+                      const AppFooter(),
                     ],
                   ),
                 );
               },
             ),
           ),
-          const AppFooter(),
           const FooterBar(),
         ],
       ),
