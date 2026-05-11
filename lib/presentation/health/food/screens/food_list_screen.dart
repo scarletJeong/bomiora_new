@@ -5,6 +5,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../widgets/food_input_widgets.dart';
@@ -94,65 +95,88 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: const HealthAppBar(
-        title: '식사 기록',
-        centerTitle: false,
-      ),
-      child: Column(
-        children: [
-          HealthDateSelector(
-            selectedDate: selectedDate,
-            onDateChanged: (date) {
-              setState(() => selectedDate = date);
-              _loadMealData();
-            },
-            monthTextColor: const Color(0xFF898686),
-            selectedTextColor: const Color(0xFFFF5A8D),
-            unselectedTextColor: const Color(0xFFB7B7B7),
-            dividerColor: const Color(0xFFD2D2D2),
-            iconColor: const Color(0xFF898686),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        backgroundColor: Colors.white,
+        appBar: HealthAppBar(
+          title: '식사 기록',
+          centerTitle: false,
+          titleFontSize: healthSp(context, 16),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(27, 14, 27, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Column(
-                      children: [
-                        const Text(
-                          '총 섭취 칼로리',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 20,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '${NumberFormat('#,###').format(totalCalories)} kcal',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 36,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+          child: Column(
+            children: [
+              HealthDateSelector(
+                selectedDate: selectedDate,
+                onDateChanged: (date) {
+                  setState(() => selectedDate = date);
+                  _loadMealData();
+                },
+                monthTextColor: const Color(0xFF898686),
+                selectedTextColor: const Color(0xFFFF5A8D),
+                unselectedTextColor: const Color(0xFFB7B7B7),
+                dividerColor: const Color(0xFFD2D2D2),
+                iconColor: const Color(0xFF898686),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 14),
+                    healthDp(context, 27),
+                    healthDp(context, 16),
                   ),
-                  const SizedBox(height: 14),
-                  _buildDashboardMacroBar(),
-                  const SizedBox(height: 8),
-                  _buildMacroLegendRow(),
-                  const SizedBox(height: 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              '총 섭취 칼로리',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 20,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                            SizedBox(height: healthDp(context, 5)),
+                            Text(
+                              '${NumberFormat('#,###').format(totalCalories)} kcal',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 36,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: healthDp(context, 10)),
+                      _buildDashboardMacroBar(context),
+                      SizedBox(height: healthDp(context, 8)),
+                      _buildMacroLegendRow(context),
+                      SizedBox(height: healthDp(context, 28)),
                   _buildMealDetailCard(
+                    context,
                     title: '아침',
                     kcal: _recordFor('아침')?.calories ?? 0,
                     carb: _recordFor('아침')?.carbs?.toStringAsFixed(1) ?? '-',
@@ -163,7 +187,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('아침'),
                   ),
                   if (_expandedMealKey == '아침') ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: healthDp(context, 12)),
                     CalorieSearchBlock(
                       mealKey: '아침',
                       selectedDate: selectedDate,
@@ -173,8 +197,9 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _buildMealDetailCard(
+                    context,
                     title: '점심',
                     kcal: _recordFor('점심')?.calories ?? 0,
                     carb: _recordFor('점심')?.carbs?.toStringAsFixed(1) ?? '-',
@@ -185,7 +210,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('점심'),
                   ),
                   if (_expandedMealKey == '점심') ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: healthDp(context, 12)),
                     CalorieSearchBlock(
                       mealKey: '점심',
                       selectedDate: selectedDate,
@@ -195,8 +220,9 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _buildMealDetailCard(
+                    context,
                     title: '저녁',
                     kcal: _recordFor('저녁')?.calories ?? 0,
                     carb: _recordFor('저녁')?.carbs?.toStringAsFixed(1) ?? '-',
@@ -207,7 +233,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('저녁'),
                   ),
                   if (_expandedMealKey == '저녁') ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: healthDp(context, 12)),
                     CalorieSearchBlock(
                       mealKey: '저녁',
                       selectedDate: selectedDate,
@@ -217,8 +243,9 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _buildMealDetailCard(
+                    context,
                     title: '간식',
                     kcal: _recordFor('간식')?.calories ?? 0,
                     carb: _recordFor('간식')?.carbs?.toStringAsFixed(1) ?? '-',
@@ -229,7 +256,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('간식'),
                   ),
                   if (_expandedMealKey == '간식') ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: healthDp(context, 12)),
                     CalorieSearchBlock(
                       mealKey: '간식',
                       selectedDate: selectedDate,
@@ -239,17 +266,19 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   /// 칼로리 바: 최대 2000kcal 기준, 탄수화물/단백질/지방 비율로 채움
-  Widget _buildDashboardMacroBar() {
+  Widget _buildDashboardMacroBar(BuildContext context) {
     final fillRatio = (_maxCalories > 0 && totalCalories > 0)
         ? (totalCalories / _maxCalories).clamp(0.0, 1.0)
         : 0.0;
@@ -271,7 +300,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
       child: SizedBox(
-        height: 12,
+        height: healthDp(context, 8),
         child: Row(
           children: [
             if (filledFlex > 0)
@@ -297,22 +326,24 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
   }
 
   /// 메인 매크로 바 바로 아래, 왼쪽 정렬 범례
-  Widget _buildMacroLegendRow() {
-    return const Row(
+  Widget _buildMacroLegendRow(BuildContext context) {
+    final gap = healthDp(context, 24);
+    return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        MacroLegend(color: Color(0xFFFFDFC3), label: '탄수화물'),
-        SizedBox(width: 24),
-        MacroLegend(color: Color(0xFFFEA38E), label: '단백질'),
-        SizedBox(width: 24),
-        MacroLegend(color: Color(0xFFFCF4C1), label: '지방'),
-        SizedBox(width: 24),
-        MacroLegend(color: Color(0xFFD6DEE8), label: '기타'),
+        const MacroLegend(color: Color(0xFFFFDFC3), label: '탄수화물'),
+        SizedBox(width: gap),
+        const MacroLegend(color: Color(0xFFFEA38E), label: '단백질'),
+        SizedBox(width: gap),
+        const MacroLegend(color: Color(0xFFFCF4C1), label: '지방'),
+        SizedBox(width: gap),
+        const MacroLegend(color: Color(0xFFD6DEE8), label: '기타'),
       ],
     );
   }
 
-  Widget _buildMealDetailCard({
+  Widget _buildMealDetailCard(
+    BuildContext context, {
     required String title,
     required int kcal,
     required String carb,
@@ -329,34 +360,40 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(healthDp(context, 10)),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: const [
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x19000000),
-              blurRadius: 4.17,
+              color: const Color(0x19000000),
+              blurRadius: healthDp(context, 4.17),
             ),
           ],
         ),
         child: Row(
             children: [
-              Container(
-                width: 47.08,
-                height: 48.33,
-                decoration: BoxDecoration(
-                  color: isEmptyMeal
-                      ? const Color(0xFFD9D9D9)
-                      : const Color(0xFFFF5A8D),
-                  borderRadius: BorderRadius.circular(5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(healthDp(context, 5)),
+                child: Container(
+                  width: healthDp(context, 47.08),
+                  height: healthDp(context, 48.33),
+                  decoration: BoxDecoration(
+                    color: isEmptyMeal
+                        ? const Color(0xFFD9D9D9)
+                        : const Color(0xFFFF5A8D),
+                  ),
+                  alignment: Alignment.center,
+                  child: isEmptyMeal
+                      ? Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: healthDp(context, 22),
+                        )
+                      : null,
                 ),
-                alignment: Alignment.center,
-                child: isEmptyMeal
-                    ? const Icon(Icons.add, color: Colors.white, size: 22)
-                    : null,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: healthDp(context, 12)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,40 +407,44 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '$kcal',
-                            style: const TextStyle(
-                              color: Color(0xFFFF5A8D),
-                              fontSize: 12,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
+                    SizedBox(height: healthDp(context, 0)),
+                    MediaQuery(
+                      data: MediaQuery.of(context)
+                          .copyWith(textScaler: TextScaler.noScaling),
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '$kcal',
+                              style: TextStyle(
+                                color: const Color(0xFFFF5A8D),
+                                fontSize: healthSp(context, 12),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                          const TextSpan(
-                            text: ' kcal',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 12,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w300,
+                            TextSpan(
+                              text: ' kcal',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: healthSp(context, 12),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: healthDp(context, 3)),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 2,
+                      spacing: healthDp(context, 6),
+                      runSpacing: healthDp(context, 2),
                       children: [
-                        _buildNutrientText('탄수화물', carb),
-                        _buildNutrientText('단백질', protein),
-                        _buildNutrientText('지방', fat),
-                        _buildNutrientText('기타', other),
+                        _buildNutrientText(context, '탄수화물', carb),
+                        _buildNutrientText(context, '단백질', protein),
+                        _buildNutrientText(context, '지방', fat),
+                        _buildNutrientText(context, '기타', other),
                       ],
                     ),
                   ],
@@ -411,7 +452,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
               ),
               Icon(
                 Icons.expand_more,
-                size: 24,
+                size: healthDp(context, 10),
                 color: const Color(0xFF898383),
               ),
             ],
@@ -420,27 +461,31 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     );
   }
 
-  Widget _buildNutrientText(String label, String value) {
+  Widget _buildNutrientText(BuildContext context, String label, String value) {
     final display = value == '-' ? '---' : value;
-    return RichText(
-      text: TextSpan(
-        style: const TextStyle(
-          color: Color(0xFF898383),
-          fontSize: 10,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w300,
-        ),
-        children: [
-          TextSpan(text: '$label '),
-          TextSpan(
-            text: display,
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              decoration: TextDecoration.underline,
-            ),
+    return MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.noScaling),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(
+            color: const Color(0xFF898383),
+            fontSize: healthSp(context, 8),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
           ),
-          const TextSpan(text: 'g'),
-        ],
+          children: [
+            TextSpan(text: '$label '),
+            TextSpan(
+              text: display,
+              style: const TextStyle(
+                color: Color(0xFF1A1A1A),
+                decoration: TextDecoration.underline,
+              ),
+            ),
+            const TextSpan(text: 'g'),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 
 /// 칼로리 검색 입력 + 검색 결과 카드 블록 (각 식사 카드 아래에 배치)
@@ -112,7 +113,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   void _onResultsScroll() {
     if (!_resultsScrollController.hasClients) return;
     final position = _resultsScrollController.position;
-    if (position.pixels >= position.maxScrollExtent - 24) {
+    if (position.pixels >= position.maxScrollExtent - healthDp(context, 24)) {
       _loadMoreResults();
     }
   }
@@ -192,15 +193,15 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 사진 추가하기 (기능 미구현)
+        // 사진 추가하기 (기능 미구현) — 375 기준 80×80
         Container(
-          width: 80,
-          height: 80,
+          width: healthDp(context, 80),
+          height: healthDp(context, 80),
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: const Color(0xFFD9D9D9),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
           ),
           child: Column(
@@ -209,15 +210,15 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: healthDp(context, 50),
+                height: healthDp(context, 50),
                 clipBehavior: Clip.antiAlias,
                 decoration: const BoxDecoration(),
                 child: const Stack(),
               ),
-              const Text(
+              Text(
                 '사진추가하기',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
                   fontFamily: 'Gmarket Sans TTF',
@@ -227,7 +228,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: healthDp(context, 14)),
         const Text(
           '음식 검색',
           style: TextStyle(
@@ -237,13 +238,19 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             fontWeight: FontWeight.w300,
           ),
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: healthDp(context, 5)),
         Container(
-          height: 35,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          height: healthDp(context, 35),
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: 0,
+          ),
           decoration: BoxDecoration(
-            border: Border.all(width: 1, color: const Color(0xFFD2D2D2)),
-            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              width: healthDp(context, 1),
+              color: const Color(0xFFD2D2D2),
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
           child: Row(
             children: [
@@ -277,32 +284,35 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                 child: Icon(
                   Icons.search,
                   color: _isLoading ? const Color(0xFFCCCCCC) : const Color(0xFF898383),
-                  size: 18,
+                  size: healthDp(context, 18),
                 ),
               ),
             ],
           ),
         ),
         if (_isLoading) ...[
-          const SizedBox(height: 10),
-          const Center(
+          SizedBox(height: healthDp(context, 10)),
+          Center(
             child: Padding(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(healthDp(context, 12)),
               child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5A8D)),
+                width: healthDp(context, 24),
+                height: healthDp(context, 24),
+                child: CircularProgressIndicator(
+                  strokeWidth: healthDp(context, 2),
+                  color: const Color(0xFFFF5A8D),
+                ),
               ),
             ),
           ),
         ] else if (_searchController.text.trim().isNotEmpty && _results.isEmpty) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: const Color(0xFFD2D2D2)),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
             child: const Center(
               child: Text(
@@ -319,39 +329,42 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         ],
         // 검색 결과 리스트 (항상 보이는 일반 컬럼 렌더링)
         if (_results.isNotEmpty) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: const Color(0xFFD2D2D2)),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: const [
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x1A000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
+                  color: const Color(0x1A000000),
+                  blurRadius: healthDp(context, 8),
+                  offset: Offset(0, healthDp(context, 2)),
                 ),
               ],
             ),
-            constraints: const BoxConstraints(maxHeight: 220),
+            constraints: BoxConstraints(maxHeight: healthDp(context, 220)),
             child: ListView.separated(
               controller: _resultsScrollController,
               shrinkWrap: true,
               padding: EdgeInsets.zero,
               itemCount: _results.length + (_isLoadingMore ? 1 : 0),
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, thickness: 1, color: Color(0xFFF1F1F1)),
+              separatorBuilder: (_, __) => Divider(
+                height: healthDp(context, 1),
+                thickness: healthDp(context, 1),
+                color: const Color(0xFFF1F1F1),
+              ),
               itemBuilder: (context, i) {
                 if (i >= _results.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
                     child: Center(
                       child: SizedBox(
-                        width: 18,
-                        height: 18,
+                        width: healthDp(context, 18),
+                        height: healthDp(context, 18),
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFFFF5A8D),
+                          strokeWidth: healthDp(context, 2),
+                          color: const Color(0xFFFF5A8D),
                         ),
                       ),
                     ),
@@ -369,12 +382,15 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
           ),
         ],
         if (widget.addedItems.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          SizedBox(height: healthDp(context, 14)),
           ...List.generate(widget.addedItems.length, (i) {
             final item = widget.addedItems[i];
             return Padding(
-              padding:
-                  EdgeInsets.only(bottom: i < widget.addedItems.length - 1 ? 6 : 0),
+              padding: EdgeInsets.only(
+                bottom: i < widget.addedItems.length - 1
+                    ? healthDp(context, 6)
+                    : 0,
+              ),
               child: AddedFoodCard(
                 name: item.foodName,
                 kcal: item.kcal?.toInt() ?? 0,
@@ -419,100 +435,108 @@ class AddedFoodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final noScale = MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
-        shadows: const [
+        shadows: [
           BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 4.17,
-            offset: Offset(0, 0),
+            color: const Color(0x19000000),
+            blurRadius: healthDp(context, 4.17),
+            offset: Offset.zero,
             spreadRadius: 0,
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '$kcal',
-                        style: const TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 10,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                      const TextSpan(
-                        text: ' kcal',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 10,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(width: 6),
+      child: MediaQuery(
+        data: noScale,
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
                   Flexible(
                     child: Text(
-                      desc,
-                      style: const TextStyle(
+                      name,
+                      style: TextStyle(
                         color: Colors.black,
-                        fontSize: 8,
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w700,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  SizedBox(width: healthDp(context, 6)),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$kcal',
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(context, 10),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' kcal',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: healthSp(context, 10),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (desc.isNotEmpty) ...[
+                    SizedBox(width: healthDp(context, 6)),
+                    Flexible(
+                      child: Text(
+                        desc,
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: healthSp(context, 8),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-          if (onDelete != null)
-            GestureDetector(
-              onTap: onDelete,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: Icon(Icons.close, size: 14, color: const Color(0xFF898383)),
-                ),
               ),
             ),
-        ],
+            if (onDelete != null)
+              GestureDetector(
+                onTap: onDelete,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: EdgeInsets.only(left: healthDp(context, 8)),
+                  child: SizedBox(
+                    width: healthDp(context, 14),
+                    height: healthDp(context, 14),
+                    child: Icon(
+                      Icons.close,
+                      size: healthDp(context, 14),
+                      color: const Color(0xFF898383),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -535,69 +559,78 @@ class SearchResultRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final noScale = MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    '$name ${kcal}kcal',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(width: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 12),
+        vertical: healthDp(context, 10),
+      ),
+      child: MediaQuery(
+        data: noScale,
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
                   Flexible(
                     child: Text(
-                      desc,
-                      style: const TextStyle(
-                        color: Color(0xFF898383),
-                        fontSize: 10,
+                      '$name ${kcal}kcal',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (desc.isNotEmpty) ...[
+                    SizedBox(width: healthDp(context, 6)),
+                    Flexible(
+                      child: Text(
+                        desc,
+                        style: TextStyle(
+                          color: const Color(0xFF898383),
+                          fontSize: healthSp(context, 10),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 28,
-            child: TextButton(
-              onPressed: onSelect,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                side: const BorderSide(color: Color(0xFFD2D2D2)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
-              child: const Text(
-                '선택',
-                style: TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 12,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+            ),
+            SizedBox(width: healthDp(context, 8)),
+            SizedBox(
+              height: healthDp(context, 28),
+              child: TextButton(
+                onPressed: onSelect,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  side: const BorderSide(color: Color(0xFFD2D2D2)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 6)),
+                  ),
+                ),
+                child: Text(
+                  '선택',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -621,70 +654,81 @@ class SearchResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final noScale = MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling);
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(color: Color(0x19000000), blurRadius: 4.17),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
+        width: double.infinity,
+        padding: EdgeInsets.all(healthDp(context, 10)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0x19000000),
+              blurRadius: healthDp(context, 4.17),
+            ),
+          ],
+        ),
+        child: MediaQuery(
+          data: noScale,
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: healthSp(context, 12),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '$kcal kcal',
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 10,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      desc,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 8,
+                    SizedBox(width: healthDp(context, 6)),
+                    Text(
+                      '$kcal kcal',
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
-              ],
-            ),
+                    if (desc.isNotEmpty) ...[
+                      SizedBox(width: healthDp(context, 6)),
+                      Flexible(
+                        child: Text(
+                          desc,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: healthSp(context, 8),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.add,
+                size: healthDp(context, 14),
+                color: const Color(0xFF898383),
+              ),
+            ],
           ),
-          const Icon(Icons.add, size: 14, color: Color(0xFF898383)),
-        ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -704,21 +748,25 @@ class MacroLegend extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 16.23,
-          height: 16.23,
+          width: healthDp(context, 10),
+          height: healthDp(context, 10),
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(15),
+            shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 10,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w300,
+        SizedBox(width: healthDp(context, 3)),
+        MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.noScaling),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
           ),
         ),
       ],
