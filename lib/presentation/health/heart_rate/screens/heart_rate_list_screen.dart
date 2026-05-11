@@ -14,6 +14,7 @@ import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/heart_rate_period_chart.dart';
 import '../widgets/heart_rate_tooltip.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_chart_y_axis_strip.dart';
@@ -491,6 +492,14 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 
   List<double> getYAxisLabels() => [250, 200, 150, 100, 50];
 
+  EdgeInsets _scaledChartCardPadding(BuildContext context) =>
+      EdgeInsets.fromLTRB(
+        healthDp(context, 8),
+        healthDp(context, 16),
+        healthDp(context, 16),
+        healthDp(context, 16),
+      );
+
   @override
   Widget build(BuildContext context) {
     final todayRecords = _recordsForSelectedDate();
@@ -501,16 +510,37 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         ? '-'
         : '${todayRecords.map((e) => e.heartRate).reduce((a, b) => a > b ? a : b)}';
 
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '심박수'),
-      child: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 27),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: '심박수',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 27),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                     HealthDateSelector(
                       selectedDate: selectedDate,
                       onDateChanged: (newDate) {
@@ -536,15 +566,19 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                       dividerColor: const Color(0xFFD2D2D2),
                       iconColor: const Color(0xFF898686),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: healthDp(context, 16)),
                     Row(
                       children: [
-                        Expanded(child: _summaryCard('최저 심박수', minBpm)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _summaryCard('최고 심박수', maxBpm)),
+                        Expanded(
+                          child: _summaryCard(context, '최저 심박수', minBpm),
+                        ),
+                        SizedBox(width: healthDp(context, 10)),
+                        Expanded(
+                          child: _summaryCard(context, '최고 심박수', maxBpm),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 25),
+                    SizedBox(height: healthDp(context, 25)),
                     HealthPeriodSelector(
                       selectedPeriod: selectedPeriod,
                       onChanged: (period) {
@@ -570,60 +604,80 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                       },
                     ),
                     // 그래프와 기간 선택(일자별/월별) 카드 간격
-                    const SizedBox(height: 3),
-                    _buildChart(),
-                    const SizedBox(height: 12),
-                    const Row(
+                    SizedBox(height: healthDp(context, 3)),
+                    _buildChart(
+                      chartHeight: healthDp(
+                        context,
+                        ChartConstants.healthChartHeight,
+                      ),
+                    ),
+                    SizedBox(height: healthDp(context, 12)),
+                    Row(
                       children: [
-                        _HeartLegend(
-                            color: Color(0xFFFF8686), label: '운동'),
-                        SizedBox(width: 10),
-                        _HeartLegend(
-                            color: Color(0xFF86B0FF), label: '일상'),
+                        const _HeartLegend(
+                          color: Color(0xFFFF8686),
+                          label: '운동',
+                        ),
+                        SizedBox(width: healthDp(context, 10)),
+                        const _HeartLegend(
+                          color: Color(0xFF86B0FF),
+                          label: '일상',
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: healthDp(context, 16)),
                     ...todayRecords.reversed.map(_recordTile),
-                    const SizedBox(height: 24),
+                    SizedBox(height: healthDp(context, 24)),
                     SizedBox(
                       width: double.infinity,
-                      height: 45,
+                      height: healthDp(context, 45),
                       child: ElevatedButton(
                         onPressed: _loadData,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5A8D),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(
+                              healthDp(context, 10),
+                            ),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           '동기화 하기',
+                          textScaler: TextScaler.noScaling,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontSize: healthSp(context, 16),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: healthDp(context, 24)),
                   ],
                 ),
               ),
             ),
+        ),
+      ),
     );
   }
 
-  Widget _summaryCard(String title, String value) {
+  Widget _summaryCard(BuildContext context, String title, String value) {
     final bool hasData = value != '-';
+    final hPad = healthDp(context, 14);
+    final vPad = healthDp(context, 12);
     return Container(
-      constraints: const BoxConstraints(minHeight: 90),
-      padding: const EdgeInsets.only(bottom: 10),
+      constraints: BoxConstraints(minHeight: healthDp(context, 90)),
+      padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 0.50, color: Color(0x7FD2D2D2)),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: const Color(0x7FD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
@@ -633,31 +687,33 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 16.67,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1A),
+              fontSize: healthSp(context, 16.67),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           RichText(
+            textScaler: TextScaler.noScaling,
             text: TextSpan(
               children: [
                 TextSpan(
                   text: value,
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 20.83,
+                    fontSize: healthSp(context, 20.83),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: hasData ? FontWeight.w700 : FontWeight.w300,
                   ),
                 ),
-                const TextSpan(
+                TextSpan(
                   text: ' bpm',
                   style: TextStyle(
-                    color: Color(0xFF9C9393),
-                    fontSize: 13.33,
+                    color: const Color(0xFF9C9393),
+                    fontSize: healthSp(context, 13.33),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
@@ -666,12 +722,13 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
             ),
           ),
           if (!hasData) ...[
-            const SizedBox(height: 5),
-            const Text(
+            SizedBox(height: healthDp(context, 5)),
+            Text(
               '수치를 입력하세요',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                color: Color(0xFF9C9393),
-                fontSize: 10,
+                color: const Color(0xFF9C9393),
+                fontSize: healthSp(context, 10),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
@@ -683,33 +740,38 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   }
 
   Widget _recordTile(HeartRateRecord record) {
+    final tilePad = healthDp(context, 12);
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
+      margin: EdgeInsets.only(bottom: healthDp(context, 10)),
+      padding: EdgeInsets.all(tilePad),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(color: Color(0x19000000), blurRadius: 4.17),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0x19000000),
+            blurRadius: healthDp(context, 4.17),
+          ),
         ],
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.access_time,
             color: Colors.grey,
-            size: 20,
+            size: healthDp(context, 20),
           ),
-          const SizedBox(width: 15),
+          SizedBox(width: healthDp(context, 15)),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   DateFormat('a h:mm', 'ko').format(record.measuredAt),
-                  style: const TextStyle(
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -721,12 +783,13 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                       ? heartRateTooltipExerciseColor
                       : heartRateTooltipDailyColor,
                   value: '${record.heartRate}bpm',
-                  valueStyle: const TextStyle(
+                  valueStyle: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                   ),
+                  valueTextScaler: TextScaler.noScaling,
                 ),
               ],
             ),
@@ -764,7 +827,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         tooltipPosition: tooltipPosition,
         yAxisCount: yLabels.length,
         useCalendarYearMonths: selectedPeriod == '월',
-        padding: ChartConstants.weightChartCardPadding,
+        padding: _scaledChartCardPadding(context),
         cardBackgroundColor: Colors.white,
       );
     } else if (_recordsForSelectedDate().isEmpty) {
@@ -783,15 +846,15 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       children: [
         chartBody,
         Positioned(
-          right: 4,
-          top: 8,
+          right: healthDp(context, 4),
+          top: healthDp(context, 8),
           child: GestureDetector(
             onTap: _openExpandedChartPage,
             behavior: HitTestBehavior.opaque,
             child: SvgPicture.asset(
               AppAssets.healthZoomin,
-              width: 20,
-              height: 20,
+              width: healthDp(context, 20),
+              height: healthDp(context, 20),
               fit: BoxFit.contain,
             ),
           ),
@@ -807,10 +870,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     final dailyVisuals = _buildDailyHeartVisuals();
     return Container(
       height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
+      padding: _scaledChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
@@ -833,7 +896,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                         unitLabel: '(bpm)',
                       ),
                     ),
-                    SizedBox(width: ChartConstants.yAxisSpacing),
+                    SizedBox(width: healthDp(context, ChartConstants.yAxisSpacing)),
                     Expanded(
                       child: ColoredBox(
                         color: Colors.white,
@@ -849,7 +912,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                   if (w <= 0 || h <= 0) {
                                     return const SizedBox.shrink();
                                   }
-                                  const tooltipPad = 6.0;
+                                  final tooltipPad = healthDp(context, 6);
+                                  final tooltipLift = healthDp(context, 92);
+                                  final tooltipBottomReserve =
+                                      healthDp(context, 110);
+                                  final tooltipMinW = healthDp(context, 88);
+                                  final tooltipMaxWCap = healthDp(context, 240);
                                   Widget? dailyTooltipOverlay;
                                   if (_dailyChartTooltip != null) {
                                     final double anchorLeft =
@@ -865,16 +933,21 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                     final double maxTooltipW = (w -
                                                 anchorLeft -
                                                 tooltipPad)
-                                            .clamp(88.0, 240.0)
+                                            .clamp(
+                                              tooltipMinW,
+                                              tooltipMaxWCap,
+                                            )
                                             .toDouble();
                                     final double topY =
                                         (_dailyChartTooltip!.chartLocal.dy -
-                                                92)
+                                                tooltipLift)
                                             .clamp(
                                       tooltipPad,
                                       math.max(
                                         tooltipPad,
-                                        h - 110 - tooltipPad,
+                                        h -
+                                            tooltipBottomReserve -
+                                            tooltipPad,
                                       ),
                                     ).toDouble();
                                     dailyTooltipOverlay = Positioned(
@@ -886,7 +959,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                           type: MaterialType.transparency,
                                           child: ConstrainedBox(
                                             constraints: BoxConstraints(
-                                              minWidth: 88,
+                                              minWidth: tooltipMinW,
                                               maxWidth: maxTooltipW,
                                             ),
                                             child: _buildDailyTooltipBubble(
@@ -967,9 +1040,9 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
               },
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Padding(
-            padding: const EdgeInsets.only(left: 43.0),
+            padding: EdgeInsets.only(left: healthDp(context, 43)),
             child: buildWeightXAxisLabels(
               selectedPeriod: '일',
               selectedDate: selectedDate,
@@ -1001,39 +1074,62 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           }
         }),
       ),
-      chartBuilder: (_) => LayoutBuilder(
-        builder: (context, constraints) {
-          final safeHeight = ChartConstants.healthExpandedChartHeight(
-            constraints.maxHeight,
-            bottomLegendReserve: 34,
-          );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildChart(
-                showExpandButton: false,
-                chartHeight: safeHeight,
+      chartBuilder: (_) {
+        final base = Theme.of(context);
+        final gmarket = base.copyWith(
+          textTheme: base.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+          primaryTextTheme:
+              base.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+        );
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final scaledChartCap =
+                healthDp(context, ChartConstants.healthChartHeight);
+            final scaledChartMin = healthDp(context, 160);
+            final safeHeight = ChartConstants.healthExpandedChartHeight(
+              constraints.maxHeight,
+              bottomLegendReserve: 34,
+              maxChartHeight: scaledChartCap,
+              minChartHeight: scaledChartMin,
+            );
+            final expandScale =
+                healthTextScaleByWidth(MediaQuery.of(context).size.width);
+            return Theme(
+              data: gmarket,
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(expandScale),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildChart(
+                      showExpandButton: false,
+                      chartHeight: safeHeight,
+                    ),
+                    SizedBox(height: healthDp(context, 6)),
+                    Row(
+                      children: [
+                        const _HeartLegend(
+                          color: Color(0xFFFF8686),
+                          label: '운동',
+                          compact: true,
+                        ),
+                        SizedBox(width: healthDp(context, 6)),
+                        const _HeartLegend(
+                          color: Color(0xFF86B0FF),
+                          label: '일상',
+                          compact: true,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const _HeartLegend(
-                    color: Color(0xFFFF8686),
-                    label: '운동',
-                    compact: true,
-                  ),
-                  const SizedBox(width: 6),
-                  const _HeartLegend(
-                    color: Color(0xFF86B0FF),
-                    label: '일상',
-                    compact: true,
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+            );
+          },
+        );
+      },
       onRegisterRefresh: (refresh) => _refreshExpandedChart = refresh,
       onDisposeRefresh: () => _refreshExpandedChart = null,
     );
@@ -1095,9 +1191,9 @@ class _HeartLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dot = compact ? 8.0 : 12.0;
-    final gap = compact ? 3.0 : 5.0;
-    final fontSize = compact ? 9.0 : 12.0;
+    final dot = compact ? healthDp(context, 8) : healthDp(context, 12);
+    final gap = compact ? healthDp(context, 3) : healthDp(context, 5);
+    final fontSize = compact ? healthSp(context, 9) : healthSp(context, 12);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1109,6 +1205,7 @@ class _HeartLegend extends StatelessWidget {
         SizedBox(width: gap),
         Text(
           label,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.black,
             fontSize: fontSize,

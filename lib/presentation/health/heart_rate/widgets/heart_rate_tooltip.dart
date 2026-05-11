@@ -13,6 +13,8 @@ Widget heartRateTooltipValueRowWithBadge({
   required Color badgeColor,
   required String value,
   TextStyle? valueStyle,
+  /// null이면 상위 [MediaQuery.textScaler] (목록·툴팁에서 이중 스케일 방지 시 [TextScaler.noScaling]).
+  TextScaler? valueTextScaler,
 }) {
   return FittedBox(
     fit: BoxFit.scaleDown,
@@ -32,6 +34,7 @@ Widget heartRateTooltipValueRowWithBadge({
           child: Center(
             child: Text(
               badgeLabel,
+              textScaler: TextScaler.noScaling,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10,
@@ -44,6 +47,7 @@ Widget heartRateTooltipValueRowWithBadge({
         const SizedBox(width: 5),
         Text(
           value,
+          textScaler: valueTextScaler,
           style: valueStyle ??
               const TextStyle(
                 color: Colors.black87,
