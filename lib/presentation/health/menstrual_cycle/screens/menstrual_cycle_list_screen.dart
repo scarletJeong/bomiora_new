@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
+import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../widgets/menstrual_cycle_date_header.dart';
 import '../../../../core/constants/app_assets.dart';
@@ -97,65 +99,106 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: const HealthAppBar(title: '생리주기'),
-      child: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('데이터를 불러오는 중...'),
-                ],
-              ),
-            )
-          : _currentRecord == null
-              ? _buildNoDataView()
-              : Column(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildCurrentStatusSection(),
-                            const SizedBox(height: 0),
-                            _buildCycleChart(),
-                            const SizedBox(height: 10),
-                            _buildPhaseLegend(),
-                            const SizedBox(height: 20),
-                            _buildPhaseRecommendations(),
-                            const SizedBox(height: 30),
-                            _buildExpectedDatesSection(),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        backgroundColor: Colors.white,
+        appBar: HealthAppBar(
+          title: '생리주기',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: _isLoading
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+                      SizedBox(height: healthDp(context, 16)),
+                      const Text(
+                        '데이터를 불러오는 중...',
+                        style: TextStyle(fontSize: 14),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
-                      child: BtnRecord(
-                        text: '+ 기록하기',
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const MenstrualCycleInputScreen(),
+                    ],
+                  ),
+                )
+              : _currentRecord == null
+                  ? _buildNoDataView()
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: healthDp(context, 20),
                             ),
-                          );
-                          if (!mounted) return;
-                          if (result == true) {
-                            _loadMenstrualCycleData();
-                          }
-                        },
-                      ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildCurrentStatusSection(),
+                                SizedBox(height: healthDp(context, 0)),
+                                _buildCycleChart(),
+                                SizedBox(height: healthDp(context, 10)),
+                                _buildPhaseLegend(),
+                                SizedBox(height: healthDp(context, 20)),
+                                _buildPhaseRecommendations(),
+                                SizedBox(height: healthDp(context, 30)),
+                                _buildExpectedDatesSection(),
+                                SizedBox(height: healthDp(context, 16)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            healthDp(context, 10),
+                            healthDp(context, 20),
+                            healthDp(context, 10),
+                            healthDp(context, 20),
+                          ),
+                          child: BtnRecord(
+                            text: '+ 기록하기',
+                            labelTextScaler: TextScaler.noScaling,
+                            textStyle: TextStyle(
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontSize: healthSp(context, 16),
+                              fontWeight: FontWeight.bold,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              vertical: healthDp(context, 16),
+                            ),
+                            borderRadius: healthDp(context, 12),
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const MenstrualCycleInputScreen(),
+                                ),
+                              );
+                              if (!mounted) return;
+                              if (result == true) {
+                                _loadMenstrualCycleData();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+        ),
+      ),
     );
   }
 
@@ -165,16 +208,16 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         Expanded(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(healthDp(context, 32)),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.calendar_today,
-                    size: 80,
+                    size: healthDp(context, 80),
                     color: Colors.grey[400],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: healthDp(context, 24)),
                   Text(
                     '생리주기 정보가 없습니다',
                     style: TextStyle(
@@ -183,7 +226,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                       color: Colors.grey[600],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   Text(
                     '첫 번째 생리주기 정보를 입력해주세요',
                     style: TextStyle(
@@ -197,9 +240,22 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 32),
+            0,
+            healthDp(context, 32),
+            healthDp(context, 20),
+          ),
           child: BtnRecord(
             text: '+ 기록하기',
+            labelTextScaler: TextScaler.noScaling,
+            textStyle: TextStyle(
+              fontFamily: 'Gmarket Sans TTF',
+              fontSize: healthSp(context, 16),
+              fontWeight: FontWeight.bold,
+            ),
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 16)),
+            borderRadius: healthDp(context, 12),
             onPressed: () async {
               final recordForDate = await _getRecordForDate(selectedDate);
               if (!mounted) return;
@@ -233,7 +289,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             periodDayKeys: _periodDayKeysFrom(_allRecords),
             periodEndpointKeys: _periodEndpointKeysFrom(_allRecords),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
         ],
       ),
     );
@@ -281,7 +337,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   Widget _buildCycleChart() {
     if (_currentRecord == null) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(healthDp(context, 20)),
         child: const Center(
           child: Text('생리주기 데이터가 없습니다'),
         ),
@@ -299,7 +355,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         (boundedElapsedDays - 1).clamp(0, cycleLength > 0 ? cycleLength - 1 : 0);
     final markerAngle =
         -3.141592653589793 / 2 - (daySweep * markerDayIndex0);
-    const chartSize = 260.0;
+    final chartSize = healthDp(context, 260);
     final innerSize = chartSize * (156 / 200);
     final chartScale = chartSize / MenstrualCyclePainter.kDesignChartDiameter;
     final scaledRingStroke =
@@ -319,8 +375,10 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     final ovulationDayIndex0 = (_currentRecord!.ovulationDay - 1)
         .clamp(0, cycleLength > 0 ? cycleLength - 1 : 0);
     final ovulationAngle = -pi / 2 - (daySweep * ovulationDayIndex0);
-    final ovulationDotSize =
-        (scaledRingStroke * 3.5 * chartScale).clamp(17.0, 21.0);
+    final ovulationDotSize = (scaledRingStroke * 3.5 * chartScale).clamp(
+      healthDp(context, 17),
+      healthDp(context, 21),
+    );
     final ovulationX = center + markerRadius * cos(ovulationAngle);
     final ovulationY = center + markerRadius * sin(ovulationAngle);
     final fertileStartDayIndex0 =
@@ -338,7 +396,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     final useOvulationMarkerStyle = selectedIsOvulationDay;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(healthDp(context, 20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -358,7 +416,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                       shape: BoxShape.circle,
                       color: Colors.white,
                       border: Border.all(
-                        width: 0.5,
+                        width: healthDp(context, 0.5),
                         color: const Color(0x7FD9D9D9),
                       ),
                     ),
@@ -391,7 +449,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                         color: Colors.white,
                         border: Border.all(
                           color: const Color(0xFFB3B3B3),
-                          width: 0.2,
+                          width: healthDp(context, 0.2),
                         ),
                       ),
                       child: Column(
@@ -436,8 +494,8 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                       ),
                     ),
                   Positioned(
-                    left: fertileTextX - 16,
-                    top: fertileTextY - 7,
+                    left: fertileTextX - healthDp(context, 16),
+                    top: fertileTextY - healthDp(context, 7),
                     child: IgnorePointer(
                       child: Transform.rotate(
                         angle: fertileTextAngle + (pi / 2) + pi,
@@ -465,11 +523,11 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                         color: useOvulationMarkerStyle
                             ? _kOvulationTodayMarkerFill
                             : Colors.white,
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x33000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 1.5),
+                            color: const Color(0x33000000),
+                            blurRadius: healthDp(context, 4),
+                            offset: Offset(0, healthDp(context, 1.5)),
                             spreadRadius: 0,
                           ),
                         ],
@@ -491,7 +549,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
         ],
       ),
     );
@@ -540,16 +598,16 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     final phaseInfo = MenstrualPhaseInfo.getPhaseInfo(phase);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(healthDp(context, 20)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(healthDp(context, 16)),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            spreadRadius: healthDp(context, 1),
+            blurRadius: healthDp(context, 8),
+            offset: Offset(0, healthDp(context, 2)),
           ),
         ],
       ),
@@ -564,19 +622,19 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
               color: Colors.black,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
           _buildRecommendationItem(
             '음식',
             phaseInfo.foodRecommendations.first,
             AppAssets.menstrualIcon1,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: healthDp(context, 12)),
           _buildRecommendationItem(
             '건강',
             phaseInfo.healthRecommendations.first,
             AppAssets.menstrualIcon2,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: healthDp(context, 12)),
           _buildRecommendationItem(
             '관리',
             phaseInfo.managementRecommendations.first,
@@ -596,14 +654,14 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         children: [
           const _PhaseLegendItem(
               color: Color(0xFFFFDFC3), label: '가임기', isCircle: true),
-          const SizedBox(width: 10),
+          SizedBox(width: healthDp(context, 10)),
           const _PhaseLegendItem(
               color: Color(0xFFFEA38E), label: '배란기', isCircle: true),
-          const SizedBox(width: 10),
+          SizedBox(width: healthDp(context, 10)),
           const _PhaseLegendItem(
               color: Color(0xFFFF5A8D), label: '월경기', isCircle: true),
           const Spacer(),
-          GestureDetector(
+          HealthListEditButton(
             onTap: () async {
               final recordForDate = await _getRecordForDate(selectedDate);
               if (!mounted) return;
@@ -620,31 +678,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                 _loadMenstrualCycleData();
               }
             },
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: ShapeDecoration(
-                color: const Color(0xFFFF5A8D),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: const [
-                  Text(
-                    '수정하기',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -658,16 +691,17 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       children: [
         Image.asset(
           assetPath,
-          width: 20,
-          height: 20,
+          width: healthDp(context, 20),
+          height: healthDp(context, 20),
           fit: BoxFit.contain,
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: healthDp(context, 12)),
         Expanded(
           child: RichText(
+            textScaler: TextScaler.noScaling,
             text: TextSpan(
-              style: const TextStyle(
-                fontSize: 13,
+              style: TextStyle(
+                fontSize: healthSp(context, 13),
                 color: Colors.black,
                 height: 1.4,
                 fontFamily: 'Gmarket Sans TTF',
@@ -705,14 +739,14 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                 '${DateFormat('M월 d일').format(_currentRecord!.nextPeriodStart)} - ${DateFormat('M월 d일').format(_currentRecord!.nextPeriodEnd)}',
             color: const Color(0xFFFF5A8D),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           _buildDateRangeCard(
             title: '예상 가임기',
             date:
                 '${DateFormat('M월 d일').format(_currentRecord!.fertileWindowStart)} - ${DateFormat('M월 d일').format(_currentRecord!.fertileWindowEnd)}',
             color: const Color(0xFFFFDFC3),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           _buildDateRangeCard(
             title: '예상 배란일',
             date: _ovulationRangeText(),
@@ -732,22 +766,24 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     required String date,
     required Color color,
   }) {
+    final rowH = healthDp(context, 40);
+    final titleW = healthDp(context, 107);
     return Container(
       width: double.infinity,
-      height: 40,
+      height: rowH,
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         color: const Color(0xFFF9F9F9),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 107,
-            height: 40,
+            width: titleW,
+            height: rowH,
             color: color,
             alignment: Alignment.center,
             child: Text(
@@ -762,7 +798,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
               child: Text(
                 date,
                 textAlign: TextAlign.center,
@@ -1174,27 +1210,29 @@ class _PhaseLegendItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dot = healthDp(context, 10);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 16.23,
-          height: 16.23,
+          width: dot,
+          height: dot,
           decoration: ShapeDecoration(
             color: color,
             shape: isCircle
                 ? const OvalBorder()
                 : RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(healthDp(context, 2)),
                   ),
           ),
         ),
-        const SizedBox(width: 3),
+        SizedBox(width: healthDp(context, 3)),
         Text(
           label,
-          style: const TextStyle(
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 8,
+            fontSize: healthSp(context, 8),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),

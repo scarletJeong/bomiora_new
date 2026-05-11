@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
@@ -304,32 +305,56 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: HealthAppBar(
-        title: widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '마지막 생리는 언제였나요?',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
-              ),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        backgroundColor: Colors.white,
+        appBar: HealthAppBar(
+          title: widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 24),
+              healthDp(context, 8),
+              healthDp(context, 24),
+              healthDp(context, 20),
             ),
-            const SizedBox(height: 6),
-            _buildCalendar(),
-            const SizedBox(height: 0),
-            _buildCycleLengthSection(),
-            const SizedBox(height: 30),
-            _buildSaveButton(),
-          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '마지막 생리는 언제였나요?',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+                SizedBox(height: healthDp(context, 6)),
+                _buildCalendar(),
+                SizedBox(height: healthDp(context, 0)),
+                _buildCycleLengthSection(),
+                SizedBox(height: healthDp(context, 30)),
+                _buildSaveButton(),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -340,11 +365,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildCalendarMonthHeader(),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         _buildWeekdayHeader(),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         SizedBox(
-          height: 380,
+          height: healthDp(context, 380),
           child: PageView.builder(
             controller: _calendarPageController,
             scrollDirection: Axis.vertical,
@@ -377,7 +402,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       mainAxisSize: MainAxisSize.min,
       children: weeks
           .map((week) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: EdgeInsets.only(bottom: healthDp(context, 6)),
                 child: _buildWeekRow(week, monthStart),
               ))
           .toList(),
@@ -405,7 +430,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           }
         }
         return SizedBox(
-          height: 54,
+          height: healthDp(context, 54),
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.topLeft,
@@ -413,6 +438,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
               // 예정(연한) 바를 먼저 그림 → 실제 바가 위로 오게
               if (showPredicted && predFirstIdx != null && predLastIdx != null)
                 _rangeBarForWeekRow(
+                  context,
                   weekDays: weekDays,
                   firstIdx: predFirstIdx,
                   lastIdx: predLastIdx,
@@ -422,6 +448,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 ),
               if (firstIdx != null && lastIdx != null)
                 _rangeBarForWeekRow(
+                  context,
                   weekDays: weekDays,
                   firstIdx: firstIdx,
                   lastIdx: lastIdx,
@@ -436,7 +463,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 children: List.generate(
                   7,
                   (i) => Expanded(
-                    child: _buildDayCell(weekDays[i], focusedMonth),
+                    child: _buildDayCell(context, weekDays[i], focusedMonth),
                   ),
                 ),
               ),
@@ -449,7 +476,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   /// 주 단위 연한 핑크 바. 여러 주에 걸친 기간은 행 끝·다음 행 시작까지 이어짐.
   /// 시작·끝 칸에서는 바를 원 지름까지 포함해 그려 동그라미와 한 줄로 이어지게 함(원은 위 레이어).
-  Widget _rangeBarForWeekRow({
+  Widget _rangeBarForWeekRow(
+    BuildContext context, {
     required List<DateTime> weekDays,
     required int firstIdx,
     required int lastIdx,
@@ -457,7 +485,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     required Color fillColor,
     required bool Function(DateTime day) endpointMatcher,
   }) {
-    const d = _kPeriodEndpointDiameter;
+    final d = healthDp(context, _kPeriodEndpointDiameter);
     final firstDay = weekDays[firstIdx];
     final lastDay = weekDays[lastIdx];
     final firstCx = firstIdx * cellW + cellW / 2;
@@ -476,15 +504,16 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     if (barWidth <= 0) return const SizedBox.shrink();
     return Positioned(
       left: barLeft,
-      top: 14,
+      top: healthDp(context, 14),
       width: barWidth,
-      height: 26,
+      height: healthDp(context, 26),
       child: IgnorePointer(
         child: DecoratedBox(
           decoration: ShapeDecoration(
             color: fillColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(13),
+              borderRadius:
+                  BorderRadius.circular(healthDp(context, 13)),
             ),
           ),
         ),
@@ -492,7 +521,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     );
   }
 
-  Widget _buildDayCell(DateTime day, DateTime focusedMonth) {
+  Widget _buildDayCell(
+    BuildContext context,
+    DateTime day,
+    DateTime focusedMonth,
+  ) {
     final showPredicted = widget.existingRecord == null;
     final inMonth = _inFocusedMonth(day, focusedMonth);
     final rangeStart =
@@ -511,21 +544,24 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     final plainWeight =
         inRange && !isPeriodEndpoint ? FontWeight.w500 : FontWeight.w300;
 
+    final endpointD = healthDp(context, _kPeriodEndpointDiameter);
+    final endpointRadius = healthDp(context, 20);
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _onDayTapped(day),
       child: SizedBox(
-        height: 54,
+        height: healthDp(context, 54),
         child: Center(
           child: isPeriodEndpoint
               ? SizedBox(
-                  width: _kPeriodEndpointDiameter,
-                  height: _kPeriodEndpointDiameter,
+                  width: endpointD,
+                  height: endpointD,
                   child: DecoratedBox(
                     decoration: ShapeDecoration(
                       color: _kAccentPink,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(endpointRadius),
                       ),
                     ),
                     child: Center(
@@ -548,13 +584,14 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 )
               : predictedEndpoint
                   ? SizedBox(
-                      width: _kPeriodEndpointDiameter,
-                      height: _kPeriodEndpointDiameter,
+                      width: endpointD,
+                      height: endpointD,
                       child: DecoratedBox(
                         decoration: ShapeDecoration(
                           color: _kPredictedPeriodFill,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                                BorderRadius.circular(endpointRadius),
                           ),
                         ),
                         child: Center(
@@ -593,10 +630,13 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     return Row(
       children: [
         InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(healthDp(context, 8)),
           onTap: _openMonthFromHealthPicker,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 4),
+              vertical: healthDp(context, 6),
+            ),
             child: Row(
               children: [
                 Text(
@@ -608,8 +648,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                     fontWeight: FontWeight.w300,
                   ),
                 ),
-                const SizedBox(width: 3),
-                const Icon(Icons.keyboard_arrow_down, size: 18),
+                SizedBox(width: healthDp(context, 3)),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: healthDp(context, 18),
+                ),
               ],
             ),
           ),
@@ -651,11 +694,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       width: double.infinity,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1,
-            color: Color(0x7FD2D2D2),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Row(
@@ -664,7 +707,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             .map(
               (label) => Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: EdgeInsets.symmetric(
+                    vertical: healthDp(context, 15),
+                  ),
                   child: Center(
                     child: Text(
                       label,
@@ -700,18 +745,18 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         Row(
           children: [
             Container(
-              width: 51,
+              width: healthDp(context, 51),
               clipBehavior: Clip.antiAlias,
               decoration: ShapeDecoration(
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
+                  borderRadius: BorderRadius.circular(healthDp(context, 5)),
                 ),
-                shadows: const [
+                shadows: [
                   BoxShadow(
-                    color: Color(0x19000000),
-                    blurRadius: 2,
-                    offset: Offset(0, 0),
+                    color: const Color(0x19000000),
+                    blurRadius: healthDp(context, 2),
+                    offset: Offset.zero,
                     spreadRadius: 0,
                   ),
                 ],
@@ -744,7 +789,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 },
               ),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: healthDp(context, 5)),
             const Text(
               '일',
               style: TextStyle(
@@ -768,19 +813,23 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: _kAccentPink,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 146, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 24),
+            vertical: healthDp(context, 14),
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
           elevation: 0,
         ),
         child: _isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
+            ? SizedBox(
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: healthDp(context, 2),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(
