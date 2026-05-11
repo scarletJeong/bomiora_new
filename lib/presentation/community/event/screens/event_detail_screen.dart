@@ -4,6 +4,7 @@ import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final int wrId;
@@ -88,12 +89,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       style: const TextStyle(fontFamily: _font),
       child: MobileAppLayoutWrapper(
         appBar: const HealthAppBar(title: '이벤트', centerTitle: false),
-        child: _buildBody(),
+        child: _buildBody(context),
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -105,7 +106,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           children: [
             Text(
               _errorMessage!,
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: healthSp(context, 14),
+                fontFamily: _font,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -119,10 +124,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
 
     if (_event == null) {
-      return const Center(
+      return Center(
         child: Text(
           '이벤트를 찾을 수 없습니다.',
-          style: TextStyle(fontFamily: _font),
+          style: TextStyle(
+            fontFamily: _font,
+            fontSize: healthSp(context, 14),
+          ),
         ),
       );
     }
@@ -141,9 +149,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             child: Text(
               _event!.wrSubject,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 20,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 20),
                 fontFamily: _font,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -1.8,
@@ -175,9 +183,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           if (plainText.isNotEmpty)
             Text(
               plainText,
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 14,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 14),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
                 letterSpacing: -0.56,
@@ -185,11 +193,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             '이벤트 기간',
             style: TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 14,
+              color: const Color(0xFF1A1A1A),
+              fontSize: healthSp(context, 14),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
             ),
@@ -199,9 +207,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             padding: const EdgeInsets.only(left: 20),
             child: Text(
               '- ${_periodText(_event!)}',
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 14,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 14),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
               ),
@@ -212,6 +220,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             if (prevEvent != null) ...[
               Container(height: 1, color: _kBorder),
               _buildNavRow(
+                context,
                 label: '이전글',
                 event: prevEvent!,
                 isPrev: true,
@@ -220,6 +229,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             if (nextEvent != null) ...[
               Container(height: 1, color: _kBorder),
               _buildNavRow(
+                context,
                 label: '다음글',
                 event: nextEvent!,
                 isPrev: false,
@@ -242,11 +252,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   '목록',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
@@ -259,7 +269,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  Widget _buildNavRow({
+  Widget _buildNavRow(
+    BuildContext context, {
     required String label,
     required EventModel event,
     required bool isPrev,
@@ -282,9 +293,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFF898686),
-                fontSize: 14,
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 14),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
               ),
@@ -293,9 +304,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             Expanded(
               child: Text(
                 event.wrSubject,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.black,
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
                 ),

@@ -4,6 +4,7 @@ import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import 'event_detail_screen.dart';
 
 class EventListScreen extends StatefulWidget {
@@ -163,7 +164,7 @@ class _EventListScreenState extends State<EventListScreen> {
             text,
             style: TextStyle(
               color: selected ? _kPink : const Color(0xFF898383),
-              fontSize: 14,
+              fontSize: healthSp(context, 14),
               fontFamily: _font,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             ),
@@ -207,16 +208,16 @@ class _EventListScreenState extends State<EventListScreen> {
               controller: _searchController,
               textInputAction: TextInputAction.search,
               onSubmitted: (_) => _applySearch(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: _font,
-                fontSize: 14,
-                color: Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 14),
+                color: const Color(0xFF1A1A1A),
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '검색',
                 hintStyle: TextStyle(
                   color: _kMuted,
-                  fontSize: 14,
+                  fontSize: healthSp(context, 14),
                   fontFamily: _font,
                   fontWeight: FontWeight.w300,
                 ),
@@ -243,29 +244,29 @@ class _EventListScreenState extends State<EventListScreen> {
           child: Text.rich(
             TextSpan(
               children: [
-                const TextSpan(
+                TextSpan(
                   text: '총 ',
                   style: TextStyle(
                     color: _kMuted,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 TextSpan(
                   text: '$total',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kPink,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: _font,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const TextSpan(
+                TextSpan(
                   text: '건',
                   style: TextStyle(
                     color: _kMuted,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
@@ -294,7 +295,10 @@ class _EventListScreenState extends State<EventListScreen> {
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: _font),
+              style: TextStyle(
+                fontFamily: _font,
+                fontSize: healthSp(context, 14),
+              ),
             ),
             const SizedBox(height: 12),
             ElevatedButton(
@@ -306,12 +310,13 @@ class _EventListScreenState extends State<EventListScreen> {
       );
     }
     if (events.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           '이벤트가 없습니다.',
           style: TextStyle(
             color: _kMuted,
             fontFamily: _font,
+            fontSize: healthSp(context, 14),
           ),
         ),
       );
@@ -385,9 +390,9 @@ class _EventListScreenState extends State<EventListScreen> {
               children: [
                 Text(
                   event.wrSubject,
-                  style: const TextStyle(
-                    color: Color(0xFF231F20),
-                    fontSize: 20,
+                  style: TextStyle(
+                    color: const Color(0xFF231F20),
+                    fontSize: healthSp(context, 20),
                     fontFamily: _font,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -1.8,
@@ -398,9 +403,9 @@ class _EventListScreenState extends State<EventListScreen> {
                 const SizedBox(height: 6),
                 Text(
                   _periodText(event),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kMuted,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
@@ -424,12 +429,12 @@ class _EventListScreenState extends State<EventListScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
-            child: const Text(
+            child: Text(
               '이벤트가\n종료 되었습니다.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: healthSp(context, 20),
                 fontFamily: _font,
                 fontWeight: FontWeight.w700,
               ),
