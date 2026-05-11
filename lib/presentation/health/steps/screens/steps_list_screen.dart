@@ -14,11 +14,11 @@ import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../utils/step_calculator.dart';
 import '../widgets/steps_chart_tooltip.dart';
+import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
-
-const double _stepsYAxisUnitBandHeight = 16.0;
 
 class StepsTodayScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -123,6 +123,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     return startSlot / maxStartSlot;
   }
 
+  double _yAxisBandHeight(BuildContext context) => healthDp(context, 16);
+
   double _clampTimeOffset(double next) {
     if (selectedPeriod == '월') {
       return next.clamp(0.0, 1.0);
@@ -142,117 +144,135 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          '총 걸음 수',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
         backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
-      child: isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Color(0xFFFF5A8D)),
-                  SizedBox(height: 16),
-                  Text('데이터를 불러오는 중...'),
-                ],
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  HealthDateSelector(
-                    selectedDate: selectedDate,
-                    onDateChanged: (newDate) async {
-                      setState(() {
-                        selectedDate = newDate;
-                        if (selectedPeriod == '일') {
-                          timeOffset = _isToday() ? _defaultDailyTimeOffset() : 0.0;
-                        }
-                      });
-                      await _loadData();
-                    },
-                    monthTextColor: const Color(0xFF898686),
-                    selectedTextColor: const Color(0xFFFF5A8D),
-                    unselectedTextColor: const Color(0xFF1A1A1A),
-                    iconColor: const Color(0xFF898686),
-                    dividerColor: const Color(0xFFD2D2D2),
-                  ),
-                  const SizedBox(height: 5),
-                  _buildTotalStepsCard(),
-                  const SizedBox(height: 20),
-                  Row(
+        appBar: HealthAppBar(
+          title: '총 걸음 수',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: isLoading
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: '거리',
-                          unitSmall: '(km)',
-                          icon: Icons.directions_walk,
-                          value: (todayStepsRecord != null &&
-                                  todayStepsRecord!.distance > 0)
-                              ? todayStepsRecord!.distance.toStringAsFixed(1)
-                              : StepCalculator.kmFromSteps(
-                                      todayStepsRecord?.totalSteps ?? 0)
-                                  .toStringAsFixed(1),
-                          valueUnit: 'km',
-                        ),
+                      const CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+                      SizedBox(height: healthDp(context, 16)),
+                      const Text(
+                        '데이터를 불러오는 중...',
+                        style: TextStyle(fontSize: 14),
                       ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: '칼로리',
-                          unitSmall: '(kcal)',
-                          icon: Icons.local_fire_department,
-                          value: (todayStepsRecord != null &&
-                                  todayStepsRecord!.calories > 0)
-                              ? todayStepsRecord!.calories.toString()
-                              : StepCalculator.kcalFromSteps(
-                                      todayStepsRecord?.totalSteps ?? 0)
-                                  .toString(),
-                          valueUnit: 'kcal',
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 27),
+                    vertical: healthDp(context, 20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      HealthDateSelector(
+                        selectedDate: selectedDate,
+                        onDateChanged: (newDate) async {
+                          setState(() {
+                            selectedDate = newDate;
+                            if (selectedPeriod == '일') {
+                              timeOffset =
+                                  _isToday() ? _defaultDailyTimeOffset() : 0.0;
+                            }
+                          });
+                          await _loadData();
+                        },
+                        monthTextColor: const Color(0xFF898686),
+                        selectedTextColor: const Color(0xFFFF5A8D),
+                        unselectedTextColor: const Color(0xFF1A1A1A),
+                        iconColor: const Color(0xFF898686),
+                        dividerColor: const Color(0xFFD2D2D2),
+                      ),
+                      SizedBox(height: healthDp(context, 5)),
+                      _buildTotalStepsCard(),
+                      SizedBox(height: healthDp(context, 20)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSummaryCard(
+                              title: '거리',
+                              unitSmall: '(km)',
+                              icon: Icons.directions_walk,
+                              value: (todayStepsRecord != null &&
+                                      todayStepsRecord!.distance > 0)
+                                  ? todayStepsRecord!.distance.toStringAsFixed(1)
+                                  : StepCalculator.kmFromSteps(
+                                          todayStepsRecord?.totalSteps ?? 0)
+                                      .toStringAsFixed(1),
+                              valueUnit: 'km',
+                            ),
+                          ),
+                          SizedBox(width: healthDp(context, 20)),
+                          Expanded(
+                            child: _buildSummaryCard(
+                              title: '칼로리',
+                              unitSmall: '(kcal)',
+                              icon: Icons.local_fire_department,
+                              value: (todayStepsRecord != null &&
+                                      todayStepsRecord!.calories > 0)
+                                  ? todayStepsRecord!.calories.toString()
+                                  : StepCalculator.kcalFromSteps(
+                                          todayStepsRecord?.totalSteps ?? 0)
+                                      .toString(),
+                              valueUnit: 'kcal',
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: healthDp(context, 20)),
+                      HealthPeriodSelector(
+                        selectedPeriod: selectedPeriod,
+                        onChanged: (period) {
+                          setState(() {
+                            selectedPeriod = period;
+                            if (period == '일') {
+                              timeOffset = _isToday()
+                                  ? _defaultDailyTimeOffset()
+                                  : 0.0;
+                            } else if (period == '월') {
+                              timeOffset = 0.0;
+                            } else {
+                              timeOffset = 0.0;
+                            }
+                          });
+                          _notifyExpandedChart();
+                        },
+                      ),
+                      SizedBox(height: healthDp(context, 8)),
+                      _buildChartCard(
+                        chartHeight: healthDp(
+                          context,
+                          ChartConstants.healthChartHeight,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  HealthPeriodSelector(
-                    selectedPeriod: selectedPeriod,
-                    onChanged: (period) {
-                      setState(() {
-                        selectedPeriod = period;
-                        if (period == '일') {
-                          timeOffset = _isToday() ? _defaultDailyTimeOffset() : 0.0;
-                        } else if (period == '월') {
-                          timeOffset = 0.0;
-                        } else {
-                          timeOffset = 0.0;
-                        }
-                      });
-                      _notifyExpandedChart();
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  _buildChartCard(),
-                ],
-              ),
-            ),
+                ),
+        ),
+      ),
     );
   }
 
@@ -269,10 +289,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     final diffUp = diff > 0;
     final diffDown = diff < 0;
 
+    final ringOuter = healthDp(context, 204);
+    final ringPaint = healthDp(context, 192);
+    final strokeW = healthDp(context, 18);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(healthDp(context, 16)),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
       ),
       child: Column(
         children: [
@@ -283,21 +306,21 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Transform.translate(
-                    offset: const Offset(-18, 0),
+                    offset: Offset(-healthDp(context, 18), 0),
                     child: SizedBox(
-                      width: 204,
-                      height: 204,
+                      width: ringOuter,
+                      height: ringOuter,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           CustomPaint(
-                            size: const Size(192, 192),
+                            size: Size(ringPaint, ringPaint),
                             painter: _StepsGoalRingPainter(
                               progress: ratio,
                               trackColor: const Color(0x7FD9D9D9),
                               progressColor: const Color(0xFFFF5A8D),
-                              strokeWidth: 18,
-                              progressStrokeWidth: 18,
+                              strokeWidth: strokeW,
+                              progressStrokeWidth: strokeW,
                             ),
                           ),
                           Column(
@@ -312,7 +335,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   fontWeight: FontWeight.w300,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: healthDp(context, 4)),
                               Text(
                                 NumberFormat('#,###').format(totalSteps),
                                 style: const TextStyle(
@@ -344,7 +367,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: healthDp(context, 6)),
                     Text(
                       goalSteps != null
                           ? NumberFormat('#,###').format(goalSteps)
@@ -356,7 +379,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    SizedBox(height: healthDp(context, 18)),
                     const Text(
                       '전날 대비',
                       style: TextStyle(
@@ -366,7 +389,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: healthDp(context, 6)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -390,10 +413,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: healthDp(context, 4)),
                           Icon(
                             diffUp ? Icons.arrow_upward : Icons.arrow_downward,
-                            size: 16,
+                            size: healthDp(context, 16),
                             color: diffDown
                                 ? const Color(0xFF002BFF)
                                 : const Color(0xFFFF0000),
@@ -419,11 +442,17 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     required String valueUnit,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 10),
+        vertical: healthDp(context, 8),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(width: 0.5, color: const Color(0xFFD9D9D9)),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        border: Border.all(
+          width: healthDp(context, 0.5),
+          color: const Color(0xFFD9D9D9),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,17 +485,21 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 ),
               ),
               Container(
-                width: 30,
-                height: 30,
+                width: healthDp(context, 30),
+                height: healthDp(context, 30),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFDF2F8),
-                  borderRadius: BorderRadius.circular(9999),
+                  borderRadius: BorderRadius.circular(healthDp(context, 9999)),
                 ),
-                child: Icon(icon, size: 16, color: const Color(0xFFFF5A8D)),
+                child: Icon(
+                  icon,
+                  size: healthDp(context, 16),
+                  color: const Color(0xFFFF5A8D),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: healthDp(context, 6)),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -479,7 +512,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 5),
+              SizedBox(width: healthDp(context, 5)),
               Text(
                 valueUnit,
                 style: const TextStyle(
@@ -500,30 +533,35 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     bool showExpandButton = true,
     double? chartHeight,
   }) {
-    final h = chartHeight ?? ChartConstants.healthChartHeight;
+    final h = chartHeight ?? healthDp(context, ChartConstants.healthChartHeight);
     return Stack(
       children: [
         Container(
           height: h,
-          padding: const EdgeInsets.fromLTRB(8, 16, 16, 16),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 8),
+            healthDp(context, 16),
+            healthDp(context, 16),
+            healthDp(context, 16),
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
             border: Border.all(color: Colors.grey[200]!),
           ),
           child: _buildBarChartArea(),
         ),
         if (showExpandButton)
           Positioned(
-            top: 8,
-            right: 4,
+            top: healthDp(context, 8),
+            right: healthDp(context, 4),
             child: GestureDetector(
               onTap: _openExpandedChartPage,
               behavior: HitTestBehavior.opaque,
               child: SvgPicture.asset(
                 AppAssets.healthZoomin,
-                width: 20,
-                height: 20,
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
                 fit: BoxFit.contain,
               ),
             ),
@@ -537,14 +575,33 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     final maxValue = _chartMaxValue();
     final yTicks = _buildYAxisTicks();
 
+    final yBand = _yAxisBandHeight(context);
+    final yAxisW = healthDp(context, ChartConstants.weightChartYAxisWidth);
+    final ySpacing = healthDp(context, ChartConstants.yAxisSpacing);
+    final barW = healthDp(
+      context,
+      selectedPeriod == '일'
+          ? 8.0
+          : selectedPeriod == '월'
+              ? 12.0
+              : 14.0,
+    );
+    final chartPadV = healthDp(context, 20);
+    final chartPadRight = healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
+    final barCornerR = healthDp(context, 10);
+    final minBarH = healthDp(context, 4);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildStepsYAxisStrip(
+          context: context,
           labels: _buildYAxisDisplayLabels(),
           unitLabel: _yAxisUnitLabel(),
+          bandHeight: yBand,
+          yAxisWidth: yAxisW,
         ),
-        const SizedBox(width: ChartConstants.yAxisSpacing),
+        SizedBox(width: ySpacing),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -553,8 +610,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               final forceWhiteBg =
                   selectedPeriod == '일' || selectedPeriod == '월';
               final chartH = constraints.maxHeight -
-                  _stepsYAxisUnitBandHeight -
-                  26;
+                  yBand -
+                  healthDp(context, 26);
 
               return ColoredBox(
                 color: forceWhiteBg ? Colors.white : Colors.transparent,
@@ -563,7 +620,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                   onTap: _clearTooltip,
                   child: Column(
                     children: [
-                      const SizedBox(height: _stepsYAxisUnitBandHeight),
+                      SizedBox(height: yBand),
                       Expanded(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
@@ -584,7 +641,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             }
                             setState(() {
                               _tooltipIndex = idx;
-                              _tooltipPosition = Offset(localX, 30);
+                              _tooltipPosition =
+                                  Offset(localX, healthDp(context, 30));
                             });
                           },
                           onPanUpdate:
@@ -611,11 +669,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   data: visibleData,
                                   maxValue: maxValue,
                                   yTickCount: yTicks.length,
-                                  barWidth: selectedPeriod == '일'
-                                      ? 8
-                                      : selectedPeriod == '월'
-                                          ? 12
-                                          : 14,
+                                  barWidth: barW,
+                                  topPadding: chartPadV,
+                                  bottomPadding: chartPadV,
+                                  rightPadding: chartPadRight,
+                                  barCornerRadius: barCornerR,
+                                  minBarHeight: minBarH,
+                                  gridStrokeWidth: healthDp(context, 0.5),
                                 ),
                                 size: Size(double.infinity, chartH),
                               ),
@@ -633,8 +693,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      _buildXAxisLabelRow(labels),
+                      SizedBox(height: healthDp(context, 10)),
+                      _buildXAxisLabelRow(context, labels),
                     ],
                   ),
                 ),
@@ -783,7 +843,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     return data;
   }
 
-  Widget _buildXAxisLabelRow(List<String> labels) {
+  Widget _buildXAxisLabelRow(BuildContext context, List<String> labels) {
     final unit = selectedPeriod == '일'
         ? '(시)'
         : selectedPeriod == '주'
@@ -796,7 +856,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 child: Center(
                   child: Text(
                     label,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: healthSp(context, 12),
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ),
               ),
@@ -808,38 +871,45 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 child: Text(
                   label,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: healthSp(context, 12),
+                    color: Colors.grey[600],
+                  ),
                 ),
               ),
             )
             .toList();
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(
-            right: ChartConstants.weightXAxisUnitReservedWidth,
+    return MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.noScaling),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              right: healthDp(context, ChartConstants.weightXAxisUnitReservedWidth),
+            ),
+            child: Row(children: children),
           ),
-          child: Row(children: children),
-        ),
-        Positioned(
-          right: -10,
-          top: 1,
-          bottom: 0,
-          child: Align(
-            alignment: Alignment.center,
-            child: Text(
-              unit,
-              style: TextStyle(
-                fontSize: 9,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+          Positioned(
+            right: -healthDp(context, 10),
+            top: healthDp(context, 1),
+            bottom: 0,
+            child: Align(
+              alignment: Alignment.center,
+              child: Text(
+                unit,
+                style: TextStyle(
+                  fontSize: healthSp(context, 9),
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -949,27 +1019,36 @@ class _StepsBarChartPainter extends CustomPainter {
   final int maxValue;
   final int yTickCount;
   final double barWidth;
+  final double topPadding;
+  final double bottomPadding;
+  final double rightPadding;
+  final double barCornerRadius;
+  final double minBarHeight;
+  final double gridStrokeWidth;
 
-  const _StepsBarChartPainter({
+  _StepsBarChartPainter({
     required this.data,
     required this.maxValue,
     required this.yTickCount,
     required this.barWidth,
+    this.topPadding = 20,
+    this.bottomPadding = 20,
+    this.rightPadding = 18,
+    this.barCornerRadius = 10,
+    this.minBarHeight = 4,
+    this.gridStrokeWidth = 0.5,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    const topPadding = 20.0;
-    const bottomPadding = 20.0;
-    const rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
     final chartWidth = size.width - rightPadding;
     final chartHeight = size.height - topPadding - bottomPadding;
 
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
+      ..strokeWidth = gridStrokeWidth;
     final barPaint = Paint()
       ..color = const Color(0xFFFF5A8D)
       ..style = PaintingStyle.fill;
@@ -982,18 +1061,21 @@ class _StepsBarChartPainter extends CustomPainter {
 
     final slotWidth = chartWidth / data.length;
     final scaleMax = maxValue <= 0 ? 1 : maxValue;
+    final corner = Radius.circular(barCornerRadius);
     for (int i = 0; i < data.length; i++) {
       final factor = (data[i].value / scaleMax).clamp(0.0, 1.0);
-      final barHeight =
-          math.max(chartHeight * factor, data[i].value > 0 ? 4.0 : 0.0);
+      final barHeight = math.max(
+        chartHeight * factor,
+        data[i].value > 0 ? minBarHeight : 0.0,
+      );
       if (barHeight == 0) continue;
 
       final x = slotWidth * i + (slotWidth - barWidth) / 2;
       final y = topPadding + chartHeight - barHeight;
       final rect = RRect.fromRectAndCorners(
         Rect.fromLTWH(x, y, barWidth, barHeight),
-        topLeft: const Radius.circular(10),
-        topRight: const Radius.circular(10),
+        topLeft: corner,
+        topRight: corner,
         bottomLeft: Radius.zero,
         bottomRight: Radius.zero,
       );
@@ -1006,21 +1088,33 @@ class _StepsBarChartPainter extends CustomPainter {
     return oldDelegate.data != data ||
         oldDelegate.maxValue != maxValue ||
         oldDelegate.yTickCount != yTickCount ||
-        oldDelegate.barWidth != barWidth;
+        oldDelegate.barWidth != barWidth ||
+        oldDelegate.topPadding != topPadding ||
+        oldDelegate.bottomPadding != bottomPadding ||
+        oldDelegate.rightPadding != rightPadding ||
+        oldDelegate.barCornerRadius != barCornerRadius ||
+        oldDelegate.minBarHeight != minBarHeight ||
+        oldDelegate.gridStrokeWidth != gridStrokeWidth;
   }
 }
 
 Widget _buildStepsYAxisStrip({
+  required BuildContext context,
   required List<String> labels,
   required String unitLabel,
+  required double bandHeight,
+  required double yAxisWidth,
 }) {
+  final topPad = healthDp(context, 20);
+  final bottomPad = healthDp(context, 20);
+  final labelOffset = healthDp(context, 7);
   return SizedBox(
-    width: ChartConstants.weightChartYAxisWidth,
+    width: yAxisWidth,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: _stepsYAxisUnitBandHeight,
+          height: bandHeight,
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Text(
@@ -1036,8 +1130,6 @@ Widget _buildStepsYAxisStrip({
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              const topPad = 20.0;
-              const bottomPad = 20.0;
               final h = constraints.maxHeight - topPad - bottomPad;
               return Stack(
                 clipBehavior: Clip.none,
@@ -1045,7 +1137,7 @@ Widget _buildStepsYAxisStrip({
                   final i = entry.key;
                   final y = topPad + h * i / (labels.length - 1);
                   return Positioned(
-                    top: y - 7,
+                    top: y - labelOffset,
                     left: 0,
                     right: 0,
                     child: Text(
