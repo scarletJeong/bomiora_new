@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../health/health_common/health_responsive_scale.dart';
+
 enum HealthAppBarLeadingType { back, menu }
 
 /// 건강 화면 공통 AppBar (뒤로가기, 제목, 선택적 액션)
@@ -33,11 +35,11 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: centerTitle
           ? Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w700,
                 color: Colors.black,
-                fontSize: 18,
+                fontSize: healthSp(context, 18),
               ),
               textAlign: TextAlign.center,
             )
@@ -45,11 +47,11 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                   color: Colors.black,
-                  fontSize: 18,
+                  fontSize: healthSp(context, 18),
                 ),
               ),
             ),
