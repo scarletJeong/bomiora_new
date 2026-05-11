@@ -8,6 +8,7 @@ import 'policy/screens/terms_of_service_screen.dart';
 import 'policy/screens/privacy_policy_screen.dart';
 import '../customer_service/screens/contact_list_screen.dart';
 import '../../data/services/auth_service.dart';
+import '../health/health_common/health_responsive_scale.dart';
 
 /// 설정 화면
 class SettingsScreen extends StatefulWidget {
@@ -105,11 +106,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     _appVersion,
                     style: TextStyle(
                       color: _kMuted,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -149,10 +150,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 '로그아웃',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -204,9 +205,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kText,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.w300,
                   ),
                 ),
@@ -234,23 +235,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '보미오라',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: healthSp(context, 18),
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '버전: $_appVersion',
-              style: TextStyle(fontSize: 14, color: _kMuted),
+              style: TextStyle(fontSize: healthSp(context, 14), color: _kMuted),
             ),
             const SizedBox(height: 16),
             Text(
               '건강한 삶을 위한 스마트한 선택\n보미오라와 함께하세요.',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 color: Colors.grey[800],
               ),
             ),

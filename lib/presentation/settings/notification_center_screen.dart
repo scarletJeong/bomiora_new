@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../common/widgets/app_bar.dart';
 import 'notification_settings_screen.dart';
+import '../health/health_common/health_responsive_scale.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({super.key});
@@ -106,11 +107,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   '표시할 알림이 없습니다.',
                   style: TextStyle(
                     color: _kMuted,
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
@@ -180,7 +181,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 label,
                 style: TextStyle(
                   color: selected ? _kText : _kMuted,
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontFamily: _font,
                   fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
                 ),
@@ -192,16 +193,16 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       text: label,
                       style: TextStyle(
                         color: selected ? _kText : _kMuted,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontFamily: _font,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     TextSpan(
                       text: '$count',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kPink,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontFamily: _font,
                         fontWeight: FontWeight.w700,
                       ),
@@ -237,9 +238,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     children: [
                       Text(
                         item.date,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: _kMuted,
-                          fontSize: 12,
+                          fontSize: healthSp(context, 12),
                           fontFamily: _font,
                           fontWeight: FontWeight.w300,
                           letterSpacing: -1.08,
@@ -261,9 +262,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                           ],
                           Text(
                             item.category,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _kText,
-                              fontSize: 16,
+                              fontSize: healthSp(context, 16),
                               fontFamily: _font,
                               fontWeight: FontWeight.w500,
                               letterSpacing: -1.44,
@@ -294,9 +295,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             if (item.description == null)
               Text(
                 item.title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _kText,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
                   letterSpacing: -1.08,
@@ -309,9 +310,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 children: [
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _kText,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontFamily: _font,
                       fontWeight: FontWeight.w500,
                       letterSpacing: -1.08,
@@ -319,9 +320,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   ),
                   Text(
                     item.description!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _kMuted,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontFamily: _font,
                       fontWeight: FontWeight.w500,
                       letterSpacing: -1.08,

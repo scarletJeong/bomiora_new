@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../common/widgets/app_bar.dart';
+import '../health/health_common/health_responsive_scale.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -55,10 +56,10 @@ class _NotificationSettingsScreenState
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   '저장',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
@@ -157,9 +158,9 @@ class _NotificationSettingsScreenState
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: _kText,
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               fontFamily: _font,
               fontWeight: FontWeight.w300,
               letterSpacing: -1.44,

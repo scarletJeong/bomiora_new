@@ -105,10 +105,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
               ),
             ),
             
-            const SizedBox(height: 300),
-            
-            // Footer  
-            const AppFooter(),
           ],
         ),
       ),
