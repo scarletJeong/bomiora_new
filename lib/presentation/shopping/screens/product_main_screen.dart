@@ -5,16 +5,17 @@ import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/product_main/product_main_sections.dart';
 
 class ProductMainScreen extends StatelessWidget {
   const ProductMainScreen({super.key});
 
-  static const _sectionGap = SizedBox(height: 24);
-  static const _quoteToCheckpointGap = SizedBox(height: 25);
-
   @override
   Widget build(BuildContext context) {
+    final sectionGap = SizedBox(height: healthDp(context, 24));
+    final quoteToCheckpointGap = SizedBox(height: healthDp(context, 25));
+
     return MobileAppLayoutWrapper(
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -46,9 +47,9 @@ class ProductMainScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const ProductMainQuoteSection(),
-                _quoteToCheckpointGap,
+                quoteToCheckpointGap,
                 const ProductMainCheckpointSection(),
-                _sectionGap,
+                sectionGap,
                 const ProductMainTrustSection(),
                 const ProductMainPhotoBioSection(),
                 const AppFooter(),

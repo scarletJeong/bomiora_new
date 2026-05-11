@@ -4,25 +4,13 @@ import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
-import '../../common/widgets/app_footer.dart';  
+import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
+import '../../common/widgets/product_card.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../utils/get_product.dart';
 import '../widgets/product_banner_slider.dart';
 import '../widgets/product_main/product_main_category_tap.dart';
-
-String _productListStripHtml(String? raw) {
-  if (raw == null) return '';
-  var s = raw.replaceAll(RegExp(r'<[^>]*>'), ' ');
-  s = s
-      .replaceAll('&nbsp;', ' ')
-      .replaceAll('&amp;', '&')
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&#39;', "'")
-      .replaceAll('&quot;', '"');
-  s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
-  return s;
-}
 
 class ProductListScreen extends StatefulWidget {
   final String categoryId;
@@ -66,7 +54,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   late List<_CategoryTab> _tabs;
   late List<_CategoryTab> _baseTabOrder;
 
-  static const Color _brandPink = Color(0xFFFF5A8D);
   static const String _gmarket = 'Gmarket Sans TTF';
 
   @override
@@ -202,8 +189,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Widget _buildBody() {
     if (_isLoading && _products.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: SizedBox(
+          width: healthDp(context, 36),
+          height: healthDp(context, 36),
+          child: const CircularProgressIndicator(strokeWidth: 2),
+        ),
       );
     }
 
@@ -214,20 +205,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
           children: [
             Icon(
               Icons.error_outline,
-              size: 64,
+              size: healthDp(context, 64),
               color: Colors.grey[400],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(context, 16)),
             Text(
               _errorMessage ?? '상품을 불러올 수 없습니다',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: healthSp(context, 16),
                 color: Colors.grey[600],
                 fontFamily: _gmarket,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: healthDp(context, 24)),
             ElevatedButton(
               onPressed: _loadProducts,
               child: const Text('다시 시도'),
@@ -245,41 +236,52 @@ class _ProductListScreenState extends State<ProductListScreen> {
           const SliverToBoxAdapter(
             child: ProductBannerSlider(),
           ),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 14),
+          SliverToBoxAdapter(
+            child: SizedBox(height: healthDp(context, 10)),
           ),
           SliverToBoxAdapter(
             child: ProductMainCategoryTap(
               productKind: widget.productKind ?? 'prescription',
+              compact: true,
             ),
           ),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 20),
+          SliverToBoxAdapter(
+            child: SizedBox(height: healthDp(context, 10)),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 18),
+                healthDp(context, 8),
+                healthDp(context, 18),
+                healthDp(context, 6),
+              ),
               child: _buildScreenTitle(),
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 18),
+              healthDp(context, 8),
+              healthDp(context, 18),
+              healthDp(context, 20),
+            ),
             sliver: _products.isEmpty
                 ? SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 56),
+                      padding: EdgeInsets.symmetric(vertical: healthDp(context, 56)),
                       child: Column(
                         children: [
                           Icon(
                             Icons.shopping_bag_outlined,
-                            size: 64,
+                            size: healthDp(context, 64),
                             color: Colors.grey[400],
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: healthDp(context, 16)),
                           Text(
                             '등록된 상품이 없습니다',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: healthSp(context, 16),
                               color: Colors.grey[600],
                               fontFamily: _gmarket,
                             ),
@@ -289,21 +291,26 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                   )
                 : SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      // 세로 여유 (하단 텍스트 오버플로 방지)
-                      childAspectRatio: 0.66,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 16,
+                      // Figma 카드(이미지+다줄 텍스트) 비율 — 세로 여유 확보
+                      childAspectRatio: 0.58,
+                      crossAxisSpacing: healthDp(context, 12),
+                      mainAxisSpacing: healthDp(context, 16),
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         if (index == _products.length) {
-                          return const Center(
+                          return Center(
                             child: Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: CircularProgressIndicator(),
+                              padding: EdgeInsets.all(healthDp(context, 16)),
+                              child: SizedBox(
+                                width: healthDp(context, 28),
+                                height: healthDp(context, 28),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             ),
                           );
                         }
@@ -313,7 +320,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                   ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 32))),
           const SliverToBoxAdapter(child: AppFooter()),
         ],
       ),
@@ -333,8 +340,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOut,
-              style: const TextStyle(
-                fontSize: 22,
+              style: TextStyle(
+                fontSize: healthSp(context, 22),
                 fontWeight: FontWeight.w800,
                 color: Colors.black,
                 fontFamily: _gmarket,
@@ -357,7 +364,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       duration: const Duration(milliseconds: 180),
                       curve: Curves.easeOut,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: healthSp(context, 14),
                         fontWeight: FontWeight.w600,
                         color: Colors.grey[500],
                         fontFamily: _gmarket,
@@ -376,12 +383,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Widget _buildScreenTitle() {
     return Padding(
-      padding: const EdgeInsets.only(left: 6),
+      padding: EdgeInsets.only(left: healthDp(context, 6)),
       child: Text(
         '| $_activeCategoryName',
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
+        style: TextStyle(
+          fontSize: healthSp(context, 19.29),
+          fontWeight: FontWeight.w700,
           color: Colors.black,
           fontFamily: _gmarket,
         ),
@@ -443,209 +450,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildProductCard(Product product) {
-    return LayoutBuilder(
-      builder: (context, itemConstraints) {
-        final screenW = MediaQuery.sizeOf(context).width;
-        final tScale = (screenW / 390.0).clamp(0.88, 1.18);
-        final namePlain = _productListStripHtml(product.name);
-        final subjectPlain = _productListStripHtml(product.itSubject);
-        final nameFs = (12.5 * tScale).clamp(11.0, 15.0);
-        final subjectFs = (10.0 * tScale).clamp(9.0, 12.0);
-        final origFs = (10.5 * tScale).clamp(9.5, 12.5);
-        final discFs = (11.5 * tScale).clamp(10.5, 14.0);
-        final priceFs = (13.5 * tScale).clamp(12.0, 16.0);
-
-        final imageHeight = itemConstraints.hasBoundedHeight
-            ? itemConstraints.maxHeight * 2 / 3
-            : 220.0;
-
-        return GestureDetector(
-          onTap: () {
-            final detailRoute = widget.productKind == 'general'
-                ? '/product-general/${product.id}'
-                : '/product/${product.id}';
-            Navigator.pushNamed(
-              context,
-              detailRoute,
-            );
-          },
-          child: Card(
-            elevation: 2,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: imageHeight,
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        product.imageUrl != null
-                            ? Image.network(
-                                product.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  print('❌ 이미지 로드 실패: ${product.imageUrl}');
-                                  print('   에러: $error');
-                                  return _buildPlaceholderImage(product);
-                                },
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return const Center(
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  );
-                                },
-                              )
-                            : _buildPlaceholderImage(product),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              if (subjectPlain.isNotEmpty) ...[
-                                Text(
-                                  subjectPlain,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: subjectFs,
-                                    fontWeight: FontWeight.w400,
-                                    fontFamily: _gmarket,
-                                  ),
-                                ),
-                                SizedBox(height: 3 * tScale),
-                              ],
-                              Text(
-                                namePlain,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: const Color(0xFF231F20),
-                                  fontSize: nameFs,
-                                  fontWeight: FontWeight.w500,
-                                  fontFamily: _gmarket,
-                                  height: 1.25,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (product.originalPrice != null &&
-                            product.originalPrice! > product.price) ...[
-                          Text(
-                            product.formattedOriginalPrice ?? '',
-                            style: TextStyle(
-                              fontSize: origFs,
-                              color: Colors.grey[600],
-                              decoration: TextDecoration.lineThrough,
-                              fontFamily: _gmarket,
-                            ),
-                          ),
-                          SizedBox(height: 4 * tScale),
-                        ],
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (product.discountRate != null)
-                              Text(
-                                '${product.discountRate!.toStringAsFixed(0)}%',
-                                style: TextStyle(
-                                  fontSize: discFs,
-                                  color: _brandPink,
-                                  fontWeight: FontWeight.w800,
-                                  fontFamily: _gmarket,
-                                ),
-                              ),
-                            if (product.discountRate != null)
-                              SizedBox(width: 5 * tScale),
-                            Expanded(
-                              child: Text(
-                                product.formattedPrice,
-                                style: TextStyle(
-                                  fontSize: priceFs,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                  fontFamily: _gmarket,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if ((product.rating ?? 0) > 0 ||
-                                (product.reviewCount ?? 0) > 0) ...[
-                              SizedBox(width: 6 * tScale),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.star,
-                                    size: (12.5 * tScale).clamp(11.0, 14.0),
-                                    color: const Color(0xFFFFCC00),
-                                  ),
-                                  SizedBox(width: 2 * tScale),
-                                  Text(
-                                    '${(product.rating ?? 0).toStringAsFixed(1)}'
-                                    '(${product.reviewCount ?? 0})',
-                                    style: TextStyle(
-                                      fontSize:
-                                          (10.5 * tScale).clamp(9.5, 12.0),
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: _gmarket,
-                                      height: 1.1,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+    return ProductCatalogCard(
+      product: product,
+      onTap: () {
+        final detailRoute = widget.productKind == 'general'
+            ? '/product-general/${product.id}'
+            : '/product/${product.id}';
+        Navigator.pushNamed(context, detailRoute);
       },
-    );
-  }
-
-  Widget _buildPlaceholderImage(Product product) {
-    return Container(
-      width: double.infinity,
-      color: Colors.grey[200],
-      child: Icon(
-        Icons.image_not_supported,
-        size: 40,
-        color: Colors.grey[400],
-      ),
     );
   }
 
@@ -665,7 +477,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
               SelectableText(
                 product.id,
-                style: const TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: healthSp(context, 14)),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -689,7 +501,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 ),
                 SelectableText(
                   product.name,
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: healthSp(context, 14)),
                 ),
               ],
             ],
@@ -703,11 +515,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           if (product.imageUrl != null)
             TextButton(
               onPressed: () {
-                // 콘솔에도 출력
-                print('🔍 이미지 정보:');
-                print('   제품 ID: ${product.id}');
-                print('   제품명: ${product.name}');
-                print('   이미지 URL: ${product.imageUrl}');
+
                 Navigator.of(context).pop();
               },
               child: const Text('콘솔 출력'),

@@ -9,7 +9,9 @@ import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
+import '../../common/widgets/product_card.dart';
 import '../../common/widgets/web_dragscroll.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../utils/get_product.dart';
 
 /// 카테고리 칩 라벨 — [productGeneralCategoryList] 순서와 동일
@@ -37,20 +39,6 @@ const List<String> _kMidBannerAssets = [
 ];
 
 const int _kMaxCategoryProducts = 4;
-
-String _stripHtmlTags(String? raw) {
-  if (raw == null) return '';
-  var s = raw.replaceAll(RegExp(r'<[^>]*>'), ' ');
-  s = s
-      .replaceAll('&nbsp;', ' ')
-      .replaceAll('&amp;', '&')
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&#39;', "'")
-      .replaceAll('&quot;', '"');
-  s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
-  return s;
-}
 
 /// 헬스케어 스토어(일반 상품) 메인 — 카테고리별 API 상품 + MD's Pick만 정적 구성.
 ///
@@ -159,7 +147,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
                               '상품을 불러오지 못했습니다.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 15 * scale,
+                                fontSize: healthSp(context, 15),
                                 color: Colors.grey[800],
                               ),
                             ),
@@ -176,7 +164,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
                       onRefresh: _load,
                       child: CustomScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: _buildHealthcareStoreMainSlivers(scale),
+                        slivers: _buildHealthcareStoreMainSlivers(context, scale),
                       ),
                     ),
         ),
@@ -186,7 +174,10 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
   }
 
   /// 메인 스크롤에 쌓이는 섹션 순서 (상단 → 하단).
-  List<Widget> _buildHealthcareStoreMainSlivers(double scale) {
+  List<Widget> _buildHealthcareStoreMainSlivers(
+    BuildContext context,
+    double scale,
+  ) {
     return [
       // 히어로: 상단 타이틀/이미지 블록
       SliverToBoxAdapter(child: _HeroBlock(scale: scale)),
@@ -197,7 +188,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
           child: Text(
             "MD's Pick",
             style: TextStyle(
-              fontSize: 19.29 * scale,
+              fontSize: healthSp(context, 19.29),
               fontWeight: FontWeight.w700,
               color: Colors.black,
             ),
@@ -245,7 +236,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
                   child: Text(
                     '| ${cat.label.replaceAll(' 제품', '')}',
                     style: TextStyle(
-                      fontSize: 19.29 * scale,
+                      fontSize: healthSp(context, 19.29),
                       fontWeight: FontWeight.w700,
                       color: Colors.black,
                     ),
@@ -261,17 +252,21 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       );
       out.add(
         SliverPadding(
-          // 비대면 치료 `ProductListScreen` 그리드와 동일 (horizontal 18, ratio 0.66, spacing)
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 18),
+            0,
+            healthDp(context, 18),
+            healthDp(context, 8),
+          ),
           sliver: products.isEmpty
               ? SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
                     child: Center(
                       child: Text(
                         '등록된 상품이 없습니다',
                         style: TextStyle(
-                          fontSize: 13 * scale,
+                          fontSize: healthSp(context, 13),
                           color: Colors.grey[600],
                         ),
                       ),
@@ -279,17 +274,21 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
                   ),
                 )
               : SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.66,
+                    mainAxisSpacing: healthDp(context, 16),
+                    crossAxisSpacing: healthDp(context, 12),
+                    childAspectRatio: 0.58,
                   ),
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      return _CategoryProductCell(
-                        product: products[index],
-                        onTap: () => _openProductDetail(products[index]),
+                    (ctx, index) {
+                      final p = products[index];
+                      return MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: ProductCatalogCard(
+                          product: p,
+                          onTap: () => _openProductDetail(p),
+                        ),
                       );
                     },
                     childCount: products.length,
@@ -347,7 +346,7 @@ class _HeroBlock extends StatelessWidget {
                     '당신의 일상에 건강을 더하다.',
                     style: TextStyle(
                       color: const Color(0xFF6D5F47),
-                      fontSize: 11.7 * scale,
+                      fontSize: healthSp(context, 11.7),
                       fontWeight: FontWeight.w300,
                       shadows: const [
                         Shadow(
@@ -362,7 +361,7 @@ class _HeroBlock extends StatelessWidget {
                     '헬스케어 스토어',
                     style: TextStyle(
                       color: const Color(0xFF6D5F47),
-                      fontSize: 25.8 * scale,
+                      fontSize: healthSp(context, 25.8),
                       fontWeight: FontWeight.w700,
                       shadows: const [
                         Shadow(
@@ -488,12 +487,12 @@ class _PinkMoreButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(9999),
             ),
           ),
-          child: const Text(
+          child: Text(
             'More',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 10,
+              fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
               height: 1.5,
@@ -501,65 +500,6 @@ class _PinkMoreButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PriceRow extends StatelessWidget {
-  final Product product;
-  final double scale;
-
-  const _PriceRow({required this.product, required this.scale});
-
-  @override
-  Widget build(BuildContext context) {
-    final dr = product.discountRate;
-    final showRating =
-        (product.rating ?? 0) > 0 || (product.reviewCount ?? 0) > 0;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (dr != null && dr > 0) ...[
-          Text(
-            '${dr.round()}%',
-            style: TextStyle(
-              color: const Color(0xFFFF5A8D),
-              fontSize: 12 * scale,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(width: 6 * scale),
-        ],
-        Text(
-          product.formattedPrice,
-          style: TextStyle(
-            color: const Color(0xFF231F20),
-            fontSize: 12 * scale,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        if (showRating) ...[
-          SizedBox(width: 8 * scale),
-          Icon(
-            Icons.star,
-            size: 12 * scale,
-            color: const Color(0xFFFF5A8D),
-          ),
-          SizedBox(width: 2 * scale),
-          Text(
-            '${(product.rating ?? 0).toStringAsFixed(1)}'
-            '(${product.reviewCount ?? 0})',
-            style: TextStyle(
-              color: const Color(0xFF777777),
-              fontSize: 10.5 * scale,
-              fontWeight: FontWeight.w600,
-              height: 1.1,
-            ),
-          ),
-        ],
-      ],
     );
   }
 }
@@ -716,7 +656,7 @@ class _CategoryIconChip extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: const Color(0xFF676767),
-                    fontSize: (8 * scale + 1.5).clamp(8.0, 11.0),
+                    fontSize: healthSp(context, 8).clamp(8.0, 11.0),
                     fontWeight: FontWeight.w500,
                     height: 1.1,
                   ),
@@ -864,7 +804,7 @@ class _MdPickCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: const Color(0xFFD2D2D2),
-            fontSize: 8.77 * scale,
+            fontSize: healthSp(context, 8.77),
             fontWeight: FontWeight.w300,
           ),
         ),
@@ -875,7 +815,7 @@ class _MdPickCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: const Color(0xFF231F20),
-            fontSize: 11 * scale,
+            fontSize: healthSp(context, 11),
             fontWeight: FontWeight.w700,
             height: 1.2,
           ),
@@ -887,7 +827,7 @@ class _MdPickCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: const Color(0xFF231F20),
-            fontSize: 10.5 * scale,
+            fontSize: healthSp(context, 10.5),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -898,7 +838,7 @@ class _MdPickCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: const Color(0xFF231F20),
-            fontSize: 8.77 * scale,
+            fontSize: healthSp(context, 8.77),
             fontWeight: FontWeight.w300,
           ),
         ),
@@ -908,7 +848,7 @@ class _MdPickCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: const Color(0xFF231F20),
-            fontSize: 8.77 * scale,
+            fontSize: healthSp(context, 8.77),
             fontWeight: FontWeight.w300,
           ),
         ),
@@ -920,7 +860,7 @@ class _MdPickCard extends StatelessWidget {
                 text: '${data.discountPercent}',
                 style: TextStyle(
                   color: const Color(0xFFFF5A8D),
-                  fontSize: 11.7 * scale,
+                  fontSize: healthSp(context, 11.7),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -928,7 +868,7 @@ class _MdPickCard extends StatelessWidget {
                 text: '%  ',
                 style: TextStyle(
                   color: const Color(0xFFFF5A8D),
-                  fontSize: 12 * scale,
+                  fontSize: healthSp(context, 12),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -936,7 +876,7 @@ class _MdPickCard extends StatelessWidget {
                 text: data.priceLabel,
                 style: TextStyle(
                   color: const Color(0xFF231F20),
-                  fontSize: 10 * scale,
+                  fontSize: healthSp(context, 10),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -950,7 +890,7 @@ class _MdPickCard extends StatelessWidget {
               data.rating,
               style: TextStyle(
                 color: const Color(0xFF999999),
-                fontSize: 7.8 * scale,
+                fontSize: healthSp(context, 7.8),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -960,7 +900,7 @@ class _MdPickCard extends StatelessWidget {
                 data.reviews,
                 style: TextStyle(
                   color: const Color(0xFF999999),
-                  fontSize: 7.8 * scale,
+                  fontSize: healthSp(context, 7.8),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -970,157 +910,4 @@ class _MdPickCard extends StatelessWidget {
       ],
     );
   }
-}
-
-class _CategoryProductCell extends StatelessWidget {
-  static const String _gmarket = 'Gmarket Sans TTF';
-
-  final Product product;
-  final VoidCallback onTap;
-
-  const _CategoryProductCell({
-    required this.product,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final namePlain = _stripHtmlTags(product.name);
-    final subjectPlain = _stripHtmlTags(product.itSubject);
-    // `ProductListScreen._buildProductCard`와 동일한 폰트·이미지 비율 (390폭, 이미지 높이 = 셀의 2/3)
-    final screenW = MediaQuery.sizeOf(context).width;
-    final tScale = (screenW / 390.0).clamp(0.88, 1.18);
-    final nameFs = (12.5 * tScale).clamp(11.0, 15.0);
-    final subjectFs = (10.0 * tScale).clamp(9.0, 12.0);
-    final origFs = (10.5 * tScale).clamp(9.5, 12.5);
-
-    return LayoutBuilder(
-      builder: (context, itemConstraints) {
-        final imageHeight = itemConstraints.hasBoundedHeight
-            ? itemConstraints.maxHeight * 2 / 3
-            : 220.0;
-
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: onTap,
-            behavior: HitTestBehavior.opaque,
-            child: Card(
-              elevation: 2,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    height: imageHeight,
-                    width: double.infinity,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(12),
-                      ),
-                      child: product.imageUrl != null
-                          ? Image.network(
-                              product.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _ph(),
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return const Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                );
-                              },
-                            )
-                          : _ph(),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                if (subjectPlain.isNotEmpty) ...[
-                                  Text(
-                                    subjectPlain,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: subjectFs,
-                                      fontWeight: FontWeight.w400,
-                                      fontFamily: _gmarket,
-                                    ),
-                                  ),
-                                  SizedBox(height: 3 * tScale),
-                                ],
-                                Text(
-                                  namePlain,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: const Color(0xFF231F20),
-                                    fontSize: nameFs,
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: _gmarket,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (product.originalPrice != null &&
-                              product.originalPrice! > product.price) ...[
-                            SizedBox(height: 4 * tScale),
-                            Text(
-                              product.formattedOriginalPrice ?? '',
-                              style: TextStyle(
-                                fontSize: origFs,
-                                color: Colors.grey[600],
-                                decoration: TextDecoration.lineThrough,
-                                fontFamily: _gmarket,
-                              ),
-                            ),
-                            SizedBox(height: 4 * tScale),
-                          ],
-                          FittedBox(
-                            alignment: Alignment.centerLeft,
-                            fit: BoxFit.scaleDown,
-                            child: _PriceRow(
-                              product: product,
-                              scale: tScale,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _ph() => ColoredBox(
-        color: Colors.grey.shade200,
-        child: Icon(
-          Icons.image_not_supported,
-          size: 40,
-          color: Colors.grey[400],
-        ),
-      );
 }

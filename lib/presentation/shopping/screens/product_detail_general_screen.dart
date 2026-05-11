@@ -31,6 +31,7 @@ import '../utils/get_review.dart';
 import 'cart_general_screen.dart' as cart_general;
 import 'payment_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
 
@@ -400,7 +401,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           Text(
             _errorMessage ?? '제품 정보를 불러올 수 없습니다',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
@@ -432,25 +433,26 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             delegate: _SliverTabBarDelegate(
               TabBar(
                 controller: _tabController,
+                padding: const EdgeInsets.all(0),
                 indicatorColor: const Color(0xFFFF4081),
                 indicatorWeight: 3,
                 labelColor: const Color(0xFFFF4081),
                 unselectedLabelColor: Colors.grey[600],
-                labelStyle: const TextStyle(
-                  fontSize: 14,
+                labelStyle: TextStyle(
+                  fontSize: healthSp(context, 14),
                   fontFamily: _kGmarketSans,
                   fontWeight: FontWeight.w600,
                 ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 14,
+                unselectedLabelStyle: TextStyle(
+                  fontSize: healthSp(context, 14),
                   fontFamily: _kGmarketSans,
                 ),
                 tabs: [
-                  const Tab(
+                  Tab(
                     child: Text(
                       '상품 소개',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: healthSp(context, 11.70),
                         fontFamily: _kGmarketSans,
                       ),
                     ),
@@ -458,8 +460,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   Tab(
                     child: Text(
                       '일반 리뷰 ($generalReviewCount)',
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: healthSp(context, 11.70),
                         fontFamily: _kGmarketSans,
                       ),
                     ),
@@ -507,8 +509,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 Expanded(
                   child: Text(
                     _product!.name,
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: healthSp(context, 20),
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
@@ -530,7 +532,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
             // 제품 스펙
             _buildProductSpecs(),
-            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -557,14 +558,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             changeContentText:
                 _product?.additionalInfo?['it_change_content']?.toString(),
           ),
-
-          const SizedBox(height: 16),
-
-          // 하단 여백
-          const SizedBox(height: 56),
-
-          // Footer
-          // const AppFooter(),
         ],
       ),
     );
@@ -615,7 +608,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   'No Image',
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                   ),
                 ),
               ],
@@ -675,7 +668,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                             '이미지 로드 실패',
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 14,
+                              fontSize: healthSp(context, 14),
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -687,7 +680,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                   : imageUrl,
                               style: TextStyle(
                                 color: Colors.grey[500],
-                                fontSize: 10,
+                                fontSize: healthSp(context, 10),
                               ),
                               textAlign: TextAlign.center,
                               maxLines: 2,
@@ -820,7 +813,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     return Text(
       itBasic,
       style: TextStyle(
-        fontSize: 13,
+        fontSize: healthSp(context, 13),
         color: Colors.grey[700],
         height: 1.5,
       ),
@@ -889,43 +882,61 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
     if (specs.isEmpty) return const SizedBox.shrink();
 
+    const gmarket = 'Gmarket Sans TTF';
+    final specTextStyle = TextStyle(
+      fontSize: healthSp(context, 11.70),
+      fontWeight: FontWeight.w300,
+      fontFamily: gmarket,
+      height: 1.35,
+    );
+
+    Widget specDivider() => Divider(
+          height: 1,
+          thickness: 1,
+          color: Colors.grey.shade300,
+        );
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      margin: EdgeInsets.zero,
+      decoration: const BoxDecoration(
         color: Colors.white,
       ),
       child: Column(
-        children: specs.map((spec) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 78,
-                  child: Text(
-                    spec['label']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          specDivider(),
+          const SizedBox(height: 10),
+          ...specs.map((spec) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 78,
+                    child: Text(
+                      spec['label']!,
+                      style: specTextStyle.copyWith(
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Text(
-                    spec['value']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black87,
-                      height: 1.35,
+                  Expanded(
+                    child: Text(
+                      spec['value']!,
+                      style: specTextStyle.copyWith(
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 10),
+          specDivider(),
+          const SizedBox(height: 10),
+        ],
       ),
     );
   }
@@ -940,11 +951,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         if (_product!.originalPrice != null &&
             _product!.originalPrice! > _product!.price)
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+            padding: const EdgeInsets.only(bottom: 1),
             child: Text(
               _product!.formattedOriginalPrice ?? '',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 color: Colors.grey[500],
                 decoration: TextDecoration.lineThrough,
               ),
@@ -961,8 +972,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 children: [
                   Text(
                     _product!.formattedPrice,
-                    style: const TextStyle(
-                      fontSize: 24,
+                    style: TextStyle(
+                      fontSize: healthSp(context, 24),
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
@@ -971,8 +982,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                     const SizedBox(width: 8),
                     Text(
                       '${discountRate.toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: TextStyle(
+                        fontSize: healthSp(context, 20),
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFFF4081), // 핑크색
                       ),
@@ -1042,7 +1053,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         Text(
           '${average.toStringAsFixed(1)} ($reviewCount)',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             color: Colors.grey[700],
           ),
         ),
@@ -1220,11 +1231,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                       const EdgeInsets.symmetric(horizontal: 26, vertical: 0),
                   foregroundColor: const Color(0xFFFF4081),
                 ),
-                child: const Text(
+                child: Text(
                   '+ 자세히 보기',
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: healthSp(context, 11.60),
+                    fontWeight: FontWeight.w500,
                     fontFamily: _kGmarketSans,
                   ),
                 ),
@@ -1286,7 +1297,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 child: Text(
                   '구매하기',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontWeight: FontWeight.bold,
                     fontFamily: _kGmarketSans,
                   ),
@@ -1513,8 +1524,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                   children: [
                                     Text(
                                       _product!.name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
+                                      style: TextStyle(
+                                        fontSize: healthSp(context, 16),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -1523,10 +1534,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text(
+                                        Text(
                                           '수량',
                                           style: TextStyle(
-                                            fontSize: 14,
+                                            fontSize: healthSp(context, 14),
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -1567,17 +1578,17 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const Text(
+                                          Text(
                                             '총 결제금액',
                                             style: TextStyle(
-                                              fontSize: 15,
+                                              fontSize: healthSp(context, 15),
                                               fontWeight: FontWeight.w700,
                                             ),
                                           ),
                                           Text(
                                             '${PriceFormatter.format(totalPrice)}원',
-                                            style: const TextStyle(
-                                              fontSize: 17,
+                                            style: TextStyle(
+                                              fontSize: healthSp(context, 17),
                                               fontWeight: FontWeight.w800,
                                               color: Color(0xFFFF4081),
                                             ),
@@ -1592,7 +1603,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                           Text(
                                             '보유 포인트 ${PriceFormatter.format(_userPoint ?? 0)}P',
                                             style: TextStyle(
-                                              fontSize: 12,
+                                              fontSize: healthSp(context, 12),
                                               color: Colors.grey[700],
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -1632,10 +1643,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                                   vertical: 14,
                                                 ),
                                               ),
-                                              child: const Text(
+                                              child: Text(
                                                 '장바구니',
                                                 style: TextStyle(
-                                                  fontSize: 15,
+                                                  fontSize: healthSp(context, 15),
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               ),
@@ -1663,10 +1674,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                                                   vertical: 14,
                                                 ),
                                               ),
-                                              child: const Text(
+                                              child: Text(
                                                 '구매하기',
                                                 style: TextStyle(
-                                                  fontSize: 15,
+                                                  fontSize: healthSp(context, 15),
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               ),
@@ -1724,9 +1735,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   child: Center(
                     child: Text(
                       '$quantity',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Color(0xFF1A1A1A),
-                        fontSize: 12,
+                        fontSize: healthSp(context, 12),
                         fontWeight: FontWeight.w600,
                         height: 1.0,
                       ),
