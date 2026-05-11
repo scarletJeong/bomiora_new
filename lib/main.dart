@@ -29,7 +29,6 @@ import 'presentation/shopping/screens/kcp_pay_webview_screen.dart';
 import 'presentation/shopping/screens/payment_complete_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
 import 'presentation/shopping/screens/temp_cart_screen.dart';
-import 'presentation/shopping/showcase/screens/showcase_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
 import 'presentation/customer_service/screens/contact_list_screen.dart';
@@ -37,7 +36,6 @@ import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
 import 'presentation/user/coupon/screens/coupon_screen.dart';
-import 'presentation/review/screens/all_reviews_screen.dart';
 import 'presentation/user/healthprofile/screens/health_profile_list_screen.dart';
 import 'presentation/user/review/my_reviews_screen.dart';
 import 'presentation/health/dashboard/screens/health_dashboard_screen.dart';
@@ -46,10 +44,10 @@ import 'presentation/community/announcement/screens/announcement_detail_screen.d
 import 'presentation/community/event/screens/event_list_screen.dart';
 import 'presentation/community/event/screens/event_detail_screen.dart';
 import 'presentation/community/faq/screens/faq_list_screen.dart';
-import 'presentation/community/faq/screens/faq_detail_screen.dart';
 import 'presentation/content/dashboard/screens/content_dashboard_screen.dart';
 import 'presentation/content/dashboard/screens/content_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_detail_screen.dart';
+import 'presentation/home/search/search_list_screen.dart';
 
 void main() async {
   // Flutter 바인딩 초기화
@@ -136,7 +134,7 @@ class BomioraApp extends StatelessWidget {
         },
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
         // (임시) 카테고리 페이지 접근 차단
-        '/category': (context) => const ShowcaseScreen(),
+        
         '/favorite': (context) => const WishListScreen(),
         '/my_page': (context) => const MobileLayoutWrapper(initialIndex: 1),
         '/health': (context) => const HealthDashboardScreen(),
@@ -146,7 +144,6 @@ class BomioraApp extends StatelessWidget {
         '/product-main': (context) => const ProductMainScreen(),
         '/healthcare-store': (context) => const ProductMainGeneralScreen(),
         '/coupon': (context) => const CouponScreen(),
-        '/review': (context) => const AllReviewsScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
         '/profile': (context) => const HealthProfileListScreen(),
         '/qna': (context) => const ContactListScreen(),
@@ -186,6 +183,13 @@ class BomioraApp extends StatelessWidget {
         '/content/detail': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           return ContentDetailScreen.fromArgs(args);
+        },
+        '/search': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return SearchListScreen(
+            initialQuery: (args?['query'] ?? '').toString(),
+          );
         },
         '/signup': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
@@ -333,22 +337,6 @@ class BomioraApp extends StatelessWidget {
           if (id != null && id > 0) {
             return MaterialPageRoute(
               builder: (context) => EventDetailScreen(wrId: id),
-              settings: RouteSettings(
-                name: routeName,
-                arguments: settings.arguments,
-              ),
-            );
-          }
-        }
-
-        // FAQ 상세: /faq/:id
-        if (uri.pathSegments.length == 2 &&
-            uri.pathSegments[0] == 'faq' &&
-            uri.pathSegments[1].trim().isNotEmpty) {
-          final id = int.tryParse(uri.pathSegments[1]);
-          if (id != null && id > 0) {
-            return MaterialPageRoute(
-              builder: (context) => FaqDetailScreen(faqId: id),
               settings: RouteSettings(
                 name: routeName,
                 arguments: settings.arguments,
