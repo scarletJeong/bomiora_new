@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/image_url_helper.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/models/review/review_model.dart';
 
 class ProductSupportReview extends StatelessWidget {
@@ -72,6 +73,8 @@ class ProductSupportReview extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: onLoadMore,
                     style: OutlinedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF4081),
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       side: const BorderSide(color: Color(0xFFFF4081)),
                       shape: RoundedRectangleBorder(
@@ -79,11 +82,12 @@ class ProductSupportReview extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      '리뷰 더보기',
+                      '+ 더보기',
                       style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFFF4081),
+                        fontSize: 17.54,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -116,9 +120,10 @@ class _SupportStatsCard extends StatelessWidget {
           const Text(
             '서포터즈 리뷰 평가',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              color: Color(0xFFFF5A95),
+              fontSize: 15.59,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              color: Color(0xFFFF5A8D),
             ),
           ),
           const SizedBox(height: 12),
@@ -133,9 +138,10 @@ class _SupportStatsCard extends StatelessWidget {
                     Text(
                       stats.average.toStringAsFixed(1),
                       style: const TextStyle(
-                        fontSize: 50,
+                        fontSize: 48.73,
+                        fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFFFF5A95),
+                        color: Color(0xFFFF5A8D),
                         height: 0.95,
                       ),
                     ),
@@ -177,7 +183,7 @@ class _SupportStatsCard extends StatelessWidget {
           width: 34,
           child: Text(
             label,
-            style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 11, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300, color: Colors.black),
           ),
         ),
         const SizedBox(width: 6),
@@ -207,7 +213,7 @@ class _SupportStatsCard extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           '$percentage%',
-          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 11, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w300, color: Colors.black),
         ),
       ],
     );
@@ -267,106 +273,80 @@ class _ReviewGridCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 2,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(10)),
-                ),
-                child: review.images.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(10)),
-                        child: Image.network(
-                          ImageUrlHelper.getReviewImageUrl(review.images.first),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Icon(
-                                Icons.rate_review,
-                                size: 32,
-                                color: Colors.grey[400],
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    : Center(
-                        child: Icon(
-                          Icons.rate_review,
-                          size: 32,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // 높이가 낮아질수록 별점박스는 축소/간소화해서
-                    // "이름 + 리뷰 텍스트" 영역이 사라지지 않게 우선권을 줌.
-                    final h = constraints.maxHeight;
-                    final compact = h < 92;
-                    final tiny = h < 78;
-
-                    Widget ratingBox({required bool compact}) {
-                      return Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: compact ? 4 : 8,
-                        ),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            top: BorderSide(
-                              width: 0.50,
-                              color: Color(0xFFFF5A8D),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final imageH = constraints.maxHeight * 0.58;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: imageH,
+                  width: constraints.maxWidth,
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(10)),
+                    ),
+                    child: review.images.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(10)),
+                            child: Image.network(
+                              ImageUrlHelper.getReviewImageUrl(
+                                  review.images.first),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Icon(
+                                    Icons.rate_review,
+                                    size: 32,
+                                    color: Colors.grey[400],
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                        : Center(
+                            child: Icon(
+                              Icons.rate_review,
+                              size: 32,
+                              color: Colors.grey[400],
                             ),
                           ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox.square(
-                              dimension: compact ? 20 : 24,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  total.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFF5A8D),
-                                    fontSize: 24,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w700,
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              '|',
-                              style: TextStyle(
-                                color: Color(0xFF666666),
-                                fontSize: 24,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            if (!compact)
-                              Column(
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // 높이가 낮아질수록 별점박스는 축소/간소화해서
+                        // "이름 + 리뷰 텍스트" 영역이 사라지지 않게 우선권을 줌.
+                        final h = constraints.maxHeight;
+                        final compact = h < 92;
+                        final tiny = h < 78;
+
+                        Widget ratingBox({
+                          required bool compact,
+                          required double rowMaxWidth,
+                        }) {
+                          final narrow = rowMaxWidth < 178;
+                          final scoreFont = narrow
+                              ? 16.0
+                              : (compact ? 19.0 : 22.0);
+                          final barFont = narrow ? 12.0 : (compact ? 18.0 : 22.0);
+                          final scoreW = narrow ? 34.0 : (compact ? 38.0 : 44.0);
+                          final gap = narrow ? 3.0 : 5.0;
+                          final miniGap =
+                              narrow ? 6.0 : (compact ? 8.0 : 10.0);
+
+                          Widget scoreBlock() {
+                            if (!compact) {
+                              return Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -376,87 +356,150 @@ class _ReviewGridCard extends StatelessWidget {
                                       _ScoreMini(
                                         label: '효과',
                                         value: score1,
-                                        labelWidth: 26,
+                                        labelWidth: narrow ? 28 : 32,
                                       ),
-                                      const SizedBox(width: 10),
+                                      SizedBox(width: miniGap),
                                       _ScoreMini(label: '가성비', value: score2),
                                     ],
                                   ),
-                                  const SizedBox(height: 5),
+                                  SizedBox(height: narrow ? 3 : 5),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       _ScoreMini(
                                         label: '맛/향',
                                         value: score3,
-                                        labelWidth: 26,
+                                        labelWidth: narrow ? 28 : 32,
                                       ),
-                                      const SizedBox(width: 10),
+                                      SizedBox(width: miniGap),
                                       _ScoreMini(label: '편리함', value: score4),
                                     ],
                                   ),
                                 ],
-                              )
-                            else
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _ScoreMini(label: '효과', value: score1),
-                                  const SizedBox(width: 8),
-                                  _ScoreMini(label: '가성비', value: score2),
-                                ],
-                              ),
-                          ],
-                        ),
-                      );
-                    }
+                              );
+                            }
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _ScoreMini(label: '효과', value: score1),
+                                SizedBox(width: narrow ? 5 : 8),
+                                _ScoreMini(label: '가성비', value: score2),
+                              ],
+                            );
+                          }
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '| ${review.isName ?? '익명'}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                          return Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: narrow ? 4 : 5,
+                              vertical: compact ? 4 : 8,
+                            ),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                top: BorderSide(
+                                  width: 0.50,
+                                  color: Color(0xFFFF5A8D),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Flexible(
-                          fit: FlexFit.loose,
-                          child: Align(
-                            alignment: Alignment.topLeft,
-                            child: review.isPositiveReviewText != null &&
-                                    review.isPositiveReviewText!.isNotEmpty
-                                ? Text(
-                                    review.isPositiveReviewText!,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black87,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: scoreW,
+                                  height: compact ? 22 : 26,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      total.toStringAsFixed(1),
+                                      style: TextStyle(
+                                        color: const Color(0xFFFF5A8D),
+                                        fontSize: scoreFont,
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w700,
+                                        height: 1,
+                                      ),
                                     ),
-                                    maxLines: tiny ? 1 : 2,
+                                  ),
+                                ),
+                                SizedBox(width: gap),
+                                Text(
+                                  '|',
+                                  style: TextStyle(
+                                    color: const Color(0xFF666666),
+                                    fontSize: barFont,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                                SizedBox(width: gap),
+                                Expanded(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: scoreBlock(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '| ${review.isName ?? '익명'}',
+                                    style: const TextStyle(
+                                      fontSize: 15.59,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black,
+                                    ),
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
-                        ),
-                        if (!tiny) ratingBox(compact: compact),
-                      ],
-                    );
-                  },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: review.isPositiveReviewText != null &&
+                                        review
+                                            .isPositiveReviewText!.isNotEmpty
+                                    ? Text(
+                                        review.isPositiveReviewText!,
+                                        style: const TextStyle(
+                                          fontSize: 8.77,
+                                          fontFamily: 'Gmarket Sans TTF',
+                                          color: Colors.black,
+                                          height: 1.35,
+                                        ),
+                                        maxLines: tiny ? 1 : 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ),
+                            if (!tiny)
+                              ratingBox(
+                                compact: compact,
+                                rowMaxWidth: constraints.maxWidth,
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -476,22 +519,35 @@ class _ScoreMini extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelStyle = const TextStyle(
+      color: Colors.black,
+      fontSize: 9,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+    );
     final labelWidget = Text(
       label,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.clip,
       textAlign: labelWidth != null ? TextAlign.right : TextAlign.left,
-      style: const TextStyle(
-        color: Colors.black,
-        fontSize: 9,
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w300,
-      ),
+      style: labelStyle,
     );
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (labelWidth != null)
-          SizedBox(width: labelWidth, child: labelWidget)
+          SizedBox(
+            width: labelWidth,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: labelWidth != null
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
+              child: labelWidget,
+            ),
+          )
         else
           labelWidget,
         const SizedBox(width: 3),
@@ -536,11 +592,11 @@ class _GuestAwareReviewGrid extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.74,
+        crossAxisSpacing: healthDp(context, 12),
+        mainAxisSpacing: healthDp(context, 16),
+        childAspectRatio: 0.58,
       ),
       itemBuilder: (context, index) {
         return _ReviewGridCard(
