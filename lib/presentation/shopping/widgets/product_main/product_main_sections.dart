@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import 'product_main_category_tap.dart';
 
 const _sectionLineColor = Color(0xFFD9D9D9);
@@ -14,6 +15,7 @@ const _sectionLineColor = Color(0xFFD9D9D9);
 ///   (`Image.asset`은 Flutter 웹에서 `assets/assets/img/...`로 이중 `assets`가 붙어 404가 나기 쉬움)
 /// - **모바일/데스크톱 앱**: `pubspec` 에셋 `assets/img/product_main_intro.png`
 Widget _productMainIntroPhoto({
+  required BuildContext context,
   required double width,
   double? height,
   BoxFit fit = BoxFit.contain,
@@ -22,7 +24,7 @@ Widget _productMainIntroPhoto({
 }) {
   Widget fallback() => Icon(
         Icons.person_outline,
-        size: 72,
+        size: healthDp(context, 72),
         color: Colors.grey[400],
       );
 
@@ -38,11 +40,13 @@ Widget _productMainIntroPhoto({
       errorBuilder: (_, __, ___) => fallback(),
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
-        return const Center(
+        return Center(
           child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            width: healthDp(context, 28),
+            height: healthDp(context, 28),
+            child: CircularProgressIndicator(
+              strokeWidth: healthDp(context, 2),
+            ),
           ),
         );
       },
@@ -67,19 +71,19 @@ Widget _bioTitleWithLinesAndAlignedBody({
   required List<String> lines,
   required double maxWidth,
 }) {
-  const titleStyle = TextStyle(
+  final titleStyle = TextStyle(
     color: Colors.black,
-    fontSize: 11.76,
+    fontSize: healthSp(context, 11.76),
     fontFamily: 'Gmarket Sans TTF',
     fontWeight: FontWeight.w300,
   );
-  const bodyStyle = TextStyle(
+  final bodyStyle = TextStyle(
     color: Colors.black,
-    fontSize: 11.70,
+    fontSize: healthSp(context, 11.70),
     fontFamily: 'Gmarket Sans TTF',
     fontWeight: FontWeight.w300,
   );
-  const titleHPad = 16.0;
+  final titleHPad = healthDp(context, 16);
 
   final tp = TextPainter(
     text: TextSpan(text: title, style: titleStyle),
@@ -88,8 +92,9 @@ Widget _bioTitleWithLinesAndAlignedBody({
   )..layout();
   final titleW = tp.size.width;
   final fullW = maxWidth;
-  final halfSide = ((fullW - titleW - titleHPad * 2) / 2) * 0.5;
-  final lineW = halfSide.clamp(20.0, fullW);
+  // 제목·좌우 패딩을 뺀 나머지를 반반 — 살짝만 짧게(꽉 채우기보다 약간 여유)
+  final halfSide = ((fullW - titleW - titleHPad * 2) / 2) * 0.72;
+  final lineW = halfSide.clamp(0.0, fullW);
   final rowWidth = 2 * lineW + titleW + 2 * titleHPad;
   final leftInset = ((fullW - rowWidth) / 2).clamp(0.0, fullW);
 
@@ -105,21 +110,21 @@ Widget _bioTitleWithLinesAndAlignedBody({
             children: [
               SizedBox(
                 width: lineW,
-                child: const Divider(
-                  height: 1,
-                  thickness: 1,
+                child: Divider(
+                  height: healthDp(context, 1),
+                  thickness: healthDp(context, 1),
                   color: _sectionLineColor,
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: titleHPad),
+                padding: EdgeInsets.symmetric(horizontal: titleHPad),
                 child: Text(title, style: titleStyle),
               ),
               SizedBox(
                 width: lineW,
-                child: const Divider(
-                  height: 1,
-                  thickness: 1,
+                child: Divider(
+                  height: healthDp(context, 1),
+                  thickness: healthDp(context, 1),
                   color: _sectionLineColor,
                 ),
               ),
@@ -127,7 +132,7 @@ Widget _bioTitleWithLinesAndAlignedBody({
           ),
         ),
       ),
-      const SizedBox(height: 12),
+      SizedBox(height: healthDp(context, 12)),
       Padding(
         padding: EdgeInsets.only(left: leftInset),
         child: Column(
@@ -135,7 +140,7 @@ Widget _bioTitleWithLinesAndAlignedBody({
           children: lines
               .map(
                 (t) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: EdgeInsets.only(bottom: healthDp(context, 6)),
                   child: Text(
                     t,
                     textAlign: TextAlign.left,
@@ -187,8 +192,6 @@ class _ProductMainQuoteStack extends StatefulWidget {
   final double extend;
   final Color blendBg;
 
-  static const double _heroTopLift = 20;
-
   @override
   State<_ProductMainQuoteStack> createState() => _ProductMainQuoteStackState();
 }
@@ -200,6 +203,11 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
 
   double? _heroDisplayHeight;
   double _extraBottom = 0;
+  /// 히어로 이미지 상단 오프셋(375 기준 20dp, 폭에 따라 스케일)
+  double _heroTopLiftDp = 20;
+
+  /// 히어로 이미지를 아래로 내리는 여백(375 기준 60dp) — 이미지 **위**에 빈 공간
+  double _heroImageTopInsetDp = 0;
 
   @override
   void initState() {
@@ -236,7 +244,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     final w = widget.width;
     if (!w.isFinite || w <= 0) return;
 
-    final provider = AssetImage(AppAssets.productMain);
+    const provider = AssetImage(AppAssets.productMain);
     final config = createLocalImageConfiguration(
       context,
       size: Size(w, 1),
@@ -279,10 +287,14 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     }
     final textH = box.size.height;
     final extend = widget.extend;
-    const lift = _ProductMainQuoteStack._heroTopLift;
+    final lift = _heroTopLiftDp;
     final extra = max(
       0.0,
-      _heroDisplayHeight! - 2 * extend - lift - textH,
+      _heroDisplayHeight! -
+          2 * extend -
+          lift -
+          textH +
+          _heroImageTopInsetDp,
     );
     if ((extra - _extraBottom).abs() > 0.5) {
       setState(() => _extraBottom = extra);
@@ -294,6 +306,8 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     final w = widget.width;
     final extend = widget.extend;
     final blendBg = widget.blendBg;
+    _heroTopLiftDp = healthDp(context, 20);
+    _heroImageTopInsetDp = healthDp(context, 60);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -302,7 +316,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
         Positioned(
           left: 0,
           right: 0,
-          top: -extend - _ProductMainQuoteStack._heroTopLift,
+          top: -extend - _heroTopLiftDp + _heroImageTopInsetDp,
           child: SizedBox(
             width: w,
             child: Stack(
@@ -361,91 +375,106 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(20, extend, 20, 0),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  extend,
+                  healthDp(context, 20),
+                  0,
+                ),
                 child: Column(
                   key: _textColumnKey,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text(
-                      '" 다이어트는 처음부터 쉬워야 해요. "',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '" ',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: healthSp(context, 19.29),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '다이어트는 처음부터 쉬워야 합니다. " ',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: healthSp(context, 19.29),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                        ],
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
+                    SizedBox(height: healthDp(context, 10)),
+                    Text(
                       '정대진 │ 대표원장',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 11.57,
+                        fontSize: healthSp(context, 11.57),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    const Text(
+                    SizedBox(height: healthDp(context, 20)),
+                    Text(
                       '정대진 대표원장이 수년간 직접 몸을 관리하며',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 15.59,
+                        fontSize: healthSp(context, 14.59),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
+                    SizedBox(height: healthDp(context, 6)),
+                    Text(
                       '쌓은 다이어트 노하우와 다수의 임상례를 바탕으로',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 15.59,
+                        fontSize: healthSp(context, 14.59),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: healthDp(context, 6)),
                     Text.rich(
                       TextSpan(
-                        style: const TextStyle(
-                          fontSize: 15.59,
+                        style: TextStyle(
+                          fontSize: healthSp(context, 14.59),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
                           color: Colors.black,
                         ),
-                        children: const [
-                          TextSpan(text: '마침내 만들어진 '),
+                        children: [
+                          const TextSpan(text: '마침내 만들어진 '),
                           TextSpan(
                             text: '[보미 다이어트 솔루션]',
-                            style: TextStyle(fontSize: 16),
+                            style: TextStyle(
+                              fontSize: healthSp(context, 14.43),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
                           ),
                         ],
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: healthDp(context, 20)),
                     Text.rich(
-                      const TextSpan(
+                      TextSpan(
                         children: [
                           TextSpan(
-                            text: '보미 다이어트 솔루션',
+                            text: '보미 다이어트 솔루션으로',
                             style: TextStyle(
-                              color: Color(0xFFFF5A8D),
-                              fontSize: 15.43,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextSpan(
-                            text: '으로',
-                            style: TextStyle(
-                              color: Color(0xFFFF5A8D),
-                              fontSize: 16,
+                              color: const Color(0xFFFF5A8D),
+                              fontSize: healthSp(context, 14.43),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w700,
                             ),
@@ -454,24 +483,24 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
+                    //SizedBox(height: healthDp(context, 6)),
+                    Text(
                       '당신의 아름다운 봄을',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xFFFF5A8D),
-                        fontSize: 15.43,
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 14.43),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
+                    //SizedBox(height: healthDp(context, 6)),
+                    Text(
                       '보미오라와 함께 만나보세요.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xFFFF5A8D),
-                        fontSize: 15.43,
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 14.43),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
@@ -492,40 +521,40 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
 class ProductMainCheckpointSection extends StatelessWidget {
   const ProductMainCheckpointSection({super.key});
 
-  static const _pointLabelStyle = TextStyle(
-    color: Color(0xFF999999),
-    fontSize: 9.75,
-    fontFamily: 'Gmarket Sans TTF',
-    fontWeight: FontWeight.w300,
-  );
-  static const _titleStyle = TextStyle(
-    color: Colors.black,
-    fontSize: 19.49,
-    fontFamily: 'Gmarket Sans TTF',
-    fontWeight: FontWeight.w700,
-  );
-  static const _bodyStyle = TextStyle(
-    color: Colors.black,
-    fontSize: 11.70,
-    fontFamily: 'Gmarket Sans TTF',
-    fontWeight: FontWeight.w300,
-  );
-
   @override
   Widget build(BuildContext context) {
+    final pointLabelStyle = TextStyle(
+      color: const Color(0xFF999999),
+      fontSize: healthSp(context, 9.75),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+    );
+    final titleStyle = TextStyle(
+      color: Colors.black,
+      fontSize: healthSp(context, 19.49),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w700,
+    );
+    final bodyStyle = TextStyle(
+      color: Colors.black,
+      fontSize: healthSp(context, 11.70),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+    );
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 40)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text.rich(
-            const TextSpan(
+            TextSpan(
               children: [
                 TextSpan(
                   text: '보미 솔루션',
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 19.29,
+                    fontSize: healthSp(context, 19.29),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
@@ -534,7 +563,7 @@ class ProductMainCheckpointSection extends StatelessWidget {
                   text: 'Check Point',
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 20,
+                    fontSize: healthSp(context, 20),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
@@ -543,18 +572,23 @@ class ProductMainCheckpointSection extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: healthDp(context, 28)),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 22, 16, 24),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 16),
+              healthDp(context, 22),
+              healthDp(context, 16),
+              healthDp(context, 24),
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(healthDp(context, 16)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: healthDp(context, 16),
+                  offset: Offset(0, healthDp(context, 4)),
                   spreadRadius: 0,
                 ),
               ],
@@ -563,6 +597,10 @@ class ProductMainCheckpointSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _pointColumn(
+                  context: context,
+                  pointLabelStyle: pointLabelStyle,
+                  titleStyle: titleStyle,
+                  bodyStyle: bodyStyle,
                   pointLabel: 'Point 1',
                   iconAsset: AppAssets.productMainIcon1,
                   title: '1:1 코칭',
@@ -571,8 +609,12 @@ class ProductMainCheckpointSection extends StatelessWidget {
                     '모두 다르기 때문에 1:1코칭이 꼭! 필요합니다.',
                   ],
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: healthDp(context, 28)),
                 _pointColumn(
+                  context: context,
+                  pointLabelStyle: pointLabelStyle,
+                  titleStyle: titleStyle,
+                  bodyStyle: bodyStyle,
                   pointLabel: 'Point 2',
                   iconAsset: AppAssets.productMainIcon2,
                   title: '체지방 감소 및 독소 해소',
@@ -581,8 +623,12 @@ class ProductMainCheckpointSection extends StatelessWidget {
                     '체지방 감소 및 독소 배출에 도움을 줍니다.',
                   ],
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: healthDp(context, 28)),
                 _pointColumn(
+                  context: context,
+                  pointLabelStyle: pointLabelStyle,
+                  titleStyle: titleStyle,
+                  bodyStyle: bodyStyle,
                   pointLabel: 'Point 3',
                   iconAsset: AppAssets.productMainIcon3,
                   title: '체질 개선',
@@ -600,30 +646,35 @@ class ProductMainCheckpointSection extends StatelessWidget {
   }
 
   Widget _pointColumn({
+    required BuildContext context,
+    required TextStyle pointLabelStyle,
+    required TextStyle titleStyle,
+    required TextStyle bodyStyle,
     required String pointLabel,
     required String iconAsset,
     required String title,
     required List<String> bodies,
   }) {
+    final iconBox = healthDp(context, 56);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(pointLabel, style: _pointLabelStyle, textAlign: TextAlign.center),
-        const SizedBox(height: 12),
+        Text(pointLabel, style: pointLabelStyle, textAlign: TextAlign.center),
+        SizedBox(height: healthDp(context, 12)),
         SizedBox(
-          width: 56,
-          height: 56,
+          width: iconBox,
+          height: iconBox,
           child: SvgPicture.asset(iconAsset, fit: BoxFit.contain),
         ),
-        const SizedBox(height: 12),
-        Text(title, style: _titleStyle, textAlign: TextAlign.center),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 12)),
+        Text(title, style: titleStyle, textAlign: TextAlign.center),
+        SizedBox(height: healthDp(context, 10)),
         ...bodies.map(
           (line) => Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: EdgeInsets.only(top: healthDp(context, 4)),
             child: Text(
               line,
-              style: _bodyStyle,
+              style: bodyStyle,
               textAlign: TextAlign.center,
             ),
           ),
@@ -642,40 +693,43 @@ class ProductMainTrustSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
+        SizedBox(height: healthDp(context, 8)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
           child: Divider(
-            height: 1,
-            thickness: 1,
-            color: Color(0xFFFF5A8D),
+            height: healthDp(context, 1),
+            thickness: healthDp(context, 1),
+            color: const Color(0xFFFF5A8D),
           ),
         ),
-        const SizedBox(height: 20),
-        const ProductMainCategoryTap(productKind: 'prescription'),
-        const SizedBox(height: 28),
-        const Text(
+        SizedBox(height: healthDp(context, 20)),
+        const ProductMainCategoryTap(
+          productKind: 'prescription',
+          compact: true,
+        ),
+        SizedBox(height: healthDp(context, 28)),
+        Text(
           '믿을 수 있는 든든한 주치의가',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.black,
-            fontSize: 19.29,
+            fontSize: healthSp(context, 19.29),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 6),
-        const Text(
+        SizedBox(height: healthDp(context, 6)),
+        Text(
           '되어드리겠습니다.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.black,
-            fontSize: 19.29,
+            fontSize: healthSp(context, 19.29),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: healthDp(context, 24)),
       ],
     );
   }
@@ -687,18 +741,21 @@ class ProductMainPhotoBioSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photoOuter = healthDp(context, 248);
+    final photoInner = healthDp(context, 228);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
             width: double.infinity,
-            height: 248,
+            height: photoOuter,
             child: Center(
               child: SizedBox(
-                width: 228,
-                height: 228,
+                width: photoInner,
+                height: photoInner,
                 child: ClipOval(
                   clipBehavior: Clip.hardEdge,
                   child: Stack(
@@ -706,8 +763,9 @@ class ProductMainPhotoBioSection extends StatelessWidget {
                     children: [
                       const ColoredBox(color: Color(0xFFDDE5ED)),
                       _productMainIntroPhoto(
-                        width: 228,
-                        height: 228,
+                        context: context,
+                        width: photoInner,
+                        height: photoInner,
                         fit: BoxFit.contain,
                         alignment: Alignment.center,
                         filterQuality: FilterQuality.high,
@@ -718,21 +776,24 @@ class ProductMainPhotoBioSection extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: healthDp(context, 16)),
+          Text(
             '보미오라한의원│대표원장',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.black,
-              fontSize: 12.74,
+              fontSize: healthSp(context, 12.74),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: healthDp(context, 24)),
           LayoutBuilder(
             builder: (context, constraints) {
-              final blockW = constraints.maxWidth.clamp(280.0, 380.0);
+              final blockW = constraints.maxWidth.clamp(
+                healthDp(context, 280),
+                healthDp(context, 380),
+              );
               return Align(
                 alignment: Alignment.center,
                 child: SizedBox(
@@ -746,7 +807,7 @@ class ProductMainPhotoBioSection extends StatelessWidget {
                         lines: _cvLines,
                         maxWidth: blockW,
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: healthDp(context, 20)),
                       _bioTitleWithLinesAndAlignedBody(
                         context: context,
                         title: '대외활동',
@@ -759,50 +820,52 @@ class ProductMainPhotoBioSection extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 60),
-          _StaggeredBottomGrid(),
-          const SizedBox(height: 60),
+          SizedBox(height: healthDp(context, 60)),
+          const _StaggeredBottomGrid(),
+          SizedBox(height: healthDp(context, 60)),
         ],
       ),
     );
   }
 
   static const _cvLines = [
-    '서울대학교 보건대학원 최고위과정',
-    '대한한의학회 정회원',
-    '대한한방비만학회 정회원',
-    '대한약침학회 정회원',
-    '대한한방미용성형학회 정회원',
-    '한의임상피부과학회 정회원',
-    '척추신경추나학회 정회원',
-    '대한미병의학회 정회원',
-    '코로나19 한의진료센터 공로 표창장',
-    '국민체육진흥공단 스포츠산업 명예 홍보대사',
-    '대한민국 베스트브랜드 어워즈 [한방다이어트 부문] 대상',
-    '대한민국 소비자 만족 브랜드 [한방다이어트 부문] 1위',
-    '메디타임즈 100대 [한방다이어트 부문] 명의 선정',
+    '· 서울대학교 보건대학원 최고위과정',
+    '· 대한한의학회 정회원',
+    '· 대한한방비만학회 정회원',
+    '· 대한약침학회 정회원',
+    '· 대한한방미용성형학회 정회원',
+    '· 한의임상피부과학회 정회원',
+    '· 척추신경추나학회 정회원',
+    '· 대한미병의학회 정회원',
+    '· 코로나19 한의진료센터 공로 표창장',
+    '· 국민체육진흥공단 스포츠산업 명예 홍보대사',
+    '· 대한민국 베스트브랜드 어워즈 [한방다이어트 부문] 대상',
+    '· 대한민국 소비자 만족 브랜드 [한방다이어트 부문] 1위',
+    '· 메디타임즈 100대 [한방다이어트 부문] 명의 선정',
   ];
 
   static const _activityLines = [
-    '몸짱 한의사로 각종 방송 및 대회, 강연 활동 중',
-    'KBS, MBC, SBS, JTBC 등 다수 건강 프로그램',
-    '한의학전문의 패널로 출연',
+    '· 몸짱 한의사로 각종 방송 및 대회, 강연 활동 중',
+    '· KBS, MBC, SBS, JTBC 등 다수 건강 프로그램',
+    '· 한의학전문의 패널로 출연',
     ' - 기분좋은날 / 나는 몸신이다 / 모란봉클럽 등',
-    '다수 연예인 및 모델 인플루언서 주치의 ',
-    '피트니스 대회, 모델 대회 심사위원 활동',
+    '· 다수 연예인 및 모델 인플루언서 주치의 ',
+    '· 피트니스 대회, 모델 대회 심사위원 활동',
     ' - 국내 피트니스 및 모델 대회 다수 수상',
   ];
 }
 
 class _StaggeredBottomGrid extends StatelessWidget {
+  const _StaggeredBottomGrid();
+
   @override
   Widget build(BuildContext context) {
-    // 기본 설계보다 작게 — 하단 2×2 그리드만 축소
-    const colW = 124.0;
-    const gap = 8.0;
-    const cellH = 158.0;
-    const stagger = 24.0;
-    const rowGap = 10.0;
+    // 기본 설계(375 기준) — 폭에 따라 healthDp로 스케일
+    final colW = healthDp(context, 124);
+    final gap = healthDp(context, 8);
+    final cellH = healthDp(context, 158);
+    final stagger = healthDp(context, 24);
+    final rowGap = healthDp(context, 10);
 
     return LayoutBuilder(
       builder: (context, c) {
@@ -816,7 +879,7 @@ class _StaggeredBottomGrid extends StatelessWidget {
 
         Widget cell(String asset) {
           return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(healthDp(context, 8)),
             child: AspectRatio(
               aspectRatio: leftW / h,
               child: Image.asset(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import '../../utils/get_product.dart';
 
 /// 상품 리스트 상단 카테고리 바로가기
@@ -9,14 +10,15 @@ class ProductMainCategoryTap extends StatelessWidget {
   /// 'prescription' | 'general'
   final String productKind;
 
+  /// `true`이면 동그라미·아이콘을 더 작게(상품 목록 상단 등).
+  final bool compact;
+
   const ProductMainCategoryTap({
     super.key,
     required this.productKind,
+    this.compact = false,
   });
 
-  static const _circleDiameter = 80.0;
-  static const _svgSize = 24.0;
-  static const _hGap = 22.0;
   static const _lineColor = Color(0xFFD9D9D9);
 
   static const List<String> _prescriptionSvgAssets = [
@@ -36,6 +38,10 @@ class ProductMainCategoryTap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final circleDiameter = healthDp(context, compact ? 56 : 80);
+    final svgSize = healthDp(context, compact ? 17 : 24);
+    final hGap = healthDp(context, compact ? 16 : 22);
+
     final isGeneral = productKind == 'general';
     final categories =
         isGeneral ? productGeneralCategoryList : productPrescriptionCategoryList;
@@ -67,40 +73,48 @@ class ProductMainCategoryTap extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(999),
           child: Container(
-            width: _circleDiameter,
-            height: _circleDiameter,
+            width: circleDiameter,
+            height: circleDiameter,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.white,
-              border: Border.all(color: _lineColor, width: 1),
+              border: Border.all(
+                color: _lineColor,
+                width: healthDp(context, 1),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  blurRadius: healthDp(context, 8),
+                  offset: Offset(0, healthDp(context, 2)),
                 ),
               ],
             ),
-            padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, compact ? 4 : 6),
+              healthDp(context, compact ? 6 : 10),
+              healthDp(context, compact ? 4 : 6),
+              healthDp(context, compact ? 5 : 8),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.max,
               children: [
                 SvgPicture.asset(
                   svgAsset,
-                  width: _svgSize,
-                  height: _svgSize,
+                  width: svgSize,
+                  height: svgSize,
                   fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: healthDp(context, compact ? 2 : 4)),
                 Text(
                   label,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF676767),
-                    fontSize: 9.5,
+                  style: TextStyle(
+                    color: const Color(0xFF676767),
+                    fontSize: healthSp(context, compact ? 7.5 : 8),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                     height: 1.15,
@@ -117,7 +131,7 @@ class ProductMainCategoryTap extends StatelessWidget {
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
         final grayLineWidth =
-            ((maxW * 3 / 4 + _circleDiameter) * 0.58).clamp(140.0, maxW);
+            ((maxW * 3 / 4 + circleDiameter) * 0.58).clamp(140.0, maxW);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -130,7 +144,8 @@ class ProductMainCategoryTap extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -138,7 +153,9 @@ class ProductMainCategoryTap extends StatelessWidget {
                         final c = categories[i];
                         final asset = svgAssets[i.clamp(0, svgAssets.length - 1)];
                         return Padding(
-                          padding: EdgeInsets.only(right: i == categories.length - 1 ? 0 : _hGap),
+                          padding: EdgeInsets.only(
+                            right: i == categories.length - 1 ? 0 : hGap,
+                          ),
                           child: item(
                             svgAsset: asset,
                             label: c.label,
@@ -154,7 +171,7 @@ class ProductMainCategoryTap extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: healthDp(context, 20)),
             Center(
               child: SizedBox(
                 width: grayLineWidth,
