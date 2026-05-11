@@ -3,12 +3,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_responsive_scale.dart';
 
-const double _weightYAxisUnitBandHeight = 16.0;
 const String _weightPageFontFamily = 'Gmarket Sans TTF';
 
 /// 주·월 그래프와 동일: 상단 `(kg)` 밴드 + 숫자 눈금 Stack(가운데 정렬, 11pt)
 Widget _buildWeightYAxisStripLikePeriodChart({
+  required BuildContext chartContext,
   required List<double> yLabels,
   required bool showYAxisKgHeader,
   String unitLabel = '(kg)',
@@ -16,19 +17,19 @@ Widget _buildWeightYAxisStripLikePeriodChart({
   return LayoutBuilder(
     builder: (context, constraints) {
       final totalH = constraints.maxHeight;
-      final kgBand =
-          showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
+      final kgBand = showYAxisKgHeader && yLabels.length > 1
+          ? healthWeightChartKgBandHeight(chartContext)
+          : 0.0;
 
       Widget numericLabels(double forHeight) {
         final n = yLabels.length;
         if (n < 2) return const SizedBox.shrink();
+        final topPad = healthWeightChartVertPad(chartContext);
+        final botPad = healthWeightChartVertPad(chartContext);
         return SizedBox(
           height: forHeight,
           child: LayoutBuilder(
             builder: (context, lc) {
-              // 차트 그리드의 상하 여백(20)과 동일하게 맞춰 라벨/선 정렬
-              const topPad = 20.0;
-              const botPad = 20.0;
               final h = lc.maxHeight - topPad - botPad;
               return Stack(
                 clipBehavior: Clip.none,
@@ -37,15 +38,16 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                   final label = e.value;
                   final y = topPad + h * i / (n - 1);
                   return Positioned(
-                    top: y - 8,
+                    top: y - healthDp(chartContext, 8),
                     left: 0,
                     right: 0,
                     child: Text(
                       label.toStringAsFixed(0),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
                         fontFamily: _weightPageFontFamily,
-                        fontSize: 11,
+                        fontSize: healthSp(chartContext, 11),
                         color: Colors.grey,
                       ),
                     ),
@@ -69,9 +71,10 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                       alignment: Alignment.bottomCenter,
                       child: Text(
                         unitLabel,
+                        textScaler: TextScaler.noScaling,
                         style: TextStyle(
                           fontFamily: _weightPageFontFamily,
-                          fontSize: 11,
+                          fontSize: healthSp(chartContext, 11),
                           color: Colors.grey[700],
                           fontWeight: FontWeight.w500,
                         ),
@@ -380,7 +383,7 @@ class WeightEmptyChart extends StatelessWidget {
               builder: (context, constraints) {
                 final totalH = constraints.maxHeight;
                 final kgBand = showYAxisKgHeader && yLabels.length > 1
-                    ? _weightYAxisUnitBandHeight
+                    ? healthWeightChartKgBandHeight(context)
                     : 0.0;
                 final zoneH = totalH - kgBand;
 
@@ -388,6 +391,7 @@ class WeightEmptyChart extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildWeightYAxisStripLikePeriodChart(
+                      chartContext: context,
                       yLabels: yLabels,
                       showYAxisKgHeader: showYAxisKgHeader,
                     ),
@@ -543,14 +547,16 @@ class WeightDataChart extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
-              final kgBand =
-                  showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
+              final kgBand = showYAxisKgHeader && yLabels.length > 1
+                  ? healthWeightChartKgBandHeight(context)
+                  : 0.0;
               final zoneH = totalH - kgBand;
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildWeightYAxisStripLikePeriodChart(
+                    chartContext: context,
                     yLabels: yLabels,
                     showYAxisKgHeader: showYAxisKgHeader,
                   ),
@@ -658,8 +664,9 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
-              final kgBand =
-                  showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
+              final kgBand = showYAxisKgHeader && yLabels.length > 1
+                  ? healthWeightChartKgBandHeight(context)
+                  : 0.0;
               final zoneH = totalH - kgBand;
               final chartW =
                   constraints.maxWidth -
@@ -669,6 +676,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildWeightYAxisStripLikePeriodChart(
+                    chartContext: context,
                     yLabels: yLabels,
                     showYAxisKgHeader: showYAxisKgHeader,
                   ),
@@ -1069,8 +1077,9 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
-              final kgBand =
-                  showYAxisKgHeader && yLabels.length > 1 ? _weightYAxisUnitBandHeight : 0.0;
+              final kgBand = showYAxisKgHeader && yLabels.length > 1
+                  ? healthWeightChartKgBandHeight(context)
+                  : 0.0;
               final zoneH = totalH - kgBand;
               final chartW =
                   constraints.maxWidth -
@@ -1080,6 +1089,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildWeightYAxisStripLikePeriodChart(
+                    chartContext: context,
                     yLabels: yLabels,
                     showYAxisKgHeader: showYAxisKgHeader,
                   ),

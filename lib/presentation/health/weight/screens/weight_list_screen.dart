@@ -20,6 +20,8 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../core/utils/image_picker_utils.dart';
 import '../widgets/weight_chart_section.dart';
 import '../utils/weight_goal_progress.dart';
+import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/widgets/health_list_edit_button.dart';
 import 'weight_input_screen.dart';
 
 class WeightListScreen extends StatefulWidget {
@@ -479,19 +481,24 @@ class _WeightListScreenState extends State<WeightListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.chevron_left),
+          icon: Icon(
+            Icons.chevron_left,
+            size: healthDp(context, 24),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           '체중',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: healthSp(context, 18),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.bold,
           ),
@@ -502,17 +509,23 @@ class _WeightListScreenState extends State<WeightListScreen> {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
       ),
-      child: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 27),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 27),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                     // 0. 날짜 선택 공통 위젯
                     HealthDateSelector(
                       selectedDate: selectedDate,
@@ -533,37 +546,43 @@ class _WeightListScreenState extends State<WeightListScreen> {
                       dividerColor: const Color(0xFFD2D2D2),
                       iconColor: const Color(0xFF898686),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: healthDp(context, 16)),
 
                     // 1~3. 상단 요약 카드 영역 (시안 기준)
                     _buildTopWeightSummaryCard(),
-                    const SizedBox(height: 16),
+                    SizedBox(height: healthDp(context, 16)),
                     _buildBmiSummaryCard(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: healthDp(context, 24)),
 
                     // 4~5. 기간 선택 + 차트
                     WeightChartSection(
                       periodSelector: _buildPeriodButtons(),
                       chartContent: _buildChartContent(),
                     ),
-                    const SizedBox(height: 30),
+                    SizedBox(height: healthDp(context, 30)),
 
                     // 6. 눈바디 이미지
                     _buildBodyImages(),
-                    const SizedBox(height: 24),
-                    const SizedBox(height: 8),
+                    SizedBox(height: healthDp(context, 24)),
+                    SizedBox(height: healthDp(context, 8)),
                   ],
                       ),
                     ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    0,
+                    healthDp(context, 27),
+                    healthDp(context, 20),
+                  ),
                   child: BtnRecord(
                     text: '+ 기록하기',
-                    textStyle: const TextStyle(
+                    labelTextScaler: TextScaler.noScaling,
+                    textStyle: TextStyle(
                       fontFamily: 'Gmarket Sans TTF',
-                      fontSize: 16,
+                      fontSize: healthSp(context, 16),
                       fontWeight: FontWeight.bold,
                     ),
                     onPressed: () async {
@@ -586,6 +605,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               ],
             ),
       ),
+      ),
     );
   }
 
@@ -599,55 +619,64 @@ class _WeightListScreenState extends State<WeightListScreen> {
     final progressRatio = (weight <= 0 || targetWeight <= 0)
         ? 0.0
         : weightTowardGoalRatio(weight, targetWeight, goalStartWeight);
+    final ring = healthDp(context, 193);
+    final ringStroke = healthDp(context, 12);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(10, 20, 10, 10),
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 10),
+        healthDp(context, 20),
+        healthDp(context, 10),
+        healthDp(context, 10),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 4,
+            color: const Color(0x19000000),
+            blurRadius: healthDp(context, 4),
           ),
         ],
       ),
       child: Column(
         children: [
           SizedBox(
-            width: 193,
-            height: 193,
+            width: ring,
+            height: ring,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size(193, 193),
+                  size: Size(ring, ring),
                   painter: _WeightGoalRingPainter(
                     progress: progressRatio,
                     trackColor: const Color(0x7FD9D9D9),
                     progressColor: const Color(0xFFFF5A8D),
-                    strokeWidth: 12,
+                    strokeWidth: ringStroke,
                   ),
                 ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       '오늘의 체중',
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 20,
+                        fontSize: healthSp(context, 20),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: healthDp(context, 2)),
                     Text(
                       weight > 0 ? '${weight.toStringAsFixed(1)}kg' : '-',
-                      style: const TextStyle(
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
                         color: Colors.black,
-                        fontSize: 36,
+                        fontSize: healthSp(context, 36),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
@@ -657,35 +686,21 @@ class _WeightListScreenState extends State<WeightListScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Align(
             alignment: Alignment.centerRight,
-            child: InkWell(
+            child: HealthListEditButton(
               onTap: _openSelectedDateEditorPopup,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF5A8D),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  '수정하기',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Container(
             decoration: BoxDecoration(
-              border: const Border(
-                top: BorderSide(width: 0.5, color: Color(0x7FD2D2D2)),
+              border: Border(
+                top: BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: const Color(0x7FD2D2D2),
+                ),
               ),
             ),
             child: Row(
@@ -728,43 +743,45 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         child: Column(
           children: [
             Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 10,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 10),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: healthDp(context, 10)),
             RichText(
+              textScaler: TextScaler.noScaling,
+              textAlign: TextAlign.center,
               text: TextSpan(
                 children: [
                   TextSpan(
                     text: value,
                     style: TextStyle(
                       color: valueColor,
-                      fontSize: 20,
+                      fontSize: healthSp(context, 20),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   TextSpan(
                     text: ' $unit',
-                    style: const TextStyle(
-                      color: Color(0xFF9C9393),
-                      fontSize: 12,
+                    style: TextStyle(
+                      color: const Color(0xFF9C9393),
+                      fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
                     ),
                   ),
                 ],
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -773,7 +790,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }
 
   Widget _buildVerticalDivider() {
-    return Container(width: 0.5, height: 46, color: const Color(0x7FD2D2D2));
+    return Container(
+      width: healthDp(context, 0.5),
+      height: healthDp(context, 46),
+      color: const Color(0x7FD2D2D2),
+    );
   }
 
   Widget _buildBmiSummaryCard() {
@@ -781,12 +802,15 @@ class _WeightListScreenState extends State<WeightListScreen> {
     final bmiStatus = selectedRecord?.bmiStatus ?? '';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(healthDp(context, 10)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(color: Color(0x19000000), blurRadius: 4),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0x19000000),
+            blurRadius: healthDp(context, 4),
+          ),
         ],
       ),
       child: Column(
@@ -794,11 +818,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'BMI',
+                textScaler: TextScaler.noScaling,
                 style: TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 16,
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                 ),
@@ -806,17 +831,21 @@ class _WeightListScreenState extends State<WeightListScreen> {
               Expanded(
                 child: Center(
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 15, vertical: 3),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 15),
+                      vertical: healthDp(context, 3),
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF5A8D),
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 28)),
                     ),
                     child: Text(
                       bmiStatus.isNotEmpty ? bmiStatus : '측정필요',
-                      style: const TextStyle(
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
@@ -826,16 +855,17 @@ class _WeightListScreenState extends State<WeightListScreen> {
               ),
               Text(
                 bmi > 0 ? bmi.toStringAsFixed(2) : '-',
-                style: const TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 16,
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           _buildBmiColorBar(),
         ],
       ),
@@ -1005,7 +1035,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
       return Center(
         child: Text(
           'BMI 데이터가 없습니다',
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: healthSp(context, 12),
+          ),
         ),
       );
     }
@@ -1018,17 +1052,23 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return Column(
       children: [
         LayoutBuilder(
-          builder: (context, constraints) {
+          builder: (ctx, constraints) {
             // 바의 실제 너비 사용
             final barWidth = constraints.maxWidth;
+            final hBar = healthDp(ctx, 12);
+            final rBar = healthDp(ctx, 6);
+            final indTop = -healthDp(ctx, 8);
+            final indW = healthDp(ctx, 2);
+            final indH = healthDp(ctx, 28);
+            final dot = healthDp(ctx, 8);
 
             return Stack(
               children: [
                 // 그라데이션 바
                 Container(
-                  height: 12,
+                  height: hBar,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(rBar),
                     gradient: const LinearGradient(
                       colors: [
                         Color(0xFF4FC3F7), // 하늘색 (저체중)
@@ -1042,18 +1082,19 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 ),
                 // 인디케이터
                 Positioned(
-                  left: (barWidth * position - 10).clamp(0.0, barWidth - 20),
-                  top: -8,
+                  left: (barWidth * position - healthDp(ctx, 10))
+                      .clamp(0.0, barWidth - healthDp(ctx, 20)),
+                  top: indTop,
                   child: Column(
                     children: [
                       Container(
-                        width: 2,
-                        height: 28,
+                        width: indW,
+                        height: indH,
                         color: Colors.white,
                       ),
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: dot,
+                        height: dot,
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
@@ -1066,47 +1107,52 @@ class _WeightListScreenState extends State<WeightListScreen> {
             );
           },
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         // BMI 범위 텍스트
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               '저체중',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: healthSp(context, 10),
                 color: Colors.grey[600],
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
             Text(
               '정상',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: healthSp(context, 10),
                 color: Colors.grey[600],
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
             Text(
               '과체중',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: healthSp(context, 10),
                 color: Colors.grey[600],
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
             Text(
               '비만',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: healthSp(context, 10),
                 color: Colors.grey[600],
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
             Text(
               '고도비만',
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: healthSp(context, 10),
                 color: Colors.grey[600],
                 fontFamily: 'Gmarket Sans TTF',
               ),
@@ -1147,9 +1193,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
   // 5. 차트
   Widget _buildChartContent({
     bool showExpandButton = true,
-    double chartHeight = ChartConstants.healthChartHeight,
+    double? chartHeight,
     bool expandedChartView = false,
   }) {
+    final resolvedChartHeight =
+        chartHeight ?? healthDp(context, ChartConstants.healthChartHeight);
     final chartData = getChartData();
     final yLabels = expandedChartView
         ? getYAxisLabelsExpanded()
@@ -1159,7 +1207,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
       chartData: chartData,
       yLabels: yLabels,
       hasActualDailyData: _hasWeightRecordsOnSelectedDate(),
-      chartHeight: chartHeight,
+      chartHeight: resolvedChartHeight,
       showExpandButton: showExpandButton,
       onExpand: _openExpandedChartPage,
       dataChartBuilder: (height) => WeightDataChart(
@@ -1216,22 +1264,34 @@ class _WeightListScreenState extends State<WeightListScreen> {
         );
         return LayoutBuilder(
           builder: (context, constraints) {
+            final scaledChartCap =
+                healthDp(context, ChartConstants.healthChartHeight);
+            final scaledChartMin = healthDp(context, 160);
             final safeHeight = ChartConstants.healthExpandedChartHeight(
               constraints.maxHeight,
               bottomLegendReserve: 34,
+              maxChartHeight: scaledChartCap,
+              minChartHeight: scaledChartMin,
             );
+            final expandScale =
+                healthTextScaleByWidth(MediaQuery.of(context).size.width);
             return Theme(
               data: gmarket,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildChartContent(
-                    showExpandButton: false,
-                    chartHeight: safeHeight,
-                    expandedChartView: true,
-                  ),
-                  const SizedBox(height: 6),
-                ],
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(expandScale),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildChartContent(
+                      showExpandButton: false,
+                      chartHeight: safeHeight,
+                      expandedChartView: true,
+                    ),
+                    SizedBox(height: healthDp(context, 6)),
+                  ],
+                ),
               ),
             );
           },
@@ -1307,6 +1367,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 selectedPeriod: selectedPeriod,
                 selectedPointIndex: selectedChartPointIndex,
                 omitOutOfRangeWeights: omitOutOfRangeWeights,
+                topPadding: healthWeightChartVertPad(context),
+                bottomPadding: healthWeightChartVertPad(context),
+                barWidth: healthDp(context, 10),
               ),
               size: Size(
                 constraints.maxWidth,
@@ -1334,7 +1397,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: healthDp(context, 12)),
         Row(
           children: [
             // 정면 이미지
@@ -1345,7 +1408,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 () => _selectImage('front'),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: healthDp(context, 12)),
             // 측면 이미지
             Expanded(
               child: _buildImageContainer(
@@ -1370,13 +1433,13 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 160,
+        height: healthDp(context, 160),
         decoration: BoxDecoration(
           color: hasImage ? Colors.grey[100] : Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(healthDp(context, 12)),
           border: Border.all(
             color: hasImage ? Colors.grey[300]! : Colors.grey[200]!,
-            width: 1,
+            width: healthDp(context, 1),
           ),
         ),
         child: hasImage
@@ -1384,7 +1447,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 children: [
                   // 이미지 표시
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius:
+                        BorderRadius.circular(healthDp(context, 12)),
                     child: kIsWeb
                         ? Image.network(
                             imagePath,
@@ -1407,20 +1471,20 @@ class _WeightListScreenState extends State<WeightListScreen> {
                   ),
                   // 삭제 버튼
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    top: healthDp(context, 4),
+                    right: healthDp(context, 4),
                     child: GestureDetector(
                       onTap: () => _deleteImage(imagePath),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: EdgeInsets.all(healthDp(context, 4)),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.6),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
                           color: Colors.white,
-                          size: 16,
+                          size: healthDp(context, 16),
                         ),
                       ),
                     ),
@@ -1439,10 +1503,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
       children: [
         Icon(
           Icons.add_photo_alternate_outlined,
-          size: 40,
+          size: healthDp(context, 40),
           color: Colors.grey[400],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         Text(
           label,
           style: TextStyle(
@@ -1577,6 +1641,13 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }) {
     if (chartData.isEmpty) return;
 
+    final topPadChart = healthWeightChartVertPad(context);
+    final botPadChart = healthWeightChartVertPad(context);
+    final drawableTop = topPadChart;
+    final drawableBottom = chartHeight - botPadChart;
+    final hitPadV = healthDp(context, 12);
+    final barHitHalfW = healthDp(context, 16);
+
     // 가장 가까운 점 찾기
     int? closestIndex;
     double minDistance = double.infinity;
@@ -1592,26 +1663,33 @@ class _WeightListScreenState extends State<WeightListScreen> {
             (maxW < minWeight || minW > maxWeight)) {
           continue;
         }
+        final weightRange = maxWeight - minWeight;
+        if (weightRange.abs() < 1e-9) continue;
+
         final xPosition = (data['xPosition'] as double?) ?? 0.5;
         const leftPad = ChartConstants.weightDailyChartInnerPadH;
         const rightPad = ChartConstants.weightDailyChartInnerPadH +
             ChartConstants.weightXAxisUnitReservedWidth;
         final xCenter = leftPad + (chartWidth - leftPad - rightPad) * xPosition;
-        const topPadding = 20.0;
-        const bottomPadding = 20.0;
-        final drawableHeight = chartHeight - topPadding - bottomPadding;
-        final yHi = topPadding +
-            drawableHeight * ((maxWeight - maxW) / (maxWeight - minWeight));
-        final yLo = topPadding +
-            drawableHeight * ((maxWeight - minW) / (maxWeight - minWeight));
-        final yTop = math.min(yHi, yLo);
-        final yBottom = math.max(yHi, yLo);
+        final drawableHeight = chartHeight - topPadChart - botPadChart;
+        final yHi = topPadChart +
+            drawableHeight * ((maxWeight - maxW) / weightRange);
+        final yLo = topPadChart +
+            drawableHeight * ((maxWeight - minW) / weightRange);
+        var yTop = math.min(yHi, yLo);
+        var yBottom = math.max(yHi, yLo);
+        yTop = yTop.clamp(drawableTop, drawableBottom);
+        yBottom = yBottom.clamp(drawableTop, drawableBottom);
+        if (yBottom < yTop) {
+          final t = yTop;
+          yTop = yBottom;
+          yBottom = t;
+        }
         final cy = (yTop + yBottom) / 2;
-        const halfW = 16.0;
-        if (tapPosition.dx >= xCenter - halfW &&
-            tapPosition.dx <= xCenter + halfW &&
-            tapPosition.dy >= yTop - 12 &&
-            tapPosition.dy <= yBottom + 12) {
+        if (tapPosition.dx >= xCenter - barHitHalfW &&
+            tapPosition.dx <= xCenter + barHitHalfW &&
+            tapPosition.dy >= yTop - hitPadV &&
+            tapPosition.dy <= yBottom + hitPadV) {
           final dx = tapPosition.dx - xCenter;
           final dy = tapPosition.dy - cy;
           final distance = dx * dx + dy * dy;
@@ -1671,11 +1749,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
       }
 
       // Y 좌표 계산 (페인터와 동일한 상하 패딩 적용)
-      const topPadding = 20.0;
-      const bottomPadding = 20.0;
-      final drawableHeight = chartHeight - topPadding - bottomPadding;
-      final normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
-      final y = topPadding + drawableHeight * normalizedWeight;
+      final drawableHeight = chartHeight - topPadChart - botPadChart;
+      final wr = maxWeight - minWeight;
+      if (wr.abs() < 1e-9) continue;
+      final normalizedWeight = (maxWeight - weight) / wr;
+      final y = topPadChart + drawableHeight * normalizedWeight;
 
       // 클릭 위치와 점 사이의 거리 계산
       final dx = tapPosition.dx - x;
@@ -1718,6 +1796,13 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }) {
     if (chartData.isEmpty) return;
 
+    final topPadChart = healthWeightChartVertPad(context);
+    final botPadChart = healthWeightChartVertPad(context);
+    final drawableTop = topPadChart;
+    final drawableBottom = chartHeight - botPadChart;
+    final hitPadV = healthDp(context, 12);
+    final barHitHalfW = healthDp(context, 16);
+
     // 가장 가까운 점 찾기
     int? closestIndex;
     double minDistance = double.infinity;
@@ -1733,27 +1818,34 @@ class _WeightListScreenState extends State<WeightListScreen> {
             (maxW < minWeight || minW > maxWeight)) {
           continue;
         }
+        final weightRange = maxWeight - minWeight;
+        if (weightRange.abs() < 1e-9) continue;
+
         final xPosition = (data['xPosition'] as double?) ?? 0.5;
         const leftPad = ChartConstants.weightDailyChartInnerPadH;
         const rightPad = ChartConstants.weightDailyChartInnerPadH +
             ChartConstants.weightXAxisUnitReservedWidth;
         final xCenter =
             leftPad + (chartWidth - leftPad - rightPad) * xPosition;
-        const topPadding = 20.0;
-        const bottomPadding = 20.0;
-        final drawableHeight = chartHeight - topPadding - bottomPadding;
-        final yHi = topPadding +
-            drawableHeight * ((maxWeight - maxW) / (maxWeight - minWeight));
-        final yLo = topPadding +
-            drawableHeight * ((maxWeight - minW) / (maxWeight - minWeight));
-        final yTop = math.min(yHi, yLo);
-        final yBottom = math.max(yHi, yLo);
+        final drawableHeight = chartHeight - topPadChart - botPadChart;
+        final yHi = topPadChart +
+            drawableHeight * ((maxWeight - maxW) / weightRange);
+        final yLo = topPadChart +
+            drawableHeight * ((maxWeight - minW) / weightRange);
+        var yTop = math.min(yHi, yLo);
+        var yBottom = math.max(yHi, yLo);
+        yTop = yTop.clamp(drawableTop, drawableBottom);
+        yBottom = yBottom.clamp(drawableTop, drawableBottom);
+        if (yBottom < yTop) {
+          final t = yTop;
+          yTop = yBottom;
+          yBottom = t;
+        }
         final cy = (yTop + yBottom) / 2;
-        const halfW = 16.0;
-        if (hoverPosition.dx >= xCenter - halfW &&
-            hoverPosition.dx <= xCenter + halfW &&
-            hoverPosition.dy >= yTop - 12 &&
-            hoverPosition.dy <= yBottom + 12) {
+        if (hoverPosition.dx >= xCenter - barHitHalfW &&
+            hoverPosition.dx <= xCenter + barHitHalfW &&
+            hoverPosition.dy >= yTop - hitPadV &&
+            hoverPosition.dy <= yBottom + hitPadV) {
           final dx = hoverPosition.dx - xCenter;
           final dy = hoverPosition.dy - cy;
           final distance = dx * dx + dy * dy;
@@ -1813,11 +1905,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
       }
 
       // Y 좌표 계산 (페인터와 동일한 상하 패딩 적용)
-      const topPadding = 20.0;
-      const bottomPadding = 20.0;
-      final drawableHeight = chartHeight - topPadding - bottomPadding;
-      final normalizedWeight = (maxWeight - weight) / (maxWeight - minWeight);
-      final y = topPadding + drawableHeight * normalizedWeight;
+      final drawableHeight = chartHeight - topPadChart - botPadChart;
+      final wr = maxWeight - minWeight;
+      if (wr.abs() < 1e-9) continue;
+      final normalizedWeight = (maxWeight - weight) / wr;
+      final y = topPadChart + drawableHeight * normalizedWeight;
 
       // 거리 계산
       final dx = hoverPosition.dx - x;
@@ -1958,22 +2050,23 @@ class _WeightListScreenState extends State<WeightListScreen> {
               data: record,
               timeText: DateFormat('HH:mm').format(record.measuredAt),
               trailing: Text.rich(
+                textScaler: TextScaler.noScaling,
                 TextSpan(
                   children: [
                     TextSpan(
                       text: record.weight.toStringAsFixed(1),
-                      style: const TextStyle(
-                        color: Color(0xFFFF5A8D),
-                        fontSize: 18,
+                      style: TextStyle(
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 18),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const TextSpan(
+                    TextSpan(
                       text: ' kg',
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 18,
+                        fontSize: healthSp(context, 18),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
@@ -2113,6 +2206,9 @@ class WeightChartPainter extends CustomPainter {
   final String selectedPeriod;
   final int? selectedPointIndex;
   final bool omitOutOfRangeWeights;
+  final double topPadding;
+  final double bottomPadding;
+  final double barWidth;
 
   WeightChartPainter({
     required this.chartData,
@@ -2121,6 +2217,9 @@ class WeightChartPainter extends CustomPainter {
     required this.selectedPeriod,
     this.selectedPointIndex,
     this.omitOutOfRangeWeights = false,
+    this.topPadding = 20,
+    this.bottomPadding = 20,
+    this.barWidth = 10,
   });
 
   @override
@@ -2140,8 +2239,6 @@ class WeightChartPainter extends CustomPainter {
     const double leftPadding = ChartConstants.weightDailyChartInnerPadH;
     const double rightPadding = ChartConstants.weightDailyChartInnerPadH +
         ChartConstants.weightXAxisUnitReservedWidth;
-    const double topPadding = 20.0;
-    const double bottomPadding = 20.0;
     final gridSegments = yLabels.length - 1;
 
     for (int i = 0; i <= gridSegments; i++) {
@@ -2165,7 +2262,9 @@ class WeightChartPainter extends CustomPainter {
     final barFill = Paint()
       ..color = const Color(0xFFFF5A8D)
       ..style = PaintingStyle.fill;
-    const double barWidth = 10.0;
+
+    final drawableTop = topPadding;
+    final drawableBottom = size.height - bottomPadding;
 
     for (int i = 0; i < chartData.length; i++) {
       final data = chartData[i];
@@ -2190,8 +2289,15 @@ class WeightChartPainter extends CustomPainter {
         final yLo = topPadding +
             (size.height - topPadding - bottomPadding) *
                 ((maxWeight - minW) / weightRange);
-        final yTop = math.min(yHi, yLo);
-        final yBottom = math.max(yHi, yLo);
+        var yTop = math.min(yHi, yLo);
+        var yBottom = math.max(yHi, yLo);
+        yTop = yTop.clamp(drawableTop, drawableBottom);
+        yBottom = yBottom.clamp(drawableTop, drawableBottom);
+        if (yBottom < yTop) {
+          final t = yTop;
+          yTop = yBottom;
+          yBottom = t;
+        }
         final midY = (yTop + yBottom) / 2;
         final barH = math.max(yBottom - yTop, 4.0);
         final isSel =

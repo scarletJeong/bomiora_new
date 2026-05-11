@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 import '../../health_common/widgets/health_date_selector.dart';
@@ -268,38 +269,47 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: widget.record == null ? '체중 기록하기' : '체중 수정하기',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(25),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 측정 일시
-                _buildDateTimeCard(),
-                const SizedBox(height: 16),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(healthDp(context, 25)),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 측정 일시
+                  _buildDateTimeCard(),
+                  SizedBox(height: healthDp(context, 20)),
 
-                // 키 입력
-                _buildHeightInput(),
-                const SizedBox(height: 24),
+                  // 키 입력
+                  _buildHeightInput(),
+                  SizedBox(height: healthDp(context, 20)),
 
-                // 체중 입력
-                _buildWeightInput(),
-                const SizedBox(height: 24),
+                  // 체중 입력
+                  _buildWeightInput(),
+                  SizedBox(height: healthDp(context, 20)),
 
-                // 눈바디 이미지
-                _buildBodyImagesSection(),
-                const SizedBox(height: 24),
+                  // 눈바디 이미지
+                  _buildBodyImagesSection(),
+                  SizedBox(height: healthDp(context, 24)),
 
-                _buildActionButtons(),
-              ],
+                  _buildActionButtons(),
+                ],
+              ),
             ),
           ),
         ),
@@ -315,25 +325,28 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('측정일시'),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: InkWell(
                 onTap: _selectDateThenTime,
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(healthDp(context, 7)),
                 child: Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  height: healthDp(context, 40),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 10),
+                  ),
                   clipBehavior: Clip.antiAlias,
                   decoration: ShapeDecoration(
                     shape: RoundedRectangleBorder(
-                      side: const BorderSide(
-                        width: 1,
-                        color: Color(0x7FD2D2D2),
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0x7FD2D2D2),
                       ),
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 7)),
                     ),
                   ),
                   alignment: Alignment.centerLeft,
@@ -349,22 +362,25 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: InkWell(
                 onTap: _selectTimeOnly,
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(healthDp(context, 7)),
                 child: Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  height: healthDp(context, 40),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 10),
+                  ),
                   clipBehavior: Clip.antiAlias,
                   decoration: ShapeDecoration(
                     shape: RoundedRectangleBorder(
-                      side: const BorderSide(
-                        width: 1,
-                        color: Color(0x7FD2D2D2),
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: const Color(0x7FD2D2D2),
                       ),
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 7)),
                     ),
                   ),
                   alignment: Alignment.centerLeft,
@@ -391,12 +407,12 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('키'),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         _buildNumberInput(
           controller: _heightController,
           hintText: '예: 170',
           suffixText: 'cm',
-          inputHeight: 30,
+          inputHeight: healthDp(context, 30),
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               final height = double.tryParse(value);
@@ -416,12 +432,12 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('체중'),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         _buildNumberInput(
           controller: _weightController,
           hintText: '예: 65.5',
           suffixText: 'kg',
-          inputHeight: 30,
+          inputHeight: healthDp(context, 30),
           validator: (value) {
             if (value == null || value.isEmpty) {
               return '체중을 입력해주세요';
@@ -443,7 +459,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('눈바디'),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         Row(
           children: [
             // 정면 이미지
@@ -454,7 +470,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                 () => _selectImage('front'),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: healthDp(context, 12)),
             // 측면 이미지
             Expanded(
               child: _buildImageContainer(
@@ -472,11 +488,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   Widget _buildSectionLabel(String title, [IconData? icon]) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Row(
@@ -486,15 +502,15 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         children: [
           if (icon != null) ...[
             SizedBox(
-              width: 16,
-              height: 16,
+              width: healthDp(context, 16),
+              height: healthDp(context, 16),
               child: Icon(
                 icon,
-                size: 16,
+                size: healthDp(context, 16),
                 color: const Color(0xFF1A1A1A),
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: healthDp(context, 4)),
           ],
           Text(
             title,
@@ -518,7 +534,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     String? suffixText,
     double inputHeight = 40,
   }) {
-    final verticalPadding = ((inputHeight - 20) / 2).clamp(8.0, 28.0);
+    final verticalPadding =
+        ((inputHeight - healthDp(context, 20)) / 2).clamp(8.0, 28.0);
     return TextFormField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -551,26 +568,38 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         ),
         isDense: false,
         contentPadding: EdgeInsets.only(
-          left: 10,
-          right: 10,
+          left: healthDp(context, 10),
+          right: healthDp(context, 10),
           top: verticalPadding,
           bottom: verticalPadding,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+          borderSide: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+          borderSide: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
+          ),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: const BorderSide(width: 1, color: Color(0xFFFF8DA1)),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+          borderSide: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0xFFFF8DA1),
+          ),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: const BorderSide(width: 1, color: Color(0xFFFF8DA1)),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+          borderSide: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0xFFFF8DA1),
+          ),
         ),
       ),
     );
@@ -581,58 +610,63 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       children: [
         Expanded(
           child: SizedBox(
-            height: 44,
+            height: healthDp(context, 44),
             child: OutlinedButton(
               onPressed: (widget.record != null && !_isSaving)
                   ? _showDeleteConfirmDialog
                   : null,
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(width: 0.5, color: Color(0xFF898383)),
+                side: BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: const Color(0xFF898383),
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 '삭제',
+                textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
-                  color: Color(0xFF898383),
-                  fontSize: 16,
+                  color: const Color(0xFF898383),
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: healthDp(context, 10)),
         Expanded(
           child: SizedBox(
-            height: 44,
+            height: healthDp(context, 44),
             child: ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF5A8D),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
                 elevation: 0,
               ),
               child: _isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
+                  ? SizedBox(
+                      width: healthDp(context, 18),
+                      height: healthDp(context, 18),
                       child: CircularProgressIndicator(
-                        strokeWidth: 2,
+                        strokeWidth: healthDp(context, 2),
                         color: Colors.white,
                       ),
                     )
                   : Text(
                       widget.record == null ? '등록' : '수정',
-                      style: const TextStyle(
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
                         fontFamily: 'Gmarket Sans TTF',
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 16),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -653,13 +687,13 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 120,
+        height: healthDp(context, 120),
         decoration: BoxDecoration(
           color: hasImage ? Colors.grey[100] : Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(healthDp(context, 12)),
           border: Border.all(
             color: hasImage ? Colors.grey[300]! : Colors.grey[200]!,
-            width: 1,
+            width: healthDp(context, 1),
           ),
         ),
         child: hasImage
@@ -667,7 +701,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                 children: [
                   // 이미지 표시
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius:
+                        BorderRadius.circular(healthDp(context, 12)),
                     child: kIsWeb
                         ? Image.network(
                             imagePath,
@@ -690,20 +725,20 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   ),
                   // 삭제 버튼
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    top: healthDp(context, 4),
+                    right: healthDp(context, 4),
                     child: GestureDetector(
                       onTap: () => _deleteImage(imagePath),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: EdgeInsets.all(healthDp(context, 4)),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.6),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
                           color: Colors.white,
-                          size: 16,
+                          size: healthDp(context, 16),
                         ),
                       ),
                     ),
@@ -722,10 +757,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       children: [
         Icon(
           Icons.add_photo_alternate_outlined,
-          size: 40,
+          size: healthDp(context, 40),
           color: Colors.grey[400],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: healthDp(context, 8)),
         Text(
           label,
           style: TextStyle(
