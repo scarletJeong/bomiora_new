@@ -11,6 +11,8 @@ class BtnRecord extends StatelessWidget {
   final bool isLoading;
   /// null이면 기본 굵은 16px. 체중 등 Gmarket 적용 시 전달.
   final TextStyle? textStyle;
+  /// null이면 상위 [MediaQuery] 스케일. [healthSp] 등으로 글자 크기를 직접 줄 때 [TextScaler.noScaling] 권장.
+  final TextScaler? labelTextScaler;
 
   const BtnRecord({
     super.key,
@@ -23,6 +25,7 @@ class BtnRecord extends StatelessWidget {
     this.elevation,
     this.isLoading = false,
     this.textStyle,
+    this.labelTextScaler,
   });
 
   @override
@@ -51,6 +54,7 @@ class BtnRecord extends StatelessWidget {
               )
             : Text(
                 text,
+                textScaler: labelTextScaler,
                 style: textStyle ??
                     const TextStyle(
                       fontSize: 16,

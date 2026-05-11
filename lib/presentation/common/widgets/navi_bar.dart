@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 
 /// 공통으로 쓰는 하단 핑크 탭 바 (Figma)
 ///
@@ -12,14 +13,14 @@ class FooterBar extends StatelessWidget {
 
   static const Color _pink = Color(0xFFFF5A8D);
 
-  Widget _sep() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 6),
+  Widget _sep(BuildContext context, double widthScale) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 6 / widthScale),
       child: Text(
         '|',
         style: TextStyle(
-          color: Color(0xCCFFFFFF),
-          fontSize: 10,
+          color: const Color(0xCCFFFFFF),
+          fontSize: healthSp(context, 10),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w300,
           height: 1,
@@ -49,26 +50,30 @@ class FooterBar extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
-            padding: const EdgeInsets.only(top: 6, bottom: 8),
+            padding: EdgeInsets.only(
+              top: healthDp(context, 6),
+              bottom: healthDp(context, 8),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SvgPicture.asset(
                   iconAsset,
-                  width: 18,
-                  height: 18,
+                  width: healthDp(context, 18),
+                  height: healthDp(context, 18),
                   colorFilter:
                       const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: healthDp(context, 4)),
                 Text(
                   label,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 6,
+                    fontSize: healthSp(context, 6),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -83,17 +88,23 @@ class FooterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final widthScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    // 폭이 넓어질수록 텍스트·아이콘이 커지므로 양옆 패딩은 역비례(375에서 36 기준)해 라벨이 잘리지 않게 함
+    final padH = 36.0 / widthScale;
+    final barH = healthDp(context, 62);
+    final radius = healthDp(context, 15);
+
     return Container(
       width: double.infinity,
-      height: 53,
-      padding: const EdgeInsets.symmetric(horizontal: 36),
+      height: barH,
+      padding: EdgeInsets.symmetric(horizontal: padH),
       clipBehavior: Clip.antiAlias,
-      decoration: const ShapeDecoration(
+      decoration: ShapeDecoration(
         color: _pink,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(15),
-            topRight: Radius.circular(15),
+            topLeft: Radius.circular(radius),
+            topRight: Radius.circular(radius),
           ),
         ),
       ),
@@ -107,28 +118,28 @@ class FooterBar extends StatelessWidget {
             iconAsset: AppAssets.naviIcon1,
             onTap: () => _go(context, '/home'),
           ),
-          _sep(),
+          _sep(context, widthScale),
           _item(
             context: context,
             label: '건강대시보드',
             iconAsset: AppAssets.naviIcon2,
             onTap: () => _go(context, '/health'),
           ),
-          _sep(),
+          _sep(context, widthScale),
           _item(
             context: context,
             label: '비대면 진료',
             iconAsset: AppAssets.naviIcon3,
             onTap: null, // 요청대로 일단 유지
           ),
-          _sep(),
+          _sep(context, widthScale),
           _item(
             context: context,
             label: '문진표',
             iconAsset: AppAssets.naviIcon4,
             onTap: () => _go(context, '/profile'),
           ),
-          _sep(),
+          _sep(context, widthScale),
           _item(
             context: context,
             label: 'MY PAGE',
