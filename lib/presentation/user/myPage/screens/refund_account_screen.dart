@@ -4,7 +4,8 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 
 class RefundAccountScreen extends StatefulWidget {
   const RefundAccountScreen({super.key});
@@ -140,96 +141,136 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '환불 계좌 관리'),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: _isLoggedIn
-            ? _loadingRefund
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF5A8D)))
-                : Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
-                  children: [
-                    const _FieldLabel('은행 선택'),
-                    const SizedBox(height: 5),
-                    DropdownBtn(
-                      items: _bankItemsForDropdown,
-                      value: _selectedBank,
-                      emptyText: _bankEmptyHint,
-                      buttonHeight: 40,
-                      panelMaxHeight: 320,
-                      onChanged: (v) => setState(() => _selectedBank = v),
-                    ),
-                    const SizedBox(height: 20),
-                    const _FieldLabel('계좌번호'),
-                    const SizedBox(height: 5),
-                    _BoxField(
-                      controller: _accountController,
-                      hintText: '계좌번호를 입력해주세요.(- 는 제외)',
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      validator: (v) => (v == null || v.trim().isEmpty) ? '계좌번호를 입력해주세요' : null,
-                    ),
-                    const SizedBox(height: 0),
-                    const _FieldLabel('예금주명'),
-                    const SizedBox(height: 5),
-                    _BoxField(
-                      controller: _ownerController,
-                      hintText: '예금주 이름을 입력해주세요.',
-                      validator: (v) => (v == null || v.trim().isEmpty) ? '예금주명을 입력해주세요' : null,
-                    ),
-                    const SizedBox(height: 30),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: _submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5A8D),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: '환불 계좌 관리',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+            child: _isLoggedIn
+                ? _loadingRefund
+                    ? Center(
+                        child: SizedBox(
+                          width: healthDp(context, 36),
+                          height: healthDp(context, 36),
+                          child: const CircularProgressIndicator(
+                              color: Color(0xFFFF5A8D)),
                         ),
-                        child: const Text(
-                          '저장',
-                          textAlign: TextAlign.center,
+                      )
+                    : Form(
+                        key: _formKey,
+                        child: ListView(
+                          padding: EdgeInsets.only(
+                            left: healthDp(context, 27),
+                            right: healthDp(context, 27),
+                            bottom: healthDp(context, 20),
+                            top: healthDp(context, 20),
+                          ),
+                          children: [
+                            const _FieldLabel('은행 선택'),
+                            SizedBox(height: healthDp(context, 5)),
+                            DropdownBtn(
+                              items: _bankItemsForDropdown,
+                              value: _selectedBank,
+                              emptyText: _bankEmptyHint,
+                              buttonHeight: healthDp(context, 40),
+                              panelMaxHeight: healthDp(context, 320),
+                              onChanged: (v) =>
+                                  setState(() => _selectedBank = v),
+                            ),
+                            SizedBox(height: healthDp(context, 20)),
+                            const _FieldLabel('계좌번호'),
+                            SizedBox(height: healthDp(context, 5)),
+                            _BoxField(
+                              controller: _accountController,
+                              hintText: '계좌번호를 입력해주세요.(- 는 제외)',
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '계좌번호를 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 0),
+                            const _FieldLabel('예금주명'),
+                            SizedBox(height: healthDp(context, 5)),
+                            _BoxField(
+                              controller: _ownerController,
+                              hintText: '예금주 이름을 입력해주세요.',
+                              validator: (v) =>
+                                  (v == null || v.trim().isEmpty)
+                                      ? '예금주명을 입력해주세요'
+                                      : null,
+                            ),
+                            SizedBox(height: healthDp(context, 30)),
+                            SizedBox(
+                              width: double.infinity,
+                              height: healthDp(context, 40),
+                              child: ElevatedButton(
+                                onPressed: _submit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF5A8D),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        healthDp(context, 10)),
+                                  ),
+                                ),
+                                child: Text(
+                                  '저장',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: healthSp(context, 16),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                : Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.account_balance_wallet_outlined,
+                          size: healthDp(context, 64),
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: healthDp(context, 16)),
+                        Text(
+                          '로그인 후 이용 가능합니다.',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
+                            fontSize: healthSp(context, 16),
+                            color: Colors.grey[600],
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              )
-            : Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 64,
-                      color: Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '로그인 후 이용 가능합니다.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -243,9 +284,9 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        color: Color(0xFF898686),
-        fontSize: 14,
+      style: TextStyle(
+        color: const Color(0xFF898686),
+        fontSize: healthSp(context, 14),
         fontWeight: FontWeight.w500,
         height: 1.57,
       ),
@@ -268,12 +309,14 @@ class _BoxField extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
 
-  static const double _fieldH = 40;
-  static const double _errorReserveH = 22;
-
   @override
   Widget build(BuildContext context) {
     final errorColor = Theme.of(context).colorScheme.error;
+    final fieldH = healthDp(context, 40);
+    final errorReserveH = healthDp(context, 22);
+    final pad = healthDp(context, 10);
+    final radius = healthDp(context, 10);
+    final borderW = healthDp(context, 1);
 
     return FormField<String>(
       initialValue: controller.text,
@@ -284,7 +327,7 @@ class _BoxField extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: _fieldH,
+              height: fieldH,
               child: TextField(
                 controller: controller,
                 keyboardType: keyboardType,
@@ -294,41 +337,46 @@ class _BoxField extends StatelessWidget {
                   if (state.hasError) state.validate();
                 },
                 decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.all(10),
+                  contentPadding: EdgeInsets.all(pad),
                   hintText: hintText,
-                  hintStyle: const TextStyle(
-                    color: Color(0xFF898686),
-                    fontSize: 12,
+                  hintStyle: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w500,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(radius),
                     borderSide: BorderSide(
-                      width: 1,
-                      color: state.hasError ? errorColor : const Color(0xFFD2D2D2),
+                      width: borderW,
+                      color: state.hasError
+                          ? errorColor
+                          : const Color(0xFFD2D2D2),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(radius),
                     borderSide: BorderSide(
-                      width: 1,
-                      color: state.hasError ? errorColor : const Color(0xFFD2D2D2),
+                      width: borderW,
+                      color: state.hasError
+                          ? errorColor
+                          : const Color(0xFFD2D2D2),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
+                    borderRadius: BorderRadius.circular(radius),
+                    borderSide: BorderSide(
+                        width: borderW, color: const Color(0xFFFF5A8D)),
                   ),
                 ),
-                style: const TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 12,
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1A),
+                  fontSize: healthSp(context, 12),
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
             SizedBox(
-              height: _errorReserveH,
+              height: errorReserveH,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -337,7 +385,7 @@ class _BoxField extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: errorColor,
-                    fontSize: 11,
+                    fontSize: healthSp(context, 11),
                     fontWeight: FontWeight.w500,
                     height: 1.2,
                   ),

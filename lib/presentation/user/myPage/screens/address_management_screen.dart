@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/confirm_dialog.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'address_form_screen.dart';
-import '../widgets/my_page_common.dart';
-
 /// 배송지 관리 화면
 class AddressManagementScreen extends StatefulWidget {
   const AddressManagementScreen({super.key});
@@ -164,7 +163,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       context,
       title: '기본 주소 설정',
       message: '해당 주소로 기본 주소가 변경됩니다.',
-      width: 272,
+      width: healthDp(context, 272),
       showDivider: false,
     );
     if (!confirmed || !mounted) return;
@@ -196,150 +195,193 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '배송지 관리'),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: _isLoadingAddresses
-            ? const MyPageLoadingIndicator()
-            : _currentUser == null
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: '배송지 관리',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+            child: _isLoadingAddresses
                 ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_off_outlined,
-                          size: 56,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '로그인 후 이용 가능합니다.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    child: SizedBox(
+                      width: healthDp(context, 36),
+                      height: healthDp(context, 36),
+                      child: const CircularProgressIndicator(
+                        color: Color(0xFFFF3787),
+                      ),
                     ),
                   )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_addresses.isNotEmpty) ...[
-                      const Row(
-                        children: [
-                          Text(
-                            '|',
-                            style: TextStyle(
-                              color: Color(0xFF1A1A1A),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -1.44,
+                : _currentUser == null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.location_off_outlined,
+                              size: healthDp(context, 56),
+                              color: Colors.grey[400],
                             ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            '나의 배송지',
-                            style: TextStyle(
-                              color: Color(0xFF1A1A1A),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: -1.44,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        '고객님께서 주문시 사용하셨던 배송지 목록입니다.',
-                        style: TextStyle(
-                          color: Color(0xFF898686),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-
-                    if (_addresses.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 60),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.location_off_outlined,
-                                size: 56,
-                                color: Colors.grey[400],
+                            SizedBox(height: healthDp(context, 12)),
+                            Text(
+                              '로그인 후 이용 가능합니다.',
+                              style: TextStyle(
+                                fontSize: healthSp(context, 12),
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
                               ),
-                              const SizedBox(height: 12),
+                            ),
+                          ],
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        padding: EdgeInsets.only(
+                          left: healthDp(context, 27),
+                          right: healthDp(context, 27),
+                          bottom: healthDp(context, 20),
+                          top: healthDp(context, 20),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_addresses.isNotEmpty) ...[
+                              Row(
+                                children: [
+                                  Text(
+                                    '|',
+                                    style: TextStyle(
+                                      color: const Color(0xFF1A1A1A),
+                                      fontSize: healthSp(context, 16),
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: -1.44,
+                                    ),
+                                  ),
+                                  SizedBox(width: healthDp(context, 8)),
+                                  Text(
+                                    '나의 배송지',
+                                    style: TextStyle(
+                                      color: const Color(0xFF1A1A1A),
+                                      fontSize: healthSp(context, 16),
+                                      fontWeight: FontWeight.w300,
+                                      letterSpacing: -1.44,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: healthDp(context, 10)),
                               Text(
-                                '등록된 배송지가 없습니다',
+                                '고객님께서 주문시 사용하셨던 배송지 목록입니다.',
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(context, 12),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              SizedBox(height: healthDp(context, 14)),
                             ],
-                          ),
-                        ),
-                      )
-                    else
-                      ..._addresses.map(
-                        (address) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _buildAddressCard(address),
-                        ),
-                      ),
 
-                    const SizedBox(height: 14),
-                    if (_addresses.isNotEmpty)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              _SmallActionButton(
-                                label: '수정',
-                                variant: _SmallActionButtonVariant.outlinedPink,
-                                enabled: _selectedAddressId != null,
-                                onTap: _goToEditSelected,
+                            if (_addresses.isEmpty)
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: healthDp(context, 60)),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.location_off_outlined,
+                                        size: healthDp(context, 56),
+                                        color: Colors.grey[400],
+                                      ),
+                                      SizedBox(height: healthDp(context, 12)),
+                                      Text(
+                                        '등록된 배송지가 없습니다',
+                                        style: TextStyle(
+                                          fontSize: healthSp(context, 12),
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              ..._addresses.map(
+                                (address) => Padding(
+                                  padding: EdgeInsets.only(
+                                      bottom: healthDp(context, 10)),
+                                  child: _buildAddressCard(address),
+                                ),
                               ),
-                              const SizedBox(width: 10),
-                              _SmallActionButton(
-                                label: '삭제',
-                                variant: _SmallActionButtonVariant.disabledGray,
-                                enabled: _selectedAddressId != null,
-                                onTap: _deleteSelected,
+
+                            SizedBox(height: healthDp(context, 14)),
+                            if (_addresses.isNotEmpty)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      _SmallActionButton(
+                                        label: '수정',
+                                        variant:
+                                            _SmallActionButtonVariant
+                                                .outlinedPink,
+                                        enabled: _selectedAddressId != null,
+                                        onTap: _goToEditSelected,
+                                      ),
+                                      SizedBox(width: healthDp(context, 10)),
+                                      _SmallActionButton(
+                                        label: '삭제',
+                                        variant:
+                                            _SmallActionButtonVariant
+                                                .disabledGray,
+                                        enabled: _selectedAddressId != null,
+                                        onTap: _deleteSelected,
+                                      ),
+                                    ],
+                                  ),
+                                  _SmallActionButton(
+                                    label: '등록',
+                                    variant: _SmallActionButtonVariant
+                                        .filledPink,
+                                    enabled: true,
+                                    onTap: _goToRegister,
+                                  ),
+                                ],
+                              )
+                            else
+                              Center(
+                                child: _SmallActionButton(
+                                  label: '등록',
+                                  variant: _SmallActionButtonVariant
+                                      .filledPink,
+                                  enabled: true,
+                                  onTap: _goToRegister,
+                                ),
                               ),
-                            ],
-                          ),
-                          _SmallActionButton(
-                            label: '등록',
-                            variant: _SmallActionButtonVariant.filledPink,
-                            enabled: true,
-                            onTap: _goToRegister,
-                          ),
-                        ],
-                      )
-                    else
-                      Center(
-                        child: _SmallActionButton(
-                          label: '등록',
-                          variant: _SmallActionButtonVariant.filledPink,
-                          enabled: true,
-                          onTap: _goToRegister,
+                          ],
                         ),
                       ),
-                  ],
-                ),
-              ),
+          ),
+        ),
       ),
     );
   }
@@ -363,64 +405,69 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 
     return InkWell(
       onTap: id == null ? null : () => _toggleSelection(id),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(healthDp(context, 12)),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 14),
+        ),
         decoration: ShapeDecoration(
           color: bgColor,
           shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1, color: borderColor),
-            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+                width: healthDp(context, 1), color: borderColor),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SelectDot(selected: isSelected),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name.isEmpty ? '배송지' : name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.black,
-                      fontSize: 16,
+                      fontSize: healthSp(context, 16),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: healthDp(context, 10)),
                   Text(
                     '$recipient $phone'.trim(),
-                    style: const TextStyle(
-                      color: Color(0xFF898383),
-                      fontSize: 12,
+                    style: TextStyle(
+                      color: const Color(0xFF898383),
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  SizedBox(height: healthDp(context, 5)),
                   Text(
                     detail.isEmpty ? address1 : '$address1 $detail',
-                    style: const TextStyle(
-                      color: Color(0xFF898383),
-                      fontSize: 12,
+                    style: TextStyle(
+                      color: const Color(0xFF898383),
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             InkWell(
               onTap: () => _setDefaultAddress(address),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius:
+                  BorderRadius.circular(healthDp(context, 16)),
               child: Padding(
-                padding: const EdgeInsets.all(4),
+                padding: EdgeInsets.all(healthDp(context, 4)),
                 child: Icon(
                   isDefault ? Icons.star : Icons.star_border,
-                  size: 20,
+                  size: healthDp(context, 20),
                   color: isDefault ? Colors.amber : Colors.grey[500],
                 ),
               ),
@@ -439,21 +486,25 @@ class _SelectDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final outer = healthDp(context, 16);
     if (selected) {
       return Container(
-        width: 16,
-        height: 16,
+        width: outer,
+        height: outer,
         decoration: ShapeDecoration(
           color: const Color(0xFFFF5C8F),
           shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1.33, color: Color(0xFFFF5C8F)),
+            side: BorderSide(
+              width: healthDp(context, 1.33),
+              color: const Color(0xFFFF5C8F),
+            ),
             borderRadius: BorderRadius.circular(6666),
           ),
         ),
         alignment: Alignment.center,
         child: Container(
-          width: 5.33,
-          height: 5.33,
+          width: healthDp(context, 5.33),
+          height: healthDp(context, 5.33),
           decoration: const ShapeDecoration(
             color: Colors.white,
             shape: OvalBorder(),
@@ -463,11 +514,14 @@ class _SelectDot extends StatelessWidget {
     }
 
     return Container(
-      width: 16,
-      height: 16,
+      width: outer,
+      height: outer,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1.5, color: Color(0xFFD2D2D2)),
+          side: BorderSide(
+            width: healthDp(context, 1.5),
+            color: const Color(0xFFD2D2D2),
+          ),
           borderRadius: BorderRadius.circular(9999),
         ),
       ),
@@ -525,15 +579,20 @@ class _SmallActionButton extends StatelessWidget {
 
     return InkWell(
       onTap: isDisabled ? null : onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
-        width: 80,
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        width: healthDp(context, 80),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         decoration: ShapeDecoration(
           color: bg,
           shape: RoundedRectangleBorder(
-            side: side ?? BorderSide.none,
-            borderRadius: BorderRadius.circular(4),
+            side: side == null
+                ? BorderSide.none
+                : BorderSide(
+                    width: healthDp(context, side.width),
+                    color: side.color,
+                  ),
+            borderRadius: BorderRadius.circular(healthDp(context, 4)),
           ),
         ),
         alignment: Alignment.center,
@@ -541,7 +600,7 @@ class _SmallActionButton extends StatelessWidget {
           label,
           style: TextStyle(
             color: fg,
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),

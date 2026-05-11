@@ -4,7 +4,8 @@ import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 
 class WishListScreen extends StatefulWidget {
   const WishListScreen({super.key});
@@ -178,23 +179,46 @@ class _WishListScreenState extends State<WishListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(
-        title: '찜목록',
-      ),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-        child: ColoredBox(
-          color: Colors.white,
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: _pink),
-                )
-              : _requiresLogin
-                  ? _buildLoginMessage()
-                  : _errorMessage != null
-                      ? _buildError()
-                      : _buildContent(),
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MobileAppLayoutWrapper(
+        appBar: HealthAppBar(
+          title: '찜목록',
+          titleFontSize: healthSp(context, 18),
+          leadingIconSize: healthDp(context, 24),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+            child: ColoredBox(
+              color: Colors.white,
+              child: _isLoading
+                  ? Center(
+                      child: SizedBox(
+                        width: healthDp(context, 36),
+                        height: healthDp(context, 36),
+                        child: const CircularProgressIndicator(color: _pink),
+                      ),
+                    )
+                  : _requiresLogin
+                      ? _buildLoginMessage()
+                      : _errorMessage != null
+                          ? _buildError()
+                          : _buildContent(),
+            ),
+          ),
         ),
       ),
     );
@@ -203,16 +227,17 @@ class _WishListScreenState extends State<WishListScreen> {
   Widget _buildError() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 27),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               _errorMessage!,
-              style: const TextStyle(color: Colors.red, fontSize: 14),
+              style: TextStyle(
+                  color: Colors.red, fontSize: healthSp(context, 14)),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(context, 16)),
             OutlinedButton(
               onPressed: _loadWishList,
               child: const Text('다시 시도'),
@@ -228,11 +253,18 @@ class _WishListScreenState extends State<WishListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.favorite_border, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          Icon(
+            Icons.favorite_border,
+            size: healthDp(context, 64),
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: healthDp(context, 16)),
           Text(
             '로그인 후 이용 가능합니다.',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: healthSp(context, 16),
+              color: Colors.grey[600],
+            ),
           ),
         ],
       ),
@@ -257,30 +289,41 @@ class _WishListScreenState extends State<WishListScreen> {
     final hasMore = _visibleCount < list.length;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(left: 27, right: 27, bottom: 20),
+      padding: EdgeInsets.only(
+        left: healthDp(context, 27),
+        right: healthDp(context, 27),
+        bottom: healthDp(context, 20),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
           _buildTabs(),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
           _buildHeader(),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
           if (list.isEmpty) ...[
-            const SizedBox(height: 40),
-            Icon(Icons.favorite_border, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(context, 40)),
+            Icon(
+              Icons.favorite_border,
+              size: healthDp(context, 64),
+              color: Colors.grey[400],
+            ),
+            SizedBox(height: healthDp(context, 16)),
             Text(
               _emptyMessageForTab(),
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: healthSp(context, 16),
+                color: Colors.grey[600],
+              ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 40),
+            SizedBox(height: healthDp(context, 40)),
           ] else ...[
             ..._visibleItems.map(_buildWishCard),
             if (hasMore) ...[
-              const SizedBox(height: 20),
+              SizedBox(height: healthDp(context, 20)),
               _buildLoadMoreButton(),
             ],
           ],
@@ -290,11 +333,11 @@ class _WishListScreenState extends State<WishListScreen> {
   }
 
   Widget _buildTabs() {
-    const sepW = 0.5;
+    final sepW = healthDp(context, 0.5);
 
     Widget vSep() => Container(
           width: sepW,
-          height: 11,
+          height: healthDp(context, 11),
           color: _divider,
         );
 
@@ -311,7 +354,10 @@ class _WishListScreenState extends State<WishListScreen> {
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.only(top: 4, bottom: 10),
+          padding: EdgeInsets.only(
+            top: healthDp(context, 4),
+            bottom: healthDp(context, 10),
+          ),
           alignment: Alignment.center,
           child: Center(
             // 탭 영역은 Expanded로 넓게 유지하되, underline은 텍스트 폭만큼만 그려지게.
@@ -326,15 +372,15 @@ class _WishListScreenState extends State<WishListScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: selected ? _pink : _textSub,
-                      fontSize: 14,
+                      fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: healthDp(context, 4)),
                   Container(
                     width: double.infinity,
-                    height: 1,
+                    height: healthDp(context, 1),
                     color: selected ? _pink : Colors.transparent,
                   ),
                 ],
@@ -376,9 +422,9 @@ class _WishListScreenState extends State<WishListScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _textMuted,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -406,13 +452,14 @@ class _WishListScreenState extends State<WishListScreen> {
         item['image_url']?.toString() ?? item['it_img1']?.toString() ?? item['it_img']?.toString() ?? '';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.only(bottom: healthDp(context, 20)),
       child: SizedBox(
         width: double.infinity,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(width: 1, color: _border),
-            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                width: healthDp(context, 1), color: _border),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             color: Colors.white,
           ),
           clipBehavior: Clip.antiAlias,
@@ -436,23 +483,36 @@ class _WishListScreenState extends State<WishListScreen> {
                       if (loadingProgress == null) return child;
                       return Container(
                         color: Colors.grey[100],
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: _pink,
+                        child: Center(
+                          child: SizedBox(
+                            width: healthDp(context, 28),
+                            height: healthDp(context, 28),
+                            child: CircularProgressIndicator(
+                              strokeWidth: healthDp(context, 2),
+                              color: _pink,
+                            ),
                           ),
                         ),
                       );
                     },
                     errorBuilder: (_, __, ___) => Container(
                       color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: healthDp(context, 48),
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(top: 10, left: 10, right: 10, bottom: 20),
+                padding: EdgeInsets.only(
+                  top: healthDp(context, 10),
+                  left: healthDp(context, 10),
+                  right: healthDp(context, 10),
+                  bottom: healthDp(context, 20),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -468,19 +528,19 @@ class _WishListScreenState extends State<WishListScreen> {
                         children: [
                           Text(
                             subject.trim().isNotEmpty ? subject.trim() : '보미오라',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _textMain,
-                              fontSize: 12,
+                              fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: healthDp(context, 2)),
                           Text(
                             productName.isNotEmpty ? productName : '상품',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _textMain,
-                              fontSize: 16,
+                              fontSize: healthSp(context, 16),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w700,
                               letterSpacing: -1.44,
@@ -488,14 +548,14 @@ class _WishListScreenState extends State<WishListScreen> {
                             ),
                           ),
                           if (descriptionLine.isNotEmpty) ...[
-                            const SizedBox(height: 6),
+                            SizedBox(height: healthDp(context, 6)),
                             Text(
                               descriptionLine,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: _textSub,
-                                fontSize: 12,
+                                fontSize: healthSp(context, 12),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w500,
                               ),
@@ -504,32 +564,40 @@ class _WishListScreenState extends State<WishListScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: healthDp(context, 10)),
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: productId.isEmpty ? null : () => _removeWishItem(productId),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 4)),
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          padding: EdgeInsets.symmetric(
+                              vertical: healthDp(context, 5)),
                           decoration: ShapeDecoration(
                             color: _chipFill,
                             shape: RoundedRectangleBorder(
-                              side: const BorderSide(width: 1, color: _pink),
-                              borderRadius: BorderRadius.circular(4),
+                              side: BorderSide(
+                                  width: healthDp(context, 1), color: _pink),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 4)),
                             ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.favorite, size: 24, color: _pink.withValues(alpha: 0.9)),
-                              const SizedBox(width: 5),
-                              const Text(
+                              Icon(
+                                Icons.favorite,
+                                size: healthDp(context, 24),
+                                color: _pink.withValues(alpha: 0.9),
+                              ),
+                              SizedBox(width: healthDp(context, 5)),
+                              Text(
                                 '찜 해제',
                                 style: TextStyle(
                                   color: _pink,
-                                  fontSize: 12,
+                                  fontSize: healthSp(context, 12),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -591,13 +659,14 @@ class _WishListScreenState extends State<WishListScreen> {
     );
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.only(bottom: healthDp(context, 20)),
       child: SizedBox(
         width: double.infinity,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(width: 1, color: _border),
-            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                width: healthDp(context, 1), color: _border),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             color: Colors.white,
           ),
           clipBehavior: Clip.antiAlias,
@@ -625,23 +694,36 @@ class _WishListScreenState extends State<WishListScreen> {
                       if (loadingProgress == null) return child;
                       return Container(
                         color: Colors.grey[100],
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: _pink,
+                        child: Center(
+                          child: SizedBox(
+                            width: healthDp(context, 28),
+                            height: healthDp(context, 28),
+                            child: CircularProgressIndicator(
+                              strokeWidth: healthDp(context, 2),
+                              color: _pink,
+                            ),
                           ),
                         ),
                       );
                     },
                     errorBuilder: (_, __, ___) => Container(
                       color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: healthDp(context, 48),
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(top: 10, left: 10, right: 10, bottom: 20),
+                padding: EdgeInsets.only(
+                  top: healthDp(context, 10),
+                  left: healthDp(context, 10),
+                  right: healthDp(context, 10),
+                  bottom: healthDp(context, 20),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -661,19 +743,19 @@ class _WishListScreenState extends State<WishListScreen> {
                         children: [
                           Text(
                             category.isNotEmpty ? category : '콘텐츠',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _textMain,
-                              fontSize: 12,
+                              fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: healthDp(context, 2)),
                           Text(
                             title.isNotEmpty ? title : '제목 없음',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _textMain,
-                              fontSize: 16,
+                              fontSize: healthSp(context, 16),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w700,
                               letterSpacing: -1.44,
@@ -685,20 +767,25 @@ class _WishListScreenState extends State<WishListScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: healthDp(context, 10)),
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: idStr.isEmpty ? null : () => _removeWishItem(idStr),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 4)),
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          padding: EdgeInsets.symmetric(
+                              vertical: healthDp(context, 5)),
                           decoration: ShapeDecoration(
                             color: const Color(0x0CFF5A8D),
                             shape: RoundedRectangleBorder(
-                              side: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
-                              borderRadius: BorderRadius.circular(4),
+                              side: BorderSide(
+                                  width: healthDp(context, 1),
+                                  color: const Color(0xFFFF5A8D)),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 4)),
                             ),
                           ),
                           child: Row(
@@ -706,22 +793,22 @@ class _WishListScreenState extends State<WishListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               SizedBox(
-                                width: 24,
-                                height: 24,
+                                width: healthDp(context, 24),
+                                height: healthDp(context, 24),
                                 child: Center(
                                   child: Icon(
                                     Icons.favorite,
-                                    size: 20,
+                                    size: healthDp(context, 20),
                                     color: const Color(0xFFFF5A8D),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 5),
-                              const Text(
+                              SizedBox(width: healthDp(context, 5)),
+                              Text(
                                 '찜 해제',
                                 style: TextStyle(
-                                  color: Color(0xFFFF5A8D),
-                                  fontSize: 12,
+                                  color: const Color(0xFFFF5A8D),
+                                  fontSize: healthSp(context, 12),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -744,21 +831,25 @@ class _WishListScreenState extends State<WishListScreen> {
   Widget _buildLoadMoreButton() {
     return SizedBox(
       width: double.infinity,
-      height: 40,
+      height: healthDp(context, 40),
       child: OutlinedButton(
         onPressed: _loadMore,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: const Color(0xFFD2D2D2),
+          ),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(healthDp(context, 10))),
           backgroundColor: Colors.white,
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(healthDp(context, 10)),
         ),
-        child: const Text(
+        child: Text(
           '더보기',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: _textMuted,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
