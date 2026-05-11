@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-// import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/app_bar.dart';
 import 'widgets/delivery_status_filter_bar.dart';
 import 'widgets/reservation_time_change_popup.dart';
@@ -15,6 +14,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'widgets/delivery_address_change_popup.dart';
 import 'widgets/order_flow_dialogs.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 
 /// 주문내역 화면
 class DeliveryListScreen extends StatefulWidget {
@@ -273,16 +273,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               ),
             ),
           ),
-          
-          // Footer
-          // const SliverToBoxAdapter(
-          //   child: Column(
-          //     children: [
-          //       SizedBox(height: 300),
-          //       AppFooter(),
-          //     ],
-          //   ),
-          // ),
           const SliverToBoxAdapter(child: SizedBox(height: 48)),
         ],
       ),
@@ -314,9 +304,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                   children: [
                     Text(
                       statusText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _kInk,
-                        fontSize: 14,
+                        fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
@@ -327,9 +317,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                       children: [
                         Text(
                           '주문일자: ${order.orderDate}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _kInk,
-                            fontSize: 10,
+                            fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
@@ -337,9 +327,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                         const SizedBox(height: 5),
                         Text(
                           '주문번호: ${order.odId}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _kInk,
-                            fontSize: 10,
+                            fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
@@ -354,11 +344,11 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       '주문상세',
                       style: TextStyle(
                         color: _kInk,
-                        fontSize: 12,
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
@@ -387,9 +377,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 if (order.deliveryFee > 0) ...[
                   Text(
                     '(배송비: ${PriceFormatter.format(order.deliveryFee)}원)',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _kMuted,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
                     ),
@@ -398,9 +388,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 ],
                 Text(
                   '총 ${PriceFormatter.format(order.totalPrice)}원',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kInk,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                   ),
@@ -502,9 +492,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kInk,
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                     letterSpacing: -1.26,
@@ -515,9 +505,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 const SizedBox(height: 5),
                 Text(
                   qtyLine,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kMuted2,
-                    fontSize: 10,
+                    fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -525,9 +515,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 const SizedBox(height: 5),
                 Text(
                   priceText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kInk,
-                    fontSize: 14,
+                    fontSize: healthSp(context, 14),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                   ),
@@ -537,8 +527,8 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       moreHint,
-                      style: const TextStyle(
-                        fontSize: 10,
+                      style: TextStyle(
+                        fontSize: healthSp(context, 10),
                         color: _kMuted2,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -687,9 +677,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               child: Center(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -721,9 +711,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               child: Center(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _kPink,
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -749,9 +739,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
             child: Center(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _kMuted,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
@@ -789,12 +779,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                     '$statusText 내역이 없습니다',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: healthSp(context, 16),
                       color: Colors.grey[600],
                     ),
                   ),
-                  const SizedBox(height: 48),
-                  // const AppFooter(),
                 ],
               ),
             ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../health/health_common/health_responsive_scale.dart';
+
 /// 주문 목록 상단 — 배송/주문 상태 필터 (가로 스크롤, `delivery_status` 키).
 class DeliveryStatusFilterBar extends StatelessWidget {
   const DeliveryStatusFilterBar({
@@ -37,7 +39,7 @@ class DeliveryStatusFilterBar extends StatelessWidget {
           children: [
             for (var i = 0; i < statusEntries.length; i++) ...[
               if (i > 0) const SizedBox(width: 20),
-              _tab(statusEntries[i].key, statusEntries[i].value),
+              _tab(context, statusEntries[i].key, statusEntries[i].value),
             ],
           ],
         ),
@@ -45,7 +47,7 @@ class DeliveryStatusFilterBar extends StatelessWidget {
     );
   }
 
-  Widget _tab(String key, String label) {
+  Widget _tab(BuildContext context, String key, String label) {
     final selected = selectedKey == key;
     return GestureDetector(
       onTap: () => onSelected(key),
@@ -63,7 +65,7 @@ class DeliveryStatusFilterBar extends StatelessWidget {
           label,
           style: TextStyle(
             color: selected ? _kPink : _kMuted,
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
