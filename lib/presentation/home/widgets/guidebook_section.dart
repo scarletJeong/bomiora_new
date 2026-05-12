@@ -6,7 +6,7 @@ import '../../health/health_common/health_responsive_scale.dart';
 import '../../content/dashboard/screens/content_detail_screen.dart';
 import 'btn_more.dart';
 import 'home_big_card.dart';
-import 'home_section_title_row.dart';
+import 'home_section_widgets.dart';
 
 class GuidebookSection extends StatefulWidget {
   const GuidebookSection({super.key});

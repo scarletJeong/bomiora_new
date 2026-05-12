@@ -6,7 +6,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import 'home_section_title_row.dart';
+import 'home_section_widgets.dart';
 
 const _defaultMainReviewImage =
     'https://bomiora0.mycafe24.com/data/mainreview/1686290723/7KO864Sk66W0_01.gif';

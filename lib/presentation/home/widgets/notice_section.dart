@@ -4,7 +4,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/announcement/announcement_model.dart';
 import '../../../data/services/announcement_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import 'home_list_section_widgets.dart';
+import 'home_section_widgets.dart';
 
 class NoticeSection extends StatelessWidget {
   const NoticeSection({super.key});

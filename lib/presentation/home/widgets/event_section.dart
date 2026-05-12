@@ -4,7 +4,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/event/event_model.dart';
 import '../../../data/services/event_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import 'home_list_section_widgets.dart';
+import 'home_section_widgets.dart';
 
 class EventSection extends StatelessWidget {
   const EventSection({super.key});
@@ -48,7 +48,7 @@ class EventSection extends StatelessWidget {
               children: [
                 HomeListSectionHeader(
                   title: 'Event',
-                  onMoreTap: () => Navigator.pushNamed(context, '/evnt'),
+                  onMoreTap: () => Navigator.pushNamed(context, '/event'),
                 ),
                 SizedBox(height: homeListSectionHeaderBodyGap(context)),
                 if (snapshot.connectionState == ConnectionState.waiting)
@@ -88,7 +88,7 @@ class EventSection extends StatelessWidget {
                           highlight: i == 0,
                           onTap: () => Navigator.pushNamed(
                             context,
-                            '/evnt/${topItems[i].wrId}',
+                            '/event/${topItems[i].wrId}',
                           ),
                         ),
                       ],

@@ -4,7 +4,7 @@ import '../../health/health_common/health_responsive_scale.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import 'btn_more.dart';
 import 'home_big_card.dart';
-import 'home_section_title_row.dart';
+import 'home_section_widgets.dart';
 
 class ProductSection extends StatelessWidget {
   const ProductSection({super.key});

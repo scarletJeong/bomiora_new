@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../common/widgets/web_dragscroll.dart';
-import 'home_section_title_row.dart';
+import 'home_section_widgets.dart';
 
 /// Figma 기준 폭 375에 맞춘 웰니스 PICK 카드 레이아웃 — [healthTextScaleByWidth]로 스케일.
 class WellnessSection extends StatelessWidget {
