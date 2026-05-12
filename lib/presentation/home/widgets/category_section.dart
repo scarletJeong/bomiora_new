@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
-import '../../common/responsive_scale.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../shopping/utils/get_product.dart';
@@ -16,8 +15,8 @@ class CategorySection extends StatefulWidget {
 
 class _CategorySectionState extends State<CategorySection>
     with SingleTickerProviderStateMixin {
-  static const String _productKind = 'prescription';
-  static final List<ProductCategoryItem> _tabs = productPrescriptionCategoryList;
+  static final List<ProductCategoryItem> _tabs =
+      productHomeCategorySectionTabList;
 
   late final TabController _tabController;
   final Map<String, List<Product>> _productsByCategory = {};
@@ -43,8 +42,9 @@ class _CategorySectionState extends State<CategorySection>
   }
 
   Future<void> _loadProductsForCurrentTab() async {
-    final categoryId = _tabs[_tabController.index].categoryId;
-    if (_productsByCategory.containsKey(categoryId)) return;
+    final tab = _tabs[_tabController.index];
+    final cacheKey = '${tab.productKind}:${tab.categoryId}';
+    if (_productsByCategory.containsKey(cacheKey)) return;
 
     setState(() {
       _isLoading = true;
@@ -53,14 +53,14 @@ class _CategorySectionState extends State<CategorySection>
 
     try {
       final products = await ProductRepository.getProductsByCategory(
-        categoryId: categoryId,
-        productKind: _productKind,
+        categoryId: tab.categoryId,
+        productKind: tab.productKind,
         page: 1,
         pageSize: 10,
       );
       if (!mounted) return;
       setState(() {
-        _productsByCategory[categoryId] = products;
+        _productsByCategory[cacheKey] = products;
         _isLoading = false;
       });
     } catch (_) {
@@ -80,7 +80,7 @@ class _CategorySectionState extends State<CategorySection>
       arguments: <String, dynamic>{
         'categoryId': tab.categoryId,
         'categoryName': tab.label,
-        'productKind': _productKind,
+        'productKind': tab.productKind,
       },
     );
   }
@@ -90,8 +90,10 @@ class _CategorySectionState extends State<CategorySection>
     final w = MediaQuery.sizeOf(context).width;
     final m = _CategoryHomeLayout.fromWidth(w);
     final selectedCategory = _tabs[_tabController.index];
+    final cacheKey =
+        '${selectedCategory.productKind}:${selectedCategory.categoryId}';
     final products =
-        _productsByCategory[selectedCategory.categoryId] ?? const <Product>[];
+        _productsByCategory[cacheKey] ?? const <Product>[];
 
     return Container(
       width: double.infinity,
@@ -146,24 +148,40 @@ class _CategorySectionState extends State<CategorySection>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < _tabs.length; i++) ...[
-                        if (i > 0) SizedBox(width: m.tabGap),
-                        _CategoryTabChip(
-                          label: _tabs[i].label,
-                          selected: _tabController.index == i,
-                          layout: m,
-                          onTap: () {
-                            if (_tabController.index != i) {
-                              _tabController.animateTo(i);
-                            }
-                          },
-                        ),
+                WebDragScrollConfiguration(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        for (var i = 0; i < _tabs.length; i++) ...[
+                          if (i > 0) ...[
+                            SizedBox(width: healthDp(context, 4)),
+                            Text(
+                              '|',
+                              style: TextStyle(
+                                color: const Color(0xFFC9C9C9),
+                                fontSize: m.tabFontSize * 0.62,
+                                height: 1.0,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            SizedBox(width: healthDp(context, 4)),
+                          ],
+                          _CategoryTabChip(
+                            label: _tabs[i].label,
+                            selected: _tabController.index == i,
+                            layout: m,
+                            onTap: () {
+                              if (_tabController.index != i) {
+                                _tabController.animateTo(i);
+                              }
+                            },
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 SizedBox(height: m.tabsToCarouselGap),
@@ -189,11 +207,11 @@ class _CategorySectionState extends State<CategorySection>
     required _CategoryHomeLayout layout,
   }) {
     if (_isLoading && products.isEmpty) {
-      return const Center(
+      return Center(
         child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2),
+          width: healthDp(context, 20),
+          height: healthDp(context, 20),
+          child: const CircularProgressIndicator(strokeWidth: 2),
         ),
       );
     }
@@ -230,26 +248,19 @@ class _CategorySectionState extends State<CategorySection>
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
-        itemCount: products.length + 1,
+        itemCount: products.length,
         separatorBuilder: (_, __) => SizedBox(width: layout.cardSpacing),
         itemBuilder: (context, index) {
-          if (index == products.length) {
-            final thumbUrl = products.isNotEmpty &&
-                    (products.first.imageUrl?.isNotEmpty ?? false)
-                ? products.first.imageUrl
-                : null;
-            return _CategoryMoreCard(
-              layout: layout,
-              backgroundImageUrl: thumbUrl,
-              onTap: _openCategoryProductList,
-            );
-          }
           final product = products[index];
+          final isLast = index == products.length - 1;
           return _CategoryProductCard(
             product: product,
             layout: layout,
-            onTap: () =>
-                Navigator.pushNamed(context, '/product/${product.id}'),
+            showMoreOverlay: isLast,
+            onTap: isLast
+                ? _openCategoryProductList
+                : () =>
+                    Navigator.pushNamed(context, '/product/${product.id}'),
           );
         },
       ),
@@ -257,7 +268,8 @@ class _CategorySectionState extends State<CategorySection>
   }
 }
 
-/// Figma 375 기준 + `lerpByWidth375_650`로 넓은 폭 보간.
+/// Figma **375** 기준 수치에 [healthTextScaleByWidth]를 곱해 375~650과 동일 배율로 스케일
+/// ([healthDp]/[healthSp]와 같은 규칙 — Figma 650 카드와 일치).
 class _CategoryHomeLayout {
   _CategoryHomeLayout({
     required this.headerTitleBarW,
@@ -268,7 +280,6 @@ class _CategoryHomeLayout {
     required this.titleLineGap,
     required this.headerToBodyGap,
     required this.tabsToCarouselGap,
-    required this.tabGap,
     required this.tabFontSize,
     required this.carouselHeight,
     required this.cardSpacing,
@@ -297,7 +308,6 @@ class _CategoryHomeLayout {
   final double titleLineGap;
   final double headerToBodyGap;
   final double tabsToCarouselGap;
-  final double tabGap;
   final double tabFontSize;
   final double carouselHeight;
   final double cardSpacing;
@@ -317,43 +327,46 @@ class _CategoryHomeLayout {
   final double moreTextGap;
   final double moreFontSize;
 
-  double get descLetterSpacing => homeCardBodyLetterSpacing(descFs);
+  double get descLetterSpacing => -0.05 * descFs;
 
   factory _CategoryHomeLayout.fromWidth(double w) {
-    final titleSubFs = lerpByWidth375_650(width: w, v375: 15, v650: 22);
-    final titleMainFs = lerpByWidth375_650(width: w, v375: 16, v650: 24);
-    final titleLineGap = lerpByWidth375_650(width: w, v375: 1.15, v650: 2);
-    final accentH =
-        titleSubFs * 1.2 + titleLineGap + titleMainFs * 1.2;
+    final s = healthTextScaleByWidth(w);
+    double sc(double base375) => base375 * s;
+
+    final titleSubFs = sc(15);
+    final titleMainFs = sc(16);
+    final titleLineGap = sc(1.15);
+    final accentH = titleSubFs * 1.2 + titleLineGap + titleMainFs * 1.2;
+
+    final cardW = sc(154.62);
 
     return _CategoryHomeLayout(
-      headerTitleBarW: lerpByWidth375_650(width: w, v375: 0.58, v650: 1),
-      headerRowGap: lerpByWidth375_650(width: w, v375: 10, v650: 14),
+      headerTitleBarW: sc(0.58),
+      headerRowGap: sc(10),
       headerAccentHeight: accentH,
       titleSubFs: titleSubFs,
       titleMainFs: titleMainFs,
       titleLineGap: titleLineGap,
-      headerToBodyGap: lerpByWidth375_650(width: w, v375: 20, v650: 28),
-      tabsToCarouselGap: lerpByWidth375_650(width: w, v375: 12, v650: 18),
-      tabGap: lerpByWidth375_650(width: w, v375: 8, v650: 10),
-      tabFontSize: lerpByWidth375_650(width: w, v375: 12, v650: 14),
-      carouselHeight: lerpByWidth375_650(width: w, v375: 277.5, v650: 400),
-      cardSpacing: lerpByWidth375_650(width: w, v375: 12, v650: 16),
-      cardW: lerpByWidth375_650(width: w, v375: 154.62, v650: 268),
-      imageW: lerpByWidth375_650(width: w, v375: 150, v650: 260),
-      imageH: lerpByWidth375_650(width: w, v375: 170, v650: 280),
-      radius: lerpByWidth375_650(width: w, v375: 11.54, v650: 20),
-      gapImageText: lerpByWidth375_650(width: w, v375: 12, v650: 16),
-      titleDescGap: lerpByWidth375_650(width: w, v375: 4, v650: 6),
-      titleFs: lerpByWidth375_650(width: w, v375: 14, v650: 20),
-      descFs: lerpByWidth375_650(width: w, v375: 10, v650: 14),
-      priceFs: lerpByWidth375_650(width: w, v375: 14, v650: 20),
-      descMaxW: lerpByWidth375_650(width: w, v375: 154.62, v650: 268),
-      titleMaxW: lerpByWidth375_650(width: w, v375: 150, v650: 260),
-      moreIconBox: lerpByWidth375_650(width: w, v375: 46.02, v650: 56),
-      moreIconPadding: lerpByWidth375_650(width: w, v375: 5.77, v650: 8),
-      moreTextGap: lerpByWidth375_650(width: w, v375: 6, v650: 8),
-      moreFontSize: lerpByWidth375_650(width: w, v375: 12, v650: 14),
+      headerToBodyGap: sc(20),
+      tabsToCarouselGap: sc(12),
+      tabFontSize: sc(12),
+      carouselHeight: sc(277.5),
+      cardSpacing: sc(12),
+      cardW: cardW,
+      imageW: sc(150),
+      imageH: sc(170),
+      radius: sc(11.54),
+      gapImageText: sc(12),
+      titleDescGap: sc(4),
+      titleFs: sc(14),
+      descFs: sc(10),
+      priceFs: sc(14),
+      descMaxW: cardW,
+      titleMaxW: sc(150),
+      moreIconBox: sc(46.02),
+      moreIconPadding: sc(5.77),
+      moreTextGap: sc(6),
+      moreFontSize: sc(12),
     );
   }
 }
@@ -375,9 +388,9 @@ class _CategoryTabChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
-        padding: const EdgeInsets.only(bottom: 2),
+        padding: EdgeInsets.only(bottom: healthDp(context, 1)),
         decoration: BoxDecoration(
           border: selected
               ? const Border(
@@ -397,7 +410,7 @@ class _CategoryTabChip extends StatelessWidget {
             fontSize: layout.tabFontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
-            height: 1.25,
+            height: 1.08,
           ),
         ),
       ),
@@ -410,11 +423,13 @@ class _CategoryProductCard extends StatelessWidget {
     required this.product,
     required this.layout,
     required this.onTap,
+    this.showMoreOverlay = false,
   });
 
   final Product product;
   final _CategoryHomeLayout layout;
   final VoidCallback onTap;
+  final bool showMoreOverlay;
 
   String _sanitizeDescription(String? raw) {
     final source = (raw ?? '').trim();
@@ -454,15 +469,69 @@ class _CategoryProductCard extends StatelessWidget {
               child: SizedBox(
                 width: m.imageW,
                 height: m.imageH,
-                child: (product.imageUrl?.isNotEmpty ?? false)
-                    ? Image.network(
-                        product.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const ColoredBox(
-                          color: Color(0xFFFFE9EA),
-                        ),
+                child: showMoreOverlay
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Positioned.fill(
+                            child: (product.imageUrl?.isNotEmpty ?? false)
+                                ? Image.network(
+                                    product.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        const ColoredBox(
+                                      color: Color(0xFFFFE9EA),
+                                    ),
+                                  )
+                                : const ColoredBox(color: Color(0xFFFFE9EA)),
+                          ),
+                          const ColoredBox(
+                            color: Color(0x40FF5A8D),
+                          ),
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: m.moreIconBox,
+                                  height:
+                                      m.moreIconBox * (46.23 / 46.02),
+                                  padding:
+                                      EdgeInsets.all(m.moreIconPadding),
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    color: Colors.white,
+                                    size: m.moreIconBox -
+                                        m.moreIconPadding * 2,
+                                  ),
+                                ),
+                                SizedBox(height: m.moreTextGap),
+                                Text(
+                                  'More',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: m.moreFontSize,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       )
-                    : const ColoredBox(color: Color(0xFFFFE9EA)),
+                    : ((product.imageUrl?.isNotEmpty ?? false)
+                        ? Image.network(
+                            product.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const ColoredBox(
+                              color: Color(0xFFFFE9EA),
+                            ),
+                          )
+                        : const ColoredBox(color: Color(0xFFFFE9EA))),
               ),
             ),
             SizedBox(height: m.gapImageText),
@@ -474,16 +543,19 @@ class _CategoryProductCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          product.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: m.titleFs,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                            height: 1.25,
+                        SizedBox(
+                          width: m.titleMaxW,
+                          child: Text(
+                            product.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: m.titleFs,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                              height: 1.25,
+                            ),
                           ),
                         ),
                         SizedBox(height: m.titleDescGap),
@@ -492,19 +564,22 @@ class _CategoryProductCard extends StatelessWidget {
                               ? const SizedBox.shrink()
                               : Align(
                                   alignment: Alignment.topLeft,
-                                  child: Text(
-                                    desc,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: const Color(0xFF666666),
-                                      fontSize: m.descFs,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w300,
-                                      letterSpacing: m.descLetterSpacing,
-                                      height: 1.35,
-                                    ),
+                                  child: SizedBox(
+                                width: m.descMaxW,
+                                child: Text(
+                                  desc,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: const Color(0xFF666666),
+                                    fontSize: m.descFs,
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: m.descLetterSpacing,
+                                    height: 1.35,
                                   ),
+                                ),
+                              ),
                                 ),
                         ),
                       ],
@@ -550,167 +625,6 @@ class _CategoryProductCard extends StatelessWidget {
                               height: 1.25,
                             ),
                           ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryMoreCard extends StatelessWidget {
-  const _CategoryMoreCard({
-    required this.layout,
-    this.backgroundImageUrl,
-    required this.onTap,
-  });
-
-  final _CategoryHomeLayout layout;
-  final String? backgroundImageUrl;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final m = layout;
-    final thumb = backgroundImageUrl?.trim();
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: m.cardW,
-        height: m.carouselHeight,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(m.radius),
-              child: SizedBox(
-                width: m.imageW,
-                height: m.imageH,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Positioned.fill(
-                      child: thumb != null && thumb.isNotEmpty
-                          ? Image.network(
-                              thumb,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const ColoredBox(
-                                color: Color(0xFFFFE9EA),
-                              ),
-                            )
-                          : const ColoredBox(color: Color(0xFFFFE9EA)),
-                    ),
-                    const ColoredBox(
-                      color: Color(0x40FF5A8D),
-                    ),
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: m.moreIconBox,
-                            height: m.moreIconBox * (46.23 / 46.02),
-                            padding: EdgeInsets.all(m.moreIconPadding),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.add_rounded,
-                              color: Colors.white,
-                              size: m.moreIconBox - m.moreIconPadding * 2,
-                            ),
-                          ),
-                          SizedBox(height: m.moreTextGap),
-                          Text(
-                            'More',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: m.moreFontSize,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: m.gapImageText),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '보미 다이어트환 9단계 프로맥스',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: m.titleFs,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                            height: 1.25,
-                          ),
-                        ),
-                        SizedBox(height: m.titleDescGap),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.topLeft,
-                            child: Text(
-                              '다이어트의 시작. 다이어트 스텐다드 라인업으로 쉬워지는 다이어트를 경험하세요.',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: const Color(0xFF666666),
-                                fontSize: m.descFs,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                                letterSpacing: m.descLetterSpacing,
-                                height: 1.35,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '26%  ',
-                            style: TextStyle(
-                              color: const Color(0xFFFF5A8D),
-                              fontSize: m.priceFs,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                              height: 1.25,
-                            ),
-                          ),
-                          TextSpan(
-                            text: '8,888,000원',
-                            style: TextStyle(
-                              color: const Color(0xFF231F20),
-                              fontSize: m.priceFs,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                              height: 1.25,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               ),

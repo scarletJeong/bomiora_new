@@ -1,8 +1,9 @@
-import '../../common/responsive_scale.dart';
+import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 
 /// 홈 가로 스크롤용 큰 카드(신상품·가이드북 등) 공통 치수.
 ///
-/// Figma **375** 기준. 넓은 레일(650)까지는 **375↔650만** 선형 보간(450 없음).
+/// Figma **375** 기준 수치에 [healthTextScaleByWidth]를 곱합니다
+/// ([healthDp]/[healthSp]와 동일 규칙).
 ///
 /// - 이미지: `317.31 × 172.43`, 모서리 `11.54`, `BoxFit.cover`
 /// - 이미지 ↔ 텍스트 블록: `12`
@@ -35,57 +36,22 @@ class HomeBigCardLayout {
   final double titleFs;
   final double descFs;
 
-  double get descLetterSpacing => homeCardBodyLetterSpacing(descFs);
+  double get descLetterSpacing => -0.05 * descFs;
 
   factory HomeBigCardLayout.fromWidth(double w) {
-    final titleFs = lerpByWidth375_650(
-      width: w,
-      v375: 14,
-      v650: 25,
-    );
-    final descFs = lerpByWidth375_650(
-      width: w,
-      v375: 10,
-      v650: 17,
-    );
+    final s = healthTextScaleByWidth(w);
+    double sc(double base375) => base375 * s;
+
     return HomeBigCardLayout(
-      cardW: lerpByWidth375_650(
-        width: w,
-        v375: 317.31,
-        v650: 550,
-      ),
-      imageH: lerpByWidth375_650(
-        width: w,
-        v375: 172.43,
-        v650: 299.01,
-      ),
-      textPanelHeight: lerpByWidth375_650(
-        width: w,
-        v375: 50.68,
-        v650: 87.86,
-      ),
-      radius: lerpByWidth375_650(
-        width: w,
-        v375: 11.54,
-        v650: 20,
-      ),
-      columnGap: lerpByWidth375_650(
-        width: w,
-        v375: 12,
-        v650: 20,
-      ),
-      titleDescGap: lerpByWidth375_650(
-        width: w,
-        v375: 6.92,
-        v650: 12,
-      ),
-      rowGapBetweenCards: lerpByWidth375_650(
-        width: w,
-        v375: 12,
-        v650: 20,
-      ),
-      titleFs: titleFs,
-      descFs: descFs,
+      cardW: sc(317.31),
+      imageH: sc(172.43),
+      textPanelHeight: sc(50.68),
+      radius: sc(11.54),
+      columnGap: sc(12),
+      titleDescGap: sc(6.92),
+      rowGapBetweenCards: sc(12),
+      titleFs: sc(14),
+      descFs: sc(10),
     );
   }
 

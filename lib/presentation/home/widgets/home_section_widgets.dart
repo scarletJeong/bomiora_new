@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'btn_more.dart';
 
-/// 홈 섹션 공용 위젯: [HomeSectionTitleRow], 공지·이벤트용 [HomeListSectionHeader] / 행·구분선.
+/// 공지·이벤트 리스트 점선·하단 실선 색 (Figma `#383838`).
+const Color kHomeListSectionLineColor = Color(0xFF898686);
 
-/// 홈 섹션 상단 라벨(검은 세로 띠 + 2줄 타이틀) — Figma 375 기준, [healthDp] / [healthSp] 스케일.
+/// 홈 섹션 공용 위젯: [HomeSectionTitleRow], 공지·이벤트용 [HomeListSectionHeader] / 행·구분선.
 class HomeSectionTitleRow extends StatelessWidget {
   const HomeSectionTitleRow({
     super.key,
@@ -194,33 +195,40 @@ double homeListSectionRowVerticalPadding(BuildContext context) {
   return healthDp(context, 10.38) / 2;
 }
 
-/// 행 사이 점선 구분 (---- 스타일).
+/// 행 사이 점선 구분 (---- 스타일). 색: [kHomeListSectionLineColor].
 class HomeListSectionDashedDivider extends StatelessWidget {
   const HomeListSectionDashedDivider({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const lineColor = Color(0xFFE4BDC2);
+    final stroke = healthDp(context, 1).clamp(1.0, 2.0);
     return SizedBox(
       height: healthDp(context, 6),
       width: double.infinity,
       child: CustomPaint(
-        painter: _HomeListDashedLinePainter(color: lineColor),
+        painter: _HomeListDashedLinePainter(
+          color: kHomeListSectionLineColor,
+          strokeWidth: stroke,
+        ),
       ),
     );
   }
 }
 
 class _HomeListDashedLinePainter extends CustomPainter {
-  _HomeListDashedLinePainter({required this.color});
+  _HomeListDashedLinePainter({
+    required this.color,
+    required this.strokeWidth,
+  });
 
   final Color color;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 1
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
     const dashLen = 4.0;
     const gapLen = 3.0;
@@ -235,7 +243,23 @@ class _HomeListDashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HomeListDashedLinePainter oldDelegate) {
-    return oldDelegate.color != color;
+    return oldDelegate.color != color ||
+        oldDelegate.strokeWidth != strokeWidth;
+  }
+}
+
+/// 리스트 본문 아래 전체 폭 실선 (색: [kHomeListSectionLineColor]).
+class HomeListSectionBottomSolidDivider extends StatelessWidget {
+  const HomeListSectionBottomSolidDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final h = healthDp(context, 1).clamp(1.0, 2.0);
+    return SizedBox(
+      width: double.infinity,
+      height: h,
+      child: const ColoredBox(color: kHomeListSectionLineColor),
+    );
   }
 }
 

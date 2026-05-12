@@ -123,7 +123,6 @@ class _ReviewSectionState extends State<ReviewSection> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(
         horizontal: healthDp(context, 24),
-        vertical: healthDp(context, 48),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +150,7 @@ class _ReviewSectionState extends State<ReviewSection> {
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: healthDp(context, 20),
-                    vertical: healthDp(context, 8),
+                    vertical: healthDp(context, 6),
                   ),
                   decoration: ShapeDecoration(
                     color: const Color(0xFFFF5A8D),

@@ -143,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomePage() {
     final sectionGap = healthDp(context, 40);
-    final afterQuickGap = healthDp(context, 24);
 
     return isLoading
         ? const Center(child: CircularProgressIndicator())
@@ -154,7 +153,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 const MainBannerSlider(),
                 const HomeQuickTabSection(),
                 SizedBox(height: sectionGap),
-                SizedBox(height: afterQuickGap),
 
                 // 웰니스 섹션  - 임시
                 const WellnessSection(),

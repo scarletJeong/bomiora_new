@@ -81,6 +81,7 @@ class NoticeSection extends StatelessWidget {
                       ],
                     ],
                   ),
+                const HomeListSectionBottomSolidDivider(),
               ],
             ),
           ),

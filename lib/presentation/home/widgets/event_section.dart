@@ -94,6 +94,7 @@ class EventSection extends StatelessWidget {
                       ],
                     ],
                   ),
+                const HomeListSectionBottomSolidDivider(),
               ],
             ),
           ),

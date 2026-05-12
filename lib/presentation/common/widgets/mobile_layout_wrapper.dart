@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../responsive_scale.dart';
 
-/// 모바일 앱처럼 600px 고정 너비로 감싸는 공통 위젯
+/// 모바일 앱처럼 [maxWidth]로 가로를 제한해 가운데 정렬하는 공통 위젯.
 class MobileLayoutWrapper extends StatelessWidget {
   final Widget child;
   final bool showShadow;
@@ -19,25 +18,22 @@ class MobileLayoutWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100], // 외부 배경색
-      body: LayoutBuilder(builder: (context, constraints) {
-        final rs = buildResponsiveScale(
-          constraints: constraints,
-          maxWidth: maxWidth,
-        );
-        return Center(
-          child: ResponsiveScaleScope(
-            data: rs,
+      backgroundColor: Colors.grey[100],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final contentWidth = constraints.maxWidth > maxWidth
+              ? maxWidth
+              : constraints.maxWidth;
+          return Center(
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(
-                // 전역 텍스트 스케일은 고정. (폰트 반응형은 rs.sp()로만 제어)
                 textScaler: const TextScaler.linear(1.0),
               ),
               child: Container(
-                width: rs.width, // 최대 maxWidth, 작아지면 화면폭에 맞춤
+                width: contentWidth,
                 height: double.infinity,
                 decoration: BoxDecoration(
-                  color: backgroundColor ?? Colors.white, // 기본값: 하얀색
+                  color: backgroundColor ?? Colors.white,
                   boxShadow: showShadow
                       ? [
                           BoxShadow(
@@ -51,9 +47,9 @@ class MobileLayoutWrapper extends StatelessWidget {
                 child: child,
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }
@@ -88,7 +84,6 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     PreferredSizeWidget? wrappedAppBar = appBar;
     if (appBar != null && appBar is AppBar) {
       final originalAppBar = appBar as AppBar;
-      // 항상 AppBar를 재생성하여 스크롤 시 색상 변경 방지
       wrappedAppBar = AppBar(
         key: originalAppBar.key,
         leading: originalAppBar.leading,
@@ -119,27 +114,24 @@ class MobileAppLayoutWrapper extends StatelessWidget {
         systemOverlayStyle: originalAppBar.systemOverlayStyle,
       );
     }
-    
+
     return Scaffold(
-      backgroundColor: outerBackgroundColor ?? Colors.grey[100], // 외부 배경색
-      body: LayoutBuilder(builder: (context, constraints) {
-        final rs = buildResponsiveScale(
-          constraints: constraints,
-          maxWidth: maxWidth,
-        );
-        return Center(
-          child: ResponsiveScaleScope(
-            data: rs,
+      backgroundColor: outerBackgroundColor ?? Colors.grey[100],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final contentWidth = constraints.maxWidth > maxWidth
+              ? maxWidth
+              : constraints.maxWidth;
+          return Center(
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(
-                // 전역 텍스트 스케일은 고정. (폰트 반응형은 rs.sp()로만 제어)
                 textScaler: const TextScaler.linear(1.0),
               ),
               child: Container(
-                width: rs.width, // 최대 maxWidth, 작아지면 화면폭에 맞춤
+                width: contentWidth,
                 height: double.infinity,
                 decoration: BoxDecoration(
-                  color: backgroundColor ?? Colors.white, // 기본값: 하얀색
+                  color: backgroundColor ?? Colors.white,
                   boxShadow: showShadow
                       ? [
                           BoxShadow(
@@ -152,8 +144,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
                 ),
                 child: Scaffold(
                   key: scaffoldKey,
-                  backgroundColor:
-                      backgroundColor ?? Colors.white, // 기본값: 하얀색
+                  backgroundColor: backgroundColor ?? Colors.white,
                   appBar: wrappedAppBar ?? appBar,
                   drawer: drawer,
                   endDrawer: endDrawer,
@@ -161,9 +152,9 @@ class MobileAppLayoutWrapper extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }

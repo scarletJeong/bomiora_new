@@ -1,9 +1,7 @@
+import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 import 'package:flutter/material.dart';
 
-import '../../common/responsive_scale.dart';
-import '../../health/health_common/health_responsive_scale.dart';
-
-/// Figma 375: `padding` 5, `borderRadius` 16, 라벨 `More` (10pt · w500 · 흰색).
+/// Figma **375**: 칩 `47.11461 × 22`, `padding` 5, `borderRadius` 16, 내부 간격 2, 라벨 10sp · w500 · 흰색.
 class BtnMore extends StatelessWidget {
   const BtnMore({
     super.key,
@@ -16,43 +14,60 @@ class BtnMore extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.sizeOf(context).width;
-    final pad = lerpByWidth375_650(width: w, v375: 5, v650: 6);
-    final radius = lerpByWidth375_650(width: w, v375: 16, v650: 20);
+    final wChip = healthDp(context, 47.11461);
+    final hChip = healthDp(context, 22);
+    final pad = healthDp(context, 5);
+    final radius = healthDp(context, 16);
+    final innerGap = healthDp(context, 2);
 
-    final chip = Container(
-      padding: EdgeInsets.all(pad),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFFF5A8D),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: lerpByWidth375_650(width: w, v375: 2, v650: 2),
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: healthSp(context, 10),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
+    final chip = SizedBox(
+      width: wChip,
+      height: hChip,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: const Color(0xFFFF5A8D),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
           ),
-        ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(pad),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: innerGap,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 10),
+                    height: 1.0,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
 
     final tap = onTap;
     if (tap == null) return chip;
-    return InkWell(
-      onTap: tap,
-      borderRadius: BorderRadius.circular(radius),
-      child: chip,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: tap,
+        borderRadius: BorderRadius.circular(radius),
+        child: chip,
+      ),
     );
   }
 }
