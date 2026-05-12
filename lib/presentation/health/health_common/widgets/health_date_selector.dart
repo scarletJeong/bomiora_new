@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 
+import '../health_responsive_scale.dart';
+
 /// 새 측정 기록: 목록에서 보고 있는 날짜에 맞춘 기본 시각 (당일이면 지금, 과거 날짜면 그 날짜+현재 시·분, 미래는 항상 금지).
 DateTime healthDefaultNewRecordDateTime(DateTime contextDay) {
   final day = DateUtils.dateOnly(contextDay);
@@ -830,7 +832,7 @@ class HealthDateSelector extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(width: 3),
+            SizedBox(width: healthDp(context, 8)),
             InkWell(
               borderRadius: BorderRadius.circular(20),
               onTap: () async {
@@ -844,11 +846,15 @@ class HealthDateSelector extends StatelessWidget {
                   onDateChanged(picked);
                 }
               },
-              child: Icon(Icons.calendar_today, size: 12, color: iconColor),
+              child: Icon(
+                Icons.calendar_today,
+                size: healthSp(context, 12),
+                color: iconColor,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: healthDp(context, 6)),
         SizedBox(
           width: double.infinity,
           height: 36,
@@ -856,7 +862,7 @@ class HealthDateSelector extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
                 child: Row(
                   children: [
                     _buildDateText(
@@ -925,7 +931,7 @@ class HealthDateSelector extends StatelessWidget {
         text,
         style: TextStyle(
           color: isSelected ? selectedTextColor : unselectedTextColor,
-          fontSize: isSelected ? 20 : 16,
+          fontSize: 16,
           height: 1.0,
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w300,
