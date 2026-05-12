@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../health_responsive_scale.dart';
+import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 
 class HealthEditBottomSheetItem<T> {
   final T data;

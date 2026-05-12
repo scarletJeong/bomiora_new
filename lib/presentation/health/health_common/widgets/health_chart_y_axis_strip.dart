@@ -1,7 +1,7 @@
+import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
-import '../health_responsive_scale.dart';
 
 /// 체중·심박수 일간 그래프용: Y축 상단 단위 밴드 + 숫자 눈금 ([PeriodChartWidget]·체중 차트와 동일 레이아웃)
 Widget buildChartYAxisStripWithUnit({

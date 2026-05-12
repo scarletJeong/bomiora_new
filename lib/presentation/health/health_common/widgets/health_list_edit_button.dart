@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../health_responsive_scale.dart';
+import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 
 /// 체중 목록 등에서 쓰는 **수정하기** 칩 (375 기준: 패딩 5, 모서리 10, 글자 8sp).
 ///

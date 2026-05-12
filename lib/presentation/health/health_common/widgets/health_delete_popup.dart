@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import '../health_responsive_scale.dart';
+import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 
 Future<bool?> showHealthDeletePopup({
   required BuildContext context,
