@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
+import '../../health/health_common/health_responsive_scale.dart';
+import 'home_section_title_row.dart';
 
 const _defaultMainReviewImage =
     'https://bomiora0.mycafe24.com/data/mainreview/1686290723/7KO864Sk66W0_01.gif';
@@ -30,6 +32,54 @@ String _mainHomeReviewCardImageUrl(MainHomeReviewModel r, int index) {
 /// 메인리뷰 이미지 실패 시 기존 itemuse 경로 재시도용
 String _mainHomeReviewFallbackImageUrl() {
   return ImageUrlHelper.convertToLocalUrl(_defaultMainReviewImage);
+}
+
+/// Figma 375 기준 리뷰 카드·그리드 치수 — [healthDp] / [healthSp]로 스케일.
+class _ReviewCardLayout {
+  const _ReviewCardLayout({
+    required this.cardHeight,
+    required this.radius,
+    required this.overlayLeft,
+    required this.overlayTop,
+    required this.overlayWidth,
+    required this.overlayHeight,
+    required this.textColumnGap,
+    required this.nameFontSize,
+    required this.bodyFontSize,
+    required this.gridCrossSpacing,
+    required this.gridMainSpacing,
+    required this.titleToGridGap,
+  });
+
+  final double cardHeight;
+  final double radius;
+  final double overlayLeft;
+  final double overlayTop;
+  final double overlayWidth;
+  final double overlayHeight;
+  final double textColumnGap;
+  final double nameFontSize;
+  final double bodyFontSize;
+  final double gridCrossSpacing;
+  final double gridMainSpacing;
+  final double titleToGridGap;
+
+  factory _ReviewCardLayout.fromContext(BuildContext context) {
+    return _ReviewCardLayout(
+      cardHeight: healthDp(context, 199.62),
+      radius: healthDp(context, 10),
+      overlayLeft: healthDp(context, 5),
+      overlayTop: healthDp(context, 136.48),
+      overlayWidth: healthDp(context, 145),
+      overlayHeight: healthDp(context, 51),
+      textColumnGap: healthDp(context, 8),
+      nameFontSize: healthSp(context, 14),
+      bodyFontSize: healthSp(context, 10),
+      gridCrossSpacing: healthDp(context, 10),
+      gridMainSpacing: healthDp(context, 10),
+      titleToGridGap: healthDp(context, 18),
+    );
+  }
 }
 
 class ReviewSection extends StatefulWidget {
@@ -68,114 +118,66 @@ class _ReviewSectionState extends State<ReviewSection> {
 
   @override
   Widget build(BuildContext context) {
+    final layout = _ReviewCardLayout.fromContext(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 24),
+        vertical: healthDp(context, 48),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 2,
-                    height: 40,
-                    color: const Color(0xFF28171A),
-                  ),
-                  const SizedBox(width: 6),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'BEST',
-                        style: TextStyle(
-                          color: Color(0x665B3F43),
-                          fontSize: 10,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                          height: 1.5,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      Text(
-                        '리뷰',
-                        style: TextStyle(
-                          color: Color(0xFF28171A),
-                          fontSize: 20,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFFF5A8D),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                ),
-                child: const Text(
-                  '+ More',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            ],
+          const HomeSectionTitleRow(
+            line1: 'BEST',
+            line2: '리뷰',
           ),
-          const SizedBox(height: 0),
-          Transform.translate(
-            offset: const Offset(0, -35),
-            child: _buildGridBody(),
-          ),
-          const SizedBox(height: 12),
+          SizedBox(height: layout.titleToGridGap),
+          _buildGridBody(context, layout),
+          SizedBox(height: healthDp(context, 48)),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Container(height: 1, color: const Color(0xFFE0E0E0)),
+                child: SizedBox(
+                  height: healthDp(context, 1),
+                  child: const ColoredBox(color: Color(0xFFE0E0E0)),
+                ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 12),
+                ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 20),
+                    vertical: healthDp(context, 8),
+                  ),
                   decoration: ShapeDecoration(
                     color: const Color(0xFFFF5A8D),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(9999),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 17.88)),
                     ),
                   ),
-                  child: const Text(
-                    '리뷰 더보기',
+                  child: Text(
+                    '+ 리뷰 더 보기',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       height: 1.5,
                     ),
                   ),
                 ),
               ),
               Expanded(
-                child: Container(height: 1, color: const Color(0xFFE0E0E0)),
+                child: SizedBox(
+                  height: healthDp(context, 1),
+                  child: const ColoredBox(color: Color(0xFFE0E0E0)),
+                ),
               ),
             ],
           ),
@@ -184,28 +186,28 @@ class _ReviewSectionState extends State<ReviewSection> {
     );
   }
 
-  Widget _buildGridBody() {
+  Widget _buildGridBody(BuildContext context, _ReviewCardLayout layout) {
     if (_loading) {
-      return const SizedBox(
-        height: 185 * 2 + 8,
+      return SizedBox(
+        height: layout.cardHeight * 2 + layout.gridMainSpacing,
         child: Center(
           child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            width: healthDp(context, 28),
+            height: healthDp(context, 28),
+            child: const CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
       );
     }
     if (_reviews.isEmpty) {
-      return const SizedBox(
-        height: 80,
+      return SizedBox(
+        height: healthDp(context, 80),
         child: Center(
           child: Text(
             '등록된 리뷰가 없습니다.',
             style: TextStyle(
-              color: Color(0x995B3F43),
-              fontSize: 13,
+              color: const Color(0x995B3F43),
+              fontSize: healthSp(context, 13),
               fontFamily: 'Gmarket Sans TTF',
             ),
           ),
@@ -215,11 +217,11 @@ class _ReviewSectionState extends State<ReviewSection> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisExtent: 185,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        mainAxisExtent: layout.cardHeight,
+        crossAxisSpacing: layout.gridCrossSpacing,
+        mainAxisSpacing: layout.gridMainSpacing,
       ),
       itemCount: _reviews.length,
       itemBuilder: (context, index) {
@@ -227,6 +229,7 @@ class _ReviewSectionState extends State<ReviewSection> {
         final thumb = _mainHomeReviewCardImageUrl(r, index);
         final fallbackThumb = _mainHomeReviewFallbackImageUrl();
         return _ReviewCard(
+          layout: layout,
           titleLine: r.headline,
           bodyLine: r.bodyText,
           imageUrl: thumb,
@@ -240,12 +243,14 @@ class _ReviewSectionState extends State<ReviewSection> {
 class _ReviewCard extends StatelessWidget {
   static const double _overlayOpacity = 0.9;
 
+  final _ReviewCardLayout layout;
   final String titleLine;
   final String bodyLine;
   final String? imageUrl;
   final String? fallbackImageUrl;
 
   const _ReviewCard({
+    required this.layout,
     required this.titleLine,
     required this.bodyLine,
     this.imageUrl,
@@ -254,22 +259,21 @@ class _ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = layout;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(m.radius),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 배경 이미지
           Positioned.fill(
             child: imageUrl != null && imageUrl!.isNotEmpty
                 ? _ReviewCardImage(
                     primaryUrl: imageUrl!,
                     fallbackUrl: fallbackImageUrl,
+                    fit: BoxFit.cover,
                   )
-                : Container(color: const Color(0xFFE0E0E0)),
+                : const ColoredBox(color: Color(0xFFE0E0E0)),
           ),
-
-          // 핑크 오버레이
           Positioned.fill(
             child: Opacity(
               opacity: _overlayOpacity,
@@ -279,68 +283,49 @@ class _ReviewCard extends StatelessWidget {
               ),
             ),
           ),
-
-          // 텍스트 — `bottom:0`만 쓰면 블록이 카드 맨 아래에 붙어 위쪽 핑크가 빈 것처럼 보임.
-          // 핑크 수평 경계(flatY)부터 영역을 잡아 제목이 핑크 상단에 붙도록 함.
           Positioned(
-            left: 0,
-            right: 0,
-            top: BottomCurveClipper.flatY,
-            bottom: 0,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 2,
-                        height: 14,
-                        color: Colors.white70,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          titleLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                            height: 1.25,
-                            shadows: [
-                              Shadow(
-                                  blurRadius: 4,
-                                  color: Color(0x66000000)),
-                            ],
-                          ),
-                        ),
-                      ),
+            left: m.overlayLeft,
+            top: m.overlayTop,
+            width: m.overlayWidth,
+            height: m.overlayHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Text(
+                  titleLine,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.nameFontSize,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                    shadows: const [
+                      Shadow(blurRadius: 4, color: Color(0x66000000)),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
+                ),
+                SizedBox(height: m.textColumnGap),
+                Expanded(
+                  child: Text(
                     bodyLine,
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: m.bodyFontSize,
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w400,
-                      height: 1.45,
-                      shadows: [
+                      fontWeight: FontWeight.w500,
+                      height: 1.38,
+                      shadows: const [
                         Shadow(blurRadius: 4, color: Color(0x66000000)),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -352,10 +337,12 @@ class _ReviewCard extends StatelessWidget {
 class _ReviewCardImage extends StatefulWidget {
   final String primaryUrl;
   final String? fallbackUrl;
+  final BoxFit fit;
 
   const _ReviewCardImage({
     required this.primaryUrl,
     this.fallbackUrl,
+    this.fit = BoxFit.cover,
   });
 
   @override
@@ -370,7 +357,7 @@ class _ReviewCardImageState extends State<_ReviewCardImage> {
   Widget build(BuildContext context) {
     return Image.network(
       _activeUrl,
-      fit: BoxFit.cover,
+      fit: widget.fit,
       alignment: Alignment.center,
       errorBuilder: (_, __, ___) {
         final fallback = widget.fallbackUrl;
@@ -427,22 +414,17 @@ class _ReviewCardImageState extends State<_ReviewCardImage> {
 ///   직선: (width, height)    ← 오른쪽 하단
 ///   직선: (0, height)        ← 왼쪽 하단
 class BottomCurveClipper extends CustomClipper<Path> {
-  // 수평 기준선 y (카드 상단에서 얼마나 아래인가 — 고정값)
-  // 카드높이 185 기준, 핑크가 약 40% = 74px → topY = 185 - 74 = 111
-  static const double flatY = 111.0;
-
-  // 왼쪽 꼭짓점이 flatY보다 얼마나 위로 올라가는가
-  static const double riseAmount = 36.0;
-
-  // 곡선이 수평선(flatY)에 닿는 x 위치
-  static const double curveEndX = 56.0;
-
-  /// 수평선과 오른쪽 변이 만나는 꼭짓점을 둥글게 (카드 오른쪽 상단 느낌과 맞춤)
-  static const double topRightCornerRadius = 12.0;
-
+  /// [size] 기준 — 185 높이 때 flatY=111 등 비율 유지 (199.62 등에서도 형태 일치).
   @override
   Path getClip(Size size) {
-    const double topY = flatY - riseAmount; // 왼쪽 꼭짓점 y
+    final flatY = size.height * (111.0 / 185.0);
+    final riseAmount = size.height * (36.0 / 185.0);
+    final topY = flatY - riseAmount;
+    final curveEndX =
+        (56.0 * size.width / 156.0).clamp(20.0, size.width * 0.48);
+    final topRightCornerRadius =
+        (12.0 * size.width / 156.0).clamp(4.0, 18.0);
+
     final path = Path()..moveTo(0, topY);
 
     path.quadraticBezierTo(0, flatY, curveEndX, flatY);
@@ -478,5 +460,5 @@ class BottomCurveClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+  bool shouldReclip(covariant BottomCurveClipper oldClipper) => false;
 }

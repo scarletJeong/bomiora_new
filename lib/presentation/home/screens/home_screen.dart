@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/main_banner_slider.dart';
 import '../widgets/review_section.dart';
-import '../widgets/new_product.dart';
+import '../widgets/product_section.dart';
 import '../widgets/wellness_section.dart';
 import '../widgets/category_section.dart';
 import '../widgets/guidebook_section.dart';
@@ -14,7 +14,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/app_footer.dart';  
-import '../../common/responsive_scale.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/notice_section.dart';
 import '../widgets/event_section.dart';
 
@@ -142,8 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomePage() {
-    final rs = context.rs;
-    final sectionGap = SizedBox(height: rs.dp(24));
+    final sectionGap = healthDp(context, 40);
+    final afterQuickGap = healthDp(context, 24);
 
     return isLoading
         ? const Center(child: CircularProgressIndicator())
@@ -153,35 +153,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 // 메인 배너 슬라이더
                 const MainBannerSlider(),
                 const HomeQuickTabSection(),
-                sectionGap,
+                SizedBox(height: sectionGap),
+                SizedBox(height: afterQuickGap),
 
                 // 웰니스 섹션  - 임시
                 const WellnessSection(),
-                sectionGap,
+                SizedBox(height: sectionGap),
 
                 // 신상품 섹션 - 임시
-                const NewProductSection(),
-                sectionGap,
+                const ProductSection(),
+                SizedBox(height: sectionGap),
                 
                 // 카테고리 섹션 - 임시
                 const CategorySection(),
-                sectionGap,
+                SizedBox(height: sectionGap),
                 
                 // 가이드북 섹션 - 임시
                 const GuidebookSection(),
-                sectionGap,
+                SizedBox(height: sectionGap),
 
                 // 리뷰 섹션 - 임시
                 const ReviewSection(),
-                sectionGap,
+                SizedBox(height: sectionGap),
 
                 // 공지사항 섹션 - 임시
                 const NoticeSection(),
-                sectionGap,
+                SizedBox(height: sectionGap),
 
                 // 이벤트 섹션 - 임시
                 const EventSection(),
-                sectionGap,
+                SizedBox(height: sectionGap),
     
                 // Footer
                 // const AppFooter(),

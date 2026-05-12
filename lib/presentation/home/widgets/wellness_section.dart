@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../../health/health_common/health_responsive_scale.dart';
+import '../../common/widgets/web_dragscroll.dart';
+import 'home_section_title_row.dart';
+
+/// Figma 기준 폭 375에 맞춘 웰니스 PICK 카드 레이아웃 — [healthTextScaleByWidth]로 스케일.
 class WellnessSection extends StatelessWidget {
   const WellnessSection({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    final s = healthTextScaleByWidth(w);
+
+    double d(num v) => v.toDouble() * s;
+
+    final cardW = d(317.31);
+    final listH = d(172.50 + 12 + 90.50);
+    final gapCards = d(12);
+    final iw = d(317.31).round();
+    final ih = d(172.50).round();
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.zero,
@@ -13,93 +29,35 @@ class WellnessSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 2,
-                  height: 40,
-                  color: const Color(0xFF28171A),
-                ),
-                const SizedBox(width: 6),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      '나만의',
-                      style: TextStyle(
-                        color: Color(0x665B3F43),
-                        fontSize: 10,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w700,
-                        height: 1.5,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    Text(
-                      '웰니스 PICK!',
-                      style: TextStyle(
-                        color: Color(0xFF28171A),
-                        fontSize: 20,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w700,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFFF5A8D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(9999),
-                    ),
-                  ),
-                  child: const Text(
-                    '+ More',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
+            child: const HomeSectionTitleRow(
+              line1: '나만의',
+              line2: '웰니스 Pick!',
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: healthDp(context, 12)),
           SizedBox(
-            height: 278,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              children: const [
-                _NewProductCard(
-                  title: '보미 다이어트한 신제품 출시!\n보미 다이어트한',
-                  discountText: '26%',
-                  priceText: '8,888,000원',
-                ),
-                SizedBox(width: 16),
-                _NewProductCard(
-                  title: '대사 활성화를 위한 보미 다이\n어트한 8단계',
-                  discountText: '26%',
-                  priceText: '8,888,000원',
-                ),
-                SizedBox(width: 16),
-                _NewProductCard(
-                  title: '대사 활성화를 위한 보미 다이\n어트한 8단계',
-                  discountText: '26%',
-                  priceText: '8,888,000원',
-                ),
-              ],
+            height: listH,
+            child: WebDragScrollConfiguration(
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
+                itemCount: 3,
+                separatorBuilder: (_, __) => SizedBox(width: gapCards),
+                itemBuilder: (context, index) {
+                  return _WellnessPickCard(
+                    scale: s,
+                    cardWidth: cardW,
+                    title: '김동은 원장의 필라테스 요가 강의 커밍순!',
+                    description:
+                        '김동은 원장의 필라테스 강의 커밍순! 로봇처럼 정확하지만\n인간미가 넘치는 필라테스 강의 지금 신청하세요.',
+                    originalPrice: '8,888,000원',
+                    discountLabel: '26%',
+                    salePrice: '8,888,000원',
+                    imageUrl: 'https://placehold.co/${iw}x$ih',
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -108,132 +66,152 @@ class WellnessSection extends StatelessWidget {
   }
 }
 
-class _NewProductCard extends StatelessWidget {
-  static const String _description =
-      '쉬워지는 다이어트 보미 다이어트환 드디어 7~9단계가 출시됐습니다. 기존 단계로 효과를 못보신 분들께 적합합니다.';
-
+class _WellnessPickCard extends StatelessWidget {
+  final double scale;
+  final double cardWidth;
   final String title;
-  final String discountText;
-  final String priceText;
+  final String description;
+  final String originalPrice;
+  final String discountLabel;
+  final String salePrice;
+  final String imageUrl;
 
-  const _NewProductCard({ 
+  const _WellnessPickCard({
+    required this.scale,
+    required this.cardWidth,
     required this.title,
-    required this.discountText,
-    required this.priceText,
+    required this.description,
+    required this.originalPrice,
+    required this.discountLabel,
+    required this.salePrice,
+    required this.imageUrl,
   });
+
+  double d(num v) => v.toDouble() * scale;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 320,
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 2,
-            offset: Offset(0, 1),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: SizedBox(
-                height: 160,
-                width: double.infinity,
-                child: const ColoredBox(
+    final imgH = d(172.50);
+    final imgPad = d(5.77);
+    final imgRadius = d(11.54);
+    final infoH = d(90.50);
+    final colGap = d(12);
+    final titleDescGap = d(6.92);
+    final strikeSaleGap = d(0.58);
+
+    final titleSize = d(14);
+    final bodySize = d(10);
+    final priceAccentSize = d(14);
+
+    return SizedBox(
+      width: cardWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(imgRadius),
+            child: Container(
+              width: cardWidth,
+              height: imgH,
+              color: const Color(0xFFFFE9EA),
+              padding: EdgeInsets.all(imgPad),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const ColoredBox(
                   color: Color(0xFFFFE9EA),
                 ),
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+          ),
+          SizedBox(height: colGap),
+          SizedBox(
+            height: infoH,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF28171A),
-                        fontSize: 12,
+                      style: TextStyle(
+                        color: const Color(0xFF231F20),
+                        fontSize: titleSize,
                         fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w600,
-                        height: 1.33,
+                        fontWeight: FontWeight.w500,
+                        height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _description,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0x665B3F43),
-                                fontSize: 10,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                                height: 1.45,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    discountText,
-                                    style: const TextStyle(
-                                      color: Color(0xFFB80049),
-                                      fontSize: 10,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w700,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    priceText,
-                                    style: const TextStyle(
-                                      color: Color(0xFF28171A),
-                                      fontSize: 10,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w700,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
+                    SizedBox(height: titleDescGap),
+                    Text(
+                      description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: const Color(0xFF898686),
+                        fontSize: bodySize,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                        height: 1.35,
+                        letterSpacing: -0.50,
                       ),
                     ),
                   ],
                 ),
-              ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        originalPrice,
+                        style: TextStyle(
+                          color: const Color(0xFF898686),
+                          fontSize: bodySize,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                      SizedBox(height: strikeSaleGap),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '$discountLabel  ',
+                              style: TextStyle(
+                                color: const Color(0xFFFF5A8D),
+                                fontSize: priceAccentSize,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextSpan(
+                              text: salePrice,
+                              style: TextStyle(
+                                color: const Color(0xFF231F20),
+                                fontSize: priceAccentSize,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
