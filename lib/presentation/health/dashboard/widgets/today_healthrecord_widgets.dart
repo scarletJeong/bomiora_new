@@ -51,6 +51,12 @@ class TodayHealthRecordSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double stepsPad = healthDp(context, 10);
+    final double stepsRing = healthDp(context, 65.6);
+    // 카드 내부 좌우 패딩 + 링(375 기준 65.6) 이상이어야 링이 FittedBox에 축소되지 않음
+    final double stepsColumnWidth =
+        math.max(healthDp(context, 65.6), 2 * stepsPad + stepsRing);
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       child: Column(
@@ -189,7 +195,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                     ),
                     SizedBox(width: healthDp(context, 5)),
                     SizedBox(
-                      width: healthDp(context, 65.6),
+                      width: stepsColumnWidth,
                       child: _buildStepsCard(
                         context,
                         dashboardLayout: true,
@@ -548,7 +554,7 @@ Widget _buildStepsCard(
   final double pad =
       dashboardLayout ? healthDp(context, 10) : healthDp(context, 10);
   final double ringSize =
-      dashboardLayout ? healthDp(context, 65.42) : healthDp(context, 72);
+      dashboardLayout ? healthDp(context, 65.6) : healthDp(context, 72);
   final double strokeW =
       dashboardLayout ? healthDp(context, 5) : healthDp(context, 7);
   final Color trackCol = dashboardLayout
@@ -669,12 +675,12 @@ Widget _buildStepsCard(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Align(
-            alignment: Alignment.centerLeft,
+            alignment: Alignment.center,
             child: Text(
               '걸음수',
               textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: titleSz,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w700,
                 color: Colors.black,
@@ -705,27 +711,29 @@ Widget _buildStepsCard(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
+                              fmt.format(steps),
+                              textAlign: TextAlign.center,
+                              textScaler: TextScaler.noScaling,
+                              style: TextStyle(
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontSize: healthSp(context, 12),
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFFF5A8D),
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
                               targetSteps > 0
                                   ? '/${fmt.format(targetSteps)}'
                                   : '/-',
                               textAlign: TextAlign.center,
                               textScaler: TextScaler.noScaling,
                               style: TextStyle(
-                                fontSize: healthSp(context, 8),
                                 fontFamily: 'Gmarket Sans TTF',
+                                fontSize: healthSp(context, 9),
                                 fontWeight: FontWeight.w300,
                                 color: const Color(0xB2FF5A8D),
-                              ),
-                            ),
-                            Text(
-                              fmt.format(steps),
-                              textAlign: TextAlign.center,
-                              textScaler: TextScaler.noScaling,
-                              style: TextStyle(
-                                fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFFF5A8D),
+                                height: 1.1,
                               ),
                             ),
                           ],
