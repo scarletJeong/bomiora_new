@@ -276,73 +276,118 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         child: Column(
                           children: [
-                            _buildHeaderSection(),
-                            Transform.translate(
-                              offset: const Offset(0, -36),
-                              child: Container(
-                                margin: const EdgeInsets.only(top: 0),
-                                padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(44)),
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.topCenter,
+                              children: [
+                                // 흰 카드 상단 라운드 밖(투명)으로 비치는 영역이 스크롤 흰 배경이 되지 않도록
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  top: 0,
+                                  height: healthDp(context, 320),
+                                  child: const ColoredBox(
+                                    color: Color(0xFFFFACC6),
+                                  ),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
-                                    HealthDateSelector(
-                                      selectedDate: selectedDate,
-                                      onDateChanged: (newDate) {
-                                        setState(() {
-                                          selectedDate = newDate;
-                                        });
-                                        _loadData();
-                                      },
-                                      monthTextColor: const Color(0xFF898686),
-                                      selectedTextColor: const Color(0xFFFF5A8D),
-                                      unselectedTextColor:
-                                          const Color(0xFFB7B7B7),
-                                      iconColor: const Color(0xFF898686),
-                                    ),
-                                    const SizedBox(height: 18),
-                                    _buildBodyMetricsSection(),
-                                    const SizedBox(height: 24),
-                                    TodayMealSection(
-                                      consumedCalories: consumedCalories,
-                                      targetCalories: targetCalories,
-                                      totalCarbs: totalCarbs,
-                                      totalProtein: totalProtein,
-                                      totalFat: totalFat,
-                                      totalOther: totalOther,
-                                      mealCalories: mealCalories,
-                                      selectedDate: selectedDate,
-                                      isLoggedIn: currentUser != null,
-                                      onAfterDietReturn: () {
-                                        if (mounted) _loadData();
-                                      },
-                                    ),
-                                    const SizedBox(height: 24),
-                                    TodayHealthRecordSection(
-                                      isLoggedIn: currentUser != null,
-                                      selectedDate: selectedDate,
-                                      latestBloodSugarRecord:
-                                          latestBloodSugarRecord,
-                                      latestBloodPressureRecord:
-                                          latestBloodPressureRecord,
-                                      latestStepsRecord: latestStepsRecord,
-                                      latestHeartRateRecord:
-                                          latestHeartRateRecord,
-                                      latestMenstrualCycleRecord:
-                                          latestMenstrualCycleRecord,
-                                      latestHealthGoal: latestHealthGoal,
-                                      systolicBP: systolicBP,
-                                      diastolicBP: diastolicBP,
-                                      steps: steps,
-                                      heartRate: heartRate,
+                                    _buildHeaderSection(),
+                                    SizedBox(
+                                        height: _headerToWhiteCardGap(
+                                            context)),
+                                    Transform.translate(
+                                      offset: const Offset(0, -36),
+                                      child: Container(
+                                        margin: const EdgeInsets.only(top: 0),
+                                        padding: EdgeInsets.fromLTRB(
+                                          healthDp(context, 18),
+                                          healthDp(context, 4),
+                                          healthDp(context, 18),
+                                          healthDp(context, 24),
+                                        ),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.all(
+                                            Radius.circular(44),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            HealthDateSelector(
+                                              selectedDate: selectedDate,
+                                              onDateChanged: (newDate) {
+                                                setState(() {
+                                                  selectedDate = newDate;
+                                                });
+                                                _loadData();
+                                              },
+                                              monthTextColor:
+                                                  const Color(0xFF898686),
+                                              selectedTextColor:
+                                                  const Color(0xFFFF5A8D),
+                                              unselectedTextColor:
+                                                  const Color(0xFFB7B7B7),
+                                              iconColor:
+                                                  const Color(0xFF898686),
+                                            ),
+                                            SizedBox(
+                                                height:
+                                                    healthDp(context, 14)),
+                                            _buildBodyMetricsSection(),
+                                            SizedBox(
+                                                height:
+                                                    healthDp(context, 14)),
+                                            TodayMealSection(
+                                              consumedCalories:
+                                                  consumedCalories,
+                                              targetCalories: targetCalories,
+                                              totalCarbs: totalCarbs,
+                                              totalProtein: totalProtein,
+                                              totalFat: totalFat,
+                                              totalOther: totalOther,
+                                              mealCalories: mealCalories,
+                                              selectedDate: selectedDate,
+                                              isLoggedIn:
+                                                  currentUser != null,
+                                              onAfterDietReturn: () {
+                                                if (mounted) _loadData();
+                                              },
+                                            ),
+                                            const SizedBox(height: 24),
+                                            TodayHealthRecordSection(
+                                              isLoggedIn:
+                                                  currentUser != null,
+                                              selectedDate: selectedDate,
+                                              latestBloodSugarRecord:
+                                                  latestBloodSugarRecord,
+                                              latestBloodPressureRecord:
+                                                  latestBloodPressureRecord,
+                                              latestStepsRecord:
+                                                  latestStepsRecord,
+                                              latestHeartRateRecord:
+                                                  latestHeartRateRecord,
+                                              latestMenstrualCycleRecord:
+                                                  latestMenstrualCycleRecord,
+                                              latestHealthGoal:
+                                                  latestHealthGoal,
+                                              systolicBP: systolicBP,
+                                              diastolicBP: diastolicBP,
+                                              steps: steps,
+                                              heartRate: heartRate,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ),
+                              ],
                             ),
                           ],
                         ),
@@ -356,6 +401,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     );
   }
 
+  /// 핑크 헤더 하단과 흰 카드(라운드) 시작 사이 세로 간격.
+  ///
+  /// 폭 375 근처는 7, 넓어질수록(최대 650) 5에 가깝게 줄여 넓은 화면에서 여백이 과해 보이지 않게 함.
+  double _headerToWhiteCardGap(BuildContext context) {
+    const double narrow = 375;
+    const double wide = 650;
+    const double gapAtNarrow = 7;
+    const double gapAtWide = 0;
+    final w = MediaQuery.sizeOf(context).width.clamp(narrow, wide);
+    final t = (w - narrow) / (wide - narrow);
+    return gapAtNarrow + (gapAtWide - gapAtNarrow) * t;
+  }
+
   Widget _buildHeaderSection() {
     return Container(
       width: double.infinity,
@@ -363,7 +421,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         healthDp(context, 18),
         healthDp(context, 18),
         healthDp(context, 18),
-        healthDp(context, 35),
+        healthDp(context, 36),
       ),
       color: const Color(0xFFFFACC6),
       child: Column(
@@ -440,9 +498,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               const SizedBox.shrink(),
             ],
           ),
-          SizedBox(height: healthDp(context, 16)),
           _buildWeightProgressBar(),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 8)),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -536,10 +593,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double barHeight = healthDp(context, 14);
-        final double arrowTipWidth = healthDp(context, 10);
+        final double barHeight = healthDp(context, 8);
+        final double arrowTipWidth = healthDp(context, 8);
         final double bubbleWidth = healthDp(context, 40);
-        final double bubbleTopSpace = healthDp(context, 28);
+        final double bubbleTopSpace = healthDp(context, 24);
         final double markerX = constraints.maxWidth * ratio;
         final double bubbleLeft = (markerX - bubbleWidth / 2).clamp(
           0.0,
@@ -601,13 +658,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         children: [
                           Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: healthDp(context, 6),
-                              vertical: healthDp(context, 3),
+                              horizontal: healthDp(context, 4),
+                              vertical: healthDp(context, 2),
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 6)),
+                              borderRadius: BorderRadius.circular(999),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.08),
@@ -641,7 +697,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ],
               ),
             ),
-            SizedBox(height: healthDp(context, 8)),
+            SizedBox(height: healthDp(context, 4)),
             // 체중 프로그레스 바 체중 표시 텍스트
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -744,8 +800,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         }
       },
       child: Container(
-        constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        constraints: const BoxConstraints(minHeight: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -758,7 +814,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 fontFamily: 'Gmarket Sans TTF',
                 color: Color(0xFF303030),
                 fontWeight: FontWeight.w700,
@@ -767,7 +823,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             Text(
               value,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 10,
                 fontFamily: 'Gmarket Sans TTF',
                 color: Color(0xFF707070),
                 fontWeight: FontWeight.w300,
