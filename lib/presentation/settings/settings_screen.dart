@@ -61,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildRowItem(
                 title: '이벤트',
                 icon: Icons.local_activity_outlined,
-                onTap: () => Navigator.pushNamed(context, '/evnt'),
+                onTap: () => Navigator.pushNamed(context, '/event'),
                 isLast: true,
               ),
             ],

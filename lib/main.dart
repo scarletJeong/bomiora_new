@@ -176,7 +176,7 @@ class BomioraApp extends StatelessWidget {
           return DeliveryDetailScreen(orderNumber: orderNumber);
         },
         '/announcement': (context) => const AnnouncementListScreen(),
-        '/evnt': (context) => const EventListScreen(),
+        '/event': (context) => const EventListScreen(),
         '/faq': (context) => const FaqListScreen(),
         '/content': (context) => const ContentDashboardScreen(),
         '/content/list': (context) => const ContentListScreen(),
@@ -329,9 +329,9 @@ class BomioraApp extends StatelessWidget {
           }
         }
 
-        // 이벤트 상세: /evnt/:id
+        // 이벤트 상세: /event/:id
         if (uri.pathSegments.length == 2 &&
-            uri.pathSegments[0] == 'evnt' &&
+            uri.pathSegments[0] == 'event' &&
             uri.pathSegments[1].trim().isNotEmpty) {
           final id = int.tryParse(uri.pathSegments[1]);
           if (id != null && id > 0) {

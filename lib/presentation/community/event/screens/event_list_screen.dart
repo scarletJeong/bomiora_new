@@ -343,7 +343,7 @@ class _EventListScreenState extends State<EventListScreen> {
         context,
         MaterialPageRoute(
           builder: (_) => EventDetailScreen(wrId: event.wrId),
-          settings: RouteSettings(name: '/evnt/${event.wrId}'),
+          settings: RouteSettings(name: '/event/${event.wrId}'),
         ),
       ),
       borderRadius: BorderRadius.circular(10),
