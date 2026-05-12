@@ -6,11 +6,11 @@ class HealthStatusLabel extends StatelessWidget {
   final double fontSize;
 
   static const Map<String, Color> _textColors = {
-    '정상': Colors.white,
+    '정상': Color(0xFF1F8154),
     '주의': Colors.white,
     '고혈압': Colors.white,
     '의심': Colors.white,
-    '모름': Colors.white,
+    '모름': const Color(0xFF666E75),
     '전단계': Colors.white,
   };
 
@@ -24,10 +24,15 @@ class HealthStatusLabel extends StatelessWidget {
     '전단계': Color(0xFFFEAF8E),
   };
 
+  final double? chipBorderRadius;
+  final EdgeInsetsGeometry? chipPadding;
+
   const HealthStatusLabel({
     super.key,
     required this.label,
     this.fontSize = 10,
+    this.chipBorderRadius,
+    this.chipPadding,
   });
 
   Color get _textColor => _textColors[label] ?? const Color(0xFF666E75);
@@ -36,14 +41,19 @@ class HealthStatusLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final BorderRadius radius = chipBorderRadius != null
+        ? BorderRadius.circular(chipBorderRadius!)
+        : BorderRadius.circular(999);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: chipPadding ??
+          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: _backgroundColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: radius,
       ),
       child: Text(
         label,
+        textScaler: TextScaler.noScaling,
         style: TextStyle(
           color: _textColor,
           fontSize: fontSize,
