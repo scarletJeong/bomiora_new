@@ -622,7 +622,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     // 오늘의 체중 흰 카드 바깥 패딩 없음. 349 안 좌우는 논리 10. 세로: healthDp(18)·원193·10·수정·10·메트릭·10.
     final squareSide = healthDp(context, 349);
     final chartDiameter = healthDp(context, 193);
-    final ringStroke = healthDp(context, 12);
+    final ringStroke = healthDp(context, 20);
     final chartTopGap = healthDp(context, 38);
     const double chartToButtonGap = 10;
     final chartBandH = chartTopGap + chartDiameter + chartToButtonGap;
@@ -745,60 +745,117 @@ class _WeightListScreenState extends State<WeightListScreen> {
         children: [
           SizedBox(
             height: chartBandH,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                SizedBox(height: chartTopGap),
-                Center(
-                  child: SizedBox(
-                    width: chartDiameter,
-                    height: chartDiameter,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: Size(chartDiameter, chartDiameter),
-                          painter: _WeightGoalRingPainter(
-                            progress: progressRatio,
-                            trackColor: const Color(0x7FD9D9D9),
-                            progressColor: const Color(0xFFFF5A8D),
-                            strokeWidth: ringStroke,
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(height: chartTopGap),
+                    Center(
+                      child: SizedBox(
+                        width: chartDiameter,
+                        height: chartDiameter,
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            Text(
-                              '오늘의 체중',
-                              textScaler: TextScaler.noScaling,
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: healthSp(context, 20),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
+                            CustomPaint(
+                              size: Size(chartDiameter, chartDiameter),
+                              painter: _WeightGoalRingPainter(
+                                progress: progressRatio,
+                                trackColor: const Color(0x7FD9D9D9),
+                                progressColor: const Color(0xFFFF5A8D),
+                                strokeWidth: ringStroke,
                               ),
                             ),
-                            SizedBox(height: healthDp(context, 2)),
-                            Text(
-                              weight > 0
-                                  ? '${weight.toStringAsFixed(1)}kg'
-                                  : '-',
-                              textScaler: TextScaler.noScaling,
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: healthSp(context, 36),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
-                              ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '오늘의 체중',
+                                  textScaler: TextScaler.noScaling,
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: healthSp(context, 20),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                                SizedBox(height: healthDp(context, 2)),
+                                Text(
+                                  weight > 0
+                                      ? '${weight.toStringAsFixed(1)}kg'
+                                      : '-',
+                                  textScaler: TextScaler.noScaling,
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: healthSp(context, 36),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
+                    ),
+                    SizedBox(height: chartToButtonGap),
+                  ],
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: healthDp(context, 8)),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            '목표체중',
+                            textAlign: TextAlign.center,
+                            textScaler: TextScaler.noScaling,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: healthSp(context, 10),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          Text(
+                            targetWeight > 0
+                                ? '${targetWeight.toStringAsFixed(1)}kg'
+                                : '-',
+                            textAlign: TextAlign.center,
+                            textScaler: TextScaler.noScaling,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: healthSp(context, 10),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          //SizedBox(height: healthDp(context, 2)),
+                          CustomPaint(
+                            size: Size(
+                              healthDp(context, 7),
+                              healthDp(context, 7),
+                            ),
+                            painter: const _GoalTargetDownTrianglePainter(
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                SizedBox(height: chartToButtonGap),
               ],
             ),
           ),
@@ -2270,6 +2327,32 @@ class _WeightExpandTempLegend extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 목표체중 라벨 아래, 차트 쪽을 가리키는 아래방향 삼각형(채움).
+class _GoalTargetDownTrianglePainter extends CustomPainter {
+  const _GoalTargetDownTrianglePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GoalTargetDownTrianglePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 /// 목표 체중 원형: 전체 원 = 시작(목표설정 시 체중)~목표 체중 구간, 12시에서 반시계로 채움.
