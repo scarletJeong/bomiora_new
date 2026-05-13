@@ -145,7 +145,11 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
                             )
                           : yLabelsColumn(),
                     ),
-                    SizedBox(width: ChartConstants.yAxisSpacing),
+                    SizedBox(
+                      width: widget.dataType == 'weight'
+                          ? ChartConstants.weightChartYAxisPlotGap
+                          : ChartConstants.yAxisSpacing,
+                    ),
                     Expanded(
                       child: Column(
                         children: [
@@ -166,7 +170,9 @@ class _PeriodChartWidgetState extends State<PeriodChartWidget> {
           // X축 라벨 (체중은 일·주 카드와 동일: 하단 추가 패딩 없음)
           Padding(
             padding: EdgeInsets.only(
-              left: 43.0,
+              left: widget.dataType == 'weight'
+                  ? ChartConstants.weightChartYAxisStripWidth
+                  : 43.0,
               bottom: widget.dataType == 'weight' ? 0.0 : 10.0,
             ),
             child: _buildPeriodXAxisLabels(),

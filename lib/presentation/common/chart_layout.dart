@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import '../health/health_common/health_responsive_scale.dart';
 
 /// 차트 관련 공통 상수들
 class ChartConstants {
-  /// 건강 모듈 목록·그래프 확대 공통 높이 (혈압/혈당/심박수/체중/걸음)
+  /// 건강 모듈 목록·그래프 확대 공통 높이 (혈압/혈당/심박수/걸음)
   static const double healthChartHeight = 320.0;
+
+  /// 체중 목록 그래프 카드 전용 높이 ([healthChartHeight]와 별도)
+  static const double weightChartHeight = 244.0;
 
   /// 가로 확대 화면: 부모가 준 세로 공간에 맞춤 (혈당·걸음 확대와 동일한 방식).
   /// [bottomLegendReserve]: 확대 페이지 하단 범례 등을 위해 남길 여백(혈압/심박 등).
@@ -40,19 +44,30 @@ class ChartConstants {
   // 계산된 상수
   static double get yAxisTotalWidth => yAxisLabelWidth + yAxisSpacing; // Y축 총 너비
 
+  /// 체중 그래프: Y축 숫자 열 오른쪽 ↔ 플롯(`CustomPaint` 왼쪽) 사이 [SizedBox] 폭.
+  /// 세로 격자는 플롯 내부 [weightDailyChartInnerPadH]만큼 더 안쪽이므로,
+  /// **숫자 가장자리 ~ 세로 격자선** 대략 합 = `weightChartYAxisPlotGap` + `weightDailyChartInnerPadH` (375 기준 0+4=4).
+  static const double weightChartYAxisPlotGap = 0.0;
+
   /// 체중 일·주 그래프 및 [PeriodChartWidget] Y축 열 너비(동일 UI)
   static const double weightChartYAxisWidth = 35.0;
   static double get weightChartYAxisStripWidth =>
-      weightChartYAxisWidth + yAxisSpacing;
+      weightChartYAxisWidth + weightChartYAxisPlotGap;
 
   /// 체중 시간대별(일) 차트 플롯 영역 좌·우 여백 (그리드·점·탭 hit 동일)
-  static const double weightDailyChartInnerPadH = 6.0;
+  static const double weightDailyChartInnerPadH = 0.0;
   /// 체중 X축 오른쪽 단위 `(시)/(일)/(월)`을 위한 여유 폭
   static const double weightXAxisUnitReservedWidth = 18.0;
 
   /// 체중 일·주·월 그래프 카드 공통 패딩 (시간대별과 동일)
   static const EdgeInsets weightChartCardPadding =
       EdgeInsets.fromLTRB(8, 16, 16, 16);
+
+  /// 기간 탭(plain) 한 줄 설계 높이(375 기준). 확대 아이콘을 (kg) 밴드와 맞출 때 사용.
+  static const double weightChartPeriodTabBarHeight = 34.0;
+
+  /// 탭 아래 ↔ 플롯(kg 밴드 시작) 사이 간격
+  static const double weightChartTabToPlotGap = 6.0;
   
   // 데이터 개수에 따른 패딩 계산 헬퍼 메서드
   static double getLeftPadding(int dataCount) {
@@ -98,47 +113,61 @@ class HealthDailyNoDataChartCard extends StatelessWidget {
     required this.chartHeight,
     required this.title,
     required this.subtitle,
+    this.header,
   });
 
   final double chartHeight;
   final String title;
   final String subtitle;
+  /// 카드 상단(예: 기간 탭)
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
+      padding: healthWeightChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[300]!),
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: TextStyle(
-                fontFamily: 'Gmarket Sans TTF',
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontFamily: 'Gmarket Sans TTF',
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (header != null) ...[
+            header!,
+            SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           ],
-        ),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

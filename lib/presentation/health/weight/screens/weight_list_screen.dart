@@ -596,7 +596,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                     textStyle: TextStyle(
                       fontFamily: 'Gmarket Sans TTF',
                       fontSize: healthSp(context, 16),
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                     ),
                     onPressed: () async {
                       final result = await Navigator.push(
@@ -1613,7 +1613,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 selectedPointIndex: selectedChartPointIndex,
                 omitOutOfRangeWeights: omitOutOfRangeWeights,
                 topPadding: healthWeightChartVertPad(context),
-                bottomPadding: healthWeightChartVertPad(context),
+                bottomPadding: healthWeightChartBottomPlotPad(context),
                 barWidth: healthDp(context, 10),
               ),
               size: Size(
@@ -1635,20 +1635,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '눈바디 이미지',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: healthDp(context, 12)),
         Row(
           children: [
             // 정면 이미지
             Expanded(
               child: _buildImageContainer(
-                '정면',
+                '정면사진',
                 frontImagePath,
                 () => _selectImage('front'),
               ),
@@ -1657,7 +1649,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
             // 측면 이미지
             Expanded(
               child: _buildImageContainer(
-                '측면',
+                '측면사진',
                 sideImagePath,
                 () => _selectImage('side'),
               ),
@@ -1887,7 +1879,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     if (chartData.isEmpty) return;
 
     final topPadChart = healthWeightChartVertPad(context);
-    final botPadChart = healthWeightChartVertPad(context);
+    final botPadChart = healthWeightChartBottomPlotPad(context);
     final drawableTop = topPadChart;
     final drawableBottom = chartHeight - botPadChart;
     final hitPadV = healthDp(context, 12);
@@ -2042,7 +2034,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     if (chartData.isEmpty) return;
 
     final topPadChart = healthWeightChartVertPad(context);
-    final botPadChart = healthWeightChartVertPad(context);
+    final botPadChart = healthWeightChartBottomPlotPad(context);
     final drawableTop = topPadChart;
     final drawableBottom = chartHeight - botPadChart;
     final hitPadV = healthDp(context, 12);

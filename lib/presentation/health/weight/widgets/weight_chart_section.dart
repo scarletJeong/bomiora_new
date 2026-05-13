@@ -7,7 +7,21 @@ import '../../health_common/health_responsive_scale.dart';
 
 const String _weightPageFontFamily = 'Gmarket Sans TTF';
 
-/// 주·월 그래프와 동일: 상단 `(kg)` 밴드 + 숫자 눈금 Stack(가운데 정렬, 11pt)
+/// (kg), (시), (일), (월) 단위
+const Color _weightChartAxisUnitColor = Color(0xFF898383);
+/// Y축 숫자·X축(일반 시각)
+const Color _weightChartAxisPrimaryLabelColor = Color(0xFF1A1A1A);
+/// 일간 X축: 선택일이 오늘일 때만 현재 시(h)에 적용
+const Color _weightChartAxisCurrentHourColor = Color(0xFFFF5A8D);
+
+/// Y축 숫자 열(35) + 플롯과의 간격([ChartConstants.weightChartYAxisPlotGap]) — X축 들여쓰기·폭 계산에 동일 사용.
+double _weightYAxisStripPlusGap(BuildContext context) => healthDp(
+      context,
+      ChartConstants.weightChartYAxisWidth +
+          ChartConstants.weightChartYAxisPlotGap,
+    );
+
+/// 주·월 그래프와 동일: 상단 `(kg)` 밴드 + 숫자 눈금 Stack(가운데 정렬)
 Widget _buildWeightYAxisStripLikePeriodChart({
   required BuildContext chartContext,
   required List<double> yLabels,
@@ -25,7 +39,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
         final n = yLabels.length;
         if (n < 2) return const SizedBox.shrink();
         final topPad = healthWeightChartVertPad(chartContext);
-        final botPad = healthWeightChartVertPad(chartContext);
+        final botPad = healthWeightChartBottomPlotPad(chartContext);
         return SizedBox(
           height: forHeight,
           child: LayoutBuilder(
@@ -47,8 +61,9 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                       textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: _weightPageFontFamily,
-                        fontSize: healthSp(chartContext, 11),
-                        color: Colors.grey,
+                        fontSize: healthSp(chartContext, 12),
+                        color: _weightChartAxisPrimaryLabelColor,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   );
@@ -60,7 +75,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
       }
 
       return SizedBox(
-        width: ChartConstants.weightChartYAxisWidth,
+        width: healthDp(chartContext, ChartConstants.weightChartYAxisWidth),
         child: showYAxisKgHeader && yLabels.length > 1
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -74,9 +89,9 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                         textScaler: TextScaler.noScaling,
                         style: TextStyle(
                           fontFamily: _weightPageFontFamily,
-                          fontSize: healthSp(chartContext, 11),
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
+                          fontSize: healthSp(chartContext, 10),
+                          color: _weightChartAxisUnitColor,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -156,7 +171,7 @@ class WeightChartContent extends StatelessWidget {
 
     if (!showExpandButton) return chartBody;
 
-    final padTop = ChartConstants.weightChartCardPadding.top;
+    final padTop = healthWeightChartCardPadding(context).top;
     final tabH =
         healthDp(context, ChartConstants.weightChartPeriodTabBarHeight);
     final gap = ChartConstants.weightChartTabToPlotGap;
@@ -171,7 +186,7 @@ class WeightChartContent extends StatelessWidget {
       children: [
         chartBody,
         Positioned(
-          right: ChartConstants.weightChartCardPadding.right,
+          right: healthWeightChartCardPadding(context).right,
           top: topExpand,
           child: GestureDetector(
             onTap: onExpand,
@@ -207,12 +222,14 @@ class WeightChartContent extends StatelessWidget {
 }
 
 Widget buildWeightXAxisLabels({
+  required BuildContext context,
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
 }) {
   if (selectedPeriod != '일') {
     return _buildWeightPeriodXAxisLabels(
+      context: context,
       selectedPeriod: selectedPeriod,
       selectedDate: selectedDate,
       timeOffset: timeOffset,
@@ -222,23 +239,36 @@ Widget buildWeightXAxisLabels({
   const maxStartHour = 18;
   final startHour = (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
 
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final selDay =
+      DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+  final isToday = selDay == today;
+  final currentHour = now.hour;
+
   final hourLabels = <Widget>[];
   for (int i = 0; i < 7; i++) {
     final hour = (startHour + i).clamp(0, 24);
     final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
+    final isCurrentHour = isToday && hour == currentHour;
     hourLabels.add(
       Text(
         hourLabel,
+        textScaler: TextScaler.noScaling,
         style: TextStyle(
           fontFamily: _weightPageFontFamily,
-          fontSize: 12,
-          color: Colors.grey[600],
+          fontSize: healthSp(context, 12),
+          color: isCurrentHour
+              ? _weightChartAxisCurrentHourColor
+              : _weightChartAxisPrimaryLabelColor,
+          fontWeight: FontWeight.w400,
         ),
       ),
     );
   }
 
   return _buildXAxisLabelWithUnit(
+    context: context,
     labelRow: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: hourLabels,
@@ -248,6 +278,7 @@ Widget buildWeightXAxisLabels({
 }
 
 Widget _buildWeightPeriodXAxisLabels({
+  required BuildContext context,
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
@@ -259,6 +290,7 @@ Widget _buildWeightPeriodXAxisLabels({
     final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
 
     return _buildXAxisLabelWithUnit(
+      context: context,
       labelRow: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(visibleMonths, (i) {
@@ -269,10 +301,12 @@ Widget _buildWeightPeriodXAxisLabels({
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.clip,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontFamily: _weightPageFontFamily,
-                fontSize: 12,
-                color: Colors.grey[600],
+                fontSize: healthSp(context, 12),
+                color: _weightChartAxisPrimaryLabelColor,
+                fontWeight: FontWeight.w400,
               ),
             ),
           );
@@ -299,10 +333,12 @@ Widget _buildWeightPeriodXAxisLabels({
       return Expanded(
         child: Text(
           label,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             fontFamily: _weightPageFontFamily,
-            fontSize: 10,
-            color: Colors.grey[600],
+            fontSize: healthSp(context, 12),
+            color: _weightChartAxisPrimaryLabelColor,
+            fontWeight: FontWeight.w400,
           ),
           textAlign: TextAlign.center,
         ),
@@ -311,12 +347,14 @@ Widget _buildWeightPeriodXAxisLabels({
   );
 
   return _buildXAxisLabelWithUnit(
+    context: context,
     labelRow: dateRow,
     unitText: '(일)',
   );
 }
 
 Widget _buildXAxisLabelWithUnit({
+  required BuildContext context,
   required Widget labelRow,
   required String unitText,
 }) {
@@ -337,11 +375,12 @@ Widget _buildXAxisLabelWithUnit({
           alignment: Alignment.center,
           child: Text(
             unitText,
+            textScaler: TextScaler.noScaling,
             style: TextStyle(
               fontFamily: _weightPageFontFamily,
-              fontSize: 9,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              fontSize: healthSp(context, 10),
+              color: _weightChartAxisUnitColor,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -374,7 +413,7 @@ class WeightEmptyChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final segments = yLabels.length > 1 ? yLabels.length - 1 : 4;
 
-    const outerPadding = ChartConstants.weightChartCardPadding;
+    final outerPadding = healthWeightChartCardPadding(context);
 
     return Container(
       height: chartHeight,
@@ -388,7 +427,7 @@ class WeightEmptyChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           periodSelector,
-          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
+          SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -406,7 +445,7 @@ class WeightEmptyChart extends StatelessWidget {
                       yLabels: yLabels,
                       showYAxisKgHeader: showYAxisKgHeader,
                     ),
-                    SizedBox(width: ChartConstants.yAxisSpacing),
+                    SizedBox(width: healthDp(context, ChartConstants.weightChartYAxisPlotGap)),
                     Expanded(
                       child: Column(
                         children: [
@@ -418,7 +457,7 @@ class WeightEmptyChart extends StatelessWidget {
                               ),
                               size: Size(
                                 constraints.maxWidth -
-                                    ChartConstants.weightChartYAxisStripWidth,
+                                    _weightYAxisStripPlusGap(context),
                                 zoneH > 0 ? zoneH : totalH,
                               ),
                             ),
@@ -431,10 +470,10 @@ class WeightEmptyChart extends StatelessWidget {
               },
             ),
           ),
-          // const SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.only(left: 43.0),
+            padding: EdgeInsets.only(left: _weightYAxisStripPlusGap(context)),
             child: buildWeightXAxisLabels(
+              context: context,
               selectedPeriod: selectedPeriod,
               selectedDate: selectedDate,
               timeOffset: timeOffset,
@@ -550,7 +589,7 @@ class WeightDataChart extends StatelessWidget {
 
     return Container(
       height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
+      padding: healthWeightChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -560,7 +599,7 @@ class WeightDataChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           periodSelector,
-          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
+          SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -577,7 +616,7 @@ class WeightDataChart extends StatelessWidget {
                     yLabels: yLabels,
                     showYAxisKgHeader: showYAxisKgHeader,
                   ),
-                  SizedBox(width: ChartConstants.yAxisSpacing),
+                  SizedBox(width: healthDp(context, ChartConstants.weightChartYAxisPlotGap)),
                   Expanded(
                     child: Stack(
                       children: [
@@ -606,7 +645,7 @@ class WeightDataChart extends StatelessWidget {
                             child: tooltipBuilder(
                               chartData[selectedChartPointIndex!],
                               constraints.maxWidth -
-                                  ChartConstants.weightChartYAxisStripWidth,
+                                  _weightYAxisStripPlusGap(context),
                               zoneH,
                             ),
                           ),
@@ -618,8 +657,9 @@ class WeightDataChart extends StatelessWidget {
             }),
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 43.0),
+            padding: EdgeInsets.only(left: _weightYAxisStripPlusGap(context)),
             child: buildWeightXAxisLabels(
+              context: context,
               selectedPeriod: selectedPeriod,
               selectedDate: selectedDate,
               timeOffset: timeOffset,
@@ -670,7 +710,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
+      padding: healthWeightChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -680,7 +720,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           periodSelector,
-          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
+          SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -690,7 +730,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
               final zoneH = totalH - kgBand;
               final chartW =
                   constraints.maxWidth -
-                  ChartConstants.weightChartYAxisStripWidth;
+                  _weightYAxisStripPlusGap(context);
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -700,7 +740,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
                     yLabels: yLabels,
                     showYAxisKgHeader: showYAxisKgHeader,
                   ),
-                  SizedBox(width: ChartConstants.yAxisSpacing),
+                  SizedBox(width: healthDp(context, ChartConstants.weightChartYAxisPlotGap)),
                   Expanded(
                     child: Stack(
                       children: [
@@ -728,6 +768,11 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
                                     yLabels: yLabels,
                                     omitOutOfRangeWeights:
                                         omitOutOfRangeWeights,
+                                    topPlotPad:
+                                        healthWeightChartVertPad(context),
+                                    bottomPlotPad:
+                                        healthWeightChartBottomPlotPad(
+                                            context),
                                   );
                                   if (hit == null) {
                                     onTooltipChanged(null, null);
@@ -747,6 +792,11 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
                                             selectedChartPointIndex,
                                         omitOutOfRangeWeights:
                                             omitOutOfRangeWeights,
+                                        topPlotPad:
+                                            healthWeightChartVertPad(context),
+                                        bottomPlotPad:
+                                            healthWeightChartBottomPlotPad(
+                                                context),
                                       ),
                                       size: Size(chartW, zoneH),
                                     ),
@@ -779,8 +829,9 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
             }),
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 43.0),
+            padding: EdgeInsets.only(left: _weightYAxisStripPlusGap(context)),
             child: buildWeightXAxisLabels(
+              context: context,
               selectedPeriod: selectedPeriod,
               selectedDate: selectedDate,
               timeOffset: timeOffset,
@@ -798,6 +849,8 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
     required double timeOffset,
     required List<double> yLabels,
     required bool omitOutOfRangeWeights,
+    required double topPlotPad,
+    required double bottomPlotPad,
   }) {
     if (chartData.length < _totalMonths || yLabels.length < 2) return null;
 
@@ -808,10 +861,9 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
 
     const double leftPadding = 0.0;
     const double rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
-    const double topPadding = 20.0;
-    const double bottomPadding = 20.0;
     final chartWidth = chartSize.width - leftPadding - rightPadding;
-    final drawableHeight = chartSize.height - topPadding - bottomPadding;
+    final drawableHeight =
+        chartSize.height - topPlotPad - bottomPlotPad;
 
     final maxStart = _totalMonths - _visibleMonths;
     final startIndex =
@@ -819,7 +871,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
 
     double toY(double weight) {
       final normalized = (maxYWeight - weight) / range;
-      return topPadding + drawableHeight * normalized;
+      return topPlotPad + drawableHeight * normalized;
     }
 
     int? bestIndex;
@@ -946,6 +998,8 @@ class _WeightMonthlyRangePainter extends CustomPainter {
   final double timeOffset;
   final int? selectedIndex;
   final bool omitOutOfRangeWeights;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
   _WeightMonthlyRangePainter({
     required this.chartData,
@@ -953,6 +1007,8 @@ class _WeightMonthlyRangePainter extends CustomPainter {
     required this.timeOffset,
     this.selectedIndex,
     required this.omitOutOfRangeWeights,
+    required this.topPlotPad,
+    required this.bottomPlotPad,
   });
 
   static const int _totalMonths = 12;
@@ -969,17 +1025,15 @@ class _WeightMonthlyRangePainter extends CustomPainter {
 
     const double leftPadding = 0.0;
     const double rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
-    const double topPadding = 20.0;
-    const double bottomPadding = 20.0;
     final chartWidth = size.width - leftPadding - rightPadding;
-    final chartHeight = size.height - topPadding - bottomPadding;
+    final chartHeight = size.height - topPlotPad - bottomPlotPad;
 
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
     final gridSegments = yLabels.length - 1;
     for (int i = 0; i <= gridSegments; i++) {
-      final y = topPadding + chartHeight * i / gridSegments;
+      final y = topPlotPad + chartHeight * i / gridSegments;
       canvas.drawLine(
         Offset(leftPadding, y),
         Offset(size.width - rightPadding, y),
@@ -997,7 +1051,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
 
     double toY(double weight) {
       final normalized = (maxYWeight - weight) / range;
-      return topPadding + chartHeight * normalized;
+      return topPlotPad + chartHeight * normalized;
     }
 
     for (int v = 0; v < _visibleMonths; v++) {
@@ -1049,7 +1103,9 @@ class _WeightMonthlyRangePainter extends CustomPainter {
         oldDelegate.yLabels != yLabels ||
         oldDelegate.timeOffset != timeOffset ||
         oldDelegate.selectedIndex != selectedIndex ||
-        oldDelegate.omitOutOfRangeWeights != omitOutOfRangeWeights;
+        oldDelegate.omitOutOfRangeWeights != omitOutOfRangeWeights ||
+        oldDelegate.topPlotPad != topPlotPad ||
+        oldDelegate.bottomPlotPad != bottomPlotPad;
   }
 }
 
@@ -1087,7 +1143,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
+      padding: healthWeightChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1097,7 +1153,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           periodSelector,
-          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
+          SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -1107,7 +1163,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               final zoneH = totalH - kgBand;
               final chartW =
                   constraints.maxWidth -
-                  ChartConstants.weightChartYAxisStripWidth;
+                  _weightYAxisStripPlusGap(context);
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1117,7 +1173,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
                     yLabels: yLabels,
                     showYAxisKgHeader: showYAxisKgHeader,
                   ),
-                  SizedBox(width: ChartConstants.yAxisSpacing),
+                  SizedBox(width: healthDp(context, ChartConstants.weightChartYAxisPlotGap)),
                   Expanded(
                     child: Stack(
                       children: [
@@ -1131,6 +1187,11 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
                                   final hit = _findWeeklyHit(
                                     tap: details.localPosition,
                                     chartSize: Size(chartW, zoneH),
+                                    topPlotPad:
+                                        healthWeightChartVertPad(context),
+                                    bottomPlotPad:
+                                        healthWeightChartBottomPlotPad(
+                                            context),
                                   );
                                   if (hit == null) {
                                     onTooltipChanged(null, null);
@@ -1148,6 +1209,11 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
                                         selectedIndex: selectedChartPointIndex,
                                         omitOutOfRangeWeights:
                                             omitOutOfRangeWeights,
+                                        topPlotPad:
+                                            healthWeightChartVertPad(context),
+                                        bottomPlotPad:
+                                            healthWeightChartBottomPlotPad(
+                                                context),
                                       ),
                                       size: Size(chartW, zoneH),
                                     ),
@@ -1178,8 +1244,9 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
             }),
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 43.0),
+            padding: EdgeInsets.only(left: _weightYAxisStripPlusGap(context)),
             child: buildWeightXAxisLabels(
+              context: context,
               selectedPeriod: selectedPeriod,
               selectedDate: selectedDate,
               timeOffset: timeOffset,
@@ -1193,6 +1260,8 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
   _WeeklyHit? _findWeeklyHit({
     required Offset tap,
     required Size chartSize,
+    required double topPlotPad,
+    required double bottomPlotPad,
   }) {
     if (chartData.isEmpty || yLabels.length < 2) return null;
 
@@ -1203,16 +1272,15 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
 
     const double leftPadding = 0.0;
     const double rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
-    const double topPadding = 20.0;
-    const double bottomPadding = 20.0;
     final chartWidth = chartSize.width - leftPadding - rightPadding;
-    final drawableHeight = chartSize.height - topPadding - bottomPadding;
+    final drawableHeight =
+        chartSize.height - topPlotPad - bottomPlotPad;
     final count = chartData.length;
     if (count == 0) return null;
 
     double toY(double weight) {
       final normalized = (maxYWeight - weight) / range;
-      return topPadding + drawableHeight * normalized;
+      return topPlotPad + drawableHeight * normalized;
     }
 
     int? bestIndex;
@@ -1342,12 +1410,16 @@ class _WeightWeeklyRangePainter extends CustomPainter {
   final List<double> yLabels;
   final int? selectedIndex;
   final bool omitOutOfRangeWeights;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
-  const _WeightWeeklyRangePainter({
+  _WeightWeeklyRangePainter({
     required this.chartData,
     required this.yLabels,
     this.selectedIndex,
     this.omitOutOfRangeWeights = false,
+    required this.topPlotPad,
+    required this.bottomPlotPad,
   });
 
   @override
@@ -1361,29 +1433,21 @@ class _WeightWeeklyRangePainter extends CustomPainter {
 
     const double leftPadding = 0.0;
     const double rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
-    const double topPadding = 20.0;
-    const double bottomPadding = 20.0;
     final chartWidth = size.width - leftPadding - rightPadding;
-    final chartHeight = size.height - topPadding - bottomPadding;
+    final chartHeight = size.height - topPlotPad - bottomPlotPad;
 
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
     final gridSegments = yLabels.length - 1;
     for (int i = 0; i <= gridSegments; i++) {
-      final y = topPadding + chartHeight * i / gridSegments;
+      final y = topPlotPad + chartHeight * i / gridSegments;
       canvas.drawLine(
         Offset(leftPadding, y),
         Offset(size.width - rightPadding, y),
         gridPaint,
       );
     }
-
-    final rangePaint = Paint()
-      ..color = const Color(0xFFFF5A8D)
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
 
     final singlePointPaint = Paint()
       ..color = const Color(0xFFFF5A8D)
@@ -1394,7 +1458,7 @@ class _WeightWeeklyRangePainter extends CustomPainter {
 
     double toY(double weight) {
       final normalized = (maxYWeight - weight) / range;
-      return topPadding + chartHeight * normalized;
+      return topPlotPad + chartHeight * normalized;
     }
 
     for (int i = 0; i < count; i++) {
@@ -1441,7 +1505,9 @@ class _WeightWeeklyRangePainter extends CustomPainter {
     return oldDelegate.chartData != chartData ||
         oldDelegate.yLabels != yLabels ||
         oldDelegate.selectedIndex != selectedIndex ||
-        oldDelegate.omitOutOfRangeWeights != omitOutOfRangeWeights;
+        oldDelegate.omitOutOfRangeWeights != omitOutOfRangeWeights ||
+        oldDelegate.topPlotPad != topPlotPad ||
+        oldDelegate.bottomPlotPad != bottomPlotPad;
   }
 }
 
