@@ -24,6 +24,20 @@ import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_list_edit_button.dart';
 import 'weight_input_screen.dart';
 
+/// 목표 체중 링 진행 끝점(호 중심선 위). 12시 시작, 시계 방향으로 [progress]만큼.
+Offset _weightGoalRingProgressEndOffset({
+  required double boxSize,
+  required double strokeWidth,
+  required double progress,
+}) {
+  final c = boxSize / 2;
+  final r = boxSize / 2 - strokeWidth / 2;
+  final p = progress.clamp(0.0, 1.0);
+  final sweep = -math.pi * 2 * p;
+  final angle = -math.pi / 2 + sweep;
+  return Offset(c + r * math.cos(angle), c + r * math.sin(angle));
+}
+
 class WeightListScreen extends StatefulWidget {
   final DateTime? initialDate; // 초기 선택 날짜 (옵션)
 
@@ -622,11 +636,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
     // 오늘의 체중 흰 카드 바깥 패딩 없음. 349 안 좌우는 논리 10. 세로: healthDp(18)·원193·10·수정·10·메트릭·10.
     final squareSide = healthDp(context, 349);
     final chartDiameter = healthDp(context, 193);
-    final ringStroke = healthDp(context, 20);
+    final ringStroke = healthDp(context, 18);  // 원형차트 굵기기
     final chartTopGap = healthDp(context, 38);
     const double chartToButtonGap = 10;
     final chartBandH = chartTopGap + chartDiameter + chartToButtonGap;
-    final buttonBandH = healthDp(context, 32);
+    final buttonBandH = healthDp(context, 22);
     /// 수정하기 ↔ 메트릭 / 메트릭 ↔ 하단 (스케일 없이 10).
     const double gapBeforeMetricsBand = 10;
     const double gapAfterMetricsBand = 10;
@@ -677,6 +691,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                 weight: weight,
                                 heightCm: height,
                                 targetWeight: targetWeight,
+                                goalStartWeight: goalStartWeight,
                                 lostWeight: lostWeight,
                                 chartBandH: chartBandH,
                                 chartTopGap: chartTopGap,
@@ -704,6 +719,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                           weight: weight,
                           heightCm: height,
                           targetWeight: targetWeight,
+                          goalStartWeight: goalStartWeight,
                           lostWeight: lostWeight,
                           chartBandH: chartBandH,
                           chartTopGap: chartTopGap,
@@ -731,6 +747,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     required double weight,
     required double heightCm,
     required double targetWeight,
+    required double goalStartWeight,
     required double lostWeight,
     required double chartBandH,
     required double chartTopGap,
@@ -739,6 +756,24 @@ class _WeightListScreenState extends State<WeightListScreen> {
     required double gapBeforeMetricsBand,
     required double metricsBandH,
   }) {
+    final goalRingActive = targetWeight > 0 && goalStartWeight > 0;
+    final knobEnd = goalRingActive
+        ? _weightGoalRingProgressEndOffset(
+            boxSize: chartDiameter,
+            strokeWidth: ringStroke,
+            progress: progressRatio,
+          )
+        : Offset.zero;
+    final knobSize = healthDp(context, 32);
+    final knobCornerR = healthDp(context, 17.5);
+    final knobDeltaText = !goalRingActive
+        ? '-'
+        : (weight <= 0
+            ? '-'
+            : (lostWeight == 0
+                ? '0'
+                : '${lostWeight > 0 ? '+' : '-'}${lostWeight.abs().toStringAsFixed(1)}'));
+
     return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -758,6 +793,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                         width: chartDiameter,
                         height: chartDiameter,
                         child: Stack(
+                          clipBehavior: Clip.none,
                           alignment: Alignment.center,
                           children: [
                             CustomPaint(
@@ -782,7 +818,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                     fontWeight: FontWeight.w300,
                                   ),
                                 ),
-                                SizedBox(height: healthDp(context, 2)),
                                 Text(
                                   weight > 0
                                       ? '${weight.toStringAsFixed(1)}kg'
@@ -790,13 +825,44 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                   textScaler: TextScaler.noScaling,
                                   style: TextStyle(
                                     color: Colors.black,
-                                    fontSize: healthSp(context, 36),
+                                    fontSize: healthSp(context, 32),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
                             ),
+                            if (goalRingActive)
+                              Positioned(
+                                left: knobEnd.dx - knobSize / 2,
+                                top: knobEnd.dy - knobSize / 2,
+                                child: Container(
+                                  width: knobSize,
+                                  height: knobSize,
+                                  decoration: ShapeDecoration(
+                                    color: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(knobCornerR),
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      knobDeltaText,
+                                      maxLines: 1,
+                                      textScaler: TextScaler.noScaling,
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 10,
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -841,7 +907,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
                               fontWeight: FontWeight.w300,
                             ),
                           ),
-                          //SizedBox(height: healthDp(context, 2)),
                           CustomPaint(
                             size: Size(
                               healthDp(context, 7),
@@ -881,6 +946,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                     color: Color(0x7FD2D2D2),
                   ),
                 ),
+                SizedBox(height: healthDp(context, 10)),
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -939,7 +1005,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 fontWeight: FontWeight.w300,
               ),
             ),
-            SizedBox(height: healthDp(context, 10)),
+            SizedBox(height: healthDp(context, 8)),
             RichText(
               textScaler: TextScaler.noScaling,
               textAlign: TextAlign.center,
@@ -1206,13 +1272,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
     );
   }
 
-  // BMI 상태 색상
-  Color _getBmiStatusColor(double bmi) {
-    if (bmi < 18.5) return Colors.blue;
-    if (bmi < 23) return Colors.green;
-    if (bmi < 25) return Colors.orange;
-    if (bmi < 30) return const Color(0xFFE91E63);
-    return Colors.red;
+  // BMI 상태 색상 (상태 배지·구간 라벨 등 글자 강조 통일)
+  Color _getBmiStatusColor(double _) {
+    return const Color(0xFFFF5A8D);
   }
 
   // 3. BMI 컬러 바
@@ -1296,7 +1358,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 8),
-                color: Colors.grey[600],
+                color: const Color(0xFFFF5A8D),
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
@@ -1305,7 +1367,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 8),
-                color: Colors.grey[600],
+                color: const Color(0xFFFF5A8D),
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
@@ -1314,7 +1376,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 8),
-                color: Colors.grey[600],
+                color: const Color(0xFFFF5A8D),
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
@@ -1323,7 +1385,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 8),
-                color: Colors.grey[600],
+                color: const Color(0xFFFF5A8D),
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
@@ -1332,7 +1394,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 8),
-                color: Colors.grey[600],
+                color: const Color(0xFFFF5A8D),
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
@@ -2378,12 +2440,12 @@ class _WeightGoalRingPainter extends CustomPainter {
       ..color = trackColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.butt;
     final progressPaint = Paint()
       ..color = progressColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.butt;
 
     canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, track);
 
