@@ -103,29 +103,22 @@ typedef WeightChartAreaBuilder = Widget Function(
   bool omitOutOfRangeWeights,
 );
 
+typedef WeightChartBodyBuilder = Widget Function(
+  double chartHeight,
+  Widget periodSelector,
+);
+
+/// 체중 목록: 그래프 블록(기간 탭은 카드 안으로 포함)
 class WeightChartSection extends StatelessWidget {
-  final Widget periodSelector;
   final Widget chartContent;
 
   const WeightChartSection({
     super.key,
-    required this.periodSelector,
     required this.chartContent,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 25),
-        periodSelector,
-        // 그래프와 기간 선택(일자별/월별) 카드 간격
-        const SizedBox(height: 3),
-        chartContent,
-      ],
-    );
-  }
+  Widget build(BuildContext context) => chartContent;
 }
 
 class WeightChartContent extends StatelessWidget {
@@ -137,8 +130,9 @@ class WeightChartContent extends StatelessWidget {
   final bool hasActualDailyData;
   final bool showExpandButton;
   final VoidCallback? onExpand;
-  final Widget Function(double chartHeight) dataChartBuilder;
-  final Widget Function(double chartHeight) emptyChartBuilder;
+  final Widget periodSelector;
+  final WeightChartBodyBuilder dataChartBuilder;
+  final WeightChartBodyBuilder emptyChartBuilder;
 
   const WeightChartContent({
     super.key,
@@ -146,34 +140,46 @@ class WeightChartContent extends StatelessWidget {
     required this.chartData,
     required this.yLabels,
     required this.hasActualDailyData,
+    required this.periodSelector,
     required this.dataChartBuilder,
     required this.emptyChartBuilder,
-    this.chartHeight = ChartConstants.healthChartHeight,
+    this.chartHeight = ChartConstants.weightChartHeight,
     this.showExpandButton = true,
     this.onExpand,
   });
 
   @override
-  Widget build(BuildContext context) => _buildChart();
+  Widget build(BuildContext context) => _buildChart(context);
 
-  Widget _buildChart() {
+  Widget _buildChart(BuildContext context) {
     final chartBody = _buildChartBody();
 
     if (!showExpandButton) return chartBody;
 
+    final padTop = ChartConstants.weightChartCardPadding.top;
+    final tabH =
+        healthDp(context, ChartConstants.weightChartPeriodTabBarHeight);
+    final gap = ChartConstants.weightChartTabToPlotGap;
+    final kgBand = yLabels.length > 1
+        ? healthWeightChartKgBandHeight(context)
+        : 0.0;
+    final iconSize = healthDp(context, 20);
+    final topExpand = padTop + tabH + gap + kgBand / 2 - iconSize / 2;
+
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         chartBody,
         Positioned(
-          right: 20,
-          top: 13,
+          right: ChartConstants.weightChartCardPadding.right,
+          top: topExpand,
           child: GestureDetector(
             onTap: onExpand,
             behavior: HitTestBehavior.opaque,
             child: SvgPicture.asset(
               AppAssets.healthZoomin,
-              width: 20,
-              height: 20,
+              width: iconSize,
+              height: iconSize,
               fit: BoxFit.contain,
             ),
           ),
@@ -188,14 +194,15 @@ class WeightChartContent extends StatelessWidget {
         chartHeight: chartHeight,
         title: '해당 기간에 체중 기록이 없습니다',
         subtitle: '체중을 측정해보세요',
+        header: periodSelector,
       );
     }
 
     if (selectedPeriod != '일' && chartData.isEmpty) {
-      return emptyChartBuilder(chartHeight);
+      return emptyChartBuilder(chartHeight, periodSelector);
     }
 
-    return dataChartBuilder(chartHeight);
+    return dataChartBuilder(chartHeight, periodSelector);
   }
 }
 
@@ -350,6 +357,7 @@ class WeightEmptyChart extends StatelessWidget {
   final double timeOffset;
   final List<double> yLabels;
   final bool showYAxisKgHeader;
+  final Widget periodSelector;
 
   const WeightEmptyChart({
     super.key,
@@ -357,6 +365,7 @@ class WeightEmptyChart extends StatelessWidget {
     required this.selectedPeriod,
     required this.selectedDate,
     required this.timeOffset,
+    required this.periodSelector,
     this.yLabels = const [67, 66, 65, 64, 63],
     this.showYAxisKgHeader = false,
   });
@@ -376,8 +385,10 @@ class WeightEmptyChart extends StatelessWidget {
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          periodSelector,
+          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -420,7 +431,7 @@ class WeightEmptyChart extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 8),
+          // const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.only(left: 43.0),
             child: buildWeightXAxisLabels(
@@ -479,6 +490,7 @@ class WeightDataChart extends StatelessWidget {
     double chartWidth,
     double chartHeight,
   ) tooltipBuilder;
+  final Widget periodSelector;
 
   const WeightDataChart({
     super.key,
@@ -490,6 +502,7 @@ class WeightDataChart extends StatelessWidget {
     required this.chartHeight,
     required this.timeOffset,
     required this.selectedDate,
+    required this.periodSelector,
     this.showYAxisKgHeader = false,
     this.omitOutOfRangeWeights = false,
     required this.onTimeOffsetChanged,
@@ -513,6 +526,7 @@ class WeightDataChart extends StatelessWidget {
         showYAxisKgHeader: showYAxisKgHeader,
         omitOutOfRangeWeights: omitOutOfRangeWeights,
         onTooltipChanged: onTooltipChanged,
+        periodSelector: periodSelector,
       );
     }
 
@@ -530,6 +544,7 @@ class WeightDataChart extends StatelessWidget {
         omitOutOfRangeWeights: omitOutOfRangeWeights,
         onTimeOffsetChanged: onTimeOffsetChanged,
         onTooltipChanged: onTooltipChanged,
+        periodSelector: periodSelector,
       );
     }
 
@@ -542,8 +557,10 @@ class WeightDataChart extends StatelessWidget {
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          periodSelector,
+          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -600,7 +617,6 @@ class WeightDataChart extends StatelessWidget {
               );
             }),
           ),
-          const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.only(left: 43.0),
             child: buildWeightXAxisLabels(
@@ -629,6 +645,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
   final bool omitOutOfRangeWeights;
   final ValueChanged<double> onTimeOffsetChanged;
   final void Function(int?, Offset?) onTooltipChanged;
+  final Widget periodSelector;
 
   const _WeightMonthlyRangeChart({
     required this.chartData,
@@ -643,6 +660,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
     required this.omitOutOfRangeWeights,
     required this.onTimeOffsetChanged,
     required this.onTooltipChanged,
+    required this.periodSelector,
   });
 
   static const int _totalMonths = 12;
@@ -659,8 +677,10 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          periodSelector,
+          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -758,7 +778,6 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
               );
             }),
           ),
-          const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.only(left: 43.0),
             child: buildWeightXAxisLabels(
@@ -1034,6 +1053,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
   }
 }
 
+// 주간 = 일자별 그래프
 class _WeightWeeklyRangeChart extends StatelessWidget {
   final List<Map<String, dynamic>> chartData;
   final List<double> yLabels;
@@ -1046,6 +1066,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
   final bool showYAxisKgHeader;
   final bool omitOutOfRangeWeights;
   final void Function(int?, Offset?) onTooltipChanged;
+  final Widget periodSelector;
 
   const _WeightWeeklyRangeChart({
     required this.chartData,
@@ -1059,6 +1080,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
     required this.showYAxisKgHeader,
     required this.omitOutOfRangeWeights,
     required this.onTooltipChanged,
+    required this.periodSelector,
   });
 
   @override
@@ -1072,8 +1094,10 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          periodSelector,
+          const SizedBox(height: ChartConstants.weightChartTabToPlotGap),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -1153,7 +1177,6 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               );
             }),
           ),
-          const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.only(left: 43.0),
             child: buildWeightXAxisLabels(

@@ -568,9 +568,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
                     _buildBmiSummaryCard(),
                     SizedBox(height: healthDp(context, 30)),
 
-                    // 4~5. 기간 선택 + 차트
+                    // 4~5. 체중 차트(기간 탭은 카드 안)
                     WeightChartSection(
-                      periodSelector: _buildPeriodButtons(),
                       chartContent: _buildChartContent(),
                     ),
                     SizedBox(height: healthDp(context, 30)),
@@ -1405,9 +1404,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }
 
   // 4. 기간 선택 버튼
-  Widget _buildPeriodButtons() {
+  Widget _buildPeriodButtons({bool plainStyle = false}) {
     return HealthPeriodSelector(
       selectedPeriod: selectedPeriod,
+      plainStyle: plainStyle,
       onChanged: (period) {
         setState(() {
           selectedPeriod = period;
@@ -1438,11 +1438,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
     bool expandedChartView = false,
   }) {
     final resolvedChartHeight =
-        chartHeight ?? healthDp(context, ChartConstants.healthChartHeight);
+        chartHeight ?? healthDp(context, ChartConstants.weightChartHeight);
     final chartData = getChartData();
     final yLabels = expandedChartView
         ? getYAxisLabelsExpanded()
         : getYAxisLabelsMain();
+    final periodTabs = _buildPeriodButtons(plainStyle: true);
     return WeightChartContent(
       selectedPeriod: selectedPeriod,
       chartData: chartData,
@@ -1451,7 +1452,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
       chartHeight: resolvedChartHeight,
       showExpandButton: showExpandButton,
       onExpand: _openExpandedChartPage,
-      dataChartBuilder: (height) => WeightDataChart(
+      periodSelector: periodTabs,
+      dataChartBuilder: (height, tabs) => WeightDataChart(
         selectedPeriod: selectedPeriod,
         chartData: chartData,
         yLabels: yLabels,
@@ -1460,6 +1462,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         chartHeight: height,
         timeOffset: timeOffset,
         selectedDate: selectedDate,
+        periodSelector: tabs,
         showYAxisKgHeader: true,
         // 월별은 Y축 범위로 클램프하여 표시(실제값은 툴팁에 유지)
         omitOutOfRangeWeights: selectedPeriod == '일'
@@ -1481,12 +1484,13 @@ class _WeightListScreenState extends State<WeightListScreen> {
         chartAreaBuilder: (a, b, c, d) => _buildChartArea(a, b, c, d),
         tooltipBuilder: _buildChartTooltip,
       ),
-      emptyChartBuilder: (height) => WeightEmptyChart(
+      emptyChartBuilder: (height, tabs) => WeightEmptyChart(
         chartHeight: height,
         selectedPeriod: selectedPeriod,
         selectedDate: selectedDate,
         timeOffset: timeOffset,
         yLabels: yLabels,
+        periodSelector: tabs,
         showYAxisKgHeader: true,
       ),
     );
