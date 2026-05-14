@@ -2,10 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/heart_rate/heart_rate_repository.dart';
@@ -16,8 +14,9 @@ import '../widgets/heart_rate_period_chart.dart';
 import '../widgets/heart_rate_tooltip.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
+import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
-import '../../health_common/widgets/health_chart_y_axis_strip.dart';
+import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../weight/widgets/weight_chart_section.dart';
@@ -171,7 +170,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           .toList();
 
       chartData.add({
-        'date': DateFormat('M.d').format(date),
+        'date': '${date.day}',
         'slotDate': date,
         'heartRate': null,
         'measurementType': null,
@@ -280,12 +279,16 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     Size chartSize,
     List<_HeartDailyVisual> visuals,
   ) {
+    final topPad = healthWeightChartVertPad(context);
+    final botPad = healthWeightChartBottomPlotPad(context);
     final idx = _HeartRateChartPainter.hitTestVisual(
       local,
       chartSize,
       visuals,
       minValue: 50,
       maxValue: 250,
+      topPlotPad: topPad,
+      bottomPlotPad: botPad,
     );
     _DailyChartTooltip? nextTooltip;
     if (idx == null) {
@@ -492,14 +495,6 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 
   List<double> getYAxisLabels() => [250, 200, 150, 100, 50];
 
-  EdgeInsets _scaledChartCardPadding(BuildContext context) =>
-      EdgeInsets.fromLTRB(
-        healthDp(context, 8),
-        healthDp(context, 16),
-        healthDp(context, 16),
-        healthDp(context, 16),
-      );
-
   @override
   Widget build(BuildContext context) {
     final todayRecords = _recordsForSelectedDate();
@@ -578,37 +573,11 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 25)),
-                    HealthPeriodSelector(
-                      selectedPeriod: selectedPeriod,
-                      onChanged: (period) {
-                        _setChartState(() {
-                          selectedPeriod = period;
-                          _recordsCacheDateKey = null;
-                          _recordsCacheForDate = null;
-                          selectedChartPointIndex = null;
-                          tooltipPosition = null;
-                          _dailyChartTooltip = null;
-                          if (period == '월') {
-                            timeOffset = 0.0;
-                          } else if (period == '주') {
-                            timeOffset = 0.0;
-                          } else if (_isToday()) {
-                            final now = DateTime.now();
-                            timeOffset =
-                                (now.hour - 5).clamp(0, 18) / 18.0;
-                          } else {
-                            timeOffset = 0.0;
-                          }
-                        });
-                      },
-                    ),
-                    // 그래프와 기간 선택(일자별/월별) 카드 간격
-                    SizedBox(height: healthDp(context, 3)),
+                    SizedBox(height: healthDp(context, 20)),
                     _buildChart(
                       chartHeight: healthDp(
                         context,
-                        ChartConstants.healthChartHeight,
+                        ChartConstants.weightChartHeight,
                       ),
                     ),
                     SizedBox(height: healthDp(context, 12)),
@@ -799,9 +768,32 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     );
   }
 
-  Widget _buildChart(
-      {bool showExpandButton = true,
-      double chartHeight = ChartConstants.healthChartHeight}) {
+  void _handlePeriodChanged(String period) {
+    _setChartState(() {
+      selectedPeriod = period;
+      _recordsCacheDateKey = null;
+      _recordsCacheForDate = null;
+      selectedChartPointIndex = null;
+      tooltipPosition = null;
+      _dailyChartTooltip = null;
+      if (period == '월') {
+        timeOffset = 0.0;
+      } else if (period == '주') {
+        timeOffset = 0.0;
+      } else if (_isToday()) {
+        final now = DateTime.now();
+        timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
+      } else {
+        timeOffset = 0.0;
+      }
+    });
+  }
+
+  Widget _buildChart({
+    bool showExpandButton = true,
+    bool chartPeriodTabsInCard = true,
+    double chartHeight = ChartConstants.weightChartHeight,
+  }) {
     final yLabels = getYAxisLabels();
 
     Widget chartBody;
@@ -827,7 +819,9 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         tooltipPosition: tooltipPosition,
         yAxisCount: yLabels.length,
         useCalendarYearMonths: selectedPeriod == '월',
-        padding: _scaledChartCardPadding(context),
+        showPeriodSelector: chartPeriodTabsInCard,
+        onPeriodChanged:
+            chartPeriodTabsInCard ? _handlePeriodChanged : null,
         cardBackgroundColor: Colors.white,
       );
     } else if (_recordsForSelectedDate().isEmpty) {
@@ -835,28 +829,46 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         chartHeight: chartHeight,
         title: '해당 기간에 심박수 기록이 없습니다',
         subtitle: '심박수를 측정해보세요',
+        header: chartPeriodTabsInCard
+            ? HealthPeriodSelector(
+                selectedPeriod: selectedPeriod,
+                onChanged: _handlePeriodChanged,
+                plainStyle: true,
+              )
+            : null,
       );
     } else {
-      chartBody = _buildDailyChart(yLabels, chartHeight: chartHeight);
+      chartBody = _buildDailyChart(
+        yLabels,
+        chartPeriodTabsInCard: chartPeriodTabsInCard,
+        chartHeight: chartHeight,
+      );
     }
 
     if (!showExpandButton) return chartBody;
+
+    final showYHeader = yLabels.length > 1;
+    final headerBand =
+        showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
+    final padTop = healthChartCardPadding(context).top;
+    final tabH =
+        healthDp(context, ChartConstants.weightChartPeriodTabBarHeight);
+    final gap = healthDp(context, ChartConstants.weightChartTabToPlotGap);
+    final iconSize = healthDp(context, 20);
+    final expandH = HealthChartExpandControl.blockHeight(context, iconSize);
+    final topExpand = chartPeriodTabsInCard
+        ? padTop + tabH + gap + headerBand / 2 - expandH / 2
+        : padTop + headerBand / 2 - expandH / 2;
 
     return Stack(
       children: [
         chartBody,
         Positioned(
-          right: healthDp(context, 4),
-          top: healthDp(context, 8),
-          child: GestureDetector(
+          right: healthChartCardPadding(context).right,
+          top: topExpand,
+          child: HealthChartExpandControl(
             onTap: _openExpandedChartPage,
-            behavior: HitTestBehavior.opaque,
-            child: SvgPicture.asset(
-              AppAssets.healthZoomin,
-              width: healthDp(context, 20),
-              height: healthDp(context, 20),
-              fit: BoxFit.contain,
-            ),
+            iconSize: iconSize,
           ),
         ),
       ],
@@ -865,12 +877,15 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 
   Widget _buildDailyChart(
     List<double> yLabels, {
-    double chartHeight = ChartConstants.healthChartHeight,
+    required bool chartPeriodTabsInCard,
+    double chartHeight = ChartConstants.weightChartHeight,
   }) {
     final dailyVisuals = _buildDailyHeartVisuals();
+    final topPad = healthWeightChartVertPad(context);
+    final botPad = healthWeightChartBottomPlotPad(context);
     return Container(
       height: chartHeight,
-      padding: _scaledChartCardPadding(context),
+      padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(healthDp(context, 12)),
@@ -879,31 +894,40 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (chartPeriodTabsInCard) ...[
+            HealthPeriodSelector(
+              selectedPeriod: selectedPeriod,
+              onChanged: _handlePeriodChanged,
+              plainStyle: true,
+            ),
+            SizedBox(
+                height: healthDp(
+                    context, ChartConstants.weightChartTabToPlotGap)),
+          ],
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final totalH = constraints.maxHeight;
-                final unitBand =
-                    yLabels.length > 1 ? totalH / 6.0 : 0.0;
+                final showYHeader = yLabels.length > 1;
+                final headerBand = showYHeader
+                    ? bloodPressureYAxisUnitBandHeight(context)
+                    : 0.0;
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ColoredBox(
-                      color: Colors.white,
-                      child: buildChartYAxisStripWithUnit(
-                        yLabels: yLabels,
-                        showUnitHeader: yLabels.length > 1,
-                        unitLabel: '(bpm)',
-                      ),
+                    buildBloodPressureYAxisStrip(
+                      yLabels: yLabels,
+                      showYAxisHeader: showYHeader,
+                      unitLabel: '(bpm)',
                     ),
-                    SizedBox(width: healthDp(context, ChartConstants.yAxisSpacing)),
+                    SizedBox(
+                        width: healthDp(
+                            context, ChartConstants.weightChartYAxisPlotGap)),
                     Expanded(
                       child: ColoredBox(
                         color: Colors.white,
                         child: Column(
                           children: [
-                            if (yLabels.length > 1)
-                              SizedBox(height: unitBand),
+                            if (showYHeader) SizedBox(height: headerBand),
                             Expanded(
                               child: LayoutBuilder(
                                 builder: (context, inner) {
@@ -1021,6 +1045,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                             visuals: dailyVisuals,
                                             minValue: 50,
                                             maxValue: 250,
+                                            topPlotPad: topPad,
+                                            bottomPlotPad: botPad,
                                           ),
                                         ),
                                       ),
@@ -1040,13 +1066,21 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
               },
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
-          Padding(
-            padding: EdgeInsets.only(left: healthDp(context, 43)),
-            child: buildWeightXAxisLabels(
-              selectedPeriod: '일',
-              selectedDate: selectedDate,
-              timeOffset: timeOffset,
+          SizedBox(
+            height: healthDp(context, 30),
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: healthDp(
+                  context,
+                  ChartConstants.weightChartYAxisStripWidth,
+                ),
+              ),
+              child: buildWeightXAxisLabels(
+                context: context,
+                selectedPeriod: '일',
+                selectedDate: selectedDate,
+                timeOffset: timeOffset,
+              ),
             ),
           ),
         ],
@@ -1084,7 +1118,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         return LayoutBuilder(
           builder: (context, constraints) {
             final scaledChartCap =
-                healthDp(context, ChartConstants.healthChartHeight);
+                healthDp(context, ChartConstants.weightChartHeight);
             final scaledChartMin = healthDp(context, 160);
             final safeHeight = ChartConstants.healthExpandedChartHeight(
               constraints.maxHeight,
@@ -1105,6 +1139,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                   children: [
                     _buildChart(
                       showExpandButton: false,
+                      chartPeriodTabsInCard: false,
                       chartHeight: safeHeight,
                     ),
                     SizedBox(height: healthDp(context, 6)),
@@ -1269,11 +1304,15 @@ class _HeartRateChartPainter extends CustomPainter {
   final List<_HeartDailyVisual> visuals;
   final double minValue;
   final double maxValue;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
   _HeartRateChartPainter({
     required this.visuals,
     required this.minValue,
     required this.maxValue,
+    required this.topPlotPad,
+    required this.bottomPlotPad,
   });
 
   static const double _leftPad = ChartConstants.weightDailyChartInnerPadH;
@@ -1281,8 +1320,6 @@ class _HeartRateChartPainter extends CustomPainter {
   // 정시 라벨 중심과 점/막대가 정확히 정렬된다.
   static const double _rightPad = ChartConstants.weightDailyChartInnerPadH +
       ChartConstants.weightXAxisUnitReservedWidth;
-  static const double _topPad = 20.0;
-  static const double _botPad = 20.0;
   static const double _dotRadius = 6.0;
   static const double _barWidth = 10.0;
   static const double _minBarHeight = 5.0;
@@ -1295,16 +1332,18 @@ class _HeartRateChartPainter extends CustomPainter {
     List<_HeartDailyVisual> visuals, {
     required double minValue,
     required double maxValue,
+    required double topPlotPad,
+    required double bottomPlotPad,
   }) {
     if (visuals.isEmpty) return null;
-    final plotH = size.height - _topPad - _botPad;
+    final plotH = size.height - topPlotPad - bottomPlotPad;
     final plotW = size.width - _leftPad - _rightPad;
     final rangeBpm = maxValue - minValue;
     if (rangeBpm <= 0 || plotW <= 0 || plotH <= 0) return null;
 
     double toY(double bpm) {
       final n = (maxValue - bpm) / rangeBpm;
-      return _topPad + plotH * n;
+      return topPlotPad + plotH * n;
     }
 
     for (int i = visuals.length - 1; i >= 0; i--) {
@@ -1350,8 +1389,8 @@ class _HeartRateChartPainter extends CustomPainter {
 
     const leftPad = _leftPad;
     const rightPad = _rightPad;
-    const topPad = _topPad;
-    const botPad = _botPad;
+    final topPad = topPlotPad;
+    final botPad = bottomPlotPad;
     final plotH = size.height - topPad - botPad;
     final plotW = size.width - leftPad - rightPad;
 
@@ -1426,6 +1465,8 @@ class _HeartRateChartPainter extends CustomPainter {
   bool shouldRepaint(covariant _HeartRateChartPainter oldDelegate) {
     return !listEquals(oldDelegate.visuals, visuals) ||
         oldDelegate.minValue != minValue ||
-        oldDelegate.maxValue != maxValue;
+        oldDelegate.maxValue != maxValue ||
+        oldDelegate.topPlotPad != topPlotPad ||
+        oldDelegate.bottomPlotPad != bottomPlotPad;
   }
 }

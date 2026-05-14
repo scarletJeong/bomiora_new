@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
+import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
+import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/widgets/health_period_selector.dart';
 import '../../weight/widgets/weight_chart_section.dart';
 import 'heart_rate_tooltip.dart';
 
@@ -74,8 +77,11 @@ class HeartRateChartWidget extends StatefulWidget {
   final DateTime selectedDate;
   final double height;
   final bool useCalendarYearMonths;
-  final EdgeInsetsGeometry padding;
+  /// null이면 [healthChartCardPadding] 사용
+  final EdgeInsetsGeometry? cardPadding;
   final Color? cardBackgroundColor;
+  final bool showPeriodSelector;
+  final ValueChanged<String>? onPeriodChanged;
 
   const HeartRateChartWidget({
     super.key,
@@ -91,8 +97,10 @@ class HeartRateChartWidget extends StatefulWidget {
     required this.selectedDate,
     required this.height,
     required this.useCalendarYearMonths,
-    this.padding = const EdgeInsets.all(10),
+    this.cardPadding,
     this.cardBackgroundColor,
+    this.showPeriodSelector = false,
+    this.onPeriodChanged,
   });
 
   @override
@@ -103,87 +111,56 @@ class HeartRateChartWidget extends StatefulWidget {
 class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
   @override
   Widget build(BuildContext context) {
+    final cardPad = widget.cardPadding ?? healthChartCardPadding(context);
+    final topPad = healthWeightChartVertPad(context);
+    final botPad = healthWeightChartBottomPlotPad(context);
     return Container(
       height: widget.height,
-      padding: widget.padding,
+      padding: cardPad,
       decoration: BoxDecoration(
         color: widget.cardBackgroundColor ?? Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(healthDp(context, 12)),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.showPeriodSelector) ...[
+            HealthPeriodSelector(
+              selectedPeriod: widget.selectedPeriod,
+              onChanged: widget.onPeriodChanged!,
+              plainStyle: true,
+            ),
+            SizedBox(
+                height: healthDp(
+                    context, ChartConstants.weightChartTabToPlotGap)),
+          ],
           Expanded(
             child: LayoutBuilder(
               builder: (context, c) {
-                final totalH = c.maxHeight;
-                final kgBand = widget.yLabels.length > 1 ? totalH / 6.0 : 0.0;
-
-                Widget yLabelsColumn() {
-                  final n = widget.yLabels.length;
-                  if (n < 2) return const SizedBox.shrink();
-                  return LayoutBuilder(
-                    builder: (context, lc) {
-                      const topPad = 6.0;
-                      const botPad = 6.0;
-                      final h = lc.maxHeight - topPad - botPad;
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: widget.yLabels.asMap().entries.map((e) {
-                          final i = e.key;
-                          final label = e.value;
-                          final y = topPad + h * i / (n - 1);
-                          return Positioned(
-                            top: y - 8,
-                            left: 0,
-                            right: 0,
-                            child: Text(
-                              label.toStringAsFixed(0),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                  );
-                }
+                final showYHeader = widget.yLabels.length > 1;
+                final headerBand = showYHeader
+                    ? bloodPressureYAxisUnitBandHeight(context)
+                    : 0.0;
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(
-                      width: ChartConstants.weightChartYAxisWidth,
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: kgBand,
-                            child: Align(
-                              alignment: Alignment.topCenter,
-                              child: Text(
-                                '(bpm)',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(child: yLabelsColumn()),
-                        ],
-                      ),
+                    buildBloodPressureYAxisStrip(
+                      yLabels: widget.yLabels,
+                      showYAxisHeader: showYHeader,
+                      unitLabel: '(bpm)',
                     ),
-                    SizedBox(width: ChartConstants.yAxisSpacing),
+                    SizedBox(
+                        width: healthDp(
+                            context, ChartConstants.weightChartYAxisPlotGap)),
                     Expanded(
                       child: Column(
                         children: [
-                          SizedBox(height: kgBand),
-                          Expanded(child: _buildChartArea()),
+                          if (showYHeader) SizedBox(height: headerBand),
+                          Expanded(
+                            child: _buildChartArea(topPad, botPad),
+                          ),
                         ],
                       ),
                     ),
@@ -192,13 +169,21 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
               },
             ),
           ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.only(left: 43.0, bottom: 0),
-            child: buildWeightXAxisLabels(
-              selectedPeriod: widget.selectedPeriod,
-              selectedDate: widget.selectedDate,
-              timeOffset: widget.timeOffset,
+          SizedBox(
+            height: healthDp(context, 30),
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: healthDp(
+                  context,
+                  ChartConstants.weightChartYAxisStripWidth,
+                ),
+              ),
+              child: buildWeightXAxisLabels(
+                context: context,
+                selectedPeriod: widget.selectedPeriod,
+                selectedDate: widget.selectedDate,
+                timeOffset: widget.timeOffset,
+              ),
             ),
           ),
         ],
@@ -206,7 +191,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
     );
   }
 
-  Widget _buildChartArea() {
+  Widget _buildChartArea(double topPad, double botPad) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final chartAreaWidth = constraints.maxWidth;
@@ -219,6 +204,8 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
                 details.localPosition,
                 chartAreaWidth,
                 chartAreaHeight,
+                topPad,
+                botPad,
               ),
               onTap: () {
                 if (widget.selectedChartPointIndex != null) {
@@ -242,6 +229,8 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
                   selectedPointIndex: widget.selectedChartPointIndex,
                   yAxisCount: widget.yAxisCount,
                   useCalendarYearMonths: widget.useCalendarYearMonths,
+                  topPlotPad: topPad,
+                  bottomPlotPad: botPad,
                 ),
                 size: Size(chartAreaWidth, chartAreaHeight),
               ),
@@ -262,13 +251,17 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
     );
   }
 
-  void _handleTap(Offset tap, double chartWidth, double chartHeight) {
+  void _handleTap(
+    Offset tap,
+    double chartWidth,
+    double chartHeight,
+    double topPadding,
+    double bottomPadding,
+  ) {
     if (widget.chartData.isEmpty) return;
 
     final minValue = widget.yLabels[widget.yAxisCount - 1];
     final maxValue = widget.yLabels[0];
-    const topPadding = 20.0;
-    const bottomPadding = 20.0;
     const barWidth = 10.0;
     const minBarHeight = 5.0;
     const dotRadius = 6.0;
@@ -450,6 +443,8 @@ class _HeartRateChartPainter extends CustomPainter {
   final int? selectedPointIndex;
   final int yAxisCount;
   final bool useCalendarYearMonths;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
   _HeartRateChartPainter({
     required this.chartData,
@@ -459,6 +454,8 @@ class _HeartRateChartPainter extends CustomPainter {
     this.selectedPointIndex,
     required this.yAxisCount,
     required this.useCalendarYearMonths,
+    required this.topPlotPad,
+    required this.bottomPlotPad,
   });
 
   @override
@@ -470,16 +467,14 @@ class _HeartRateChartPainter extends CustomPainter {
 
     final leftPad = _plotLeftPad();
     final rightPad = _plotRightPad();
-    const topPadding = 20.0;
-    const bottomPadding = 20.0;
 
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
       ..strokeWidth = 0.5;
 
     for (int i = 0; i < yAxisCount; i++) {
-      final y = topPadding +
-          (size.height - topPadding - bottomPadding) * i / (yAxisCount - 1);
+      final y = topPlotPad +
+          (size.height - topPlotPad - bottomPlotPad) * i / (yAxisCount - 1);
       canvas.drawLine(
         Offset(leftPad, y),
         Offset(size.width - rightPad, y),
@@ -494,12 +489,12 @@ class _HeartRateChartPainter extends CustomPainter {
     const dotOuter = 6.0;
     const dotInner = 4.0;
 
-    final plotH = size.height - topPadding - bottomPadding;
+    final plotH = size.height - topPlotPad - bottomPlotPad;
     if (plotH <= 0) return;
 
     double toY(double bpm) {
       final n = (maxValue - bpm) / (maxValue - minValue);
-      return topPadding + plotH * n;
+      return topPlotPad + plotH * n;
     }
 
     for (int i = 0; i < chartData.length; i++) {
@@ -589,5 +584,15 @@ class _HeartRateChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _HeartRateChartPainter oldDelegate) {
+    return oldDelegate.chartData != chartData ||
+        oldDelegate.yLabels != yLabels ||
+        oldDelegate.timeOffset != timeOffset ||
+        oldDelegate.selectedPeriod != selectedPeriod ||
+        oldDelegate.selectedPointIndex != selectedPointIndex ||
+        oldDelegate.yAxisCount != yAxisCount ||
+        oldDelegate.useCalendarYearMonths != useCalendarYearMonths ||
+        oldDelegate.topPlotPad != topPlotPad ||
+        oldDelegate.bottomPlotPad != bottomPlotPad;
+  }
 }
