@@ -323,7 +323,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             alignment: Alignment.center,
             child: Text(
               unitText,
-              textScaler: TextScaler.noScaling,
               style: healthChartAxisUnitTextStyle(context),
             ),
           ),
@@ -353,7 +352,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         hourLabels.add(
           Text(
             hourLabel,
-            textScaler: TextScaler.noScaling,
             style: healthChartAxisTickTextStyle(
               context,
               color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
@@ -387,7 +385,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.clip,
-                textScaler: TextScaler.noScaling,
                 style: healthChartAxisTickTextStyle(context),
               ),
             );
@@ -409,7 +406,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         return Expanded(
           child: Text(
             '${date.day}',
-            textScaler: TextScaler.noScaling,
             style: healthChartAxisTickTextStyle(context),
             textAlign: TextAlign.center,
           ),

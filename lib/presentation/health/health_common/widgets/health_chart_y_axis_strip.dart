@@ -43,9 +43,8 @@ Widget buildChartYAxisStripWithUnit({
                       maxLines: 1,
                       softWrap: false,
                       overflow: TextOverflow.clip,
-                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
-                        fontSize: healthSp(context, 12),
+                        fontSize: 12,
                         color: Colors.grey,
                       ),
                     ),
@@ -69,12 +68,11 @@ Widget buildChartYAxisStripWithUnit({
                       alignment: Alignment.topCenter,
                       child: Text(
                         unitLabel,
-                        textScaler: TextScaler.noScaling,
                         maxLines: 1,
                         softWrap: false,
                         overflow: TextOverflow.clip,
                         style: TextStyle(
-                          fontSize: healthSp(context, 11),
+                          fontSize: 11,
                           color: Colors.grey[700],
                           fontWeight: FontWeight.w500,
                         ),

@@ -1046,7 +1046,6 @@ Widget buildBloodSugarXAxisLabels(
     hourLabels.add(
       Text(
         hourLabel,
-        textScaler: TextScaler.noScaling,
         style: healthChartAxisTickTextStyle(
           context,
           color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
@@ -1089,7 +1088,6 @@ Widget _buildBloodSugarPeriodXAxisLabels(
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.clip,
-              textScaler: TextScaler.noScaling,
               style: healthChartAxisTickTextStyle(context),
             ),
           );
@@ -1116,7 +1114,6 @@ Widget _buildBloodSugarPeriodXAxisLabels(
       return Expanded(
         child: Text(
           label,
-          textScaler: TextScaler.noScaling,
           style: healthChartAxisTickTextStyle(context),
           textAlign: TextAlign.center,
         ),
@@ -1153,7 +1150,6 @@ Widget _buildBloodSugarXAxisWithUnit(
           alignment: Alignment.center,
           child: Text(
             unitText,
-            textScaler: TextScaler.noScaling,
             style: healthChartAxisUnitTextStyle(context),
           ),
         ),
@@ -1177,7 +1173,7 @@ class _GlucoseSeriesLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     final dot = compact ? healthDp(context, 8) : healthDp(context, 12);
     final gap = compact ? healthDp(context, 3) : healthDp(context, 5);
-    final fontSize = compact ? healthSp(context, 9) : healthSp(context, 12);
+    final fontSize = compact ? 9.0 : 12.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1189,7 +1185,6 @@ class _GlucoseSeriesLegend extends StatelessWidget {
         SizedBox(width: gap),
         Text(
           label,
-          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.black,
             fontSize: fontSize,

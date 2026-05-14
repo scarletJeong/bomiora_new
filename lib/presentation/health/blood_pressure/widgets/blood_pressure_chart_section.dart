@@ -49,7 +49,6 @@ Widget buildBloodPressureYAxisStrip({
                       maxLines: 1,
                       softWrap: false,
                       overflow: TextOverflow.clip,
-                      textScaler: TextScaler.noScaling,
                       style: healthChartAxisTickTextStyle(context),
                     ),
                   );
@@ -78,7 +77,6 @@ Widget buildBloodPressureYAxisStrip({
                         fit: BoxFit.scaleDown,
                         child: Text(
                           unitLabel,
-                          textScaler: TextScaler.noScaling,
                           maxLines: 1,
                           softWrap: false,
                           style: healthChartAxisUnitTextStyle(context),

@@ -52,7 +52,6 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                     child: Text(
                       label.toStringAsFixed(0),
                       textAlign: TextAlign.center,
-                      textScaler: TextScaler.noScaling,
                       style: healthChartAxisTickTextStyle(chartContext),
                     ),
                   );
@@ -75,7 +74,6 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                       alignment: Alignment.bottomCenter,
                       child: Text(
                         unitLabel,
-                        textScaler: TextScaler.noScaling,
                         style: healthChartAxisUnitTextStyle(chartContext),
                       ),
                     ),
@@ -235,7 +233,6 @@ Widget buildWeightXAxisLabels({
         child: Text(
           hourLabel,
           textAlign: TextAlign.center,
-          textScaler: TextScaler.noScaling,
           style: healthChartAxisTickTextStyle(
             context,
             color: isCurrentHour
@@ -280,7 +277,6 @@ Widget _buildWeightPeriodXAxisLabels({
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.clip,
-              textScaler: TextScaler.noScaling,
               style: healthChartAxisTickTextStyle(context),
             ),
           );
@@ -307,7 +303,6 @@ Widget _buildWeightPeriodXAxisLabels({
       return Expanded(
         child: Text(
           label,
-          textScaler: TextScaler.noScaling,
           style: healthChartAxisTickTextStyle(context),
           textAlign: TextAlign.center,
         ),
@@ -344,7 +339,6 @@ Widget _buildXAxisLabelWithUnit({
           alignment: Alignment.center,
           child: Text(
             unitText,
-            textScaler: TextScaler.noScaling,
             style: healthChartAxisUnitTextStyle(context),
           ),
         ),
@@ -1357,7 +1351,6 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontFamily: _weightPageFontFamily,
                 color: Colors.grey[700],
@@ -1371,7 +1364,6 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              textScaler: TextScaler.noScaling,
               style: const TextStyle(
                 fontFamily: _weightPageFontFamily,
                 color: Colors.black87,

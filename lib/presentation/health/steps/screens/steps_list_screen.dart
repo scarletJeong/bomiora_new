@@ -879,7 +879,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           child: Center(
             child: Text(
               hourLabel,
-              textScaler: TextScaler.noScaling,
               style: healthChartAxisTickTextStyle(
                 context,
                 color: isCurrent ? healthChartAxisCurrentHourColor : null,
@@ -895,7 +894,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               child: Text(
                 label,
                 textAlign: TextAlign.center,
-                textScaler: TextScaler.noScaling,
                 style: healthChartAxisTickTextStyle(context),
               ),
             ),
@@ -903,34 +901,29 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           .toList();
     }
 
-    return MediaQuery(
-      data: MediaQuery.of(context)
-          .copyWith(textScaler: TextScaler.noScaling),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(
-              right: healthDp(
-                  context, ChartConstants.weightXAxisUnitReservedWidth),
-            ),
-            child: Row(children: rowChildren),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            right: healthDp(
+                context, ChartConstants.weightXAxisUnitReservedWidth),
           ),
-          Positioned(
-            right: -healthDp(context, 10),
-            top: healthDp(context, 1),
-            bottom: 0,
-            child: Align(
-              alignment: Alignment.center,
-              child: Text(
-                unit,
-                textScaler: TextScaler.noScaling,
-                style: healthChartAxisUnitTextStyle(context),
-              ),
+          child: Row(children: rowChildren),
+        ),
+        Positioned(
+          right: -healthDp(context, 10),
+          top: healthDp(context, 1),
+          bottom: 0,
+          child: Align(
+            alignment: Alignment.center,
+            child: Text(
+              unit,
+              style: healthChartAxisUnitTextStyle(context),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
