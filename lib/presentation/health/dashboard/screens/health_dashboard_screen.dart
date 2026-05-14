@@ -142,17 +142,11 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
       final menstrualCycleRecord = results[4] as MenstrualCycleRecord?;
       final stepsRecord = results[5] as StepsRecord?;
       final healthGoal = results[6] as HealthGoalRecordModel?;
-      WeightRecord? weightRecord = _latestOfDate(
+      // 선택한 날짜에 측정 기록이 있을 때만 사용 (다른 날의 최신 체중으로 채우지 않음)
+      final WeightRecord? weightRecord = _latestOfDate(
         weightRecords,
         (e) => e.measuredAt,
       );
-      if (weightRecord == null &&
-          _isSameDay(selectedDate, DateTime.now()) &&
-          weightRecords.isNotEmpty) {
-        final sorted = List<WeightRecord>.from(weightRecords)
-          ..sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-        weightRecord = sorted.first;
-      }
       final bloodPressureRecord =
           _latestOfDate(bpRecords, (e) => e.measuredAt);
       final bloodSugarRecord =
@@ -754,6 +748,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   Widget _buildBodyMetricsSection() {
     final String heightValue =
         latestWeightRecord == null ? '-' : '${height.toStringAsFixed(1)}cm';
+    // 당일 기록이 없으면 키·체중·BMI 모두 '-' (다른 날 데이터로 채우지 않음)
     final String weightValue = latestWeightRecord == null
         ? '-'
         : '${currentWeight.toStringAsFixed(1)}kg';
