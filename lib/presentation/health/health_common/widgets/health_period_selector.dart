@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../health_responsive_scale.dart';
+
 class HealthPeriodSelector extends StatelessWidget {
   final String selectedPeriod;
   final ValueChanged<String> onChanged;
@@ -21,7 +23,33 @@ class HealthPeriodSelector extends StatelessWidget {
     this.plainStyle = false,
   });
 
-  Widget _tabCell(String periodKey) {
+  Widget _tabCell(
+    BuildContext context,
+    String periodKey, {
+    required bool nudgeLabelLeft,
+  }) {
+    Widget label = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        periodLabels[periodKey] ?? periodKey,
+        maxLines: 1,
+        style: TextStyle(
+          fontSize: 13.33,
+          fontWeight: selectedPeriod == periodKey
+              ? FontWeight.w700
+              : FontWeight.w500,
+          color: selectedPeriod == periodKey
+              ? const Color(0xFFFF5A8D)
+              : const Color(0xFF898383),
+        ),
+      ),
+    );
+    if (nudgeLabelLeft) {
+      label = Transform.translate(
+        offset: Offset(-healthDp(context, 4), 0),
+        child: label,
+      );
+    }
     return Expanded(
       child: GestureDetector(
         onTap: () => onChanged(periodKey),
@@ -34,22 +62,7 @@ class HealthPeriodSelector extends StatelessWidget {
             borderRadius: BorderRadius.circular(11),
           ),
           child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                periodLabels[periodKey] ?? periodKey,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 13.33,
-                  fontWeight: selectedPeriod == periodKey
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  color: selectedPeriod == periodKey
-                      ? const Color(0xFFFF5A8D)
-                      : const Color(0xFF898383),
-                ),
-              ),
-            ),
+            child: label,
           ),
         ),
       ),
@@ -60,7 +73,11 @@ class HealthPeriodSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final rowChildren = <Widget>[];
     for (var i = 0; i < periods.length; i++) {
-      rowChildren.add(_tabCell(periods[i]));
+      rowChildren.add(_tabCell(
+        context,
+        periods[i],
+        nudgeLabelLeft: plainStyle && i == 0,
+      ));
       if (i != periods.length - 1) {
         if (plainStyle) {
           rowChildren.add(

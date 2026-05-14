@@ -5,12 +5,13 @@ import 'package:bomiora_app/presentation/health/health_common/health_responsive_
 class HealthEditBottomSheetItem<T> {
   final T data;
   final String timeText;
-  final Widget trailing;
+  /// 시트 내부 [BuildContext]로 빌드해 [healthDp]/[healthSp]가 시트 [MediaQuery]와 일치하도록 함.
+  final Widget Function(BuildContext sheetContext) buildTrailing;
 
   const HealthEditBottomSheetItem({
     required this.data,
     required this.timeText,
-    required this.trailing,
+    required this.buildTrailing,
   });
 }
 
@@ -63,7 +64,7 @@ Future<T?> showHealthEditBottomSheet<T>({
                           textScaler: TextScaler.noScaling,
                           style: TextStyle(
                             fontSize: healthSp(sheetContext, 18),
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         IconButton(
@@ -85,7 +86,7 @@ Future<T?> showHealthEditBottomSheet<T>({
                       itemCount: items.length,
                       separatorBuilder: (_, __) =>
                           SizedBox(height: healthDp(sheetContext, 8)),
-                      itemBuilder: (context, index) {
+                      itemBuilder: (_, index) {
                         final item = items[index];
                         return InkWell(
                           borderRadius: BorderRadius.circular(
@@ -117,7 +118,7 @@ Future<T?> showHealthEditBottomSheet<T>({
                                   width: healthDp(sheetContext, 24),
                                   height: healthDp(sheetContext, 24),
                                   child: Icon(
-                                    Icons.access_time,
+                                    Icons.access_time_outlined,
                                     size: healthDp(sheetContext, 20),
                                     color: const Color(0xFF707070),
                                   ),
@@ -141,7 +142,7 @@ Future<T?> showHealthEditBottomSheet<T>({
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          item.trailing,
+                                          item.buildTrailing(sheetContext),
                                           SizedBox(
                                               width:
                                                   healthDp(sheetContext, 10)),

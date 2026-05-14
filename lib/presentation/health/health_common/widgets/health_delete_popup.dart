@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -17,17 +18,22 @@ Future<bool?> showHealthDeletePopup({
     builder: (dialogContext) {
       final screenWidth = MediaQuery.of(dialogContext).size.width;
       const wrapperWidth = 600.0;
-      const contentSidePadding = 27.0;
+      final contentSidePadding = healthDp(dialogContext, 27);
       final wrapperOuterInset =
           screenWidth > wrapperWidth ? (screenWidth - wrapperWidth) / 2 : 0.0;
       final horizontalInset = wrapperOuterInset + contentSidePadding;
+
+      final availW = screenWidth - 2 * horizontalInset;
+      final popupW = math.min(healthDp(dialogContext, 272), availW);
+      final popupH = healthDp(dialogContext, 221);
 
       return Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
         insetPadding: EdgeInsets.symmetric(horizontal: horizontalInset),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 320),
+        child: SizedBox(
+          width: popupW,
+          height: popupH,
           child: HealthDeletePopup(
             title: title,
             message: message,
@@ -56,15 +62,9 @@ class HealthDeletePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.of(context).size.width);
     final r = healthDp(context, 32);
     final rBtn = healthDp(context, 20);
-    return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: TextScaler.linear(textScale),
-      ),
-      child: ClipRRect(
+    return ClipRRect(
         borderRadius: BorderRadius.circular(r),
         child: BackdropFilter(
           filter: ImageFilter.blur(
@@ -72,6 +72,8 @@ class HealthDeletePopup extends StatelessWidget {
             sigmaY: healthDp(context, 8),
           ),
           child: Container(
+            width: double.infinity,
+            height: double.infinity,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.95),
               borderRadius: BorderRadius.circular(r),
@@ -83,132 +85,161 @@ class HealthDeletePopup extends StatelessWidget {
                 ),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 24),
-                    healthDp(context, 32),
-                    healthDp(context, 24),
-                    healthDp(context, 24),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF1F2937),
-                          fontSize: 22,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                        ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final top = healthDp(context, 20);
+                final titleSlot = healthDp(context, 20);
+                final gapTitleMsg = healthDp(context, 20);
+                final msgBox = healthDp(context, 88);
+                final gapMsgBtnBase = healthDp(context, 20);
+                final btnRow = healthDp(context, 50);
+
+                final fixedSum =
+                    top + titleSlot + gapTitleMsg + msgBox + gapMsgBtnBase + btnRow;
+                final slack =
+                    (constraints.maxHeight - fixedSum).clamp(0.0, double.infinity);
+                final gapMsgBtn = gapMsgBtnBase + slack;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(height: top),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 24),
                       ),
-                      SizedBox(height: healthDp(context, 14)),
-                      Text(
-                        message,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 15,
-                          height: 1.5,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(
-                  height: healthDp(context, 1),
-                  thickness: healthDp(context, 1),
-                  color: const Color(0xFFF1F1F1),
-                ),
-                SizedBox(
-                  height: healthDp(context, 62),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => Navigator.pop(context, false),
-                          borderRadius: BorderRadius.only(
-                            bottomLeft: Radius.circular(rBtn),
+                      child: SizedBox(
+                        height: titleSlot,
+                        width: double.infinity,
+                        child: Center(
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: const Color(0xFF1F2937),
+                              fontSize: healthSp(context, 20),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w700,
+                              height: 1.0,
+                            ),
                           ),
-                          child: Container(
-                            width: double.infinity,
-                            height: double.infinity,
-                            decoration: ShapeDecoration(
-                              color: const Color(0xFFF8F8F8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(rBtn),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: gapTitleMsg),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 24),
+                      ),
+                      child: SizedBox(
+                        height: msgBox,
+                        width: double.infinity,
+                        child: ClipRect(
+                          child: SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: Text(
+                              message,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: const Color(0xFF6B7280),
+                                fontSize: healthSp(context, 14),
+                                height: 1.5,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: gapMsgBtn),
+                    SizedBox(
+                      height: btnRow,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => Navigator.pop(context, false),
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(rBtn),
+                              ),
+                              child: Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                decoration: ShapeDecoration(
+                                  color: const Color(0xFFF8F8F8),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.only(
+                                      bottomLeft: Radius.circular(rBtn),
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      cancelText,
+                                      style: TextStyle(
+                                        color: const Color(0xFF898686),
+                                        fontSize: healthSp(context, 16),
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  cancelText,
-                                  style: const TextStyle(
-                                    color: Color(0xFF898686),
-                                    fontSize: 16,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => Navigator.pop(context, true),
+                              borderRadius: BorderRadius.only(
+                                bottomRight: Radius.circular(rBtn),
+                              ),
+                              child: Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                decoration: ShapeDecoration(
+                                  color: const Color(0xFFFF5A8D),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.only(
+                                      bottomRight: Radius.circular(rBtn),
+                                    ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => Navigator.pop(context, true),
-                          borderRadius: BorderRadius.only(
-                            bottomRight: Radius.circular(rBtn),
-                          ),
-                          child: Container(
-                            width: double.infinity,
-                            height: double.infinity,
-                            decoration: ShapeDecoration(
-                              color: const Color(0xFFFF5A8D),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.only(
-                                  bottomRight: Radius.circular(rBtn),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      deleteText,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: healthSp(context, 16),
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  deleteText,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
-      ),
     );
   }
 }

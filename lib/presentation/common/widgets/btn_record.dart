@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
+
 class BtnRecord extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
@@ -9,9 +11,9 @@ class BtnRecord extends StatelessWidget {
   final double? borderRadius;
   final double? elevation;
   final bool isLoading;
-  /// null이면 기본 굵은 16px. 체중 등 Gmarket 적용 시 전달.
+  /// null이면 [healthSp] 16 + Gmarket 미적용 기본. 화면에서 [TextStyle] 넘길 때 사용.
   final TextStyle? textStyle;
-  /// null이면 상위 [MediaQuery] 스케일. [healthSp] 등으로 글자 크기를 직접 줄 때 [TextScaler.noScaling] 권장.
+  /// null이면 [TextScaler.noScaling] — [healthSp]와 이중 스케일 방지. 시스템 스케일 쓰려면 명시 전달.
   final TextScaler? labelTextScaler;
 
   const BtnRecord({
@@ -30,35 +32,45 @@ class BtnRecord extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final minH = healthDp(context, 44);
+    final defaultPad = EdgeInsets.symmetric(vertical: healthDp(context, 10));
+    final defaultRadius = healthDp(context, 12);
+    final effectiveTextScaler = labelTextScaler ?? TextScaler.noScaling;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? const Color(0xFFFF3787),
+          backgroundColor: backgroundColor ?? const Color(0xFFFF5A8D),
           foregroundColor: textColor ?? Colors.white,
-          padding: padding ?? const EdgeInsets.symmetric(vertical: 16),
+          padding: padding ?? defaultPad,
+          minimumSize: Size(0, minH),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius ?? 12),
+            borderRadius: BorderRadius.circular(
+              borderRadius ?? defaultRadius,
+            ),
           ),
           elevation: elevation ?? 0,
         ),
         child: isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
+            ? SizedBox(
+                height: healthDp(context, 20),
+                width: healthDp(context, 20),
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: healthDp(context, 2),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(
                 text,
-                textScaler: labelTextScaler,
+                textScaler: effectiveTextScaler,
                 style: textStyle ??
-                    const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w300,
+                    TextStyle(
+                      fontSize: healthSp(context, 16),
+                      fontWeight: FontWeight.w500,
                     ),
               ),
       ),
