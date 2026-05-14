@@ -1,8 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
 
 /// `(mmHg)` 상단 밴드 높이 (375 기준 16).
@@ -29,9 +28,9 @@ Widget buildBloodPressureYAxisStrip({
           height: forHeight,
           child: LayoutBuilder(
             builder: (context, lc) {
-              // 플롯 그리드(top/bottom 20)와 Y축 숫자 위치를 일치시킨다.
-              final plotTopPad = healthDp(context, 20);
-              final plotBottomPad = healthDp(context, 20);
+              // 플롯 그리드와 Y축 숫자 위치를 일치시킨다.
+              final plotTopPad = healthWeightChartVertPad(context);
+              final plotBottomPad = healthWeightChartBottomPlotPad(context);
               final labelHalf = healthDp(context, 8);
               final h = lc.maxHeight - plotTopPad - plotBottomPad;
               return Stack(
@@ -51,10 +50,7 @@ Widget buildBloodPressureYAxisStrip({
                       softWrap: false,
                       overflow: TextOverflow.clip,
                       textScaler: TextScaler.noScaling,
-                      style: TextStyle(
-                        fontSize: healthSp(context, 12),
-                        color: Colors.grey,
-                      ),
+                      style: healthChartAxisTickTextStyle(context),
                     ),
                   );
                 }).toList(),
@@ -66,7 +62,7 @@ Widget buildBloodPressureYAxisStrip({
 
       final yAxisW = healthDp(
         context,
-        math.max(ChartConstants.weightChartYAxisWidth, 46.0),
+        ChartConstants.weightChartYAxisWidth,
       );
       return SizedBox(
         width: yAxisW,
@@ -85,11 +81,7 @@ Widget buildBloodPressureYAxisStrip({
                           textScaler: TextScaler.noScaling,
                           maxLines: 1,
                           softWrap: false,
-                          style: TextStyle(
-                            fontSize: healthSp(context, 8),
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: healthChartAxisUnitTextStyle(context),
                         ),
                       ),
                     ),
@@ -130,6 +122,8 @@ class BloodPressureChartPainter extends CustomPainter {
 
   /// 일(시간대별): X축 `spaceBetween` — 끝점 분포. 주/월: `Expanded` 칸 중앙.
   final bool cellCenterXSlots;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
   BloodPressureChartPainter(
     this.data,
@@ -140,6 +134,8 @@ class BloodPressureChartPainter extends CustomPainter {
     required this.isToday,
     required this.timeOffset,
     this.cellCenterXSlots = false,
+    this.topPlotPad = 20,
+    this.bottomPlotPad = 10,
   });
 
   static const double _borderWidth = 0.5;
@@ -213,10 +209,8 @@ class BloodPressureChartPainter extends CustomPainter {
         : [maxValue, minValue];
 
     for (int i = 0; i < yValues.length; i++) {
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double y = topPadding +
-          (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
+      double y = topPlotPad +
+          (size.height - topPlotPad - bottomPlotPad) * i / (yValues.length - 1);
       canvas.drawLine(
         Offset(left, y),
         Offset(plotRight, y),
@@ -226,10 +220,8 @@ class BloodPressureChartPainter extends CustomPainter {
 
     for (int i = 0; i < yValues.length - 1; i++) {
       final normalizedY = (i + 0.5) / (yValues.length - 1);
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
       double y =
-          topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
+          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalizedY;
 
       for (double x = left; x < plotRight; x += 4) {
         canvas.drawLine(
@@ -264,11 +256,10 @@ class BloodPressureChartPainter extends CustomPainter {
       }
 
       double toY(int value) {
-        const double topPadding = 20.0;
-        const double bottomPadding = 20.0;
         final clampedValue = value.clamp(minValue.toInt(), maxValue.toInt());
         final normalized = (maxValue - clampedValue) / (maxValue - minValue);
-        return topPadding + (size.height - topPadding - bottomPadding) * normalized;
+        return topPlotPad +
+            (size.height - topPlotPad - bottomPlotPad) * normalized;
       }
 
       final ySysMin = toY(systolicMin);
@@ -340,15 +331,23 @@ class BloodPressureChartPainter extends CustomPainter {
         oldDelegate.yLabels != yLabels ||
         oldDelegate.highlightedIndex != highlightedIndex ||
         oldDelegate.timeOffset != timeOffset ||
-        oldDelegate.isToday != isToday;
+        oldDelegate.isToday != isToday ||
+        oldDelegate.topPlotPad != topPlotPad ||
+        oldDelegate.bottomPlotPad != bottomPlotPad;
   }
 }
 
 /// 빈 차트용 그리드 페인터
 class EmptyChartGridPainter extends CustomPainter {
   final List<double> yLabels;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
-  const EmptyChartGridPainter({required this.yLabels});
+  EmptyChartGridPainter({
+    required this.yLabels,
+    this.topPlotPad = 20,
+    this.bottomPlotPad = 10,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -363,10 +362,8 @@ class EmptyChartGridPainter extends CustomPainter {
     final yValues = yLabels.length >= 2 ? yLabels : [200, 0];
 
     for (int i = 0; i < yValues.length; i++) {
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
-      double y = topPadding +
-          (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
+      double y = topPlotPad +
+          (size.height - topPlotPad - bottomPlotPad) * i / (yValues.length - 1);
       canvas.drawLine(
         Offset(0, y),
         Offset(size.width, y),
@@ -376,10 +373,8 @@ class EmptyChartGridPainter extends CustomPainter {
 
     for (int i = 0; i < yValues.length - 1; i++) {
       final normalizedY = (i + 0.5) / (yValues.length - 1);
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
       double y =
-          topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
+          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalizedY;
 
       for (double x = 0; x < size.width; x += 4) {
         canvas.drawLine(
@@ -392,5 +387,8 @@ class EmptyChartGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant EmptyChartGridPainter oldDelegate) =>
+      oldDelegate.yLabels != yLabels ||
+      oldDelegate.topPlotPad != topPlotPad ||
+      oldDelegate.bottomPlotPad != bottomPlotPad;
 }

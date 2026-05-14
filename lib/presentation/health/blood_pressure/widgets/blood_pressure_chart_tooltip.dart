@@ -27,6 +27,8 @@ BloodPressureChartHit? hitTestBloodPressureChartSlot({
   required double chartHeight,
   required bool cellCenterXSlots,
   double maxPickDistance = 220,
+  double topPadding = 20,
+  double bottomPadding = 10,
 }) {
   if (chartData.isEmpty) return null;
 
@@ -40,8 +42,6 @@ BloodPressureChartHit? hitTestBloodPressureChartSlot({
   double minDistance = double.infinity;
   Offset? closestPoint;
 
-  const double topPadding = 20.0;
-  const double bottomPadding = 20.0;
   double toY(int value) {
     final clampedValue = value.clamp(minValue.toInt(), maxValue.toInt());
     final nv = (maxValue - clampedValue) / (maxValue - minValue);

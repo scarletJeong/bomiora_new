@@ -1,19 +1,19 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_period_selector.dart';
+import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_list_edit_button.dart';
-import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/blood_pressure/blood_pressure_repository.dart';
@@ -324,11 +324,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             child: Text(
               unitText,
               textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                fontSize: healthSp(context, 9),
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
+              style: healthChartAxisUnitTextStyle(context),
             ),
           ),
         ),
@@ -341,17 +337,26 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       const maxStartHour = 18;
       final startHour =
           (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final selDay =
+          DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final isToday = selDay == today;
+      final currentHour = now.hour;
+
       final hourLabels = <Widget>[];
       for (int i = 0; i < 7; i++) {
         final hour = (startHour + i).clamp(0, 24);
         final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
+        final isCurrentHour = isToday && hour == currentHour;
         hourLabels.add(
           Text(
             hourLabel,
             textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              fontSize: healthSp(context, 12),
-              color: Colors.grey[600],
+            style: healthChartAxisTickTextStyle(
+              context,
+              color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
             ),
           ),
         );
@@ -383,10 +388,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.clip,
                 textScaler: TextScaler.noScaling,
-                style: TextStyle(
-                  fontSize: healthSp(context, 12),
-                  color: Colors.grey[600],
-                ),
+                style: healthChartAxisTickTextStyle(context),
               ),
             );
           }),
@@ -406,12 +408,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         final date = startDate.add(Duration(days: i));
         return Expanded(
           child: Text(
-            DateFormat('M.d').format(date),
+            '${date.day}',
             textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              fontSize: healthSp(context, 10),
-              color: Colors.grey[600],
-            ),
+            style: healthChartAxisTickTextStyle(context),
             textAlign: TextAlign.center,
           ),
         );
@@ -446,14 +445,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   List<double> getDashedYAxisLabels() {
     return [225, 175, 125, 75];
   }
-
-  EdgeInsets _scaledChartCardPadding(BuildContext context) =>
-      EdgeInsets.fromLTRB(
-        healthDp(context, 8),
-        healthDp(context, 16),
-        healthDp(context, 16),
-        healthDp(context, 16),
-      );
 
   @override
   void initState() {
@@ -659,15 +650,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       SizedBox(height: healthDp(context, 16)),
                       _buildBloodPressureDisplay(),
                       SizedBox(height: healthDp(context, 25)),
-                      _buildPeriodButtons(),
-                      // 그래프와 기간 선택(일자별/월별) 카드 간격
-                      SizedBox(height: healthDp(context, 3)),
                       _buildChart(
                         chartHeight: healthDp(
-                              context,
-                              ChartConstants.healthChartHeight,
-                            ) +
-                            healthDp(context, 8),
+                          context,
+                          ChartConstants.weightChartHeight,
+                        ),
                       ),
                       SizedBox(height: healthDp(context, 14)),
                       Row(
@@ -680,46 +667,41 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                         ],
                       ),
                       SizedBox(height: healthDp(context, 24)),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: healthDp(context, 20)),
+                        child: BtnRecord(
+                          text: '+기록하기',
+                          labelTextScaler: TextScaler.noScaling,
+                          textStyle: TextStyle(
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontSize: healthSp(context, 16),
+                            fontWeight: FontWeight.bold,
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 16),
+                          ),
+                          borderRadius: healthDp(context, 12),
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    BloodPressureInputScreen(
+                                      recordContextDate: selectedDate,
+                                    ),
+                              ),
+                            );
+
+                            if (result == true) {
+                              _loadData();
+                            }
+                          },
+                          backgroundColor: const Color(0xFFFF5A8D),
+                        ),
+                      ),
                     ],
                         ),
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      healthDp(context, 27),
-                      0,
-                      healthDp(context, 27),
-                      healthDp(context, 20),
-                    ),
-                    child: BtnRecord(
-                      text: '+기록하기',
-                      labelTextScaler: TextScaler.noScaling,
-                      textStyle: TextStyle(
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontSize: healthSp(context, 16),
-                        fontWeight: FontWeight.bold,
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 16),
-                      ),
-                      borderRadius: healthDp(context, 12),
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                BloodPressureInputScreen(
-                                  recordContextDate: selectedDate,
-                                ),
-                          ),
-                        );
-
-                        if (result == true) {
-                          _loadData();
-                        }
-                      },
-                      backgroundColor: const Color(0xFFFF5A8D),
                     ),
                   ),
                 ],
@@ -1058,9 +1040,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   // 기간 선택 버튼
-  Widget _buildPeriodButtons() {
+  Widget _buildPeriodButtons({bool plainStyle = false}) {
     return HealthPeriodSelector(
       selectedPeriod: selectedPeriod,
+      plainStyle: plainStyle,
       onChanged: (period) {
         _setChartState(() {
           selectedPeriod = period;
@@ -1096,7 +1079,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Widget _buildChart(
       {bool showExpandButton = true,
       bool forExpandedChart = false,
-      double chartHeight = ChartConstants.healthChartHeight}) {
+      double chartHeight = ChartConstants.weightChartHeight}) {
     final chartData = getChartData();
     final yLabels = getYAxisLabels(forExpandedChart: forExpandedChart);
 
@@ -1110,21 +1093,29 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
     if (!showExpandButton) return chartBody;
 
+    final showYHeader = yLabels.length > 1;
+    final headerBand =
+        showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
+    final padTop = healthChartCardPadding(context).top;
+    final tabH =
+        healthDp(context, ChartConstants.weightChartPeriodTabBarHeight);
+    final iconSize = healthDp(context, 20);
+    final expandH = HealthChartExpandControl.blockHeight(context, iconSize);
+    final topExpand = padTop +
+        tabH +
+        healthDp(context, ChartConstants.weightChartTabToPlotGap) +
+        headerBand / 2 -
+        expandH / 2;
+
     return Stack(
       children: [
         chartBody,
         Positioned(
-          right: healthDp(context, 4),
-          top: healthDp(context, 8),
-          child: GestureDetector(
+          right: healthChartCardPadding(context).right,
+          top: topExpand,
+          child: HealthChartExpandControl(
             onTap: _openExpandedChartPage,
-            behavior: HitTestBehavior.opaque,
-            child: SvgPicture.asset(
-              AppAssets.healthZoomin,
-              width: healthDp(context, 20),
-              height: healthDp(context, 20),
-              fit: BoxFit.contain,
-            ),
+            iconSize: iconSize,
           ),
         ),
       ],
@@ -1133,18 +1124,19 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
   // 데이터 없음 메시지 빌드
   Widget _buildNoDataMessage(
-      {double chartHeight = ChartConstants.healthChartHeight}) {
+      {double chartHeight = ChartConstants.weightChartHeight}) {
     return HealthDailyNoDataChartCard(
       chartHeight: chartHeight,
       title: '해당 기간에 혈압 기록이 없습니다',
       subtitle: '혈압을 측정해보세요',
+      header: _buildPeriodButtons(plainStyle: true),
     );
   }
 
   // 데이터가 있는 차트 빌드
   Widget _buildDataChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
-      {double chartHeight = ChartConstants.healthChartHeight}) {
+      {double chartHeight = ChartConstants.weightChartHeight}) {
     return _buildDraggableChart(
       chartData,
       yLabels,
@@ -1157,10 +1149,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Widget _buildDraggableChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
       {required bool isEmpty,
-      double chartHeight = ChartConstants.healthChartHeight}) {
+      double chartHeight = ChartConstants.weightChartHeight}) {
     return Container(
       height: chartHeight,
-      padding: _scaledChartCardPadding(context),
+      padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(healthDp(context, 12)),
@@ -1169,9 +1161,12 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildPeriodButtons(plainStyle: true),
+          SizedBox(
+              height: healthDp(
+                  context, ChartConstants.weightChartTabToPlotGap)),
           Expanded(
             child: LayoutBuilder(builder: (context, outerConstraints) {
-              final totalH = outerConstraints.maxHeight;
               final showYHeader = yLabels.length > 1;
               final headerBand =
                   showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
@@ -1183,7 +1178,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                     yLabels: yLabels,
                     showYAxisHeader: showYHeader,
                   ),
-                  SizedBox(width: healthDp(context, ChartConstants.yAxisSpacing)),
+                  SizedBox(
+                      width: healthDp(
+                          context, ChartConstants.weightChartYAxisPlotGap)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1208,7 +1205,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               );
             }),
           ),
-          SizedBox(height: healthDp(context, 10)),
           SizedBox(
             height: healthDp(context, 30),
             child: Padding(
@@ -1274,7 +1270,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         children: [
           Positioned.fill(
             child: isEmpty
-                ? CustomPaint(painter: EmptyChartGridPainter(yLabels: yLabels))
+                ? CustomPaint(
+                    painter: EmptyChartGridPainter(
+                      yLabels: yLabels,
+                      topPlotPad: healthWeightChartVertPad(context),
+                      bottomPlotPad: healthWeightChartBottomPlotPad(context),
+                    ),
+                  )
                 : CustomPaint(
                     painter: BloodPressureChartPainter(
                       chartData,
@@ -1286,6 +1288,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       timeOffset: timeOffset,
                       cellCenterXSlots:
                           selectedPeriod == '주' || selectedPeriod == '월',
+                      topPlotPad: healthWeightChartVertPad(context),
+                      bottomPlotPad: healthWeightChartBottomPlotPad(context),
                     ),
                   ),
           ),
@@ -1330,6 +1334,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       chartWidth: chartWidth,
       chartHeight: chartHeight,
       cellCenterXSlots: cellCenter,
+      topPadding: healthWeightChartVertPad(context),
+      bottomPadding: healthWeightChartBottomPlotPad(context),
     );
     _setChartState(() {
       if (hit == null) {
@@ -1359,7 +1365,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         return LayoutBuilder(
           builder: (context, constraints) {
             final scaledChartCap =
-                healthDp(context, ChartConstants.healthChartHeight);
+                healthDp(context, ChartConstants.weightChartHeight);
             final scaledChartMin = healthDp(context, 160);
             final safeHeight = ChartConstants.healthExpandedChartHeight(
               constraints.maxHeight,
@@ -1420,21 +1426,21 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           (record) => HealthEditBottomSheetItem<BloodPressureRecord>(
             data: record,
             timeText: DateFormat('HH:mm').format(record.measuredAt),
-            trailing: Row(
+            buildTrailing: (ctx) => Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: healthDp(context, 16),
+                      width: healthDp(ctx, 16),
                       padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 2),
+                        vertical: healthDp(ctx, 2),
                       ),
                       decoration: ShapeDecoration(
                         color: const Color(0xFF85B0FF),
                         shape: RoundedRectangleBorder(
                           borderRadius:
-                              BorderRadius.circular(healthDp(context, 19)),
+                              BorderRadius.circular(healthDp(ctx, 19)),
                         ),
                       ),
                       child: Center(
@@ -1443,39 +1449,39 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                           textScaler: TextScaler.noScaling,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: healthSp(context, 10),
+                            fontSize: healthSp(ctx, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(width: healthDp(context, 5)),
+                    SizedBox(width: healthDp(ctx, 5)),
                     Text(
                       '${record.systolic}',
                       textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: const Color(0xFF1A1A1A),
-                        fontSize: healthSp(context, 16),
+                        fontSize: healthSp(ctx, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(width: healthDp(context, 10)),
+                SizedBox(width: healthDp(ctx, 10)),
                 Row(
                   children: [
                     Container(
-                      width: healthDp(context, 16),
+                      width: healthDp(ctx, 16),
                       padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 2),
+                        vertical: healthDp(ctx, 2),
                       ),
                       decoration: ShapeDecoration(
                         color: const Color(0xFFFFBC71),
                         shape: RoundedRectangleBorder(
                           borderRadius:
-                              BorderRadius.circular(healthDp(context, 19)),
+                              BorderRadius.circular(healthDp(ctx, 19)),
                         ),
                       ),
                       child: Center(
@@ -1484,20 +1490,20 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                           textScaler: TextScaler.noScaling,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: healthSp(context, 10),
+                            fontSize: healthSp(ctx, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(width: healthDp(context, 5)),
+                    SizedBox(width: healthDp(ctx, 5)),
                     Text(
                       '${record.diastolic}',
                       textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: const Color(0xFF1A1A1A),
-                        fontSize: healthSp(context, 16),
+                        fontSize: healthSp(ctx, 16),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
