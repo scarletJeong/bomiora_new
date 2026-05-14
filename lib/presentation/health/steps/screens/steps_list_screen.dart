@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 
-import '../../../../core/constants/app_assets.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
@@ -14,8 +12,11 @@ import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../utils/step_calculator.dart';
 import '../widgets/steps_chart_tooltip.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
 import '../../health_common/widgets/health_app_bar.dart';
+import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
@@ -122,8 +123,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     final startSlot = (currentSlot - 10).clamp(0, maxStartSlot);
     return startSlot / maxStartSlot;
   }
-
-  double _yAxisBandHeight(BuildContext context) => healthDp(context, 16);
 
   double _clampTimeOffset(double next) {
     if (selectedPeriod == '월') {
@@ -243,29 +242,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         ],
                       ),
                       SizedBox(height: healthDp(context, 20)),
-                      HealthPeriodSelector(
-                        selectedPeriod: selectedPeriod,
-                        onChanged: (period) {
-                          setState(() {
-                            selectedPeriod = period;
-                            if (period == '일') {
-                              timeOffset = _isToday()
-                                  ? _defaultDailyTimeOffset()
-                                  : 0.0;
-                            } else if (period == '월') {
-                              timeOffset = 0.0;
-                            } else {
-                              timeOffset = 0.0;
-                            }
-                          });
-                          _notifyExpandedChart();
-                        },
-                      ),
-                      SizedBox(height: healthDp(context, 8)),
                       _buildChartCard(
                         chartHeight: healthDp(
                           context,
-                          ChartConstants.healthChartHeight,
+                          ChartConstants.weightChartHeight,
                         ),
                       ),
                     ],
@@ -531,39 +511,71 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
   Widget _buildChartCard({
     bool showExpandButton = true,
+    bool chartPeriodTabsInCard = true,
     double? chartHeight,
   }) {
-    final h = chartHeight ?? healthDp(context, ChartConstants.healthChartHeight);
+    final h = chartHeight ?? healthDp(context, ChartConstants.weightChartHeight);
+    final showYHeader = _buildYAxisTicks().length > 1;
+    final headerBand =
+        showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
+    final padTop = healthChartCardPadding(context).top;
+    final tabH =
+        healthDp(context, ChartConstants.weightChartPeriodTabBarHeight);
+    final gap = healthDp(context, ChartConstants.weightChartTabToPlotGap);
+    final iconSize = healthDp(context, 20);
+    final expandH = HealthChartExpandControl.blockHeight(context, iconSize);
+    final topExpand = chartPeriodTabsInCard
+        ? padTop + tabH + gap + headerBand / 2 - expandH / 2
+        : padTop + headerBand / 2 - expandH / 2;
+
     return Stack(
       children: [
         Container(
           height: h,
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 8),
-            healthDp(context, 16),
-            healthDp(context, 16),
-            healthDp(context, 16),
-          ),
+          padding: healthChartCardPadding(context),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(healthDp(context, 12)),
             border: Border.all(color: Colors.grey[200]!),
           ),
-          child: _buildBarChartArea(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (chartPeriodTabsInCard) ...[
+                HealthPeriodSelector(
+                  selectedPeriod: selectedPeriod,
+                  onChanged: (period) {
+                    setState(() {
+                      selectedPeriod = period;
+                      if (period == '일') {
+                        timeOffset = _isToday()
+                            ? _defaultDailyTimeOffset()
+                            : 0.0;
+                      } else if (period == '월') {
+                        timeOffset = 0.0;
+                      } else {
+                        timeOffset = 0.0;
+                      }
+                    });
+                    _notifyExpandedChart();
+                  },
+                  plainStyle: true,
+                ),
+                SizedBox(
+                    height: healthDp(
+                        context, ChartConstants.weightChartTabToPlotGap)),
+              ],
+              Expanded(child: _buildBarChartArea()),
+            ],
+          ),
         ),
         if (showExpandButton)
           Positioned(
-            top: healthDp(context, 8),
-            right: healthDp(context, 4),
-            child: GestureDetector(
+            top: topExpand,
+            right: healthChartCardPadding(context).right,
+            child: HealthChartExpandControl(
               onTap: _openExpandedChartPage,
-              behavior: HitTestBehavior.opaque,
-              child: SvgPicture.asset(
-                AppAssets.healthZoomin,
-                width: healthDp(context, 20),
-                height: healthDp(context, 20),
-                fit: BoxFit.contain,
-              ),
+              iconSize: iconSize,
             ),
           ),
       ],
@@ -575,9 +587,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     final maxValue = _chartMaxValue();
     final yTicks = _buildYAxisTicks();
 
-    final yBand = _yAxisBandHeight(context);
-    final yAxisW = healthDp(context, ChartConstants.weightChartYAxisWidth);
-    final ySpacing = healthDp(context, ChartConstants.yAxisSpacing);
+    final yBand = bloodPressureYAxisUnitBandHeight(context);
+    final yTickDoubles = _buildYAxisTicks().map((e) => e.toDouble()).toList();
+    final ySpacing =
+        healthDp(context, ChartConstants.weightChartYAxisPlotGap);
     final barW = healthDp(
       context,
       selectedPeriod == '일'
@@ -586,7 +599,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               ? 12.0
               : 14.0,
     );
-    final chartPadV = healthDp(context, 20);
+    final chartPadTop = healthWeightChartVertPad(context);
+    final chartPadBottom = healthWeightChartBottomPlotPad(context);
     final chartPadRight = healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
     final barCornerR = healthDp(context, 10);
     final minBarH = healthDp(context, 4);
@@ -594,12 +608,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildStepsYAxisStrip(
-          context: context,
-          labels: _buildYAxisDisplayLabels(),
+        buildBloodPressureYAxisStrip(
+          yLabels: yTickDoubles,
+          showYAxisHeader: yTickDoubles.length > 1,
           unitLabel: _yAxisUnitLabel(),
-          bandHeight: yBand,
-          yAxisWidth: yAxisW,
         ),
         SizedBox(width: ySpacing),
         Expanded(
@@ -611,7 +623,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                   selectedPeriod == '일' || selectedPeriod == '월';
               final chartH = constraints.maxHeight -
                   yBand -
-                  healthDp(context, 26);
+                  healthDp(context, 30);
 
               return ColoredBox(
                 color: forceWhiteBg ? Colors.white : Colors.transparent,
@@ -670,8 +682,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   maxValue: maxValue,
                                   yTickCount: yTicks.length,
                                   barWidth: barW,
-                                  topPadding: chartPadV,
-                                  bottomPadding: chartPadV,
+                                  topPadding: chartPadTop,
+                                  bottomPadding: chartPadBottom,
                                   rightPadding: chartPadRight,
                                   barCornerRadius: barCornerR,
                                   minBarHeight: minBarH,
@@ -693,8 +705,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 10)),
-                      _buildXAxisLabelRow(context, labels),
+                      SizedBox(
+                        height: healthDp(context, 30),
+                        child: _buildXAxisLabelRow(context, labels),
+                      ),
                     ],
                   ),
                 ),
@@ -800,11 +814,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     return List<int>.generate(6, (i) => math.max(0, cap - (step * i)));
   }
 
-  List<String> _buildYAxisDisplayLabels() {
-    final fmt = NumberFormat('#,###');
-    return _buildYAxisTicks().map((e) => fmt.format(e)).toList();
-  }
-
   String _yAxisUnitLabel() => '(보)';
 
   List<String> _buildXAxisLabels() {
@@ -849,36 +858,50 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         : selectedPeriod == '주'
             ? '(일)'
             : '(월)';
-    final children = selectedPeriod == '일'
-        ? labels
-            .map(
-              (label) => Expanded(
-                child: Center(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: healthSp(context, 12),
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selDay =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final isTodaySel = selDay == today;
+    final currentHour = now.hour;
+
+    late final List<Widget> rowChildren;
+    if (selectedPeriod == '일') {
+      const visibleSlots = 12;
+      const maxStart = 48 - visibleSlots;
+      final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+      rowChildren = List.generate(7, (i) {
+        final hour = (startIndex + (i * 2)) ~/ 2;
+        final hourLabel = hour.toString().padLeft(2, '0');
+        final isCurrent = isTodaySel && hour == currentHour;
+        return Expanded(
+          child: Center(
+            child: Text(
+              hourLabel,
+              textScaler: TextScaler.noScaling,
+              style: healthChartAxisTickTextStyle(
+                context,
+                color: isCurrent ? healthChartAxisCurrentHourColor : null,
               ),
-            )
-            .toList()
-        : labels
-            .map(
-              (label) => Expanded(
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    color: Colors.grey[600],
-                  ),
-                ),
+            ),
+          ),
+        );
+      });
+    } else {
+      rowChildren = labels
+          .map(
+            (label) => Expanded(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                textScaler: TextScaler.noScaling,
+                style: healthChartAxisTickTextStyle(context),
               ),
-            )
-            .toList();
+            ),
+          )
+          .toList();
+    }
 
     return MediaQuery(
       data: MediaQuery.of(context)
@@ -888,9 +911,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         children: [
           Padding(
             padding: EdgeInsets.only(
-              right: healthDp(context, ChartConstants.weightXAxisUnitReservedWidth),
+              right: healthDp(
+                  context, ChartConstants.weightXAxisUnitReservedWidth),
             ),
-            child: Row(children: children),
+            child: Row(children: rowChildren),
           ),
           Positioned(
             right: -healthDp(context, 10),
@@ -900,11 +924,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               alignment: Alignment.center,
               child: Text(
                 unit,
-                style: TextStyle(
-                  fontSize: healthSp(context, 9),
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
+                textScaler: TextScaler.noScaling,
+                style: healthChartAxisUnitTextStyle(context),
               ),
             ),
           ),
@@ -934,9 +955,20 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       ),
       chartBuilder: (_) => LayoutBuilder(
         builder: (context, constraints) {
-          final h =
-              ChartConstants.healthExpandedChartHeight(constraints.maxHeight);
-          return _buildChartCard(showExpandButton: false, chartHeight: h);
+          final scaledChartCap =
+              healthDp(context, ChartConstants.weightChartHeight);
+          final scaledChartMin = healthDp(context, 160);
+          final h = ChartConstants.healthExpandedChartHeight(
+            constraints.maxHeight,
+            bottomLegendReserve: 34,
+            maxChartHeight: scaledChartCap,
+            minChartHeight: scaledChartMin,
+          );
+          return _buildChartCard(
+            showExpandButton: false,
+            chartPeriodTabsInCard: false,
+            chartHeight: h,
+          );
         },
       ),
       onRegisterRefresh: (refresh) {
@@ -1096,65 +1128,4 @@ class _StepsBarChartPainter extends CustomPainter {
         oldDelegate.minBarHeight != minBarHeight ||
         oldDelegate.gridStrokeWidth != gridStrokeWidth;
   }
-}
-
-Widget _buildStepsYAxisStrip({
-  required BuildContext context,
-  required List<String> labels,
-  required String unitLabel,
-  required double bandHeight,
-  required double yAxisWidth,
-}) {
-  final topPad = healthDp(context, 20);
-  final bottomPad = healthDp(context, 20);
-  final labelOffset = healthDp(context, 7);
-  return SizedBox(
-    width: yAxisWidth,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: bandHeight,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Text(
-              unitLabel,
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey[700],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final h = constraints.maxHeight - topPad - bottomPad;
-              return Stack(
-                clipBehavior: Clip.none,
-                children: labels.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final y = topPad + h * i / (labels.length - 1);
-                  return Positioned(
-                    top: y - labelOffset,
-                    left: 0,
-                    right: 0,
-                    child: Text(
-                      entry.value,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ),
-      ],
-    ),
-  );
 }
