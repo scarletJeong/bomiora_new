@@ -1,18 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:intl/intl.dart';
-import '../../../../core/constants/app_assets.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/widgets/health_chart_expand_control.dart';
 
 const String _weightPageFontFamily = 'Gmarket Sans TTF';
-
-/// (kg), (시), (일), (월) 단위
-const Color _weightChartAxisUnitColor = Color(0xFF898383);
-/// Y축 숫자·X축(일반 시각)
-const Color _weightChartAxisPrimaryLabelColor = Color(0xFF1A1A1A);
-/// 일간 X축: 선택일이 오늘일 때만 현재 시(h)에 적용
-const Color _weightChartAxisCurrentHourColor = Color(0xFFFF5A8D);
 
 /// Y축 숫자 열(35) + 플롯과의 간격([ChartConstants.weightChartYAxisPlotGap]) — X축 들여쓰기·폭 계산에 동일 사용.
 double _weightYAxisStripPlusGap(BuildContext context) => healthDp(
@@ -59,12 +53,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                       label.toStringAsFixed(0),
                       textAlign: TextAlign.center,
                       textScaler: TextScaler.noScaling,
-                      style: TextStyle(
-                        fontFamily: _weightPageFontFamily,
-                        fontSize: healthSp(chartContext, 12),
-                        color: _weightChartAxisPrimaryLabelColor,
-                        fontWeight: FontWeight.w400,
-                      ),
+                      style: healthChartAxisTickTextStyle(chartContext),
                     ),
                   );
                 }).toList(),
@@ -87,12 +76,7 @@ Widget _buildWeightYAxisStripLikePeriodChart({
                       child: Text(
                         unitLabel,
                         textScaler: TextScaler.noScaling,
-                        style: TextStyle(
-                          fontFamily: _weightPageFontFamily,
-                          fontSize: healthSp(chartContext, 10),
-                          color: _weightChartAxisUnitColor,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: healthChartAxisUnitTextStyle(chartContext),
                       ),
                     ),
                   ),
@@ -171,7 +155,7 @@ class WeightChartContent extends StatelessWidget {
 
     if (!showExpandButton) return chartBody;
 
-    final padTop = healthWeightChartCardPadding(context).top;
+    final padTop = healthChartCardPadding(context).top;
     final tabH =
         healthDp(context, ChartConstants.weightChartPeriodTabBarHeight);
     final gap = ChartConstants.weightChartTabToPlotGap;
@@ -179,24 +163,19 @@ class WeightChartContent extends StatelessWidget {
         ? healthWeightChartKgBandHeight(context)
         : 0.0;
     final iconSize = healthDp(context, 20);
-    final topExpand = padTop + tabH + gap + kgBand / 2 - iconSize / 2;
+    final expandH = HealthChartExpandControl.blockHeight(context, iconSize);
+    final topExpand = padTop + tabH + gap + kgBand / 2 - expandH / 2;
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
         chartBody,
         Positioned(
-          right: healthWeightChartCardPadding(context).right,
+          right: healthChartCardPadding(context).right,
           top: topExpand,
-          child: GestureDetector(
-            onTap: onExpand,
-            behavior: HitTestBehavior.opaque,
-            child: SvgPicture.asset(
-              AppAssets.healthZoomin,
-              width: iconSize,
-              height: iconSize,
-              fit: BoxFit.contain,
-            ),
+          child: HealthChartExpandControl(
+            onTap: onExpand!,
+            iconSize: iconSize,
           ),
         ),
       ],
@@ -246,22 +225,23 @@ Widget buildWeightXAxisLabels({
   final isToday = selDay == today;
   final currentHour = now.hour;
 
-  final hourLabels = <Widget>[];
+  final hourWidgets = <Widget>[];
   for (int i = 0; i < 7; i++) {
     final hour = (startHour + i).clamp(0, 24);
     final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
     final isCurrentHour = isToday && hour == currentHour;
-    hourLabels.add(
-      Text(
-        hourLabel,
-        textScaler: TextScaler.noScaling,
-        style: TextStyle(
-          fontFamily: _weightPageFontFamily,
-          fontSize: healthSp(context, 12),
-          color: isCurrentHour
-              ? _weightChartAxisCurrentHourColor
-              : _weightChartAxisPrimaryLabelColor,
-          fontWeight: FontWeight.w400,
+    hourWidgets.add(
+      Expanded(
+        child: Text(
+          hourLabel,
+          textAlign: TextAlign.center,
+          textScaler: TextScaler.noScaling,
+          style: healthChartAxisTickTextStyle(
+            context,
+            color: isCurrentHour
+                ? healthChartAxisCurrentHourColor
+                : null,
+          ),
         ),
       ),
     );
@@ -270,8 +250,7 @@ Widget buildWeightXAxisLabels({
   return _buildXAxisLabelWithUnit(
     context: context,
     labelRow: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: hourLabels,
+      children: hourWidgets,
     ),
     unitText: '(시)',
   );
@@ -302,12 +281,7 @@ Widget _buildWeightPeriodXAxisLabels({
               maxLines: 1,
               overflow: TextOverflow.clip,
               textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                fontFamily: _weightPageFontFamily,
-                fontSize: healthSp(context, 12),
-                color: _weightChartAxisPrimaryLabelColor,
-                fontWeight: FontWeight.w400,
-              ),
+              style: healthChartAxisTickTextStyle(context),
             ),
           );
         }),
@@ -324,7 +298,7 @@ Widget _buildWeightPeriodXAxisLabels({
   final allDateLabels = <String>[];
   for (int i = 0; i < days; i++) {
     final date = startDate.add(Duration(days: i));
-    allDateLabels.add(DateFormat('M.d').format(date));
+    allDateLabels.add('${date.day}');
   }
 
   final dateRow = Row(
@@ -334,12 +308,7 @@ Widget _buildWeightPeriodXAxisLabels({
         child: Text(
           label,
           textScaler: TextScaler.noScaling,
-          style: TextStyle(
-            fontFamily: _weightPageFontFamily,
-            fontSize: healthSp(context, 12),
-            color: _weightChartAxisPrimaryLabelColor,
-            fontWeight: FontWeight.w400,
-          ),
+          style: healthChartAxisTickTextStyle(context),
           textAlign: TextAlign.center,
         ),
       );
@@ -376,12 +345,7 @@ Widget _buildXAxisLabelWithUnit({
           child: Text(
             unitText,
             textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              fontFamily: _weightPageFontFamily,
-              fontSize: healthSp(context, 10),
-              color: _weightChartAxisUnitColor,
-              fontWeight: FontWeight.w700,
-            ),
+            style: healthChartAxisUnitTextStyle(context),
           ),
         ),
       ),
@@ -413,7 +377,7 @@ class WeightEmptyChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final segments = yLabels.length > 1 ? yLabels.length - 1 : 4;
 
-    final outerPadding = healthWeightChartCardPadding(context);
+    final outerPadding = healthChartCardPadding(context);
 
     return Container(
       height: chartHeight,
@@ -589,7 +553,7 @@ class WeightDataChart extends StatelessWidget {
 
     return Container(
       height: chartHeight,
-      padding: healthWeightChartCardPadding(context),
+      padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -710,7 +674,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: healthWeightChartCardPadding(context),
+      padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -869,52 +833,43 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
     final startIndex =
         (timeOffset * maxStart).round().clamp(0, maxStart);
 
+    // 플롯 그리드 밖 탭 → 툴팁 닫기 (_findWeeklyHit와 동일)
+    if (tap.dx < leftPadding ||
+        tap.dx > chartSize.width - rightPadding ||
+        tap.dy < topPlotPad ||
+        tap.dy > chartSize.height - bottomPlotPad) {
+      return null;
+    }
+
     double toY(double weight) {
       final normalized = (maxYWeight - weight) / range;
       return topPlotPad + drawableHeight * normalized;
     }
 
-    int? bestIndex;
-    double bestDistance = double.infinity;
-    Offset? bestTooltipPosition;
+    final slotWidth = chartWidth / _visibleMonths;
+    final relX = tap.dx - leftPadding;
+    final v = (relX / slotWidth).floor().clamp(0, _visibleMonths - 1);
+    final dataIndex = startIndex + v;
+    if (dataIndex < 0 || dataIndex >= chartData.length) return null;
 
-    for (int v = 0; v < _visibleMonths; v++) {
-      final dataIndex = startIndex + v;
-      if (dataIndex < 0 || dataIndex >= chartData.length) continue;
+    final data = chartData[dataIndex];
+    final weight = data['weight'] as double?;
+    final minWeight = (data['minWeight'] as double?) ?? weight;
+    final maxWeight = (data['maxWeight'] as double?) ?? weight;
+    final count = (data['count'] as int?) ?? (weight != null ? 1 : 0);
+    if (minWeight == null || maxWeight == null || count <= 0) return null;
 
-      final data = chartData[dataIndex];
-      final weight = data['weight'] as double?;
-      final minWeight = (data['minWeight'] as double?) ?? weight;
-      final maxWeight = (data['maxWeight'] as double?) ?? weight;
-      final count = (data['count'] as int?) ?? (weight != null ? 1 : 0);
-      if (minWeight == null || maxWeight == null || count <= 0) continue;
+    final visibleMax = omitOutOfRangeWeights
+        ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
+        : maxWeight;
 
-      final visibleMin = omitOutOfRangeWeights
-          ? minWeight.clamp(minYWeight, maxYWeight).toDouble()
-          : minWeight;
-      final visibleMax = omitOutOfRangeWeights
-          ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
-          : maxWeight;
+    final x = leftPadding + slotWidth * (v + 0.5);
+    final yMax = toY(visibleMax);
 
-      final slotWidth = chartWidth / _visibleMonths;
-      final x = leftPadding + slotWidth * (v + 0.5);
-      final yMin = toY(visibleMin);
-      final yMax = toY(visibleMax);
-      final yCenter = (yMin + yMax) / 2;
-
-      final dx = (tap.dx - x).abs();
-      final inYBand = tap.dy >= (yMax - 12) && tap.dy <= (yMin + 12);
-      final bandDistance = dx + (inYBand ? 0 : (tap.dy - yCenter).abs());
-
-      if (bandDistance < bestDistance) {
-        bestDistance = bandDistance;
-        bestIndex = dataIndex;
-        bestTooltipPosition = Offset(x - 60, yMax - 48);
-      }
-    }
-
-    if (bestIndex == null) return null;
-    return _WeeklyHit(index: bestIndex, tooltipPosition: bestTooltipPosition!);
+    return _WeeklyHit(
+      index: dataIndex,
+      tooltipPosition: Offset(x - 60, yMax - 48),
+    );
   }
 
   Widget _buildMonthlyRangeTooltip(
@@ -1143,7 +1098,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: healthWeightChartCardPadding(context),
+      padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1156,14 +1111,9 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
           SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
-              final totalH = constraints.maxHeight;
               final kgBand = showYAxisKgHeader && yLabels.length > 1
                   ? healthWeightChartKgBandHeight(context)
                   : 0.0;
-              final zoneH = totalH - kgBand;
-              final chartW =
-                  constraints.maxWidth -
-                  _weightYAxisStripPlusGap(context);
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1181,57 +1131,78 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
                           children: [
                             if (showYAxisKgHeader) SizedBox(height: kgBand),
                             Expanded(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTapDown: (details) {
-                                  final hit = _findWeeklyHit(
-                                    tap: details.localPosition,
-                                    chartSize: Size(chartW, zoneH),
-                                    topPlotPad:
-                                        healthWeightChartVertPad(context),
-                                    bottomPlotPad:
-                                        healthWeightChartBottomPlotPad(
-                                            context),
-                                  );
-                                  if (hit == null) {
-                                    onTooltipChanged(null, null);
-                                    return;
-                                  }
-                                  onTooltipChanged(
-                                      hit.index, hit.tooltipPosition);
-                                },
-                                child: Stack(
-                                  children: [
-                                    CustomPaint(
-                                      painter: _WeightWeeklyRangePainter(
-                                        chartData: chartData,
-                                        yLabels: yLabels,
-                                        selectedIndex: selectedChartPointIndex,
-                                        omitOutOfRangeWeights:
-                                            omitOutOfRangeWeights,
+                              child: LayoutBuilder(
+                                builder: (context, plotConstraints) {
+                                  final plotW = plotConstraints.maxWidth;
+                                  final plotH = plotConstraints.maxHeight;
+                                  return GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTapDown: (details) {
+                                      final hit = _findWeeklyHit(
+                                        tap: details.localPosition,
+                                        chartSize: Size(plotW, plotH),
                                         topPlotPad:
                                             healthWeightChartVertPad(context),
                                         bottomPlotPad:
                                             healthWeightChartBottomPlotPad(
                                                 context),
+                                      );
+                                      if (hit == null) {
+                                        onTooltipChanged(null, null);
+                                        return;
+                                      }
+                                      onTooltipChanged(
+                                          hit.index, hit.tooltipPosition);
+                                    },
+                                    child: Stack(
+                                      clipBehavior: Clip.hardEdge,
+                                      children: [
+                                          ClipRect(
+                                            child: CustomPaint(
+                                              painter:
+                                                  _WeightWeeklyRangePainter(
+                                                chartData: chartData,
+                                                yLabels: yLabels,
+                                                selectedIndex:
+                                                    selectedChartPointIndex,
+                                                omitOutOfRangeWeights:
+                                                    omitOutOfRangeWeights,
+                                                topPlotPad:
+                                                    healthWeightChartVertPad(
+                                                        context),
+                                                bottomPlotPad:
+                                                    healthWeightChartBottomPlotPad(
+                                                        context),
+                                              ),
+                                              size: Size(plotW, plotH),
+                                            ),
+                                          ),
+                                          if (selectedChartPointIndex !=
+                                                  null &&
+                                              tooltipPosition != null &&
+                                              selectedChartPointIndex! <
+                                                  chartData.length)
+                                            Positioned(
+                                              left: tooltipPosition!.dx,
+                                              top: tooltipPosition!.dy,
+                                              child: GestureDetector(
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onTap: () =>
+                                                    onTooltipChanged(
+                                                        null, null),
+                                                child: _buildWeeklyRangeTooltip(
+                                                  chartData[
+                                                      selectedChartPointIndex!],
+                                                  plotW,
+                                                  plotH,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                      size: Size(chartW, zoneH),
-                                    ),
-                                    if (selectedChartPointIndex != null &&
-                                        tooltipPosition != null &&
-                                        selectedChartPointIndex! <
-                                            chartData.length)
-                                      Positioned(
-                                        left: tooltipPosition!.dx,
-                                        top: tooltipPosition!.dy,
-                                        child: _buildWeeklyRangeTooltip(
-                                          chartData[selectedChartPointIndex!],
-                                          chartW,
-                                          zoneH,
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -1278,49 +1249,53 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
     final count = chartData.length;
     if (count == 0) return null;
 
+    final drawableTop = topPlotPad;
+    final drawableBottom = chartSize.height - bottomPlotPad;
+
+    // 플롯 그리드 밖(패딩 영역) 탭 → 툴팁 닫기
+    if (tap.dx < leftPadding ||
+        tap.dx > chartSize.width - rightPadding ||
+        tap.dy < drawableTop ||
+        tap.dy > drawableBottom) {
+      return null;
+    }
+
     double toY(double weight) {
       final normalized = (maxYWeight - weight) / range;
       return topPlotPad + drawableHeight * normalized;
     }
 
-    int? bestIndex;
-    double bestDistance = double.infinity;
-    Offset? bestTooltipPosition;
+    final slotWidth = chartWidth / count;
+    final relX = tap.dx - leftPadding;
+    final columnIndex =
+        (relX / slotWidth).floor().clamp(0, count - 1);
 
-    for (int i = 0; i < count; i++) {
-      final data = chartData[i];
-      final weight = data['weight'] as double?;
-      final minWeight = (data['minWeight'] as double?) ?? weight;
-      final maxWeight = (data['maxWeight'] as double?) ?? weight;
-      final dayCount = (data['count'] as int?) ?? (weight != null ? 1 : 0);
-      if (minWeight == null || maxWeight == null || dayCount <= 0) continue;
-
-      final visibleMin = omitOutOfRangeWeights
-          ? minWeight.clamp(minYWeight, maxYWeight).toDouble()
-          : minWeight;
-      final visibleMax = omitOutOfRangeWeights
-          ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
-          : maxWeight;
-
-      final slotWidth = count > 0 ? chartWidth / count : chartWidth;
-      final x = leftPadding + slotWidth * (i + 0.5);
-      final yMin = toY(visibleMin);
-      final yMax = toY(visibleMax);
-      final yCenter = (yMin + yMax) / 2;
-
-      final dx = (tap.dx - x).abs();
-      final inYBand = tap.dy >= (yMax - 12) && tap.dy <= (yMin + 12);
-      final bandDistance = dx + (inYBand ? 0 : (tap.dy - yCenter).abs());
-
-      if (bandDistance < bestDistance) {
-        bestDistance = bandDistance;
-        bestIndex = i;
-        bestTooltipPosition = Offset(x - 60, yMax - 48);
-      }
+    final data = chartData[columnIndex];
+    final weight = data['weight'] as double?;
+    final minWeight = (data['minWeight'] as double?) ?? weight;
+    final maxWeight = (data['maxWeight'] as double?) ?? weight;
+    final dayCount = (data['count'] as int?) ?? (weight != null ? 1 : 0);
+    if (minWeight == null || maxWeight == null || dayCount <= 0) {
+      return null;
     }
 
-    if (bestIndex == null) return null;
-    return _WeeklyHit(index: bestIndex, tooltipPosition: bestTooltipPosition!);
+    final visibleMin = omitOutOfRangeWeights
+        ? minWeight.clamp(minYWeight, maxYWeight).toDouble()
+        : minWeight;
+    final visibleMax = omitOutOfRangeWeights
+        ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
+        : maxWeight;
+
+    final x = leftPadding + slotWidth * (columnIndex + 0.5);
+    final yMinScreen = toY(visibleMin);
+    final yMaxScreen = toY(visibleMax);
+    // 무거운 쪽이 Y축 위(작은 dy) — 기존과 동일하게 그 구간 위쪽에 툴팁
+    final anchorY = math.min(yMinScreen, yMaxScreen);
+
+    return _WeeklyHit(
+      index: columnIndex,
+      tooltipPosition: Offset(x - 60, anchorY - 48),
+    );
   }
 
   Widget _buildWeeklyRangeTooltip(
@@ -1352,24 +1327,28 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
     double x = tooltipPosition!.dx;
     double y = tooltipPosition!.dy;
     const tooltipWidth = 150.0;
-    const tooltipHeight = 52.0;
+    /// 패딩·두 줄 텍스트·글자 스케일까지 고려한 클램프용 높이
+    const tooltipLayoutHeight = 72.0;
 
     if (x < 0) x = 0;
     if (x > chartWidth - tooltipWidth) x = chartWidth - tooltipWidth;
     if (y < 0) y = 0;
-    if (y > chartHeight - tooltipHeight) y = chartHeight - tooltipHeight;
+    if (y > chartHeight - tooltipLayoutHeight) {
+      y = chartHeight - tooltipLayoutHeight;
+    }
 
     return Transform.translate(
       offset: Offset(x - tooltipPosition!.dx, y - tooltipPosition!.dy),
       child: Container(
         width: tooltipWidth,
-        height: tooltipHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        constraints: const BoxConstraints(minHeight: 52, maxHeight: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1378,6 +1357,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontFamily: _weightPageFontFamily,
                 color: Colors.grey[700],
@@ -1391,6 +1371,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
+              textScaler: TextScaler.noScaling,
               style: const TextStyle(
                 fontFamily: _weightPageFontFamily,
                 color: Colors.black87,
@@ -1430,6 +1411,8 @@ class _WeightWeeklyRangePainter extends CustomPainter {
     final maxYWeight = yLabels.first;
     final range = (maxYWeight - minYWeight).abs();
     if (range == 0) return;
+
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     const double leftPadding = 0.0;
     const double rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
@@ -1482,20 +1465,34 @@ class _WeightWeeklyRangePainter extends CustomPainter {
       final slotWidth = count > 0 ? chartWidth / count : chartWidth;
       final x = leftPadding + slotWidth * (i + 0.5);
 
-      final yMin = toY(visibleMin);
-      final yMax = toY(visibleMax);
+      final yLo = toY(visibleMin);
+      final yHi = toY(visibleMax);
+      final drawableTop = topPlotPad;
+      final drawableBottom = size.height - bottomPlotPad;
 
-      if (dayCount == 1 || (yMin - yMax).abs() < 2) {
+      if (dayCount == 1 || (yLo - yHi).abs() < 2) {
         final radius = selectedIndex == i ? 6.5 : 5.0;
-        canvas.drawCircle(
-            Offset(x, (yMin + yMax) / 2), radius, singlePointPaint);
+        final cy = ((yLo + yHi) / 2).clamp(drawableTop, drawableBottom);
+        canvas.drawCircle(Offset(x, cy), radius, singlePointPaint);
       } else {
-        final effectivePaint = Paint()
-          ..color = const Color(0xFFFF5A8D)
-          ..strokeWidth = selectedIndex == i ? 12 : 10
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke;
-        canvas.drawLine(Offset(x, yMax), Offset(x, yMin), effectivePaint);
+        final topY = math.min(yLo, yHi);
+        final botY = math.max(yLo, yHi);
+        final ct = topY.clamp(drawableTop, drawableBottom);
+        final cb = botY.clamp(drawableTop, drawableBottom);
+        if ((cb - ct).abs() < 0.5) {
+          canvas.drawCircle(
+            Offset(x, ((ct + cb) / 2).clamp(drawableTop, drawableBottom)),
+            selectedIndex == i ? 6.5 : 5.0,
+            singlePointPaint,
+          );
+        } else {
+          final effectivePaint = Paint()
+            ..color = const Color(0xFFFF5A8D)
+            ..strokeWidth = selectedIndex == i ? 12 : 10
+            ..strokeCap = StrokeCap.round
+            ..style = PaintingStyle.stroke;
+          canvas.drawLine(Offset(x, ct), Offset(x, cb), effectivePaint);
+        }
       }
     }
   }

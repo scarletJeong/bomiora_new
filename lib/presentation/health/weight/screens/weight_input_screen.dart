@@ -220,7 +220,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     final shouldDelete = await showHealthDeletePopup(
       context: context,
       title: '체중 기록 삭제',
-      message: '이 체중 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
+      message: '헤딩 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
       cancelText: '취소',
       deleteText: '삭제',
     );
@@ -276,7 +276,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
-          title: widget.record == null ? '체중 기록하기' : '체중 수정하기',
+          title: '체중',
           titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
@@ -285,13 +285,23 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             textScaler: TextScaler.linear(textScale),
           ),
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(healthDp(context, 25)),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 25)),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 측정 일시
+                  Text(
+                    '당신의 현재 체중을 입력해주세요.',
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 20)),
                   _buildDateTimeCard(),
                   SizedBox(height: healthDp(context, 20)),
 
@@ -305,9 +315,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
                   // 눈바디 이미지
                   _buildBodyImagesSection(),
-                  SizedBox(height: healthDp(context, 24)),
+                  SizedBox(height: healthDp(context, 20)),
 
                   _buildActionButtons(),
+                  SizedBox(height: healthDp(context, 20)),
                 ],
               ),
             ),
@@ -406,7 +417,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionLabel('키'),
+        _buildSectionLabel('키(cm)'),
         SizedBox(height: healthDp(context, 5)),
         _buildNumberInput(
           controller: _heightController,
@@ -431,7 +442,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionLabel('체중'),
+        _buildSectionLabel('몸무게(kg)'),
         SizedBox(height: healthDp(context, 5)),
         _buildNumberInput(
           controller: _weightController,
@@ -461,18 +472,20 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         _buildSectionLabel('눈바디'),
         SizedBox(height: healthDp(context, 5)),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 정면 이미지
-            Expanded(
+            SizedBox(
+              width: healthDp(context, 158),
+              height: healthDp(context, 158),
               child: _buildImageContainer(
                 '정면',
                 _frontImagePath,
                 () => _selectImage('front'),
               ),
             ),
-            SizedBox(width: healthDp(context, 12)),
-            // 측면 이미지
-            Expanded(
+            SizedBox(
+              width: healthDp(context, 158),
+              height: healthDp(context, 158),
               child: _buildImageContainer(
                 '측면',
                 _sideImagePath,
@@ -536,6 +549,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   }) {
     final verticalPadding =
         ((inputHeight - healthDp(context, 20)) / 2).clamp(8.0, 28.0);
+    final padTop = (verticalPadding - 2).clamp(4.0, 28.0);
+    final padBottom = (verticalPadding + 2).clamp(4.0, 28.0);
     return TextFormField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -543,7 +558,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
       ],
       validator: validator,
-      textAlignVertical: const TextAlignVertical(y: 0.45),
+      textAlignVertical: TextAlignVertical.center,
       style: const TextStyle(
         color: Color(0xFF1A1A1A),
         fontSize: 18,
@@ -570,8 +585,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         contentPadding: EdgeInsets.only(
           left: healthDp(context, 10),
           right: healthDp(context, 10),
-          top: verticalPadding,
-          bottom: verticalPadding,
+          top: padTop,
+          bottom: padBottom,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(healthDp(context, 7)),
@@ -610,7 +625,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       children: [
         Expanded(
           child: SizedBox(
-            height: healthDp(context, 44),
+            height: healthDp(context, 38),
             child: OutlinedButton(
               onPressed: (widget.record != null && !_isSaving)
                   ? _showDeleteConfirmDialog
@@ -640,7 +655,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         SizedBox(width: healthDp(context, 10)),
         Expanded(
           child: SizedBox(
-            height: healthDp(context, 44),
+            height: healthDp(context, 38),
             child: ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
@@ -687,7 +702,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: healthDp(context, 120),
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           color: hasImage ? Colors.grey[100] : Colors.grey[200],
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
