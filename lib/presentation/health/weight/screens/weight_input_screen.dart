@@ -331,6 +331,14 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
   Widget _buildDateTimeCard() {
     final dateStr = DateFormat('yyyy.MM.dd').format(_selectedDateTime);
     final timeStr = DateFormat('HH:mm').format(_selectedDateTime);
+    final isEditMode = widget.record != null;
+
+    final Color fieldFill =
+        isEditMode ? const Color(0xFFF2F2F2) : Colors.transparent;
+    final Color fieldBorder =
+        isEditMode ? const Color(0xFFDADADA) : const Color(0x7FD2D2D2);
+    final Color fieldText =
+        isEditMode ? const Color(0xFF9E9E9E) : const Color(0xFF1A1A1A);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +350,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           children: [
             Expanded(
               child: InkWell(
-                onTap: _selectDateThenTime,
+                onTap: isEditMode ? null : _selectDateThenTime,
                 borderRadius: BorderRadius.circular(healthDp(context, 7)),
                 child: Container(
                   height: healthDp(context, 40),
@@ -351,10 +359,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   ),
                   clipBehavior: Clip.antiAlias,
                   decoration: ShapeDecoration(
+                    color: fieldFill,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
                         width: healthDp(context, 1),
-                        color: const Color(0x7FD2D2D2),
+                        color: fieldBorder,
                       ),
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 7)),
@@ -363,8 +372,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     dateStr,
-                    style: const TextStyle(
-                      color: Color(0xFF1A1A1A),
+                    style: TextStyle(
+                      color: fieldText,
                       fontSize: 16,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
@@ -376,7 +385,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: InkWell(
-                onTap: _selectTimeOnly,
+                onTap: isEditMode ? null : _selectTimeOnly,
                 borderRadius: BorderRadius.circular(healthDp(context, 7)),
                 child: Container(
                   height: healthDp(context, 40),
@@ -385,10 +394,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   ),
                   clipBehavior: Clip.antiAlias,
                   decoration: ShapeDecoration(
+                    color: fieldFill,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
                         width: healthDp(context, 1),
-                        color: const Color(0x7FD2D2D2),
+                        color: fieldBorder,
                       ),
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 7)),
@@ -397,8 +407,8 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     timeStr,
-                    style: const TextStyle(
-                      color: Color(0xFF1A1A1A),
+                    style: TextStyle(
+                      color: fieldText,
                       fontSize: 16,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,

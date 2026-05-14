@@ -596,9 +596,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
                           builder: (context, constraints) {
                             final maxW = constraints.maxWidth;
                             final desiredPad = healthDp(context, 146);
+                            // 스케일된 "+ 기록하기"가 들어갈 최소 가로 공간 (과한 패딩으로 …만 남지 않게)
+                            final minInner =
+                                healthDp(context, 240);
                             final maxPad = math.max(
                               0.0,
-                              (maxW - 72) * 0.5,
+                              (maxW - minInner) * 0.5,
                             );
                             final hPad = math.min(desiredPad, maxPad);
                             return Container(
@@ -615,19 +618,17 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                 ),
                               ),
                               child: Center(
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    '+ 기록하기',
-                                    maxLines: 1,
-                                    softWrap: false,
-                                    textScaler: TextScaler.noScaling,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: healthSp(context, 16),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                child: Text(
+                                  '+ 기록하기',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  textAlign: TextAlign.center,
+                                  textScaler: TextScaler.noScaling,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: healthSp(context, 16),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
@@ -835,10 +836,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
                               children: [
                                 Text(
                                   '오늘의 체중',
-                                  textScaler: TextScaler.noScaling,
                                   style: TextStyle(
                                     color: Colors.black,
-                                    fontSize: healthSp(context, 20),
+                                    fontSize: 20,
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w300,
                                   ),
@@ -847,10 +847,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                   weight > 0
                                       ? '${weight.toStringAsFixed(1)}kg'
                                       : '-',
-                                  textScaler: TextScaler.noScaling,
                                   style: TextStyle(
                                     color: Colors.black,
-                                    fontSize: healthSp(context, 32),
+                                    fontSize: 32,
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -877,7 +876,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                     child: Text(
                                       knobDeltaText,
                                       maxLines: 1,
-                                      textScaler: TextScaler.noScaling,
                                       style: TextStyle(
                                         color: Colors.black,
                                         fontSize: 10,
@@ -911,10 +909,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
                           Text(
                             '목표체중',
                             textAlign: TextAlign.center,
-                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: healthSp(context, 10),
+                              fontSize: 10,
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,
                             ),
@@ -924,10 +921,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                 ? '${targetWeight.toStringAsFixed(1)}kg'
                                 : '-',
                             textAlign: TextAlign.center,
-                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: healthSp(context, 10),
+                              fontSize: 10,
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,
                             ),
