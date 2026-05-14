@@ -281,7 +281,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       }).toList();
 
       final xPos = days <= 1 ? 0.5 : i / (days - 1);
-      final dateLabel = DateFormat('M.d').format(date);
+      final dateLabel = '${date.day}';
 
       if (dayRecords.isEmpty) continue;
 
@@ -669,51 +669,45 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         onExpand: _openExpandedChartPage,
                         chartHeight: healthDp(
                               context,
-                              ChartConstants.healthChartHeight,
-                            ) +
-                            healthDp(context, 8),
+                              ChartConstants.weightChartHeight,
+                            ),
                       ),
                       SizedBox(height: healthDp(context, 16)),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: healthDp(context, 20)),
+                        child: BtnRecord(
+                          text: '+기록하기',
+                          labelTextScaler: TextScaler.noScaling,
+                          textStyle: TextStyle(
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontSize: healthSp(context, 16),
+                            fontWeight: FontWeight.bold,
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 16),
+                          ),
+                          borderRadius: healthDp(context, 12),
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    BloodSugarInputScreen(
+                                      recordContextDate: selectedDate,
+                                    ),
+                              ),
+                            );
+
+                            if (result == true || result == null) {
+                              await _loadData();
+                            }
+                          },
+                          backgroundColor: const Color(0xFFFF5A8D),
+                        ),
+                      ),
                     ],
                         ),
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      healthDp(context, 27),
-                      0,
-                      healthDp(context, 27),
-                      healthDp(context, 20),
-                    ),
-                    child: BtnRecord(
-                      text: '+기록하기',
-                      labelTextScaler: TextScaler.noScaling,
-                      textStyle: TextStyle(
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontSize: healthSp(context, 16),
-                        fontWeight: FontWeight.bold,
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 16),
-                      ),
-                      borderRadius: healthDp(context, 12),
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                BloodSugarInputScreen(
-                                  recordContextDate: selectedDate,
-                                ),
-                          ),
-                        );
-
-                        if (result == true || result == null) {
-                          await _loadData();
-                        }
-                      },
-                      backgroundColor: const Color(0xFFFF5A8D),
                     ),
                   ),
                 ],
@@ -1015,7 +1009,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         return LayoutBuilder(
           builder: (context, constraints) {
             final scaledChartCap =
-                healthDp(context, ChartConstants.healthChartHeight);
+                healthDp(context, ChartConstants.weightChartHeight);
             final scaledChartMin = healthDp(context, 160);
             final safeHeight = ChartConstants.healthExpandedChartHeight(
               constraints.maxHeight,
@@ -1087,19 +1081,19 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
           (record) => HealthEditBottomSheetItem<BloodSugarRecord>(
             data: record,
             timeText: DateFormat('HH:mm').format(record.measuredAt),
-            trailing: Row(
+            buildTrailing: (ctx) => Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 8),
-                    vertical: healthDp(context, 3),
+                    horizontal: healthDp(ctx, 8),
+                    vertical: healthDp(ctx, 3),
                   ),
                   decoration: ShapeDecoration(
                     color: _measurementTypeColor(record.measurementType),
                     shape: RoundedRectangleBorder(
                       borderRadius:
-                          BorderRadius.circular(healthDp(context, 19)),
+                          BorderRadius.circular(healthDp(ctx, 19)),
                     ),
                   ),
                   child: Text(
@@ -1107,30 +1101,30 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                     textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: healthSp(context, 10),
+                      fontSize: healthSp(ctx, 10),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-                SizedBox(width: healthDp(context, 8)),
+                SizedBox(width: healthDp(ctx, 8)),
                 Text(
                   '${record.bloodSugar}',
                   textScaler: TextScaler.noScaling,
                   style: TextStyle(
                     color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(context, 16),
+                    fontSize: healthSp(ctx, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(width: healthDp(context, 2)),
+                SizedBox(width: healthDp(ctx, 2)),
                 Text(
                   'mg/dL',
                   textScaler: TextScaler.noScaling,
                   style: TextStyle(
                     color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(context, 12),
+                    fontSize: healthSp(ctx, 12),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),

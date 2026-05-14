@@ -1,11 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:intl/intl.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
-import '../../../../core/constants/app_assets.dart';
+import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart'
     show buildBloodPressureYAxisStrip, bloodPressureYAxisUnitBandHeight;
@@ -66,8 +65,10 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   List<Map<String, dynamic>> data,
   Size size,
   double minValue,
-  double maxValue,
-) {
+  double maxValue, {
+  required double plotTop,
+  required double plotBottom,
+}) {
   final indices = <int>[];
   for (var i = 0; i < data.length; i++) {
     if (data[i]['bloodSugar'] != null) indices.add(i);
@@ -88,9 +89,6 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
       (borderWidth * 2) -
       (pointRadius * 2) -
       ChartConstants.weightXAxisUnitReservedWidth;
-
-  const plotTop = 20.0;
-  const plotBottom = 20.0;
 
   double yForValue(int v) {
     final clamped = v.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
@@ -189,11 +187,13 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
 class BloodSugarPeriodSelector extends StatelessWidget {
   final String selectedPeriod;
   final ValueChanged<String> onChanged;
+  final bool plainStyle;
 
   const BloodSugarPeriodSelector({
     super.key,
     required this.selectedPeriod,
     required this.onChanged,
+    this.plainStyle = false,
   });
 
   @override
@@ -201,6 +201,7 @@ class BloodSugarPeriodSelector extends StatelessWidget {
     return HealthPeriodSelector(
       selectedPeriod: selectedPeriod,
       onChanged: onChanged,
+      plainStyle: plainStyle,
     );
   }
 }
@@ -255,7 +256,7 @@ class BloodSugarChartSection extends StatefulWidget {
     this.compactLegend = false,
     this.showExpandButton = true,
     this.showMeasurementFilter = true,
-    this.chartHeight = ChartConstants.healthChartHeight,
+    this.chartHeight = ChartConstants.weightChartHeight,
     this.selectedMeasurementFilter = '전체',
     this.onExpand,
     this.onPeriodChanged,
@@ -453,15 +454,6 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.showPeriodSelector) ...[
-          SizedBox(height: healthDp(context, 25)),
-          BloodSugarPeriodSelector(
-            selectedPeriod: widget.selectedPeriod,
-            onChanged: (period) => widget.onPeriodChanged?.call(period),
-          ),
-          // 그래프와 기간 선택(일자별/월별) 카드 간격
-          SizedBox(height: healthDp(context, 3)),
-        ],
         chart,
         if (widget.showLegend) ...[
           SizedBox(
@@ -513,7 +505,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
 
   Widget _buildChart(
       {bool showExpandButton = true,
-      double chartHeight = ChartConstants.healthChartHeight}) {
+      double chartHeight = ChartConstants.weightChartHeight}) {
     final filteredData = _filteredChartData(widget.chartData);
     final filterStripH = healthDp(context, 40);
     final effectiveChartHeight = chartHeight +
@@ -539,25 +531,32 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
 
     if (!showExpandButton && !widget.showMeasurementFilter) return chartBody;
 
+    final showYHeader = widget.yLabels.length > 1;
+    final headerBand =
+        showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
+    final padTop = healthChartCardPadding(context).top;
+    final tabH =
+        healthDp(context, ChartConstants.weightChartPeriodTabBarHeight);
+    final gap = healthDp(context, ChartConstants.weightChartTabToPlotGap);
+    final iconSize = healthDp(context, 20);
+    final expandH = HealthChartExpandControl.blockHeight(context, iconSize);
+    final topExpand = widget.showPeriodSelector
+        ? padTop + tabH + gap + headerBand / 2 - expandH / 2
+        : padTop + headerBand / 2 - expandH / 2;
+
     return Stack(
       children: [
         chartBody,
         Positioned(
-          right: healthDp(context, 4),
-          top: healthDp(context, 8),
+          right: healthChartCardPadding(context).right,
+          top: topExpand,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (showExpandButton)
-                GestureDetector(
-                  onTap: widget.onExpand,
-                  behavior: HitTestBehavior.opaque,
-                  child: SvgPicture.asset(
-                    AppAssets.healthZoomin,
-                    width: healthDp(context, 20),
-                    height: healthDp(context, 20),
-                    fit: BoxFit.contain,
-                  ),
+                HealthChartExpandControl(
+                  onTap: widget.onExpand!,
+                  iconSize: iconSize,
                 ),
               if (widget.showMeasurementFilter) ...[
                 SizedBox(height: healthDp(context, 6)),
@@ -616,11 +615,18 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
   }
 
   Widget _buildNoDataMessage(
-      {double chartHeight = ChartConstants.healthChartHeight}) {
+      {double chartHeight = ChartConstants.weightChartHeight}) {
     return HealthDailyNoDataChartCard(
       chartHeight: chartHeight,
       title: '해당 기간에 혈당 기록이 없습니다',
       subtitle: '혈당을 측정해보세요',
+      header: widget.showPeriodSelector
+          ? BloodSugarPeriodSelector(
+              plainStyle: true,
+              selectedPeriod: widget.selectedPeriod,
+              onChanged: (period) => widget.onPeriodChanged?.call(period),
+            )
+          : null,
     );
   }
 
@@ -628,11 +634,11 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     List<Map<String, dynamic>> chartData,
     List<double> yLabels, {
     required bool isEmpty,
-    double chartHeight = ChartConstants.healthChartHeight,
+    double chartHeight = ChartConstants.weightChartHeight,
   }) {
     return Container(
       height: chartHeight,
-      padding: ChartConstants.weightChartCardPadding,
+      padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(healthDp(context, 12)),
@@ -641,6 +647,16 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.showPeriodSelector) ...[
+            BloodSugarPeriodSelector(
+              plainStyle: true,
+              selectedPeriod: widget.selectedPeriod,
+              onChanged: (period) => widget.onPeriodChanged?.call(period),
+            ),
+            SizedBox(
+                height: healthDp(
+                    context, ChartConstants.weightChartTabToPlotGap)),
+          ],
           if (widget.showMeasurementFilter)
             SizedBox(height: healthDp(context, 34)),
           Expanded(
@@ -658,7 +674,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                       showYAxisHeader: showYHeader,
                       unitLabel: '(mg/dL)',
                     ),
-                    SizedBox(width: healthDp(context, ChartConstants.yAxisSpacing)),
+                    SizedBox(
+                        width: healthDp(
+                            context, ChartConstants.weightChartYAxisPlotGap)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -683,7 +701,6 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
               },
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
           SizedBox(
             height: healthDp(context, 30),
             child: Padding(
@@ -698,6 +715,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 selectedPeriod: widget.selectedPeriod,
                 selectedDate: widget.selectedDate,
                 timeOffset: widget.timeOffset,
+                chartIsToday: widget.isToday,
               ),
             ),
           ),
@@ -710,6 +728,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       BoxConstraints constraints, bool isEmpty) {
     final chartW = constraints.maxWidth;
     final chartH = constraints.maxHeight;
+    final topPad = healthWeightChartVertPad(context);
+    final botPad = healthWeightChartBottomPlotPad(context);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -741,6 +761,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 chartData,
                 chartW,
                 chartH,
+                topPad,
+                botPad,
               );
             },
       child: Stack(
@@ -753,6 +775,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                       yLabels: widget.yLabels,
                       minValue: widget.yLabels.last,
                       maxValue: widget.yLabels.first,
+                      topPlotPad: topPad,
+                      bottomPlotPad: botPad,
                     ),
                   )
                 : CustomPaint(
@@ -765,6 +789,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                       isToday: widget.isToday,
                       timeOffset: widget.timeOffset,
                       selectedPeriod: widget.selectedPeriod,
+                      topPlotPad: topPad,
+                      bottomPlotPad: botPad,
                     ),
                   ),
           ),
@@ -779,6 +805,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 chartH,
                 widget.yLabels.last,
                 widget.yLabels.first,
+                topPad,
+                botPad,
               ),
               selectedPeriod: widget.selectedPeriod,
               selectedDate: widget.selectedDate,
@@ -796,6 +824,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     List<Map<String, dynamic>> chartData,
     double chartWidth,
     double chartHeight,
+    double topPadding,
+    double bottomPadding,
   ) {
     if (chartData.isEmpty) return;
 
@@ -831,8 +861,14 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
 
     final inOverlapDataIndex = <int>{};
     if (widget.selectedPeriod == '주' || widget.selectedPeriod == '월') {
-      final occ = bloodSugarComputeWeekMonthOverlapClusters(chartData,
-          Size(chartWidth, chartHeight), widget.yLabels.last, widget.yLabels.first);
+      final occ = bloodSugarComputeWeekMonthOverlapClusters(
+        chartData,
+        Size(chartWidth, chartHeight),
+        widget.yLabels.last,
+        widget.yLabels.first,
+        plotTop: topPadding,
+        plotBottom: bottomPadding,
+      );
       for (var ci = 0; ci < occ.length; ci++) {
         final c = occ[ci];
         for (final di in c.dataIndices) {
@@ -856,8 +892,6 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         if (minSugar == null || maxSugar == null) continue;
         final xPosition = (chartData[i]['xPosition'] as double?) ?? 0.5;
         final x = leftPadding + (effectiveWidth * xPosition);
-        const double topPadding = 20.0;
-        const double bottomPadding = 20.0;
         final clampedMin =
             minSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
         final clampedMax =
@@ -898,8 +932,6 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       }
 
       final int bloodSugar = chartData[i]['bloodSugar'] as int;
-      const double topPadding = 20.0;
-      const double bottomPadding = 20.0;
       final clamped =
           bloodSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
       final double normalizedValue =
@@ -935,6 +967,8 @@ Map<String, dynamic> _tooltipRowForChartIndex(
   double chartHeight,
   double minValue,
   double maxValue,
+  double plotTop,
+  double plotBottom,
 ) {
   if (index < 0) {
     final ci = -index - 1;
@@ -943,6 +977,8 @@ Map<String, dynamic> _tooltipRowForChartIndex(
       Size(chartWidth, chartHeight),
       minValue,
       maxValue,
+      plotTop: plotTop,
+      plotBottom: plotBottom,
     );
     if (ci < 0 || ci >= clusters.length) {
       return chartData.isNotEmpty ? chartData[0] : {};
@@ -981,6 +1017,7 @@ Widget buildBloodSugarXAxisLabels(
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
+  required bool chartIsToday,
 }) {
   if (selectedPeriod != '일') {
     return _buildBloodSugarPeriodXAxisLabels(
@@ -994,17 +1031,25 @@ Widget buildBloodSugarXAxisLabels(
   const maxStartHour = 18;
   final startHour = (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
 
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final selDay =
+      DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+  final isToday = chartIsToday && selDay == today;
+  final currentHour = now.hour;
+
   final hourLabels = <Widget>[];
   for (int i = 0; i < 7; i++) {
     final hour = (startHour + i).clamp(0, 24);
     final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
+    final isCurrentHour = isToday && hour == currentHour;
     hourLabels.add(
       Text(
         hourLabel,
         textScaler: TextScaler.noScaling,
-        style: TextStyle(
-          fontSize: healthSp(context, 12),
-          color: Colors.grey[600],
+        style: healthChartAxisTickTextStyle(
+          context,
+          color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
         ),
       ),
     );
@@ -1045,10 +1090,7 @@ Widget _buildBloodSugarPeriodXAxisLabels(
               maxLines: 1,
               overflow: TextOverflow.clip,
               textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                fontSize: healthSp(context, 12),
-                color: Colors.grey[600],
-              ),
+              style: healthChartAxisTickTextStyle(context),
             ),
           );
         }),
@@ -1065,7 +1107,7 @@ Widget _buildBloodSugarPeriodXAxisLabels(
   final allDateLabels = <String>[];
   for (int i = 0; i < days; i++) {
     final date = startDate.add(Duration(days: i));
-    allDateLabels.add(DateFormat('M.d').format(date));
+    allDateLabels.add('${date.day}');
   }
 
   final dateRow = Row(
@@ -1075,10 +1117,7 @@ Widget _buildBloodSugarPeriodXAxisLabels(
         child: Text(
           label,
           textScaler: TextScaler.noScaling,
-          style: TextStyle(
-            fontSize: healthSp(context, 10),
-            color: Colors.grey[600],
-          ),
+          style: healthChartAxisTickTextStyle(context),
           textAlign: TextAlign.center,
         ),
       );
@@ -1115,11 +1154,7 @@ Widget _buildBloodSugarXAxisWithUnit(
           child: Text(
             unitText,
             textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              fontSize: healthSp(context, 9),
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
+            style: healthChartAxisUnitTextStyle(context),
           ),
         ),
       ),
@@ -1176,6 +1211,8 @@ class BloodSugarChartPainter extends CustomPainter {
   final bool isToday;
   final double timeOffset;
   final String selectedPeriod;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
   BloodSugarChartPainter(
     this.data,
@@ -1186,6 +1223,8 @@ class BloodSugarChartPainter extends CustomPainter {
     required this.isToday,
     required this.timeOffset,
     required this.selectedPeriod,
+    required this.topPlotPad,
+    required this.bottomPlotPad,
   });
 
   @override
@@ -1210,19 +1249,15 @@ class BloodSugarChartPainter extends CustomPainter {
         : [maxValue, minValue];
 
     for (int i = 0; i < yValues.length; i++) {
-      const topPadding = 20.0;
-      const bottomPadding = 20.0;
-      final y = topPadding +
-          (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
+      final y = topPlotPad +
+          (size.height - topPlotPad - bottomPlotPad) * i / (yValues.length - 1);
       canvas.drawLine(Offset(x0, y), Offset(x0 + chartWidth, y), gridPaint);
     }
 
     for (int i = 0; i < yValues.length - 1; i++) {
       final normalizedY = (i + 0.5) / (yValues.length - 1);
-      const topPadding = 20.0;
-      const bottomPadding = 20.0;
       final y =
-          topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
+          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalizedY;
       for (double x = x0; x < x0 + chartWidth; x += 4) {
         canvas.drawLine(Offset(x, y), Offset(x + 2, y), dashedGridPaint);
       }
@@ -1234,9 +1269,6 @@ class BloodSugarChartPainter extends CustomPainter {
       _paintWeekMonthSeries(canvas, size, x0, chartWidth);
     }
   }
-
-  static const double _plotTopPadding = 20.0;
-  static const double _plotBottomPadding = 20.0;
 
   void _paintDailySeries(
     Canvas canvas,
@@ -1266,10 +1298,10 @@ class BloodSugarChartPainter extends CustomPainter {
         final clampedMax = maxSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
         final minNorm = (maxValue - clampedMin) / (maxValue - minValue);
         final maxNorm = (maxValue - clampedMax) / (maxValue - minValue);
-        final yMin = _plotTopPadding +
-            (size.height - _plotTopPadding - _plotBottomPadding) * minNorm;
-        final yMax = _plotTopPadding +
-            (size.height - _plotTopPadding - _plotBottomPadding) * maxNorm;
+        final yMin = topPlotPad +
+            (size.height - topPlotPad - bottomPlotPad) * minNorm;
+        final yMax = topPlotPad +
+            (size.height - topPlotPad - bottomPlotPad) * maxNorm;
         final yTop = math.min(yMin, yMax);
         final yBottom = math.max(yMin, yMax);
         final centerY = (yTop + yBottom) / 2;
@@ -1320,8 +1352,8 @@ class BloodSugarChartPainter extends CustomPainter {
       final bloodSugar = data[i]['bloodSugar'] as int;
       final clamped = bloodSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
       final normalized = (maxValue - clamped) / (maxValue - minValue);
-      final y = _plotTopPadding +
-          (size.height - _plotTopPadding - _plotBottomPadding) * normalized;
+      final y = topPlotPad +
+          (size.height - topPlotPad - bottomPlotPad) * normalized;
 
       points.add(Offset(x, y));
       pointIndices.add(i);
@@ -1368,13 +1400,15 @@ class BloodSugarChartPainter extends CustomPainter {
       size,
       minValue,
       maxValue,
+      plotTop: topPlotPad,
+      plotBottom: bottomPlotPad,
     );
 
     double yForValue(int v) {
       final clamped = v.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
       final normalized = (maxValue - clamped) / (maxValue - minValue);
-      return _plotTopPadding +
-          (size.height - _plotTopPadding - _plotBottomPadding) * normalized;
+      return topPlotPad +
+          (size.height - topPlotPad - bottomPlotPad) * normalized;
     }
 
     Offset offsetForIndex(int i) {
@@ -1478,7 +1512,18 @@ class BloodSugarChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant BloodSugarChartPainter oldDelegate) {
+    return oldDelegate.data != data ||
+        oldDelegate.minValue != minValue ||
+        oldDelegate.maxValue != maxValue ||
+        oldDelegate.yLabels != yLabels ||
+        oldDelegate.highlightedIndex != highlightedIndex ||
+        oldDelegate.isToday != isToday ||
+        oldDelegate.timeOffset != timeOffset ||
+        oldDelegate.selectedPeriod != selectedPeriod ||
+        oldDelegate.topPlotPad != topPlotPad ||
+        oldDelegate.bottomPlotPad != bottomPlotPad;
+  }
 
   Color _seriesColorForDataIndex(int index) {
     if (index < 0 || index >= data.length) {
@@ -1509,11 +1554,15 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
   final List<double>? yLabels;
   final double minValue;
   final double maxValue;
+  final double topPlotPad;
+  final double bottomPlotPad;
 
   EmptyBloodSugarChartGridPainter({
     this.yLabels,
     this.minValue = 20,
     this.maxValue = 200,
+    required this.topPlotPad,
+    required this.bottomPlotPad,
   });
 
   @override
@@ -1532,19 +1581,15 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
         : [maxValue, minValue];
 
     for (int i = 0; i < yValues.length; i++) {
-      const topPadding = 20.0;
-      const bottomPadding = 20.0;
-      final y = topPadding +
-          (size.height - topPadding - bottomPadding) * i / (yValues.length - 1);
+      final y = topPlotPad +
+          (size.height - topPlotPad - bottomPlotPad) * i / (yValues.length - 1);
       canvas.drawLine(Offset(x0, y), Offset(x0 + plotRight, y), gridPaint);
     }
 
     for (int i = 0; i < yValues.length - 1; i++) {
       final normalizedY = (i + 0.5) / (yValues.length - 1);
-      const topPadding = 20.0;
-      const bottomPadding = 20.0;
       final y =
-          topPadding + (size.height - topPadding - bottomPadding) * normalizedY;
+          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalizedY;
       for (double x = x0; x < x0 + plotRight; x += 4) {
         canvas.drawLine(Offset(x, y), Offset(x + 2, y), dashedGridPaint);
       }
@@ -1552,5 +1597,10 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant EmptyBloodSugarChartGridPainter oldDelegate) =>
+      oldDelegate.yLabels != yLabels ||
+      oldDelegate.minValue != minValue ||
+      oldDelegate.maxValue != maxValue ||
+      oldDelegate.topPlotPad != topPlotPad ||
+      oldDelegate.bottomPlotPad != bottomPlotPad;
 }
