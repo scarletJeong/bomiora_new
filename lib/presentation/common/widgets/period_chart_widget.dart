@@ -26,7 +26,7 @@ class PeriodChartWidget extends StatefulWidget {
   /// true: 월 모드에서 30일 슬라이드 대신 해당 연도 1~12월 고정 축
   final bool useCalendarYearMonths;
 
-  /// 카드 바깥 패딩 (체중은 [ChartConstants.weightChartCardPadding]로 일·주·월 통일)
+  /// 카드 바깥 패딩 (건강 그래프는 [ChartConstants.healthChartCardPadding] / [healthChartCardPadding]로 통일)
   final EdgeInsetsGeometry padding;
 
   /// null이면 `Colors.grey[50]` (기존 동작)

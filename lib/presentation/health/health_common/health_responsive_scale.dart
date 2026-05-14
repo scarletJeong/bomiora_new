@@ -22,11 +22,24 @@ double healthDp(BuildContext context, double base) {
   return base * healthTextScaleByWidth(width);
 }
 
-/// 체중 일간 그래프 그리드 상·하 패딩 (375 기준 20).
+/// 체중 일간 그래프 그리드 **상단** 패딩 (375 기준 20).
 double healthWeightChartVertPad(BuildContext context) =>
     healthDp(context, 20);
+
+/// 격자·Y눈금 하단 ~ X축 라벨까지 **플롯 내부** 하단 여백 (375 기준 10).
+double healthWeightChartBottomPlotPad(BuildContext context) =>
+    healthDp(context, 10);
 
 /// 체중 그래프 Y축 상단 `(kg)` 밴드 높이 (375 기준 16).
 double healthWeightChartKgBandHeight(BuildContext context) =>
     healthDp(context, 16);
+
+/// 건강 그래프 카드 패딩 — 체중·혈압·혈당·심박수·걸음수 공통 (375 기준 LTRB 4,6,15,6 → [healthDp]로 통일).
+EdgeInsets healthChartCardPadding(BuildContext context) =>
+    EdgeInsets.fromLTRB(
+      healthDp(context, 4),
+      healthDp(context, 6),
+      healthDp(context, 15),
+      healthDp(context, 6),
+    );
 

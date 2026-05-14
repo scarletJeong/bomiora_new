@@ -59,15 +59,15 @@ class ChartConstants {
   /// 체중 X축 오른쪽 단위 `(시)/(일)/(월)`을 위한 여유 폭
   static const double weightXAxisUnitReservedWidth = 18.0;
 
-  /// 체중 일·주·월 그래프 카드 공통 패딩 (시간대별과 동일)
-  static const EdgeInsets weightChartCardPadding =
-      EdgeInsets.fromLTRB(8, 16, 16, 16);
+  /// 건강 그래프 카드 패딩 375pt 기준 폴백 ([healthChartCardPadding]과 동일 LTRB).
+  static const EdgeInsets healthChartCardPadding =
+      EdgeInsets.fromLTRB(4, 6, 15, 6);
 
   /// 기간 탭(plain) 한 줄 설계 높이(375 기준). 확대 아이콘을 (kg) 밴드와 맞출 때 사용.
   static const double weightChartPeriodTabBarHeight = 34.0;
 
   /// 탭 아래 ↔ 플롯(kg 밴드 시작) 사이 간격
-  static const double weightChartTabToPlotGap = 6.0;
+  static const double weightChartTabToPlotGap = 10.0;
   
   // 데이터 개수에 따른 패딩 계산 헬퍼 메서드
   static double getLeftPadding(int dataCount) {
@@ -126,11 +126,11 @@ class HealthDailyNoDataChartCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: healthWeightChartCardPadding(context),
+      padding: healthChartCardPadding(context),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
