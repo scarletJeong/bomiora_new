@@ -158,7 +158,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
           title: '총 걸음 수',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

@@ -519,7 +519,6 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '심박수',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

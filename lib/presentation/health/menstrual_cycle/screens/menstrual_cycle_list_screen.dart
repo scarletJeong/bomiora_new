@@ -114,7 +114,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
           title: '생리주기',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

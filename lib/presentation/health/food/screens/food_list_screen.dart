@@ -111,7 +111,6 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
         appBar: HealthAppBar(
           title: '식사 기록',
           centerTitle: false,
-          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

@@ -541,7 +541,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '혈당',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

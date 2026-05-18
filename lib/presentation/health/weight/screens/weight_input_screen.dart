@@ -277,7 +277,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '체중',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

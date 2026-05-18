@@ -225,7 +225,6 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: widget.record == null ? '혈당 기록하기' : '혈당 수정하기',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(

@@ -510,7 +510,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
         title: Text(
           '체중',
           style: TextStyle(
-            fontSize: healthSp(context, 18),
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.bold,
           ),
@@ -856,7 +856,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                 ),
                               ],
                             ),
-                            if (goalRingActive)
+                            // 오늘 체중 미입력 시 감량 몸무게(흰 원) 숨김
+                            if (goalRingActive && weight > 0)
                               Positioned(
                                 left: knobEnd.dx - knobSize / 2,
                                 top: knobEnd.dy - knobSize / 2,
@@ -1524,7 +1525,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
   Future<void> _openExpandedChartPage() async {
     await openHealthChartExpandPage(
       context: context,
-      periodSelectorBuilder: (_) => _buildPeriodButtons(),
       chartBuilder: (ctx) {
         final base = Theme.of(ctx);
         final gmarket = base.copyWith(

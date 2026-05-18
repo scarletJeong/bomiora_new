@@ -320,7 +320,6 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
           title: widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
-          titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(
