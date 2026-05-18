@@ -83,6 +83,12 @@ abstract final class AppAssets {
   // 건강대시보드 그래프 확대 아이콘
   static const String healthZoomin = '${_img}graph_zoomin.svg';
 
+  // 건강대시보드 위아래 아이콘
+  static const String arrowUp = '${_img}arrow_up.svg';
+  static const String arrowDown = '${_img}arrow_down.svg';
+
+  static const String calendarIcon = '${_img}health_calendar.svg';
+
   // 헬스케어 스토어(일반 상품) 메인 페이지
   static const String generalMainIcon1 = '${_img}general_main_icon1.svg'; // 다이어트
   static const String generalMainIcon2 = '${_img}general_main_icon2.svg'; // 디톡스
@@ -106,4 +112,6 @@ abstract final class AppAssets {
   static const String payCredit = '${_img}pay_credit.svg';
   static const String payCash = '${_img}pay_cash.svg';
   static const String escrow = '${_img}escrow.png';
+
+
 }
