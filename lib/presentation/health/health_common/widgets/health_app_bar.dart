@@ -158,6 +158,13 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
 
             visualDensity: VisualDensity.compact,
 
+            style: IconButton.styleFrom(
+              splashFactory: NoSplash.splashFactory,
+              hoverColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              focusColor: Colors.transparent,
+            ),
+
             constraints: BoxConstraints(
 
               minWidth: leadingSlot,
