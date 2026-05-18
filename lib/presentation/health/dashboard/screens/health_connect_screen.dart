@@ -91,35 +91,13 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(27, 20, 27, 0),
+              padding: const EdgeInsets.fromLTRB(27, 0, 27, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 5),
-                              child: Text(
-                                '연동하기',
-                                style: const TextStyle(
-                                  color: Color(0xFF1A1A1A),
-                                  fontSize: 16,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16, height: 16),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
                       const Text(
                         '사용 중인 건강 어플을 선택 후 연동해주세요.',
                         style: TextStyle(

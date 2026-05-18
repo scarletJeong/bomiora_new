@@ -8,11 +8,11 @@ import '../health_responsive_scale.dart';
 
 /// 건강 화면 공통 AppBar (뒤로가기, 제목, 선택적 액션).
 
-/// 375 기준: AppBar 위 여백 20 + 툴바 28, 제목 세로 패딩 5.
+/// 375 기준: AppBar 위 여백 10 + 툴바 28, 제목 세로 패딩 5.
 
 class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
 
-  static const double topGapBase = 20;
+  static const double topGapBase = 5;
 
   static const double toolbarHeightBase = 28;
 
@@ -257,6 +257,31 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   }
 
+}
+
+/// [HealthAppBar.actions]용 아이콘 버튼 (호버/스플래시 없음).
+Widget healthAppBarAction({
+  required BuildContext context,
+  required IconData icon,
+  VoidCallback? onPressed,
+  String? tooltip,
+  Color iconColor = Colors.black,
+}) {
+  return IconButton(
+    style: IconButton.styleFrom(
+      splashFactory: NoSplash.splashFactory,
+      hoverColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      focusColor: Colors.transparent,
+    ),
+    tooltip: tooltip,
+    onPressed: onPressed,
+    icon: Icon(
+      icon,
+      color: iconColor,
+      size: healthDp(context, 24),
+    ),
+  );
 }
 
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../data/services/food_lens_service.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 
 /// 음식 인식 화면
 class FoodRecognitionScreen extends StatefulWidget {
@@ -113,12 +114,7 @@ class _FoodRecognitionScreenState extends State<FoodRecognitionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('음식 인식'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
+      appBar: const HealthAppBar(title: '음식 인식'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

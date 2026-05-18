@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/date_top_widget.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
@@ -71,25 +72,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          '총 걸음 수',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: HealthAppBar(
+        title: '총 걸음 수',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black),
+          healthAppBarAction(
+            context: context,
+            icon: Icons.refresh,
+            tooltip: '새로고침',
             onPressed: isLoading ? null : _loadData,
           ),
         ],

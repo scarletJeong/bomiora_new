@@ -20,6 +20,7 @@ import '../../../../core/utils/image_picker_utils.dart';
 import '../widgets/weight_chart_section.dart';
 import '../utils/weight_goal_progress.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_list_edit_button.dart';
 import 'weight_input_screen.dart';
 
@@ -499,28 +500,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(
-            Icons.chevron_left,
-            size: healthDp(context, 24),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          '체중',
-          style: TextStyle(
-            fontSize: healthSp(context, 16),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
+      appBar: const HealthAppBar(title: '체중'),
       child: MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),

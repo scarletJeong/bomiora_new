@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/date_top_widget.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../../../../core/constants/app_assets.dart';
@@ -56,25 +57,13 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          '생리주기',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: HealthAppBar(
+        title: '생리주기',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black),
+          healthAppBarAction(
+            context: context,
+            icon: Icons.refresh,
+            tooltip: '새로고침',
             onPressed: _isLoading ? null : _loadMenstrualCycleData,
           ),
         ],

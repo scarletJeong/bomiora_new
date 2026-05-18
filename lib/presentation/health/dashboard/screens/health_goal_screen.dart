@@ -7,6 +7,7 @@ import '../../../../data/repositories/health/health_goal/health_goal_repository.
 import '../../../../data/services/auth_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 
 class HealthGoalScreen extends StatefulWidget {
   const HealthGoalScreen({super.key});
@@ -173,26 +174,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
         ),
         child: Scaffold(
           backgroundColor: Colors.white,
-          appBar: AppBar(
-            leading: IconButton(
-              icon: const Icon(Icons.chevron_left),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text(
-              '목표설정',
-              textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                fontSize: healthSp(context, 16),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            surfaceTintColor: Colors.transparent,
-          ),
+          appBar: const HealthAppBar(title: '목표설정'),
           body: SafeArea(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -202,7 +184,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                       Padding(
                         padding: EdgeInsets.fromLTRB(
                           healthDp(context, 27),
-                          healthDp(context, 4),
+                          healthDp(context, 0),
                           healthDp(context, 27),
                           healthDp(context, 8),
                         ),

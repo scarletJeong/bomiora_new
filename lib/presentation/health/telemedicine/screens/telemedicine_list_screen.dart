@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../../../data/services/auth_service.dart';
+import '../../health_common/widgets/health_app_bar.dart';
 import 'dart:async';
 
 class TelemedicineWebViewScreen extends StatefulWidget {
@@ -53,22 +54,14 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: HealthAppBar(
+        title: widget.title,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _webViewController?.reload();
-            },
+          healthAppBarAction(
+            context: context,
+            icon: Icons.refresh,
             tooltip: '새로고침',
+            onPressed: () => _webViewController?.reload(),
           ),
         ],
       ),

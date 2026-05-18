@@ -22,8 +22,8 @@ double healthDp(BuildContext context, double base) {
   return base * healthTextScaleByWidth(width);
 }
 
-/// 건강 AppBar 상단 여백 (375 기준 20).
-double healthAppBarTopGap(BuildContext context) => healthDp(context, 20);
+/// 건강 AppBar 상단 여백 (375 기준 10).
+double healthAppBarTopGap(BuildContext context) => healthDp(context, 10);
 
 /// 건강 AppBar 툴바 행 높이 (375 기준 28).
 double healthAppBarHeight(BuildContext context) => healthDp(context, 28);
@@ -31,13 +31,13 @@ double healthAppBarHeight(BuildContext context) => healthDp(context, 28);
 /// 건강 AppBar 제목 위·아래 패딩 (375 기준 5).
 double healthAppBarTitlePaddingV(BuildContext context) => healthDp(context, 5);
 
-/// AppBar 전체 높이 = 상단 20 + 툴바 28 (375 기준 48).
+/// AppBar 전체 높이 = 상단 10 + 툴바 28 (375 기준 38).
 double healthAppBarTotalHeight(BuildContext context) =>
     healthAppBarTopGap(context) + healthAppBarHeight(context);
 
 /// [PreferredSize] 등 context 없이 전체 높이 (폭 클램프 규칙 동일).
 double healthAppBarTotalHeightForWidth(double layoutWidth) =>
-    (20 + 28) * healthTextScaleByWidth(layoutWidth);
+    (10 + 28) * healthTextScaleByWidth(layoutWidth);
 
 /// 체중 일간 그래프 그리드 **상단** 패딩 (375 기준 20).
 double healthWeightChartVertPad(BuildContext context) =>
