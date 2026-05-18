@@ -29,7 +29,6 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   final _pulseController = TextEditingController();
 
   DateTime _selectedDateTime = DateTime.now();
-  String? _calculatedStatus;
   bool _isSaving = false;
 
   @override
@@ -42,30 +41,9 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       _diastolicController.text = widget.record!.diastolic.toString();
       _pulseController.text = widget.record!.pulse.toString();
       _selectedDateTime = widget.record!.measuredAt;
-      _calculatedStatus = widget.record!.status;
     } else if (widget.recordContextDate != null) {
       _selectedDateTime =
           healthDefaultNewRecordDateTime(widget.recordContextDate!);
-    }
-
-    // 혈압 변경 시 상태 자동 계산
-    _systolicController.addListener(_updateStatus);
-    _diastolicController.addListener(_updateStatus);
-  }
-
-  void _updateStatus() {
-    final systolic = int.tryParse(_systolicController.text);
-    final diastolic = int.tryParse(_diastolicController.text);
-
-    if (systolic != null && diastolic != null) {
-      setState(() {
-        _calculatedStatus =
-            BloodPressureRecord.calculateStatus(systolic, diastolic);
-      });
-    } else {
-      setState(() {
-        _calculatedStatus = null;
-      });
     }
   }
 
@@ -283,6 +261,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
   Widget _buildDateTimeCard() {
     final dateText = DateFormat('yyyy.MM.dd').format(_selectedDateTime);
     final timeText = DateFormat('HH:mm').format(_selectedDateTime);
+    final isEditMode = widget.record != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,11 +279,19 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
         Row(
           children: [
             Expanded(
-              child: _buildDateTimeBox(text: dateText, onTap: _selectDate),
+              child: _buildDateTimeBox(
+                text: dateText,
+                onTap: isEditMode ? null : _selectDate,
+                isDisabled: isEditMode,
+              ),
             ),
             SizedBox(width: healthDp(context, 10)),
             Expanded(
-              child: _buildDateTimeBox(text: timeText, onTap: _selectTime),
+              child: _buildDateTimeBox(
+                text: timeText,
+                onTap: isEditMode ? null : _selectTime,
+                isDisabled: isEditMode,
+              ),
             ),
           ],
         ),
@@ -314,33 +301,41 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
 
   Widget _buildDateTimeBox({
     required String text,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
+    required bool isDisabled,
   }) {
+    final fieldFill =
+        isDisabled ? const Color(0xFFF2F2F2) : Colors.transparent;
+    final fieldBorder =
+        isDisabled ? const Color(0xFFDADADA) : const Color(0x7FD2D2D2);
+    final fieldText =
+        isDisabled ? const Color(0xFF9E9E9E) : const Color(0xFF1A1A1A);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(healthDp(context, 7)),
       child: Container(
         height: healthDp(context, 40),
         padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+        clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
+          color: fieldFill,
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
-              color: const Color(0x7FD2D2D2),
+              color: fieldBorder,
             ),
             borderRadius: BorderRadius.circular(healthDp(context, 7)),
           ),
         ),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            text,
-            style: TextStyle(
-              color: const Color(0xFF1A1A1A),
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w300,
-            ),
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: fieldText,
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
           ),
         ),
       ),
@@ -535,90 +530,5 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
         ),
       ],
     );
-  }
-
-  Widget _buildStatusCard() {
-    Color statusColor;
-    switch (_calculatedStatus) {
-      case '정상':
-        statusColor = Colors.green;
-        break;
-      case '주의':
-        statusColor = Colors.yellow[700]!;
-        break;
-      case '고혈압 전단계':
-        statusColor = Colors.orange;
-        break;
-      case '1단계 고혈압':
-      case '2단계 고혈압':
-        statusColor = Colors.red;
-        break;
-      case '고혈압 위기':
-        statusColor = Colors.red[900]!;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-
-    return Container(
-      padding: EdgeInsets.all(healthDp(context, 16)),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        border: Border.all(color: statusColor),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.info_outline,
-            color: statusColor,
-            size: healthDp(context, 24),
-          ),
-          SizedBox(width: healthDp(context, 12)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '혈압 상태: $_calculatedStatus',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
-                ),
-                SizedBox(height: healthDp(context, 4)),
-                Text(
-                  _getStatusDescription(_calculatedStatus!),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getStatusDescription(String status) {
-    switch (status) {
-      case '정상':
-        return '정상 혈압 범위입니다.';
-      case '주의':
-        return '약간 높은 편입니다. 생활습관 개선이 필요합니다.';
-      case '고혈압 전단계':
-        return '고혈압 전단계입니다. 관리가 필요합니다.';
-      case '1단계 고혈압':
-        return '1단계 고혈압입니다. 의사와 상담하세요.';
-      case '2단계 고혈압':
-        return '2단계 고혈압입니다. 즉시 의사와 상담하세요.';
-      case '고혈압 위기':
-        return '고혈압 위기! 응급 상황입니다. 즉시 병원에 가세요.';
-      default:
-        return '';
-    }
   }
 }

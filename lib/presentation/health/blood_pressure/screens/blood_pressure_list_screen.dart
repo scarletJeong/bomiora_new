@@ -1310,6 +1310,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               left: tooltipPosition!.dx,
               top: tooltipPosition!.dy,
               child: buildBloodPressureChartTooltip(
+                context: context,
                 data: chartData[selectedChartPointIndex!],
                 tooltipAnchor: tooltipPosition!,
                 chartWidth: chartW,
@@ -1362,7 +1363,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Future<void> _openExpandedChartPage() async {
     await openHealthChartExpandPage(
       context: context,
-      periodSelectorBuilder: (_) => _buildPeriodButtons(),
       chartBuilder: (_) {
         final base = Theme.of(context);
         final gmarket = base.copyWith(
@@ -1439,30 +1439,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: healthDp(ctx, 16),
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(ctx, 2),
-                      ),
-                      decoration: ShapeDecoration(
-                        color: const Color(0xFF85B0FF),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(healthDp(ctx, 19)),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '수',
-                          textScaler: TextScaler.noScaling,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: healthSp(ctx, 10),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                    healthBloodPressureBadge(
+                      ctx,
+                      label: '수',
+                      color: const Color(0xFF85B0FF),
                     ),
                     SizedBox(width: healthDp(ctx, 5)),
                     Text(
@@ -1480,30 +1460,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 SizedBox(width: healthDp(ctx, 10)),
                 Row(
                   children: [
-                    Container(
-                      width: healthDp(ctx, 16),
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(ctx, 2),
-                      ),
-                      decoration: ShapeDecoration(
-                        color: const Color(0xFFFFBC71),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(healthDp(ctx, 19)),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '이',
-                          textScaler: TextScaler.noScaling,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: healthSp(ctx, 10),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                    healthBloodPressureBadge(
+                      ctx,
+                      label: '이',
+                      color: const Color(0xFFFFBC71),
                     ),
                     SizedBox(width: healthDp(ctx, 5)),
                     Text(

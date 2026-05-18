@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_responsive_scale.dart';
+import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import 'blood_pressure_chart_section.dart';
 
 /// 차트 슬롯 탭 시 선택될 인덱스와 툴팁 앵커(막대 상단 근처).
@@ -122,7 +124,8 @@ BloodPressureChartHit? hitTestBloodPressureChartSlot({
   return null;
 }
 
-Widget _valueRowWithBadge({
+Widget _valueRowWithBadge(
+  BuildContext context, {
   required String badgeLabel,
   required Color badgeColor,
   required String value,
@@ -130,33 +133,18 @@ Widget _valueRowWithBadge({
   return Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 16,
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        decoration: ShapeDecoration(
-          color: badgeColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(19),
-          ),
-        ),
-        child: Center(
-          child: Text(
-            badgeLabel,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
+      healthBloodPressureBadge(
+        context,
+        label: badgeLabel,
+        color: badgeColor,
       ),
-      const SizedBox(width: 5),
+      SizedBox(width: healthDp(context, 5)),
       Text(
         value,
-        style: const TextStyle(
+        textScaler: TextScaler.noScaling,
+        style: TextStyle(
           color: Colors.black87,
-          fontSize: 14,
+          fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w700,
         ),
@@ -167,6 +155,7 @@ Widget _valueRowWithBadge({
 
 /// 차트 툴팁 (흰 배경, 수·이 배지는 수정 바텀시트와 동일 스타일).
 Widget buildBloodPressureChartTooltip({
+  required BuildContext context,
   required Map<String, dynamic> data,
   required Offset tooltipAnchor,
   required double chartWidth,
@@ -281,6 +270,7 @@ Widget buildBloodPressureChartTooltip({
             const SizedBox(height: 8),
             Center(
               child: _valueRowWithBadge(
+                context,
                 badgeLabel: '수',
                 badgeColor: const Color(0xFF85B0FF),
                 value: sysText,
@@ -289,6 +279,7 @@ Widget buildBloodPressureChartTooltip({
             const SizedBox(height: 6),
             Center(
               child: _valueRowWithBadge(
+                context,
                 badgeLabel: '이',
                 badgeColor: const Color(0xFFFFBC71),
                 value: diaText,
