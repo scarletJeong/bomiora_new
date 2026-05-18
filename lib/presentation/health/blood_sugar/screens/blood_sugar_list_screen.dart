@@ -831,22 +831,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     if (todayRecords.isEmpty) return;
 
     todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-
-    if (todayRecords.length > 1) {
-      _showTimeSelectionBottomSheet(todayRecords);
-      return;
-    }
-
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BloodSugarInputScreen(record: todayRecords[0]),
-      ),
-    );
-
-    if (result == true || result == null) {
-      await _loadData();
-    }
+    _showTimeSelectionBottomSheet(todayRecords);
   }
 
   Widget _buildSugarSummaryCardNew({
@@ -1113,26 +1098,30 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                 ),
                 SizedBox(width: healthDp(ctx, 8)),
                 Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(ctx, 8),
-                    vertical: healthDp(ctx, 3),
-                  ),
+                  padding: EdgeInsets.all(healthDp(ctx, 3)),
                   decoration: ShapeDecoration(
                     color: _sugarStatusBadgeColor(record),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(healthDp(ctx, 19)),
+                      borderRadius: BorderRadius.circular(healthDp(ctx, 4)),
                     ),
                   ),
-                  child: Text(
-                    record.measurementType,
-                    textScaler: TextScaler.noScaling,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: healthSp(ctx, 10),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        record.measurementType,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1A),
+                          fontSize: healthSp(ctx, 10),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: healthDp(ctx, -0.3),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1249,7 +1238,7 @@ class _SugarLegend extends StatelessWidget {
             textScaler: TextScaler.noScaling,
             style: TextStyle(
               color: Colors.grey,
-              fontSize: healthSp(context, 8),
+              fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w400,
             ),

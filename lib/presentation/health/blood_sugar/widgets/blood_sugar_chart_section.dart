@@ -274,12 +274,10 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
   ScrollController? _filterScrollController;
   String? _hoveredFilter;
 
-  /// 「해당 기간에 혈당 기록이 없습니다」 빈 카드(시간대별)에서만 필터 미표시.
+  /// 시간대별(일)과 빈 카드에서는 측정유형 필터 미표시.
   bool get _showsMeasurementFilter {
     if (!widget.showMeasurementFilter) return false;
-    if (widget.selectedPeriod == '일' && !widget.hasActualDailyData) {
-      return false;
-    }
+    if (widget.selectedPeriod == '일') return false;
     return true;
   }
 
@@ -389,7 +387,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     final overlayBox = overlay.context.findRenderObject() as RenderBox?;
     if (overlayBox == null) return;
 
-    final menuWidth = healthDp(context, 153);
+    final menuWidth = healthDp(context, 62);
     final rowHeight = healthDp(context, 24);
     const visibleRows = 3;
     final menuPadTop = healthDp(context, 10);
@@ -679,8 +677,6 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 height: healthDp(
                     context, ChartConstants.weightChartTabToPlotGap)),
           ],
-          if (_showsMeasurementFilter)
-            SizedBox(height: healthDp(context, 34)),
           Expanded(
             child: LayoutBuilder(
               builder: (context, outerConstraints) {
