@@ -274,6 +274,21 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
   ScrollController? _filterScrollController;
   String? _hoveredFilter;
 
+  /// 「해당 기간에 혈당 기록이 없습니다」 빈 카드(시간대별)에서만 필터 미표시.
+  bool get _showsMeasurementFilter {
+    if (!widget.showMeasurementFilter) return false;
+    if (widget.selectedPeriod == '일' && !widget.hasActualDailyData) {
+      return false;
+    }
+    return true;
+  }
+
+  @override
+  void didUpdateWidget(covariant BloodSugarChartSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_showsMeasurementFilter) _closeMeasurementFilterMenu();
+  }
+
   List<Map<String, dynamic>> _filteredChartData(List<Map<String, dynamic>> source) {
     final selected = widget.selectedMeasurementFilter.trim();
     if (selected.isEmpty || selected == '전체') return source;
@@ -310,6 +325,59 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       return;
     }
     _openMeasurementFilterMenu();
+  }
+
+  /// 375 기준 너비 62 — 확대 아이콘 왼쪽에 배치.
+  Widget _buildMeasurementFilterChip() {
+    final filterW = healthDp(context, 62);
+    final arrowSize = healthDp(context, 12);
+    return GestureDetector(
+      key: _filterAnchorKey,
+      onTap: _toggleMeasurementFilterMenu,
+      child: SizedBox(
+        width: filterW,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 6),
+            vertical: healthDp(context, 5),
+          ),
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: healthDp(context, 0.5),
+                color: const Color(0x7FD2D2D2),
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.selectedMeasurementFilter,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1A),
+                    fontSize: healthSp(context, 10),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: arrowSize,
+                color: const Color(0xFF1A1A1A),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openMeasurementFilterMenu() {
@@ -459,7 +527,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
           SizedBox(
             height: healthDp(
               context,
-              widget.compactLegend ? 6 : 14,
+              widget.compactLegend ? 6 : 20,
             ),
           ),
           Row(
@@ -507,9 +575,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       {bool showExpandButton = true,
       double chartHeight = ChartConstants.weightChartHeight}) {
     final filteredData = _filteredChartData(widget.chartData);
-    final filterStripH = healthDp(context, 40);
-    final effectiveChartHeight = chartHeight +
-        (widget.showMeasurementFilter ? filterStripH : 0.0);
+    final effectiveChartHeight = chartHeight;
     Widget chartBody;
     if (widget.selectedPeriod == '일' && !widget.hasActualDailyData) {
       chartBody = _buildNoDataMessage(chartHeight: effectiveChartHeight);
@@ -529,7 +595,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       );
     }
 
-    if (!showExpandButton && !widget.showMeasurementFilter) return chartBody;
+    if (!showExpandButton && !_showsMeasurementFilter) return chartBody;
 
     final showYHeader = widget.yLabels.length > 1;
     final headerBand =
@@ -550,63 +616,19 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         Positioned(
           right: healthChartCardPadding(context).right,
           top: topExpand,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (_showsMeasurementFilter) ...[
+                _buildMeasurementFilterChip(),
+                SizedBox(width: healthDp(context, 6)),
+              ],
               if (showExpandButton)
                 HealthChartExpandControl(
                   onTap: widget.onExpand!,
                   iconSize: iconSize,
                 ),
-              if (widget.showMeasurementFilter) ...[
-                SizedBox(height: healthDp(context, 6)),
-                GestureDetector(
-                  key: _filterAnchorKey,
-                  onTap: _toggleMeasurementFilterMenu,
-                  child: Container(
-                    width: healthDp(context, 164),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 10),
-                      vertical: healthDp(context, 5),
-                    ),
-                    decoration: ShapeDecoration(
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: healthDp(context, 0.5),
-                          color: const Color(0x7FD2D2D2),
-                        ),
-                        borderRadius: BorderRadius.circular(healthDp(context, 7)),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          widget.selectedMeasurementFilter,
-                          style: TextStyle(
-                            color: const Color(0xFF1A1A1A),
-                            fontSize: healthSp(context, 10),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(
-                          width: healthDp(context, 16),
-                          height: healthDp(context, 16),
-                          child: Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: healthDp(context, 16),
-                            color: const Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -657,7 +679,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 height: healthDp(
                     context, ChartConstants.weightChartTabToPlotGap)),
           ],
-          if (widget.showMeasurementFilter)
+          if (_showsMeasurementFilter)
             SizedBox(height: healthDp(context, 34)),
           Expanded(
             child: LayoutBuilder(

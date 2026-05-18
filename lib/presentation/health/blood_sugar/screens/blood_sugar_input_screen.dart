@@ -27,7 +27,6 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
 
   DateTime _selectedDateTime = DateTime.now();
   String _selectedMeasurementType = '공복';
-  String? _calculatedStatus;
   bool _isSaving = false;
 
   final List<String> _measurementTypes = ['공복', '식전', '식후', '취침전', '평상시'];
@@ -41,28 +40,9 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       _bloodSugarController.text = widget.record!.bloodSugar.toString();
       _selectedDateTime = widget.record!.measuredAt;
       _selectedMeasurementType = widget.record!.measurementType;
-      _calculatedStatus = widget.record!.status;
     } else if (widget.recordContextDate != null) {
       _selectedDateTime =
           healthDefaultNewRecordDateTime(widget.recordContextDate!);
-    }
-
-    // 혈당 변경 시 상태 자동 계산
-    _bloodSugarController.addListener(_updateStatus);
-  }
-
-  void _updateStatus() {
-    final bloodSugar = int.tryParse(_bloodSugarController.text);
-
-    if (bloodSugar != null) {
-      setState(() {
-        _calculatedStatus = BloodSugarRecord.calculateStatus(
-            bloodSugar, _selectedMeasurementType);
-      });
-    } else {
-      setState(() {
-        _calculatedStatus = null;
-      });
     }
   }
 
@@ -334,7 +314,6 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
               setState(() {
                 _selectedMeasurementType = type;
               });
-              _updateStatus();
             },
             child: Container(
               height: healthDp(context, 35),
@@ -515,82 +494,5 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
         ),
       ],
     );
-  }
-
-  Widget _buildStatusCard() {
-    Color statusColor;
-    switch (_calculatedStatus) {
-      case '정상':
-        statusColor = Colors.green;
-        break;
-      case '당뇨 전단계':
-        statusColor = Colors.orange;
-        break;
-      case '당뇨':
-        statusColor = Colors.red;
-        break;
-      case '저혈당':
-        statusColor = Colors.blue;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-
-    return Container(
-      padding: EdgeInsets.all(healthDp(context, 16)),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        border: Border.all(color: statusColor),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.info_outline,
-            color: statusColor,
-            size: healthDp(context, 24),
-          ),
-          SizedBox(width: healthDp(context, 12)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '혈당 상태: $_calculatedStatus',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
-                ),
-                SizedBox(height: healthDp(context, 4)),
-                Text(
-                  _getStatusDescription(_calculatedStatus!),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getStatusDescription(String status) {
-    switch (status) {
-      case '정상':
-        return '정상 혈당 범위입니다.';
-      case '당뇨 전단계':
-        return '당뇨 전단계입니다. 생활습관 개선이 필요합니다.';
-      case '당뇨':
-        return '당뇨 범위입니다. 의사와 상담하세요.';
-      case '저혈당':
-        return '저혈당입니다. 즉시 당분을 섭취하세요.';
-      default:
-        return '';
-    }
   }
 }

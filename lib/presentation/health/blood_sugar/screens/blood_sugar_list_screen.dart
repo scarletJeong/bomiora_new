@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
@@ -600,7 +602,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         dividerColor: const Color(0xFFD2D2D2),
                         iconColor: const Color(0xFF898686),
                       ),
-                      SizedBox(height: healthDp(context, 16)),
+                      SizedBox(height: healthDp(context, 20)),
                       _buildBloodSugarDisplay(),
                       SizedBox(height: healthDp(context, 20)),
                       BloodSugarChartSection(
@@ -671,7 +673,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                               ChartConstants.weightChartHeight,
                             ),
                       ),
-                      SizedBox(height: healthDp(context, 16)),
+                      SizedBox(height: healthDp(context, 20)),
                       Padding(
                         padding: EdgeInsets.only(bottom: healthDp(context, 20)),
                         child: BtnRecord(
@@ -680,7 +682,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                           textStyle: TextStyle(
                             fontFamily: 'Gmarket Sans TTF',
                             fontSize: healthSp(context, 16),
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                           padding: EdgeInsets.symmetric(
                             vertical: healthDp(context, 16),
@@ -739,7 +741,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: healthDp(context, 14)),
           Row(
             children: [
               Expanded(
@@ -769,8 +770,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
             children: [
               Expanded(
                 child: Wrap(
-                  spacing: healthDp(context, 8),
-                  runSpacing: healthDp(context, 6),
+                  spacing: healthDp(context, 10),
+                  runSpacing: healthDp(context, 10),
                   children: const [
                     _SugarLegend(color: Color(0xFF71D375), label: '정상'),
                     _SugarLegend(color: Color(0xFFFFE78B), label: '전단계'),
@@ -855,111 +856,128 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     required String diffText,
     required bool diffUp,
   }) {
-    return Container(
-      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 0.5),
-            color: const Color(0x7FD2D2D2),
-          ),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
-            decoration: ShapeDecoration(
-              color: headerColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(healthDp(context, 10)),
-                  topRight: Radius.circular(healthDp(context, 10)),
-                ),
-              ),
+    final r = healthDp(context, 10);
+    final showDiffArrow = diffText.startsWith('전날 대비');
+    return SizedBox(
+      height: healthDp(context, 85),
+      child: Container(
+        decoration: ShapeDecoration(
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, 0.5),
+              color: const Color(0x7FD2D2D2),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
+            borderRadius: BorderRadius.circular(r),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: healthDp(context, 28),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
+                decoration: BoxDecoration(
+                  color: headerColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(r),
+                    topRight: Radius.circular(r),
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
                   label,
+                  textScaler: TextScaler.noScaling,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: healthSp(context, 16.67),
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w700,
+                    height: 1,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    value,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 20.83),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: value == '-' ? FontWeight.w300 : FontWeight.w700,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        value,
+                        textAlign: TextAlign.center,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1A),
+                          fontSize: healthSp(context, 20),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight:
+                              value == '-' ? FontWeight.w300 : FontWeight.w700,
+                          height: 1,
+                        ),
+                      ),
+                      SizedBox(width: healthDp(context, 2)),
+                      Text(
+                        'mg/dl',
+                        textAlign: TextAlign.center,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1A),
+                          fontSize: healthSp(context, 12),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          height: 1,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'mg/dl',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 12),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
+                  SizedBox(height: healthDp(context, 5)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        diffText,
+                        textAlign: TextAlign.center,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1A),
+                          fontSize: healthSp(context, 8),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          height: 1,
+                        ),
+                      ),
+                      if (showDiffArrow) ...[
+                        SizedBox(width: healthDp(context, 5)),
+                        SizedBox(
+                          width: healthDp(context, 10),
+                          height: healthDp(context, 10),
+                          child: SvgPicture.asset(
+                            diffUp ? AppAssets.arrowUp : AppAssets.arrowDown,
+                            width: healthDp(context, 10),
+                            height: healthDp(context, 10),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
-              SizedBox(height: healthDp(context, 5)),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    diffText,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 8),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                  SizedBox(width: healthDp(context, 5)),
-                  Icon(
-                    diffUp ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                    size: healthDp(context, 16),
-                    color: diffUp ? const Color(0xFFE53935) : const Color(0xFF3B82F6),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1083,30 +1101,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
             buildTrailing: (ctx) => Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(ctx, 8),
-                    vertical: healthDp(ctx, 3),
-                  ),
-                  decoration: ShapeDecoration(
-                    color: _measurementTypeColor(record.measurementType),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(healthDp(ctx, 19)),
-                    ),
-                  ),
-                  child: Text(
-                    record.measurementType,
-                    textScaler: TextScaler.noScaling,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(ctx, 10),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                SizedBox(width: healthDp(ctx, 8)),
                 Text(
                   '${record.bloodSugar}',
                   textScaler: TextScaler.noScaling,
@@ -1117,15 +1111,28 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(width: healthDp(ctx, 2)),
-                Text(
-                  'mg/dL',
-                  textScaler: TextScaler.noScaling,
-                  style: TextStyle(
-                    color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(ctx, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
+                SizedBox(width: healthDp(ctx, 8)),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(ctx, 8),
+                    vertical: healthDp(ctx, 3),
+                  ),
+                  decoration: ShapeDecoration(
+                    color: _sugarStatusBadgeColor(record),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(ctx, 19)),
+                    ),
+                  ),
+                  child: Text(
+                    record.measurementType,
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: healthSp(ctx, 10),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
@@ -1153,20 +1160,21 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     }
   }
 
-  Color _measurementTypeColor(String measurementType) {
-    switch (measurementType) {
-      case '공복':
-        return const Color(0xFF4F82E0);
-      case '식전':
-        return const Color(0xFFFC8B3A);
-      case '식후':
-        return const Color(0xFF38B769);
-      case '취침전':
-        return const Color(0xFF4FD1E0);
-      case '평상시':
-        return const Color(0xFFB24FE0);
+  /// 수정 바텀시트·상태 배지: 정상·전단계·의심 색 (목록 범례와 동일).
+  Color _sugarStatusBadgeColor(BloodSugarRecord record) {
+    final status = BloodSugarRecord.calculateStatus(
+      record.bloodSugar,
+      record.measurementType,
+    );
+    switch (status) {
+      case '정상':
+        return const Color(0xFF71D375);
+      case '당뇨 전단계':
+        return const Color(0xFFFFE78B);
+      case '당뇨':
+        return const Color(0xFFFF6161);
       default:
-        return const Color(0xFFE91E63);
+        return const Color(0xFF71D375);
     }
   }
 

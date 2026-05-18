@@ -21,9 +21,7 @@ class BloodSugarRecord {
   static String calculateStatus(int bloodSugar, String measurementType) {
     switch (measurementType) {
       case '공복':
-        if (bloodSugar < 70) {
-          return '저혈당';
-        } else if (bloodSugar < 100) {
+        if (bloodSugar < 100) {
           return '정상';
         } else if (bloodSugar < 126) {
           return '당뇨 전단계';
@@ -70,8 +68,6 @@ class BloodSugarRecord {
   // 혈당 상태별 색상
   static String getStatusColor(String status) {
     switch (status) {
-      case '저혈당':
-        return 'blue';
       case '정상':
         return 'green';
       case '당뇨 전단계':
