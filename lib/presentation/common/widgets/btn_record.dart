@@ -15,6 +15,8 @@ class BtnRecord extends StatelessWidget {
   final TextStyle? textStyle;
   /// null이면 [TextScaler.noScaling] — [healthSp]와 이중 스케일 방지. 시스템 스케일 쓰려면 명시 전달.
   final TextScaler? labelTextScaler;
+  /// null이면 375 기준 40 ([healthDp]).
+  final double? minimumHeight;
 
   const BtnRecord({
     super.key,
@@ -28,12 +30,13 @@ class BtnRecord extends StatelessWidget {
     this.isLoading = false,
     this.textStyle,
     this.labelTextScaler,
+    this.minimumHeight,
   });
 
   @override
   Widget build(BuildContext context) {
-    final minH = healthDp(context, 44);
-    final defaultPad = EdgeInsets.symmetric(vertical: healthDp(context, 10));
+    final minH = minimumHeight ?? healthDp(context, 40);
+    final defaultPad = EdgeInsets.symmetric(vertical: healthDp(context, 13));
     final defaultRadius = healthDp(context, 12);
     final effectiveTextScaler = labelTextScaler ?? TextScaler.noScaling;
 

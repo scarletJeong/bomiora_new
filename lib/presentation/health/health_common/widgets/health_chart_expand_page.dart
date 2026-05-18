@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 /// 건강 그래프 전체화면: 진입 시 가로 고정, 종료 시 세로 복귀 ([SystemChrome]).
 Future<void> openHealthChartExpandPage({
   required BuildContext context,
-  required WidgetBuilder periodSelectorBuilder,
   required WidgetBuilder chartBuilder,
+  WidgetBuilder? periodSelectorBuilder,
   ValueChanged<VoidCallback>? onRegisterRefresh,
   VoidCallback? onDisposeRefresh,
 }) async {
@@ -44,8 +44,10 @@ Future<void> openHealthChartExpandPage({
                           ],
                         ),
                         const SizedBox(height: 4),
-                        periodSelectorBuilder(context),
-                        const SizedBox(height: 10),
+                        if (periodSelectorBuilder != null) ...[
+                          periodSelectorBuilder(context),
+                          const SizedBox(height: 10),
+                        ],
                         Expanded(child: chartBuilder(context)),
                       ],
                     ),

@@ -675,10 +675,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
-                          padding: EdgeInsets.symmetric(
-                            vertical: healthDp(context, 16),
-                          ),
-                          borderRadius: healthDp(context, 12),
                           onPressed: () async {
                             final result = await Navigator.push(
                               context,

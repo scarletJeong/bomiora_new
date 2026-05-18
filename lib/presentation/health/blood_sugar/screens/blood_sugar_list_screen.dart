@@ -684,10 +684,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                             fontSize: healthSp(context, 16),
                             fontWeight: FontWeight.w500,
                           ),
-                          padding: EdgeInsets.symmetric(
-                            vertical: healthDp(context, 16),
-                          ),
-                          borderRadius: healthDp(context, 12),
                           onPressed: () async {
                             final result = await Navigator.push(
                               context,
