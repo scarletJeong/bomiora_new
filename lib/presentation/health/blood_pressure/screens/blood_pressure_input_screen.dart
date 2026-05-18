@@ -233,8 +233,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
-          title: widget.record == null ? '혈압 기록하기' : '혈압 수정하기',
-          titleFontSize: healthSp(context, 16),
+          title: '혈압',
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(
@@ -244,13 +243,25 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
               horizontal: healthDp(context, 27),
-              vertical: healthDp(context, 20),
             ),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SizedBox(height: healthDp(context, 0)),
+                  Text(
+                    '오늘의 혈압을 등록해주세요',
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      height: 1,
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 20)),
                   _buildDateTimeCard(),
                   SizedBox(height: healthDp(context, 20)),
                   _buildSystolicInput(),
@@ -258,7 +269,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
                   _buildDiastolicInput(),
                   SizedBox(height: healthDp(context, 20)),
                   _buildPulseInput(),
-                  SizedBox(height: healthDp(context, 24)),
+                  SizedBox(height: healthDp(context, 20)),
                   _buildActionButtons(),
                 ],
               ),
@@ -285,7 +296,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        SizedBox(height: healthDp(context, 10)),
+        SizedBox(height: healthDp(context, 5)),
         Row(
           children: [
             Expanded(
@@ -459,16 +470,12 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
       children: [
         Expanded(
           child: SizedBox(
-            height: healthDp(context, 44),
+            height: healthDp(context, 38),
             child: OutlinedButton(
               onPressed: (widget.record != null && !_isSaving)
                   ? _showDeleteConfirmDialog
                   : null,
               style: OutlinedButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 8),
-                  vertical: healthDp(context, 12),
-                ),
                 side: BorderSide(
                   width: healthDp(context, 0.5),
                   color: const Color(0xFF898383),
@@ -493,14 +500,10 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
         SizedBox(width: healthDp(context, 10)),
         Expanded(
           child: SizedBox(
-            height: healthDp(context, 44),
+            height: healthDp(context, 38),
             child: ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 8),
-                  vertical: healthDp(context, 12),
-                ),
                 backgroundColor: const Color(0xFFFF5A8D),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
