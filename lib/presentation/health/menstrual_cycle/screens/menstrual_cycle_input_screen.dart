@@ -319,7 +319,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       child: MobileAppLayoutWrapper(
         backgroundColor: Colors.white,
         appBar: HealthAppBar(
-          title: widget.existingRecord != null ? '생리주기 수정' : '생리주기 입력',
+          title: '생리주기',
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(
@@ -328,9 +328,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           ),
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 24),
-              healthDp(context, 8),
-              healthDp(context, 24),
+              healthDp(context, 27),
+              healthDp(context, 5),
+              healthDp(context, 27),
               healthDp(context, 20),
             ),
             child: Column(
@@ -340,16 +340,16 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                   '마지막 생리는 언제였나요?',
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: 14,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
                 ),
-                SizedBox(height: healthDp(context, 6)),
+                SizedBox(height: healthDp(context, 20)),
                 _buildCalendar(),
-                SizedBox(height: healthDp(context, 0)),
+                SizedBox(height: healthDp(context, 20)),
                 _buildCycleLengthSection(),
-                SizedBox(height: healthDp(context, 30)),
+                SizedBox(height: healthDp(context, 20)),
                 _buildSaveButton(),
               ],
             ),
@@ -360,15 +360,20 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   }
 
   Widget _buildCalendar() {
+    final focusedMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final focusedWeeks = _weeksForMonth(focusedMonth).length;
+    final calendarGridHeight =
+        healthDp(context, focusedWeeks * 54 + (focusedWeeks - 1) * 8);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildCalendarMonthHeader(),
-        SizedBox(height: healthDp(context, 8)),
+        SizedBox(height: healthDp(context, 4)),
         _buildWeekdayHeader(),
-        SizedBox(height: healthDp(context, 10)),
+        SizedBox(height: healthDp(context, 8)),
         SizedBox(
-          height: healthDp(context, 380),
+          height: calendarGridHeight,
           child: PageView.builder(
             controller: _calendarPageController,
             scrollDirection: Axis.vertical,
@@ -397,14 +402,26 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   Widget _buildMonthGrid(DateTime monthStart) {
     final weeks = _weeksForMonth(monthStart);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: weeks
-          .map((week) => Padding(
-                padding: EdgeInsets.only(bottom: healthDp(context, 6)),
-                child: _buildWeekRow(week, monthStart),
-              ))
-          .toList(),
+    return ClipRect(
+      child: SingleChildScrollView(
+        primary: false,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: weeks
+              .asMap()
+              .entries
+              .map((entry) => Padding(
+                    padding: EdgeInsets.only(
+                      bottom: entry.key == weeks.length - 1
+                          ? 0
+                          : healthDp(context, 8),
+                    ),
+                    child: _buildWeekRow(entry.value, monthStart),
+                  ))
+              .toList(),
+        ),
+      ),
     );
   }
 
@@ -630,11 +647,14 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       children: [
         InkWell(
           borderRadius: BorderRadius.circular(healthDp(context, 8)),
+          splashFactory: NoSplash.splashFactory,
+          hoverColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          focusColor: Colors.transparent,
           onTap: _openMonthFromHealthPicker,
           child: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 4),
-              vertical: healthDp(context, 6),
+              horizontal: healthDp(context, 4)
             ),
             child: Row(
               children: [
@@ -642,7 +662,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                   DateFormat('yyyy년 M월').format(_focusedDay),
                   style: const TextStyle(
                     color: Color(0xFF1A1A1A),
-                    fontSize: 15,
+                    fontSize: 16,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
@@ -656,7 +676,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
             ),
           ),
         ),
-        const Spacer(),
+        //const Spacer(),
       ],
     );
   }
@@ -689,26 +709,27 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
 
   Widget _buildWeekdayHeader() {
     const labels = ['일', '월', '화', '수', '목', '금', '토'];
-    return Container(
-      width: double.infinity,
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+    return SizedBox(
+      height: healthDp(context, 46),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0x7FD2D2D2),
+            ),
+            bottom: BorderSide(
+              width: healthDp(context, 1),
+              color: const Color(0x7FD2D2D2),
+            ),
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: labels
-            .map(
-              (label) => Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: healthDp(context, 15),
-                  ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: labels
+              .map(
+                (label) => Expanded(
                   child: Center(
                     child: Text(
                       label,
@@ -721,9 +742,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                     ),
                   ),
                 ),
-              ),
-            )
-            .toList(),
+              )
+              .toList(),
+        ),
       ),
     );
   }
@@ -732,19 +753,31 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          '최근 생리주기는 며칠인가요?',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
+        Padding(
+          padding: EdgeInsets.only(left: healthDp(context, 10)),
+          child: const Text(
+            '최근 생리주기는 며칠인가요?',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 10,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
           ),
         ),
-        Row(
+        SizedBox(
+          height: healthDp(context, 20),
+          child: Row(
           children: [
             Container(
-              width: healthDp(context, 51),
+              width: healthDp(context, 52),
+              height: healthDp(context, 20),
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 19),
+                0,
+                healthDp(context, 19),
+                healthDp(context, 6),
+              ),
               clipBehavior: Clip.antiAlias,
               decoration: ShapeDecoration(
                 color: Colors.white,
@@ -761,31 +794,38 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 ],
               ),
               alignment: Alignment.center,
-              child: TextField(
-                controller: _cycleLengthController,
-                textAlign: TextAlign.center,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(3),
-                ],
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+              child: Center(
+                child: Transform.translate(
+                  offset: Offset(0, -healthDp(context, 2)),
+                  child: TextField(
+                    controller: _cycleLengthController,
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(3),
+                    ],
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 10,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                    ),
+                    decoration: const InputDecoration(
+                      isCollapsed: true,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null && parsed > 0) {
+                        _cycleLength = parsed;
+                      }
+                    },
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: (value) {
-                  final parsed = int.tryParse(value);
-                  if (parsed != null && parsed > 0) {
-                    _cycleLength = parsed;
-                  }
-                },
               ),
             ),
             SizedBox(width: healthDp(context, 5)),
@@ -793,28 +833,30 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
               '일',
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 16,
+                fontSize: 10,
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w300,
               ),
             ),
           ],
+        ),
         ),
       ],
     );
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
+    return Center(
+      child: SizedBox(
+        width: healthDp(context, 113),
+        height: healthDp(context, 30),
+        child: ElevatedButton(
         onPressed: _isLoading ? null : _saveMenstrualCycleRecord,
         style: ElevatedButton.styleFrom(
           backgroundColor: _kAccentPink,
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(
-            horizontal: healthDp(context, 24),
-            vertical: healthDp(context, 14),
+            vertical: healthDp(context, 6),
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
@@ -832,7 +874,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                 ),
               )
             : Text(
-                widget.existingRecord != null ? '수정하기' : '저장하기',
+                '저장',
+                textScaler: TextScaler.noScaling,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -840,6 +883,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+      ),
       ),
     );
   }

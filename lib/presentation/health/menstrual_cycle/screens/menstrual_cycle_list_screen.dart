@@ -136,44 +136,31 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                 )
               : _currentRecord == null
                   ? _buildNoDataView()
-                  : Column(
-                      children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: healthDp(context, 20),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildCurrentStatusSection(),
-                                SizedBox(height: healthDp(context, 0)),
-                                _buildCycleChart(),
-                                SizedBox(height: healthDp(context, 10)),
-                                _buildPhaseLegend(),
-                                SizedBox(height: healthDp(context, 20)),
-                                _buildPhaseRecommendations(),
-                                SizedBox(height: healthDp(context, 30)),
-                                _buildExpectedDatesSection(),
-                                SizedBox(height: healthDp(context, 16)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            healthDp(context, 10),
-                            healthDp(context, 20),
-                            healthDp(context, 10),
-                            healthDp(context, 20),
-                          ),
-                          child: BtnRecord(
-                            text: '+ 기록하기',
+                  : SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: healthDp(context, 20)),
+                          _buildCurrentStatusSection(),
+                          _buildCycleChart(),
+                          SizedBox(height: healthDp(context, 20)),
+                          _buildPhaseLegend(),
+                          SizedBox(height: healthDp(context, 20)),
+                          _buildPhaseRecommendations(),
+                          SizedBox(height: healthDp(context, 20)),
+                          _buildExpectedDatesSection(),
+                          SizedBox(height: healthDp(context, 20)),
+                          BtnRecord(
+                            text: '+기록하기',
                             labelTextScaler: TextScaler.noScaling,
                             textStyle: TextStyle(
+                              color: Colors.white,
                               fontFamily: 'Gmarket Sans TTF',
                               fontSize: healthSp(context, 16),
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                             ),
                             padding: EdgeInsets.symmetric(
                               vertical: healthDp(context, 16),
@@ -193,8 +180,9 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                               }
                             },
                           ),
-                        ),
-                      ],
+                          SizedBox(height: healthDp(context, 20)),
+                        ],
+                      ),
                     ),
         ),
       ),
@@ -288,7 +276,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             periodDayKeys: _periodDayKeysFrom(_allRecords),
             periodEndpointKeys: _periodEndpointKeysFrom(_allRecords),
           ),
-          SizedBox(height: healthDp(context, 16)),
+          SizedBox(height: healthDp(context, 20)),
         ],
       ),
     );
@@ -354,15 +342,18 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         (boundedElapsedDays - 1).clamp(0, cycleLength > 0 ? cycleLength - 1 : 0);
     final markerAngle =
         -3.141592653589793 / 2 - (daySweep * markerDayIndex0);
-    final chartSize = healthDp(context, 260);
-    final innerSize = chartSize * (156 / 200);
+    final chartSize = healthDp(context, 242);
+    final innerSize = chartSize *
+        ((MenstrualCyclePainter.kDesignChartDiameter -
+                MenstrualCyclePainter.kDesignRingStroke * 2) /
+            MenstrualCyclePainter.kDesignChartDiameter);
     final chartScale = chartSize / MenstrualCyclePainter.kDesignChartDiameter;
     final scaledRingStroke =
         MenstrualCyclePainter.kDesignRingStroke * chartScale;
     final scaledArcInset =
         MenstrualCyclePainter.kDesignArcInset * chartScale;
     // 날짜 마커 크기 (링 두께에 맞춤)
-    final markerDotSize = scaledRingStroke + 8.0 * chartScale;
+    final markerDotSize = healthDp(context, 32);
     final center = chartSize / 2;
     // Painter arc 중심선 반지름과 동일하게 맞춰 끝점 정렬
     final markerRadius = (chartSize / 2 - scaledArcInset);
@@ -374,10 +365,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     final ovulationDayIndex0 = (_currentRecord!.ovulationDay - 1)
         .clamp(0, cycleLength > 0 ? cycleLength - 1 : 0);
     final ovulationAngle = -pi / 2 - (daySweep * ovulationDayIndex0);
-    final ovulationDotSize = (scaledRingStroke * 3.5 * chartScale).clamp(
-      healthDp(context, 17),
-      healthDp(context, 21),
-    );
+    final ovulationDotSize = healthDp(context, 20);
     final ovulationX = center + markerRadius * cos(ovulationAngle);
     final ovulationY = center + markerRadius * sin(ovulationAngle);
     final fertileStartDayIndex0 =
@@ -395,7 +383,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     final useOvulationMarkerStyle = selectedIsOvulationDay;
 
     return Container(
-      padding: EdgeInsets.all(healthDp(context, 20)),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -456,8 +444,9 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                         children: [
                           Text(
                             '생리 예정일',
+                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: healthSp(context, 20),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,
                               color: Colors.black,
@@ -466,8 +455,9 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                           Text(
                             DateFormat('MM.dd')
                                 .format(_currentRecord!.nextPeriodStart),
-                            style: const TextStyle(
-                              fontSize: 36,
+                            textScaler: TextScaler.noScaling,
+                            style: TextStyle(
+                              fontSize: healthSp(context, 32),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w700,
                             ),
@@ -535,7 +525,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                         todayLabel,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: healthSp(context, 10),
                           fontWeight: FontWeight.w400,
                           color: useOvulationMarkerStyle
                               ? Colors.white
@@ -548,7 +538,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
               ),
             ),
           ),
-          SizedBox(height: healthDp(context, 20)),
         ],
       ),
     );
@@ -597,43 +586,37 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     final phaseInfo = MenstrualPhaseInfo.getPhaseInfo(phase);
 
     return Container(
-      padding: EdgeInsets.all(healthDp(context, 20)),
+      padding: EdgeInsets.all(healthDp(context, 10)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF9F9F9),
         borderRadius: BorderRadius.circular(healthDp(context, 16)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: healthDp(context, 1),
-            blurRadius: healthDp(context, 8),
-            offset: Offset(0, healthDp(context, 2)),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${phaseInfo.name}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            phaseInfo.name,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              fontSize: healthSp(context, 16),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
               color: Colors.black,
             ),
           ),
-          SizedBox(height: healthDp(context, 16)),
+          SizedBox(height: healthDp(context, 10)),
           _buildRecommendationItem(
             '음식',
             phaseInfo.foodRecommendations.first,
             AppAssets.menstrualIcon1,
           ),
-          SizedBox(height: healthDp(context, 12)),
+          SizedBox(height: healthDp(context, 10)),
           _buildRecommendationItem(
             '건강',
             phaseInfo.healthRecommendations.first,
             AppAssets.menstrualIcon2,
           ),
-          SizedBox(height: healthDp(context, 12)),
+          SizedBox(height: healthDp(context, 10)),
           _buildRecommendationItem(
             '관리',
             phaseInfo.managementRecommendations.first,
@@ -683,8 +666,33 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
     );
   }
 
+  List<String> _splitRecommendationContent(String content) {
+    var splitIndex = -1;
+    for (final marker in const ['(', '→']) {
+      final index = content.indexOf(marker);
+      if (index > 0 && (splitIndex == -1 || index < splitIndex)) {
+        splitIndex = index;
+      }
+    }
+
+    if (splitIndex == -1) return [content.trim()];
+    return [
+      content.substring(0, splitIndex).trimRight(),
+      content.substring(splitIndex).trimLeft(),
+    ];
+  }
+
   Widget _buildRecommendationItem(
       String category, String content, String assetPath) {
+    final contentLines = _splitRecommendationContent(content);
+    final textStyle = TextStyle(
+      fontSize: healthSp(context, 12),
+      color: Colors.black,
+      height: 1.4,
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+    );
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -696,30 +704,33 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         ),
         SizedBox(width: healthDp(context, 12)),
         Expanded(
-          child: RichText(
-            textScaler: TextScaler.noScaling,
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: healthSp(context, 13),
-                color: Colors.black,
-                height: 1.4,
-                fontFamily: 'Gmarket Sans TTF',
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$category : ',
+                textScaler: TextScaler.noScaling,
+                style: textStyle,
               ),
-              children: [
-                TextSpan(
-                  text: '$category : ',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      contentLines.first,
+                      textScaler: TextScaler.noScaling,
+                      style: textStyle,
+                    ),
+                    if (contentLines.length > 1)
+                      Text(
+                        contentLines[1],
+                        textScaler: TextScaler.noScaling,
+                        style: textStyle,
+                      ),
+                  ],
                 ),
-                TextSpan(
-                  text: content,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
@@ -896,8 +907,8 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
 class MenstrualCyclePainter extends CustomPainter {
   /// 200×200 기준 레이아웃(링 두께·인셋 스케일 기준)
   static const double kDesignChartDiameter = 200.0;
-  static const double kDesignArcInset = 11.0;
-  static const double kDesignRingStroke = 22.0;
+  static const double kDesignRingStroke = 18.0;
+  static const double kDesignArcInset = kDesignRingStroke / 2;
   static const double kDesignPhaseMarkerStroke = 1.4;
 
   final double layoutDiameter;
@@ -1231,7 +1242,7 @@ class _PhaseLegendItem extends StatelessWidget {
           textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.black,
-            fontSize: healthSp(context, 8),
+            fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
