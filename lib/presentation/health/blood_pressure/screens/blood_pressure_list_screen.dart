@@ -1573,7 +1573,7 @@ class _PressureLegend extends StatelessWidget {
             textScaler: TextScaler.noScaling,
             style: TextStyle(
               color: Colors.grey,
-              fontSize: healthSp(context, 8),
+              fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w400,
             ),
