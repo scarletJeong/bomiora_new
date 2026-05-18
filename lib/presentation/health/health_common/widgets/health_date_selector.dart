@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../health_responsive_scale.dart';
 
 /// 새 측정 기록: 목록에서 보고 있는 날짜에 맞춘 기본 시각 (당일이면 지금, 과거 날짜면 그 날짜+현재 시·분, 미래는 항상 금지).
@@ -817,24 +819,34 @@ class HealthDateSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // AppBar 하단 ↔ 년·월 밴드 = 20, 년·월 ↔ 날짜 숫자 행 = 8 (375 기준)
+    final appBarToMonthGap = healthDp(context, 20);
+    final monthFontSize = healthSp(context, 12);
+    final monthToDateGap = healthDp(context, 8);
+    final dateRowH = healthDp(context, 36);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        SizedBox(height: appBarToMonthGap),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
               DateFormat('yyyy년 M월').format(selectedDate),
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 color: monthTextColor,
-                fontSize: 12,
+                fontSize: monthFontSize,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
+                height: 1.15,
               ),
             ),
-            SizedBox(width: healthDp(context, 8)),
             InkWell(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(healthDp(context, 20)),
               onTap: () async {
                 final picked = await showHealthDateOnlyPicker(
                   context,
@@ -846,18 +858,24 @@ class HealthDateSelector extends StatelessWidget {
                   onDateChanged(picked);
                 }
               },
-              child: Icon(
-                Icons.calendar_today,
-                size: healthSp(context, 12),
-                color: iconColor,
+              child: SizedBox(
+                width: healthDp(context, 12),
+                height: healthDp(context, 12),
+                child: SvgPicture.asset(
+                  AppAssets.calendarIcon,
+                  width: healthDp(context, 12),
+                  height: healthDp(context, 12),
+                  fit: BoxFit.contain,
+                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                ),
               ),
             ),
           ],
         ),
-        SizedBox(height: healthDp(context, 6)),
+        SizedBox(height: monthToDateGap),
         SizedBox(
           width: double.infinity,
-          height: 36,
+          height: dateRowH,
           child: Stack(
             alignment: Alignment.center,
             children: [

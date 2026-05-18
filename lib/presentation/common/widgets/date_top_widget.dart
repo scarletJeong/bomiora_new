@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_date_selector.dart';
 
 class DateTopWidget extends StatelessWidget {
@@ -66,79 +67,88 @@ class DateTopWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isToday = _isToday();
-    const appBarToMonthGap = 20.0;
-    const monthFontSize = 12.0;
-    const iconSize = 12.0;
-    const monthToDateGap = 8.0;
+    // 375 기준 값 (모두 healthDp / healthSp 로 스케일)
+    final appBarToMonthGap = healthDp(context, 20);
+    final monthFontSize = healthSp(context, 12);
+    final iconSize = healthDp(context, 12);
+    final monthToDateGap = healthDp(context, 8);
+    final dateRowH = healthDp(context, 70);
+    final dateRowVPad = healthDp(context, 10);
+    final dateRowHPad = healthDp(context, 9);
+    final todayPadH = healthDp(context, 6);
+    final todayPadV = healthDp(context, 2);
+    final todayRadius = healthDp(context, 12);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: appBarToMonthGap),
-        SizedBox(
-          height: monthFontSize,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                DateFormat('yyyy년 M월').format(selectedDate),
-                style: TextStyle(
-                  color: monthTextColor ?? const Color(0xFF898686),
-                  fontSize: monthFontSize,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  height: 1,
-                ),
+        SizedBox(height: appBarToMonthGap),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              DateFormat('yyyy년 M월').format(selectedDate),
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: monthTextColor ?? const Color(0xFF898686),
+                fontSize: monthFontSize,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                height: 1.15,
               ),
-              InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => _openCalendarPicker(context),
-                child: SizedBox(
+            ),
+            InkWell(
+              borderRadius: BorderRadius.circular(healthDp(context, 20)),
+              onTap: () => _openCalendarPicker(context),
+              child: SizedBox(
+                width: iconSize,
+                height: iconSize,
+                child: SvgPicture.asset(
+                  AppAssets.calendarIcon,
                   width: iconSize,
                   height: iconSize,
-                  child: SvgPicture.asset(
-                    AppAssets.calendarIcon,
-                    width: iconSize,
-                    height: iconSize,
-                    fit: BoxFit.contain,
-                    colorFilter: ColorFilter.mode(
-                      iconColor ?? const Color(0xFF898686),
-                      BlendMode.srcIn,
-                    ),
+                  fit: BoxFit.contain,
+                  colorFilter: ColorFilter.mode(
+                    iconColor ?? const Color(0xFF898686),
+                    BlendMode.srcIn,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(height: monthToDateGap),
+        SizedBox(height: monthToDateGap),
         Container(
-          height: 70,
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 9),
+          height: dateRowH,
+          padding: EdgeInsets.symmetric(
+            vertical: dateRowVPad,
+            horizontal: dateRowHPad,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildDateItem(displayDates[0], false),
+              _buildDateItem(context, displayDates[0], false),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildDateItem(displayDates[1], true),
+                  _buildDateItem(context, displayDates[1], true),
                   if (isToday)
                     Container(
-                      margin: const EdgeInsets.only(left: 0),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: todayPadH,
+                        vertical: todayPadV,
                       ),
                       decoration: BoxDecoration(
                         color: primaryColor ?? Colors.black,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(todayRadius),
                       ),
-                      child: const Text(
+                      child: Text(
                         '오늘',
+                        textScaler: TextScaler.noScaling,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: healthSp(context, 12),
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -146,7 +156,7 @@ class DateTopWidget extends StatelessWidget {
                     ),
                 ],
               ),
-              _buildDateItem(displayDates[2], false),
+              _buildDateItem(context, displayDates[2], false),
             ],
           ),
         ),
@@ -155,7 +165,7 @@ class DateTopWidget extends StatelessWidget {
   }
 
   // 날짜 아이템 위젯
-  Widget _buildDateItem(DateTime date, bool isCenter) {
+  Widget _buildDateItem(BuildContext context, DateTime date, bool isCenter) {
     final hasRecord = _hasRecord(date);
     final dateStr = DateFormat('M.d').format(date);
 
@@ -164,14 +174,15 @@ class DateTopWidget extends StatelessWidget {
         onDateChanged(date);
       },
       child: SizedBox(
-        width: isCenter ? 80 : 60,
+        width: healthDp(context, isCenter ? 80 : 60),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               dateStr,
+              textScaler: TextScaler.noScaling,
               style: TextStyle(
-                fontSize: isCenter ? 18 : 14,
+                fontSize: healthSp(context, isCenter ? 18 : 14),
                 fontWeight: isCenter ? FontWeight.bold : FontWeight.normal,
                 color: isCenter
                     ? (primaryColor ?? Colors.black)
@@ -180,9 +191,9 @@ class DateTopWidget extends StatelessWidget {
             ),
             if (hasRecord)
               Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 6,
-                height: 6,
+                margin: EdgeInsets.only(top: healthDp(context, 8)),
+                width: healthDp(context, 6),
+                height: healthDp(context, 6),
                 decoration: BoxDecoration(
                   color: isCenter
                       ? (primaryColor ?? Colors.black)

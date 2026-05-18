@@ -2,6 +2,38 @@ import 'package:flutter/material.dart';
 
 import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 
+/// 혈압 수정 바텀시트·차트 툴팁 공통 배지 (375 기준 지름 16 원).
+Widget healthBloodPressureBadge(
+  BuildContext context, {
+  required String label,
+  required Color color,
+}) {
+  final size = healthDp(context, 16);
+  return SizedBox(
+    width: size,
+    height: size,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          label,
+          textScaler: TextScaler.noScaling,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: healthSp(context, 10),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class HealthEditBottomSheetItem<T> {
   final T data;
   final String timeText;

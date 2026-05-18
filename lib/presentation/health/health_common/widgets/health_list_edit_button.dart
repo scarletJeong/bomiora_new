@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:bomiora_app/presentation/health/health_common/health_responsive_scale.dart';
 
-/// 체중 목록 등에서 쓰는 **수정하기** 칩 (375 기준: 패딩 5, 모서리 10, 글자 8sp).
+/// 체중 목록 등에서 쓰는 **수정하기** 칩 (375 기준: 55×22, 패딩 V5 H8, 모서리 10, 글자 8sp).
 ///
 /// 혈압·혈당·생리주기 목록과 동일 스펙으로 통일할 때 사용.
 class HealthListEditButton extends StatelessWidget {
@@ -18,12 +18,17 @@ class HealthListEditButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = healthDp(context, 10);
-    final pad = healthDp(context, 5);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(r),
       child: Container(
-        padding: EdgeInsets.all(pad),
+        width: healthDp(context, 55),
+        height: healthDp(context, 22),
+        padding: EdgeInsets.symmetric(
+          vertical: healthDp(context, 4),
+          horizontal: healthDp(context, 7),
+        ),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: const Color(0xFFFF5A8D),
           borderRadius: BorderRadius.circular(r),
@@ -33,7 +38,7 @@ class HealthListEditButton extends StatelessWidget {
           textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.white,
-            fontSize: healthSp(context, 8),
+            fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
