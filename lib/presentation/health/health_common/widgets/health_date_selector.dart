@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -28,13 +30,65 @@ const Color _kTimeBorder = Color(0xFF8B8B8B);
 double _healthDialogMaxWidth(
   BuildContext context, {
   required double horizontalInsetTotal,
-  double maxCap = 360,
-  double minCap = 200,
+  double maxCapBase = 360,
+  double minCapBase = 200,
 }) {
+  final maxCap = healthDp(context, maxCapBase);
+  final minCap = healthDp(context, minCapBase);
   final sw = MediaQuery.sizeOf(context).width;
   final raw = sw - horizontalInsetTotal;
   if (!raw.isFinite || raw <= 0) return minCap;
   return raw.clamp(minCap, maxCap);
+}
+
+/// 날짜·시간 선택 Dialog — 뒤 화면 블러 + 딤 처리.
+Future<T?> _showHealthPickerDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+}) {
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      final blurSigma = healthDp(dialogContext, 1.8);
+      return Material(
+        type: MaterialType.transparency,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.of(dialogContext).pop(),
+                behavior: HitTestBehavior.opaque,
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: blurSigma,
+                    sigmaY: blurSigma,
+                  ),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.20),
+                  ),
+                ),
+              ),
+            ),
+            builder(dialogContext),
+          ],
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOut,
+        ),
+        child: child,
+      );
+    },
+  );
 }
 
 /// 측정일시: 날짜 선택 후 이어서 시간 선택 다이얼로그를 띄웁니다.
@@ -52,10 +106,8 @@ Future<DateTime?> showHealthDateThenTimePickers(
   if (initial.isBefore(first)) initial = first;
   if (initial.isAfter(last)) initial = last;
 
-  final pickedDate = await showDialog<DateTime>(
+  final pickedDate = await _showHealthPickerDialog<DateTime>(
     context: context,
-    barrierDismissible: true,
-    barrierColor: Colors.black.withValues(alpha: 0.2),
     builder: (ctx) => _HealthDatePickerDialog(
       initialDate: initial,
       firstDate: first,
@@ -101,10 +153,8 @@ Future<TimeOfDay?> showHealthTimePickerDialog(
   /// 오늘 날짜일 때 상한(포함). null이면 23:59까지 선택 가능.
   TimeOfDay? maxTime,
 }) {
-  return showDialog<TimeOfDay>(
+  return _showHealthPickerDialog<TimeOfDay>(
     context: context,
-    barrierDismissible: true,
-    barrierColor: Colors.black.withValues(alpha: 0.2),
     builder: (ctx) =>
         _HealthTimePickerDialog(initialTime: initialTime, maxTime: maxTime),
   );
@@ -123,10 +173,8 @@ Future<DateTime?> showHealthDateOnlyPicker(
   if (initial.isBefore(first)) initial = first;
   if (initial.isAfter(last)) initial = last;
 
-  return showDialog<DateTime>(
+  return _showHealthPickerDialog<DateTime>(
     context: context,
-    barrierDismissible: true,
-    barrierColor: Colors.black.withValues(alpha: 0.2),
     builder: (ctx) => _HealthDatePickerDialog(
       initialDate: initial,
       firstDate: first,
@@ -227,12 +275,13 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final dialogInset = healthDp(context, 24);
     // insetPadding horizontal 24 + 24
     final cardW = _healthDialogMaxWidth(
       context,
-      horizontalInsetTotal: 48,
-      maxCap: 340,
-      minCap: 240,
+      horizontalInsetTotal: dialogInset * 2,
+      maxCapBase: 340,
+      minCapBase: 240,
     );
 
     final monthStart = DateTime(_focusedMonth.year, _focusedMonth.month);
@@ -241,10 +290,32 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
     final totalCells = leading + dim;
     final rows = (totalCells / 7).ceil();
 
+    final cardRadius = healthDp(context, 17);
+    final cardPad = EdgeInsets.fromLTRB(
+      healthDp(context, 20),
+      healthDp(context, 20),
+      healthDp(context, 20),
+      healthDp(context, 16),
+    );
+    final monthTitleFs = healthSp(context, 15);
+    final navBtnSize = healthDp(context, 36);
+    final navIconSize = healthDp(context, 24);
+    final dividerH = healthDp(context, 24);
+    final dividerThickness = healthDp(context, 0.84);
+    final weekdayFs = healthSp(context, 11);
+    final weekGap = healthDp(context, 8);
+    final rowBottomPad = healthDp(context, 6);
+    final rowH = healthDp(context, 32);
+    final dayCellSize = healthDp(context, 30);
+    final dayFs = healthSp(context, 14);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: dialogInset,
+        vertical: dialogInset,
+      ),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: cardW),
         child: Column(
@@ -253,18 +324,18 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(17),
-                boxShadow: const [
+                borderRadius: BorderRadius.circular(cardRadius),
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x1C959595),
-                    blurRadius: 23,
-                    offset: Offset(8, 3),
-                    spreadRadius: 10,
+                    color: const Color(0x1C959595),
+                    blurRadius: healthDp(context, 23),
+                    offset: Offset(healthDp(context, 8), healthDp(context, 3)),
+                    spreadRadius: healthDp(context, 10),
                   ),
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                padding: cardPad,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -275,9 +346,10 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                             DateFormat('yyyy년 M월', 'ko_KR')
                                 .format(_focusedMonth),
                             textAlign: TextAlign.start,
-                            style: const TextStyle(
+                            textScaler: TextScaler.noScaling,
+                            style: TextStyle(
                               color: _kNavyText,
-                              fontSize: 15,
+                              fontSize: monthTitleFs,
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                               letterSpacing: 0.15,
@@ -290,13 +362,14 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                             IconButton(
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 36,
-                                minHeight: 36,
+                              constraints: BoxConstraints(
+                                minWidth: navBtnSize,
+                                minHeight: navBtnSize,
                               ),
                               onPressed: _canPrevMonth ? _prevMonth : null,
                               icon: Icon(
                                 Icons.chevron_left,
+                                size: navIconSize,
                                 color: _canPrevMonth
                                     ? _kNavyText
                                     : _kWeekdayMuted.withValues(alpha: 0.4),
@@ -305,13 +378,14 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                             IconButton(
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 36,
-                                minHeight: 36,
+                              constraints: BoxConstraints(
+                                minWidth: navBtnSize,
+                                minHeight: navBtnSize,
                               ),
                               onPressed: _canNextMonth ? _nextMonth : null,
                               icon: Icon(
                                 Icons.chevron_right,
+                                size: navIconSize,
                                 color: _canNextMonth
                                     ? _kNavyText
                                     : _kWeekdayMuted.withValues(alpha: 0.4),
@@ -321,7 +395,11 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                         ),
                       ],
                     ),
-                    const Divider(height: 24, thickness: 0.84, color: Color(0xFFE4E5E7)),
+                    Divider(
+                      height: dividerH,
+                      thickness: dividerThickness,
+                      color: const Color(0xFFE4E5E7),
+                    ),
                     Row(
                       children: ['일', '월', '화', '수', '목', '금', '토']
                           .map(
@@ -329,9 +407,10 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                               child: Text(
                                 d,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                textScaler: TextScaler.noScaling,
+                                style: TextStyle(
                                   color: _kWeekdayMuted,
-                                  fontSize: 11,
+                                  fontSize: weekdayFs,
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -340,16 +419,16 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                           )
                           .toList(),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: weekGap),
                     ...List.generate(rows, (row) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
+                        padding: EdgeInsets.only(bottom: rowBottomPad),
                         child: Row(
                           children: List.generate(7, (col) {
                             final i = row * 7 + col - leading;
                             if (i < 0 || i >= dim) {
-                              return const Expanded(
-                                child: SizedBox(height: 32),
+                              return Expanded(
+                                child: SizedBox(height: rowH),
                               );
                             }
                             final day = i + 1;
@@ -361,7 +440,7 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
 
                             return Expanded(
                               child: SizedBox(
-                                height: 32,
+                                height: rowH,
                                 child: Center(
                                   child: Material(
                                     color: Colors.transparent,
@@ -375,8 +454,8 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                                           : null,
                                       customBorder: const CircleBorder(),
                                       child: Container(
-                                        width: 30,
-                                        height: 30,
+                                        width: dayCellSize,
+                                        height: dayCellSize,
                                         alignment: Alignment.center,
                                         decoration: BoxDecoration(
                                           color: isSel ? _kAccentPink : null,
@@ -384,6 +463,7 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                                         ),
                                         child: Text(
                                           '$day',
+                                          textScaler: TextScaler.noScaling,
                                           style: TextStyle(
                                             color: !selectable
                                                 ? _kWeekdayMuted
@@ -393,7 +473,7 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                                                     : isToday
                                                         ? _kNavyText
                                                         : _kNavyText,
-                                            fontSize: 14,
+                                            fontSize: dayFs,
                                             fontFamily: 'Gmarket Sans TTF',
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -435,7 +515,6 @@ class _HealthTimePickerDialog extends StatefulWidget {
 }
 
 class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
-  static const double _itemExtent = 44;
   static const int _wheelTickDebounceMs = 70;
 
   late FixedExtentScrollController _hourController;
@@ -485,30 +564,51 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final dialogInsetH = healthDp(context, 16);
+    final dialogInsetV = healthDp(context, 24);
+    final itemExtent = healthDp(context, 44);
+    final cardPad = EdgeInsets.fromLTRB(
+      healthDp(context, 13),
+      healthDp(context, 16),
+      healthDp(context, 13),
+      healthDp(context, 16),
+    );
+    final cardRadius = healthDp(context, 16);
+    final wheelHighlightRadius = healthDp(context, 12);
+    final wheelBorderW = healthDp(context, 0.5);
+    final colonPadH = healthDp(context, 4);
+    final btnGap = healthDp(context, 10);
+    final btnPadV = healthDp(context, 12);
+    final btnRadius = healthDp(context, 10);
+    final btnFontSize = healthSp(context, 16);
+    final actionsTopGap = healthDp(context, 16);
+    final wheelExtraH = healthDp(context, 8);
+
     // insetPadding horizontal 16 + 16 — cardW가 이 값보다 크면 RenderFlex 오버플로(약 12px 등) 발생
     final cardW = _healthDialogMaxWidth(
       context,
-      horizontalInsetTotal: 32,
-      maxCap: 360,
-      minCap: 200,
+      horizontalInsetTotal: dialogInsetH * 2,
     );
 
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: dialogInsetH,
+        vertical: dialogInsetV,
+      ),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: cardW),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(13, 16, 13, 16),
+          padding: cardPad,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
+            borderRadius: BorderRadius.circular(cardRadius),
+            boxShadow: [
               BoxShadow(
-                color: Color(0x24000000),
-                blurRadius: 16,
-                offset: Offset(0, 6),
+                color: const Color(0x24000000),
+                blurRadius: healthDp(context, 16),
+                offset: Offset(0, healthDp(context, 6)),
               ),
             ],
           ),
@@ -516,7 +616,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                height: _itemExtent * 4 + 8,
+                height: itemExtent * 4 + wheelExtraH,
                 width: double.infinity,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -528,14 +628,15 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                         IgnorePointer(
                           child: Center(
                             child: Container(
-                              height: _itemExtent,
+                              height: itemExtent,
                               width: innerW * 0.88,
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius:
+                                    BorderRadius.circular(wheelHighlightRadius),
                                 border: Border.all(
                                   color: _kTimeBorder,
-                                  width: 0.5,
+                                  width: wheelBorderW,
                                 ),
                               ),
                             ),
@@ -545,7 +646,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                           children: [
                             Expanded(
                               child: SizedBox(
-                                height: _itemExtent * 4,
+                                height: itemExtent * 4,
                                 child: Listener(
                                   onPointerSignal: (event) {
                                     if (!kIsWeb || event is! PointerScrollEvent) return;
@@ -561,7 +662,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                   },
                                   child: ListWheelScrollView.useDelegate(
                                     controller: _hourController,
-                                    itemExtent: _itemExtent,
+                                    itemExtent: itemExtent,
                                     physics: kIsWeb
                                         ? const NeverScrollableScrollPhysics()
                                         : const FixedExtentScrollPhysics(),
@@ -597,7 +698,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                         return Center(
                                           child: Text(
                                             index.toString().padLeft(2, '0'),
-                                            style: _timeRowStyle(dist),
+                                            style: _timeRowStyle(context, dist),
                                             overflow: TextOverflow.clip,
                                           ),
                                         );
@@ -609,15 +710,16 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                             ),
                             Padding(
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 4),
+                                  EdgeInsets.symmetric(horizontal: colonPadH),
                               child: Text(
                                 ':',
-                                style: _timeRowStyle(0),
+                                textScaler: TextScaler.noScaling,
+                                style: _timeRowStyle(context, 0),
                               ),
                             ),
                             Expanded(
                               child: SizedBox(
-                                height: _itemExtent * 4,
+                                height: itemExtent * 4,
                                 child: Listener(
                                   onPointerSignal: (event) {
                                     if (!kIsWeb || event is! PointerScrollEvent) return;
@@ -633,7 +735,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                   },
                                   child: ListWheelScrollView.useDelegate(
                                     controller: _minuteController,
-                                    itemExtent: _itemExtent,
+                                    itemExtent: itemExtent,
                                     physics: kIsWeb
                                         ? const NeverScrollableScrollPhysics()
                                         : const FixedExtentScrollPhysics(),
@@ -653,7 +755,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                         return Center(
                                           child: Text(
                                             index.toString().padLeft(2, '0'),
-                                            style: _timeRowStyle(dist),
+                                            style: _timeRowStyle(context, dist),
                                             overflow: TextOverflow.clip,
                                           ),
                                         );
@@ -670,7 +772,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: actionsTopGap),
               Row(
                 children: [
                   Expanded(
@@ -678,26 +780,27 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _kBorderGray,
-                        side: const BorderSide(
+                        side: BorderSide(
                           color: _kBorderGray,
-                          width: 0.5,
+                          width: wheelBorderW,
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: btnPadV),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(btnRadius),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         '닫기',
+                        textScaler: TextScaler.noScaling,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: btnFontSize,
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: btnGap),
                   Expanded(
                     child: FilledButton(
                       onPressed: () {
@@ -709,15 +812,16 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                       style: FilledButton.styleFrom(
                         backgroundColor: _kAccentPink,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: btnPadV),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(btnRadius),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         '등록',
+                        textScaler: TextScaler.noScaling,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: btnFontSize,
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
@@ -733,13 +837,13 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
     );
   }
 
-  TextStyle _timeRowStyle(int distanceFromSelection) {
+  TextStyle _timeRowStyle(BuildContext context, int distanceFromSelection) {
     final isSelected = distanceFromSelection == 0;
     return TextStyle(
       color: isSelected
           ? const Color(0xFF1A1A1A)
           : const Color(0xFF1A1A1A).withValues(alpha: 0.58),
-      fontSize: 22,
+      fontSize: healthSp(context, 22),
       fontFamily: 'Gmarket Sans TTF',
       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w300,
     );
@@ -822,8 +926,11 @@ class HealthDateSelector extends StatelessWidget {
     // AppBar 하단 ↔ 년·월 밴드 = 20, 년·월 ↔ 날짜 숫자 행 = 8 (375 기준)
     final appBarToMonthGap = healthDp(context, 20);
     final monthFontSize = healthSp(context, 12);
+    final monthIconGap = healthDp(context, 3);
     final monthToDateGap = healthDp(context, 8);
     final dateRowH = healthDp(context, 36);
+    final dateChipGap = healthDp(context, 8);
+    final dateChipFontSize = healthSp(context, 16);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -845,6 +952,7 @@ class HealthDateSelector extends StatelessWidget {
                 height: 1.15,
               ),
             ),
+            SizedBox(width: monthIconGap),
             InkWell(
               borderRadius: BorderRadius.circular(healthDp(context, 20)),
               onTap: () async {
@@ -884,32 +992,38 @@ class HealthDateSelector extends StatelessWidget {
                 child: Row(
                   children: [
                     _buildDateText(
+                      context,
                       date: _displayDates[0],
                       isSelected: false,
+                      fontSize: dateChipFontSize,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: dateChipGap),
                     Expanded(
                       child: Container(
                         height: 1,
                         color: dividerColor.withValues(alpha: 0.45),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: dateChipGap),
                     _buildDateText(
+                      context,
                       date: _displayDates[1],
                       isSelected: true,
+                      fontSize: dateChipFontSize,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: dateChipGap),
                     Expanded(
                       child: Container(
                         height: 1,
                         color: dividerColor.withValues(alpha: 0.45),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: dateChipGap),
                     _buildDateText(
+                      context,
                       date: _displayDates[2],
                       isSelected: false,
+                      fontSize: dateChipFontSize,
                     ),
                   ],
                 ),
@@ -938,18 +1052,21 @@ class HealthDateSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildDateText({
+  Widget _buildDateText(
+    BuildContext context, {
     required DateTime date,
     required bool isSelected,
+    required double fontSize,
   }) {
     final text = '${DateFormat('M.d').format(date)} ${_weekdayLabel(date)}';
     return GestureDetector(
       onTap: () => onDateChanged(date),
       child: Text(
         text,
+        textScaler: TextScaler.noScaling,
         style: TextStyle(
           color: isSelected ? selectedTextColor : unselectedTextColor,
-          fontSize: 16,
+          fontSize: fontSize,
           height: 1.0,
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w300,
