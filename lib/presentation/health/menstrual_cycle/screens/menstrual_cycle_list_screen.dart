@@ -162,10 +162,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                               fontSize: healthSp(context, 16),
                               fontWeight: FontWeight.w500,
                             ),
-                            padding: EdgeInsets.symmetric(
-                              vertical: healthDp(context, 16),
-                            ),
-                            borderRadius: healthDp(context, 12),
                             onPressed: () async {
                               final result = await Navigator.push(
                                 context,
@@ -241,8 +237,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
               fontSize: healthSp(context, 16),
               fontWeight: FontWeight.bold,
             ),
-            padding: EdgeInsets.symmetric(vertical: healthDp(context, 16)),
-            borderRadius: healthDp(context, 12),
             onPressed: () async {
               final recordForDate = await _getRecordForDate(selectedDate);
               if (!mounted) return;
@@ -524,9 +518,12 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                       child: Text(
                         todayLabel,
                         textAlign: TextAlign.center,
+                        textScaler: TextScaler.noScaling,
                         style: TextStyle(
                           fontSize: healthSp(context, 10),
-                          fontWeight: FontWeight.w400,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          height: 1,
                           color: useOvulationMarkerStyle
                               ? Colors.white
                               : const Color(0xFF1A1A1A),
