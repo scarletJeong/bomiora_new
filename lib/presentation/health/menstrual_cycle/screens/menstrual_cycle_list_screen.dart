@@ -65,7 +65,10 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       final records =
           await MenstrualCycleRepository.getMenstrualCycleRecords(user.id);
       records.sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
-      final recordForSelected = _recordForDateFrom(records, selectedDate);
+      final recordForSelected = MenstrualCycleRecordSelector.pickForDay(
+        records,
+        selectedDate,
+      );
       if (!mounted) return;
       setState(() {
         _allRecords = records;
@@ -80,21 +83,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  MenstrualCycleRecord? _recordForDateFrom(
-    List<MenstrualCycleRecord> records,
-    DateTime date,
-  ) {
-    final target = DateUtils.dateOnly(date);
-    for (final r in records) {
-      final start = DateUtils.dateOnly(r.lastPeriodStart);
-      final end = start.add(Duration(days: r.cycleLength - 1));
-      if (!target.isBefore(start) && !target.isAfter(end)) {
-        return r;
-      }
-    }
-    return null;
   }
 
   @override

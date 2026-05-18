@@ -39,6 +39,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   static final DateTime _calendarLastDay = DateTime(2030, 12, 31);
 
   static const Color _kOutsideDayText = Color(0x4C1A1A1A);
+  static const Color _kFutureDayText = Color(0xFFB3B3B3);
   static const Color _kRangeBarFill = Color(0x26FC6795);
   static const Color _kAccentPink = Color(0xFFFF5A8D);
   /// 예정 생리 기간(연한 표시) — 바·끝 원 동일 색 (입력 화면에서만 사용)
@@ -173,6 +174,32 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     return _allPeriodDayKeys().contains(_dayKey(d));
   }
 
+  MenstrualCycleRecord? _nearestRecordByDisplayStart(DateTime day) {
+    if (_historyRecords.isEmpty) return null;
+    final target = DateUtils.dateOnly(day);
+    MenstrualCycleRecord? best;
+    int? bestDiff;
+    for (final r in _historyRecords) {
+      final start = DateUtils.dateOnly(r.displayPeriodStart);
+      final diff = target.difference(start).inDays.abs();
+      if (best == null || diff < bestDiff!) {
+        best = r;
+        bestDiff = diff;
+        continue;
+      }
+      if (diff == bestDiff) {
+        // 동률이면 최근 기록 우선
+        final bestStart = DateUtils.dateOnly(best.lastPeriodStart);
+        final currentStart = DateUtils.dateOnly(r.lastPeriodStart);
+        if (currentStart.isAfter(bestStart)) {
+          best = r;
+          bestDiff = diff;
+        }
+      }
+    }
+    return best;
+  }
+
   /// 입력 중(신규): 현재 선택한 시작일 기준으로 예정일 표시
   /// 수정 중: 기존 계산용 start(lastPeriodStart) 기준으로 예정일 표시 (표시용 기간 변경은 계산에 영향 없음)
   ({DateTime start, DateTime end})? _predictedRange() {
@@ -243,39 +270,70 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   void _onDayTapped(DateTime rawDay) {
     if (!mounted) return;
     final selectedDay = DateUtils.dateOnly(rawDay);
+    final today = DateUtils.dateOnly(DateTime.now());
     if (selectedDay.isBefore(DateUtils.dateOnly(_calendarFirstDay)) ||
         selectedDay.isAfter(DateUtils.dateOnly(_calendarLastDay))) {
       return;
     }
+    if (selectedDay.isAfter(today)) {
+      return;
+    }
 
-    MenstrualCycleRecord? hit;
+    final hits = <MenstrualCycleRecord>[];
     for (final r in _historyRecords) {
       final start = DateUtils.dateOnly(r.displayPeriodStart);
       final end = DateUtils.dateOnly(r.displayPeriodEnd);
       if (!selectedDay.isBefore(start) && !selectedDay.isAfter(end)) {
-        hit = r;
-        // ignore: avoid_print
-        print(
-          '🩸 [MenstrualCycle] tapped=${_dayKey(selectedDay)} in record id=${r.id} range=${_dayKey(start)}~${_dayKey(end)}',
-        );
-        break;
+        hits.add(r);
       }
     }
+    final MenstrualCycleRecord? hit = hits.isEmpty
+        ? null
+        : (hits.length == 1
+            ? hits.first
+            : _nearestRecordByDisplayStart(selectedDay));
 
     // 입력(신규) 화면에서는 과거 이력 수정/선택을 막는다.
     if (widget.existingRecord == null && hit != null) {
       return;
     }
 
-    // 과거 이력 범위를 탭한 경우: 수정할 행(id)만 잡고, 구간은 두 번 탭으로 다시 고른다
-    // (예: 원래 10~12여도 11 탭 → 시작 11, 이어서 14 탭 → 끝 14)
+    // 과거 이력 범위를 탭한 경우:
+    // - 같은 이력(id)을 이미 편집 중이고 종료일 미선택이면 2번째 탭을 종료일로 인정
+    // - 그 외에는 해당 이력을 편집 대상으로 잡고 시작일부터 다시 선택
     if (hit != null) {
+      final sameEditingRecord = _explicitEditRecordId != null &&
+          hit.id != null &&
+          _explicitEditRecordId == hit.id;
+      if (sameEditingRecord &&
+          _lastPeriodStart != null &&
+          _lastPeriodEnd == null) {
+        final start = DateUtils.dateOnly(_lastPeriodStart!);
+        if (_sameDate(selectedDay, start)) return;
+        setState(() {
+          if (selectedDay.isAfter(start)) {
+            _lastPeriodEnd = selectedDay;
+          } else {
+            _lastPeriodEnd = start;
+            _lastPeriodStart = selectedDay;
+          }
+        });
+        return;
+      }
       setState(() {
         _explicitEditRecordId = hit!.id;
         _lastPeriodStart = selectedDay;
         _lastPeriodEnd = null;
       });
       return;
+    }
+
+    // 범위 밖 날짜를 눌러도, displayPeriodStart가 가장 가까운 이력을 편집 대상으로 맞춘다.
+    if (widget.existingRecord != null) {
+      final nearest = _nearestRecordByDisplayStart(selectedDay);
+      if (nearest?.id != null) {
+        _explicitEditRecordId = nearest!.id;
+      }
     }
 
     if (_lastPeriodStart == null || _lastPeriodEnd != null) {
@@ -543,6 +601,8 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
     DateTime focusedMonth,
   ) {
     final showPredicted = widget.existingRecord == null;
+    final today = DateUtils.dateOnly(DateTime.now());
+    final isFuture = DateUtils.dateOnly(day).isAfter(today);
     final inMonth = _inFocusedMonth(day, focusedMonth);
     final rangeStart =
         _lastPeriodStart != null && _sameDate(day, _lastPeriodStart!);
@@ -555,8 +615,9 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         showPredicted && !isPeriodEndpoint && _isPredictedEndpoint(day);
     final predictedInRange = showPredicted && !inRange && _inPredictedRange(day);
 
-    final plainTextColor =
-        inMonth ? const Color(0xFF1A1A1A) : _kOutsideDayText;
+    final plainTextColor = isFuture
+        ? _kFutureDayText
+        : (inMonth ? const Color(0xFF1A1A1A) : _kOutsideDayText);
     final plainWeight =
         inRange && !isPeriodEndpoint ? FontWeight.w500 : FontWeight.w300;
 
@@ -631,7 +692,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
               : Text(
                   '${day.day}',
                   style: TextStyle(
-                    color: predictedInRange ? const Color(0xFF1A1A1A) : plainTextColor,
+                    color: isFuture
+                        ? _kFutureDayText
+                        : (predictedInRange
+                            ? const Color(0xFF1A1A1A)
+                            : plainTextColor),
                     fontSize: 14,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: plainWeight,
@@ -951,17 +1016,45 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
       }
 
       bool success;
+      MenstrualCycleRecord? _latestByCalcStart(List<MenstrualCycleRecord> list) {
+        if (list.isEmpty) return null;
+        final sorted = [...list]
+          ..sort((a, b) => b.lastPeriodStart.compareTo(a.lastPeriodStart));
+        return sorted.first;
+      }
       final MenstrualCycleRecord? matched = _explicitEditRecordId != null
           ? (_recordById(_explicitEditRecordId!) ??
               _matchExistingRecordForEdit(_lastPeriodStart!))
           : _matchExistingRecordForEdit(_lastPeriodStart!);
       if (matched != null) {
-        // 기존 이력(원하는 시작일에 해당)이 있으면 그 레코드를 "표시용 날짜"만 수정
-        final record = matched.copyWith(
-          mbId: user.id,
-          periodStartDate: _lastPeriodStart,
-          periodEndDate: _lastPeriodEnd,
-        );
+        final periodLength =
+            _lastPeriodEnd!.difference(_lastPeriodStart!).inDays + 1;
+        final allForLatest = <MenstrualCycleRecord>[
+          ..._historyRecords,
+          if (widget.existingRecord != null &&
+              !_historyRecords.any((r) => r.id == widget.existingRecord!.id))
+            widget.existingRecord!,
+        ];
+        final latest = _latestByCalcStart(allForLatest);
+        final isLatestRecord =
+            latest != null && matched.id != null && latest.id == matched.id;
+
+        // 최신 기록 수정은 계산 기준(lastPeriodStart)도 함께 변경해 재계산 반영.
+        // 과거 기록 수정은 표시용 날짜만 변경해 기존 계산 흐름 유지.
+        final record = isLatestRecord
+            ? matched.copyWith(
+                mbId: user.id,
+                lastPeriodStart: _lastPeriodStart,
+                periodStartDate: _lastPeriodStart,
+                periodEndDate: _lastPeriodEnd,
+                cycleLength: _cycleLength,
+                periodLength: periodLength,
+              )
+            : matched.copyWith(
+                mbId: user.id,
+                periodStartDate: _lastPeriodStart,
+                periodEndDate: _lastPeriodEnd,
+              );
         success =
             await MenstrualCycleRepository.updateMenstrualCycleRecord(record);
       } else {

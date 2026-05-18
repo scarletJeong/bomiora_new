@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+
+import '../../../../core/constants/app_assets.dart';
+import '../../health_common/health_responsive_scale.dart';
 
 /// 공통 달력 팝업과 동일하게 Dialog 폭을 제한합니다.
 double _menstrualDialogMaxWidth(
   BuildContext context, {
   required double horizontalInsetTotal,
-  double maxCap = 340,
-  double minCap = 240,
+  double maxCapBase = 340,
+  double minCapBase = 240,
 }) {
+  final maxCap = healthDp(context, maxCapBase);
+  final minCap = healthDp(context, minCapBase);
   final sw = MediaQuery.sizeOf(context).width;
   final raw = sw - horizontalInsetTotal;
   if (!raw.isFinite || raw <= 0) return minCap;
@@ -39,22 +45,28 @@ class MenstrualCycleDateHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final monthStart = DateTime(selectedDate.year, selectedDate.month, 1);
+    final monthFontSize = healthSp(context, 12);
+    final iconSize = healthDp(context, 12);
+    final monthIconGap = healthDp(context, 3);
+    final dialogInset = healthDp(context, 24);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.max,
       children: [
         Text(
           DateFormat('yyyy년 M월').format(monthStart),
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: monthTextColor,
-            fontSize: 12,
+            fontSize: monthFontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(width: 3),
+        SizedBox(width: monthIconGap),
         InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
           onTap: () async {
             await showDialog<void>(
               context: context,
@@ -64,16 +76,14 @@ class MenstrualCycleDateHeader extends StatelessWidget {
                 // 공통 달력 팝업과 동일: insetPadding(24/24) 기준 폭 제한
                 final cardW = _menstrualDialogMaxWidth(
                   context,
-                  horizontalInsetTotal: 48,
-                  maxCap: 340,
-                  minCap: 240,
+                  horizontalInsetTotal: dialogInset * 2,
                 );
                 return Dialog(
                   backgroundColor: Colors.transparent,
                   elevation: 0,
-                  insetPadding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 24,
+                  insetPadding: EdgeInsets.symmetric(
+                    horizontal: dialogInset,
+                    vertical: dialogInset,
                   ),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: cardW),
@@ -87,7 +97,17 @@ class MenstrualCycleDateHeader extends StatelessWidget {
               },
             );
           },
-          child: Icon(Icons.calendar_today, size: 12, color: iconColor),
+          child: SizedBox(
+            width: iconSize,
+            height: iconSize,
+            child: SvgPicture.asset(
+              AppAssets.calendarIcon,
+              width: iconSize,
+              height: iconSize,
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+            ),
+          ),
         ),
       ],
     );
@@ -164,6 +184,28 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
     final totalCells = leading + dim;
     final rows = (totalCells / 7).ceil();
 
+    final cardRadius = healthDp(context, 17);
+    final cardPad = EdgeInsets.fromLTRB(
+      healthDp(context, 20),
+      healthDp(context, 20),
+      healthDp(context, 20),
+      healthDp(context, 16),
+    );
+    final monthTitleFs = healthSp(context, 15);
+    final navBtnSize = healthDp(context, 36);
+    final dividerH = healthDp(context, 24);
+    final dividerThickness = healthDp(context, 0.84);
+    final weekdayFs = healthSp(context, 11);
+    final weekGap = healthDp(context, 8);
+    final rowBottomPad = healthDp(context, 6);
+    final rowH = healthDp(context, 32);
+    final endpointD = healthDp(context, _kPeriodEndpointDiameter);
+    final barTop = healthDp(context, 3);
+    final barH = healthDp(context, 26);
+    final barRadius = healthDp(context, 13);
+    final dayFs = healthSp(context, 14);
+    final endpointRadius = healthDp(context, 20);
+
     // 공통 달력 팝업과 동일한 카드 스타일 유지
     return GestureDetector(
       onHorizontalDragEnd: (details) {
@@ -175,18 +217,18 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(17),
-          boxShadow: const [
+          borderRadius: BorderRadius.circular(cardRadius),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x1C959595),
-              blurRadius: 23,
-              offset: Offset(8, 3),
-              spreadRadius: 10,
+              color: const Color(0x1C959595),
+              blurRadius: healthDp(context, 23),
+              offset: Offset(healthDp(context, 8), healthDp(context, 3)),
+              spreadRadius: healthDp(context, 10),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          padding: cardPad,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -196,9 +238,10 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                     child: Text(
                       DateFormat('yyyy년 M월', 'ko_KR').format(_focusedMonth),
                       textAlign: TextAlign.start,
-                      style: const TextStyle(
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
                         color: _kNavyText,
-                        fontSize: 15,
+                        fontSize: monthTitleFs,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.15,
@@ -211,48 +254,51 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                       IconButton(
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
+                        constraints: BoxConstraints(
+                          minWidth: navBtnSize,
+                          minHeight: navBtnSize,
                         ),
                         onPressed: _prevMonth,
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.chevron_left,
                           color: _kNavyText,
+                          size: healthDp(context, 24),
                         ),
                       ),
                       IconButton(
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
+                        constraints: BoxConstraints(
+                          minWidth: navBtnSize,
+                          minHeight: navBtnSize,
                         ),
                         onPressed: _nextMonth,
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.chevron_right,
                           color: _kNavyText,
+                          size: healthDp(context, 24),
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
-              const Divider(
-                height: 24,
-                thickness: 0.84,
-                color: Color(0xFFE4E5E7),
+              Divider(
+                height: dividerH,
+                thickness: dividerThickness,
+                color: const Color(0xFFE4E5E7),
               ),
               Row(
-                children: const ['일', '월', '화', '수', '목', '금', '토']
+                children: ['일', '월', '화', '수', '목', '금', '토']
                     .map(
                       (d) => Expanded(
                         child: Text(
                           d,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
                             color: _kWeekdayMuted,
-                            fontSize: 11,
+                            fontSize: weekdayFs,
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
@@ -261,10 +307,10 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                     )
                     .toList(),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: weekGap),
               ...List.generate(rows, (row) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: EdgeInsets.only(bottom: rowBottomPad),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final cellW = constraints.maxWidth / 7;
@@ -293,7 +339,7 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                           _focusedMonth.month,
                           (row * 7 + lastIdx - leading) + 1,
                         );
-                        const d = _kPeriodEndpointDiameter;
+                        final d = endpointD;
                         final firstCx = firstIdx * cellW + cellW / 2;
                         final lastCx = lastIdx * cellW + cellW / 2;
                         final startIsEndpoint = _isEndpoint(firstDay);
@@ -307,15 +353,17 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                         if (barWidth > 0) {
                           bar = Positioned(
                             left: barLeft,
-                            top: 3,
+                            top: barTop,
                             width: barWidth,
-                            height: 26,
-                            child: const IgnorePointer(
+                            height: barH,
+                            child: IgnorePointer(
                               child: DecoratedBox(
                                 decoration: ShapeDecoration(
                                   color: _kRangeBarFill,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.all(Radius.circular(13)),
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(barRadius),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -325,7 +373,7 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                       }
 
                       return SizedBox(
-                        height: 32,
+                        height: rowH,
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -334,7 +382,7 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                               children: List.generate(7, (col) {
                                 final i = row * 7 + col - leading;
                                 if (i < 0 || i >= dim) {
-                                  return const Expanded(child: SizedBox(height: 32));
+                                  return Expanded(child: SizedBox(height: rowH));
                                 }
                                 final day = i + 1;
                                 final date = DateTime(
@@ -349,19 +397,20 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
 
                                 return Expanded(
                                   child: SizedBox(
-                                    height: 32,
+                                    height: rowH,
                                     child: Center(
                                       child: isEndpoint
                                           ? const SizedBox.shrink() // 아래에서 그림
                                           : Text(
                                               '$day',
+                                              textScaler: TextScaler.noScaling,
                                               style: TextStyle(
                                                 color: inRange
                                                     ? _kNavyText
                                                     : (isToday
                                                         ? _kNavyText
                                                         : _kOutsideDayText),
-                                                fontSize: 14,
+                                                fontSize: dayFs,
                                                 fontFamily: 'Gmarket Sans TTF',
                                                 fontWeight: FontWeight.w500,
                                               ),
@@ -376,26 +425,27 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                               children: List.generate(7, (col) {
                                 final i = row * 7 + col - leading;
                                 if (i < 0 || i >= dim) {
-                                  return const Expanded(child: SizedBox(height: 32));
+                                  return Expanded(child: SizedBox(height: rowH));
                                 }
                                 final day = i + 1;
                                 final date = DateTime(_focusedMonth.year, _focusedMonth.month, day);
                                 final isEndpoint = _isEndpoint(date);
                                 if (!isEndpoint) {
-                                  return const Expanded(child: SizedBox(height: 32));
+                                  return Expanded(child: SizedBox(height: rowH));
                                 }
                                 return Expanded(
                                   child: SizedBox(
-                                    height: 32,
+                                    height: rowH,
                                     child: Center(
                                       child: SizedBox(
-                                        width: _kPeriodEndpointDiameter,
-                                        height: _kPeriodEndpointDiameter,
+                                        width: endpointD,
+                                        height: endpointD,
                                         child: DecoratedBox(
                                           decoration: ShapeDecoration(
                                             color: _kAccentPink,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(20),
+                                              borderRadius:
+                                                  BorderRadius.circular(endpointRadius),
                                             ),
                                           ),
                                           child: Center(
@@ -403,9 +453,10 @@ class _MenstrualCalendarPopupState extends State<_MenstrualCalendarPopup> {
                                               fit: BoxFit.scaleDown,
                                               child: Text(
                                                 '$day',
-                                                style: const TextStyle(
+                                                textScaler: TextScaler.noScaling,
+                                                style: TextStyle(
                                                   color: Colors.white,
-                                                  fontSize: 14,
+                                                  fontSize: dayFs,
                                                   height: 1.0,
                                                   fontFamily: 'Gmarket Sans TTF',
                                                   fontWeight: FontWeight.w500,
