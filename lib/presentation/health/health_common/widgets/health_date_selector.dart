@@ -97,6 +97,7 @@ Future<DateTime?> showHealthDateThenTimePickers(
   required DateTime initialDateTime,
   DateTime? firstDate,
   DateTime? lastDate,
+
   /// 선택한 날짜·시간이 이 시각을 넘지 않도록 제한 (보통 `DateTime.now()`: 오늘은 미래 시각 선택 불가).
   DateTime? latestAllowed,
 }) async {
@@ -118,8 +119,7 @@ Future<DateTime?> showHealthDateThenTimePickers(
   if (pickedDate == null || !context.mounted) return null;
 
   TimeOfDay? maxTime;
-  if (latestAllowed != null &&
-      DateUtils.isSameDay(pickedDate, latestAllowed)) {
+  if (latestAllowed != null && DateUtils.isSameDay(pickedDate, latestAllowed)) {
     maxTime = TimeOfDay(
       hour: latestAllowed.hour,
       minute: latestAllowed.minute,
@@ -150,6 +150,7 @@ Future<DateTime?> showHealthDateThenTimePickers(
 Future<TimeOfDay?> showHealthTimePickerDialog(
   BuildContext context, {
   required TimeOfDay initialTime,
+
   /// 오늘 날짜일 때 상한(포함). null이면 23:59까지 선택 가능.
   TimeOfDay? maxTime,
 }) {
@@ -245,8 +246,7 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
   void _prevMonth() {
     if (!_canPrevMonth) return;
     setState(() {
-      _focusedMonth =
-          DateTime(_focusedMonth.year, _focusedMonth.month - 1);
+      _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
       _syncSelectionToFocusedMonth();
     });
   }
@@ -254,8 +254,7 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
   void _nextMonth() {
     if (!_canNextMonth) return;
     setState(() {
-      _focusedMonth =
-          DateTime(_focusedMonth.year, _focusedMonth.month + 1);
+      _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
       _syncSelectionToFocusedMonth();
     });
   }
@@ -268,8 +267,7 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
 
   /// 다음 달 1일이 lastDate 이하이면 이동 가능
   bool get _canNextMonth {
-    final firstNext =
-        DateTime(_focusedMonth.year, _focusedMonth.month + 1, 1);
+    final firstNext = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 1);
     return !firstNext.isAfter(widget.lastDate);
   }
 
@@ -432,11 +430,13 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                               );
                             }
                             final day = i + 1;
-                            final date =
-                                DateTime(_focusedMonth.year, _focusedMonth.month, day);
+                            final date = DateTime(
+                                _focusedMonth.year, _focusedMonth.month, day);
                             final selectable = _isSelectable(date);
-                            final isSel = DateUtils.isSameDay(date, _selectedDate);
-                            final isToday = DateUtils.isSameDay(date, DateTime.now());
+                            final isSel =
+                                DateUtils.isSameDay(date, _selectedDate);
+                            final isToday =
+                                DateUtils.isSameDay(date, DateTime.now());
 
                             return Expanded(
                               child: SizedBox(
@@ -466,8 +466,8 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
                                           textScaler: TextScaler.noScaling,
                                           style: TextStyle(
                                             color: !selectable
-                                                ? _kWeekdayMuted
-                                                    .withValues(alpha: 0.35)
+                                                ? _kWeekdayMuted.withValues(
+                                                    alpha: 0.35)
                                                 : isSel
                                                     ? const Color(0xFFFCFCFC)
                                                     : isToday
@@ -511,7 +511,8 @@ class _HealthTimePickerDialog extends StatefulWidget {
   });
 
   @override
-  State<_HealthTimePickerDialog> createState() => _HealthTimePickerDialogState();
+  State<_HealthTimePickerDialog> createState() =>
+      _HealthTimePickerDialogState();
 }
 
 class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
@@ -649,7 +650,8 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                 height: itemExtent * 4,
                                 child: Listener(
                                   onPointerSignal: (event) {
-                                    if (!kIsWeb || event is! PointerScrollEvent) return;
+                                    if (!kIsWeb || event is! PointerScrollEvent)
+                                      return;
                                     final nowMs =
                                         DateTime.now().millisecondsSinceEpoch;
                                     if (nowMs - _lastHourWheelTickMs <
@@ -657,7 +659,8 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                       return;
                                     }
                                     _lastHourWheelTickMs = nowMs;
-                                    final delta = event.scrollDelta.dy > 0 ? 1 : -1;
+                                    final delta =
+                                        event.scrollDelta.dy > 0 ? 1 : -1;
                                     _changeHourBy(delta);
                                   },
                                   child: ListWheelScrollView.useDelegate(
@@ -669,23 +672,28 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                     perspective: 0.003,
                                     diameterRatio: 1.6,
                                     onSelectedItemChanged: (i) {
-                                      final nextHour = i.clamp(0, _hourCount - 1);
+                                      final nextHour =
+                                          i.clamp(0, _hourCount - 1);
                                       if (nextHour == _hour) return;
-                                      final beforeCount = _minuteCountForHour(_hour);
+                                      final beforeCount =
+                                          _minuteCountForHour(_hour);
                                       setState(() {
                                         _hour = nextHour;
-                                        final afterCount = _minuteCountForHour(_hour);
+                                        final afterCount =
+                                            _minuteCountForHour(_hour);
                                         if (_minute >= afterCount) {
                                           _minute = afterCount - 1;
                                         }
                                       });
-                                      final afterCount = _minuteCountForHour(_hour);
+                                      final afterCount =
+                                          _minuteCountForHour(_hour);
                                       if (beforeCount != afterCount) {
                                         WidgetsBinding.instance
                                             .addPostFrameCallback((_) {
                                           if (!mounted) return;
                                           if (_minuteController.hasClients) {
-                                            _minuteController.jumpToItem(_minute);
+                                            _minuteController
+                                                .jumpToItem(_minute);
                                           }
                                         });
                                       }
@@ -722,7 +730,8 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                 height: itemExtent * 4,
                                 child: Listener(
                                   onPointerSignal: (event) {
-                                    if (!kIsWeb || event is! PointerScrollEvent) return;
+                                    if (!kIsWeb || event is! PointerScrollEvent)
+                                      return;
                                     final nowMs =
                                         DateTime.now().millisecondsSinceEpoch;
                                     if (nowMs - _lastMinuteWheelTickMs <
@@ -730,7 +739,8 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                       return;
                                     }
                                     _lastMinuteWheelTickMs = nowMs;
-                                    final delta = event.scrollDelta.dy > 0 ? 1 : -1;
+                                    final delta =
+                                        event.scrollDelta.dy > 0 ? 1 : -1;
                                     _changeMinuteBy(delta);
                                   },
                                   child: ListWheelScrollView.useDelegate(
@@ -902,6 +912,7 @@ class HealthDateSelector extends StatelessWidget {
     this.iconColor = const Color(0xFF898686),
     this.pickerFirstDate,
     this.pickerLastDate,
+    this.topGapBase = 20,
   });
 
   final DateTime selectedDate;
@@ -911,9 +922,11 @@ class HealthDateSelector extends StatelessWidget {
   final Color unselectedTextColor;
   final Color dividerColor;
   final Color iconColor;
+
   /// null이면 [showHealthDateOnlyPicker] 기본값(2020 ~ 오늘)
   final DateTime? pickerFirstDate;
   final DateTime? pickerLastDate;
+  final double topGapBase;
 
   List<DateTime> get _displayDates => [
         selectedDate.subtract(const Duration(days: 1)),
@@ -924,7 +937,7 @@ class HealthDateSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // AppBar 하단 ↔ 년·월 밴드 = 20, 년·월 ↔ 날짜 숫자 행 = 8 (375 기준)
-    final appBarToMonthGap = healthDp(context, 20);
+    final appBarToMonthGap = healthDp(context, topGapBase);
     final monthFontSize = healthSp(context, 12);
     final monthIconGap = healthDp(context, 3);
     final monthToDateGap = healthDp(context, 8);
@@ -988,7 +1001,8 @@ class HealthDateSelector extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                padding:
+                    EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
                 child: Row(
                   children: [
                     _buildDateText(
