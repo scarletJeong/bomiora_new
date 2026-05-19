@@ -60,7 +60,8 @@ double? heartRatePeriodSlotCenterX({
   // 주간(7칸): xPosition은 0.0~1.0 양끝 포함 정규화로 들어옴을 전제로 함.
   // (tap hit-test 역산 로직과 동일하게) (totalDays-1) 기준으로 인덱스를 복원해야
   // 슬롯 중심((index+0.5)/7)과 정확히 정렬된다.
-  final dataIndex = (xPosition * (totalDays - 1)).round().clamp(0, totalDays - 1);
+  final dataIndex =
+      (xPosition * (totalDays - 1)).round().clamp(0, totalDays - 1);
   return leftPad + effW * (dataIndex + 0.5) / 7;
 }
 
@@ -196,11 +197,13 @@ class HeartRateChartWidget extends StatefulWidget {
   final DateTime selectedDate;
   final double height;
   final bool useCalendarYearMonths;
+
   /// null이면 [healthChartCardPadding] 사용
   final EdgeInsetsGeometry? cardPadding;
   final Color? cardBackgroundColor;
   final bool showPeriodSelector;
   final ValueChanged<String>? onPeriodChanged;
+  final bool forExpandedChart;
 
   const HeartRateChartWidget({
     super.key,
@@ -220,39 +223,46 @@ class HeartRateChartWidget extends StatefulWidget {
     this.cardBackgroundColor,
     this.showPeriodSelector = false,
     this.onPeriodChanged,
+    this.forExpandedChart = false,
   });
 
   @override
-  State<HeartRateChartWidget> createState() =>
-      _HeartRateChartWidgetState();
+  State<HeartRateChartWidget> createState() => _HeartRateChartWidgetState();
 }
 
 class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
   @override
   Widget build(BuildContext context) {
-    final cardPad = widget.cardPadding ?? healthChartCardPadding(context);
+    final cardPad = widget.forExpandedChart
+        ? EdgeInsets.zero
+        : (widget.cardPadding ?? healthChartCardPadding(context));
     final topPad = healthWeightChartVertPad(context);
     final botPad = healthWeightChartBottomPlotPad(context);
+    final xAxisLabelHeight = widget.forExpandedChart
+        ? healthDp(context, 14.23)
+        : healthDp(context, 30);
     return Container(
       height: widget.height,
       padding: cardPad,
-      decoration: BoxDecoration(
-        color: widget.cardBackgroundColor ?? Colors.grey[50],
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      decoration: widget.forExpandedChart
+          ? null
+          : BoxDecoration(
+              color: widget.cardBackgroundColor ?? Colors.grey[50],
+              borderRadius: BorderRadius.circular(healthDp(context, 12)),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.showPeriodSelector) ...[
+          if (widget.showPeriodSelector && !widget.forExpandedChart) ...[
             HealthPeriodSelector(
               selectedPeriod: widget.selectedPeriod,
               onChanged: widget.onPeriodChanged!,
               plainStyle: true,
             ),
             SizedBox(
-                height: healthDp(
-                    context, ChartConstants.weightChartTabToPlotGap)),
+                height:
+                    healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           ],
           Expanded(
             child: LayoutBuilder(
@@ -289,7 +299,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
             ),
           ),
           SizedBox(
-            height: healthDp(context, 30),
+            height: xAxisLabelHeight,
             child: Padding(
               padding: EdgeInsets.only(
                 left: healthDp(
@@ -334,8 +344,8 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
               onPanUpdate: (details) {
                 if (widget.selectedPeriod == '월') {
                   const sensitivity = 3.0;
-                  final newOffset =
-                      widget.timeOffset - (details.delta.dx / 1000) * sensitivity;
+                  final newOffset = widget.timeOffset -
+                      (details.delta.dx / 1000) * sensitivity;
                   widget.onTimeOffsetChanged(newOffset.clamp(0.0, 1.0));
                 }
               },
@@ -350,7 +360,8 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
                   useCalendarYearMonths: widget.useCalendarYearMonths,
                   topPlotPad: topPad,
                   bottomPlotPad: botPad,
-                  scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                  scale:
+                      healthTextScaleByWidth(MediaQuery.of(context).size.width),
                   xUnitReservedWidth: healthDp(
                     context,
                     ChartConstants.weightXAxisUnitReservedWidth,
@@ -427,8 +438,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
       final maxStart = totalMonths - visibleMonths;
       final s = (widget.timeOffset * maxStart).round().clamp(0, maxStart);
       final rel = ((tap.dx - leftPad) / effW) * visibleMonths - 0.5;
-      candidateDataIndex =
-          (s + rel.round()).clamp(s, s + visibleMonths - 1);
+      candidateDataIndex = (s + rel.round()).clamp(s, s + visibleMonths - 1);
       startIndex = s;
       endIndexExclusive = s + visibleMonths;
       slots = visibleMonths;
@@ -478,7 +488,8 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
         dataIndex = (xPosition * (totalMonths - 1)).round().clamp(0, 11);
         if (startIndex != null &&
             endIndexExclusive != null &&
-            (dataIndex < startIndex || dataIndex >= endIndexExclusive)) continue;
+            (dataIndex < startIndex || dataIndex >= endIndexExclusive))
+          continue;
         if (candidateDataIndex != null &&
             (dataIndex - candidateDataIndex).abs() > 1) continue;
         final rel = dataIndex - (startIndex ?? 0);
@@ -488,7 +499,8 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
         dataIndex = (xPosition * totalDays).round().clamp(0, totalDays - 1);
         if (startIndex != null &&
             endIndexExclusive != null &&
-            (dataIndex < startIndex || dataIndex >= endIndexExclusive)) continue;
+            (dataIndex < startIndex || dataIndex >= endIndexExclusive))
+          continue;
         if (candidateDataIndex != null &&
             (dataIndex - candidateDataIndex).abs() > 1) continue;
         final rel = dataIndex - (startIndex ?? 0);
@@ -638,8 +650,9 @@ class _HeartRateChartPainter extends CustomPainter {
         if (raw is! Map<String, dynamic>) continue;
         final seg = raw;
         final exercise = seg['exercise'] == true;
-        final color =
-            exercise ? heartRateTooltipExerciseColor : heartRateTooltipDailyColor;
+        final color = exercise
+            ? heartRateTooltipExerciseColor
+            : heartRateTooltipDailyColor;
         final kind = seg['kind'] as String?;
 
         if (kind == 'bar') {
@@ -684,7 +697,8 @@ class _HeartRateChartPainter extends CustomPainter {
           final rInner = isSelected ? 5.0 * scale : dotInner;
           if (exercise) {
             canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);
-            canvas.drawCircle(Offset(x, y), rInner, Paint()..color = Colors.white);
+            canvas.drawCircle(
+                Offset(x, y), rInner, Paint()..color = Colors.white);
           } else {
             // 일상: 안이 비지 않은 꽉 찬 점
             canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);

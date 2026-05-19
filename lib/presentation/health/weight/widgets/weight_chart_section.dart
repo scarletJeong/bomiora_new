@@ -187,6 +187,7 @@ class WeightChartContent extends StatelessWidget {
         title: '해당 기간에 체중 기록이 없습니다',
         subtitle: '체중을 측정해보세요',
         header: periodSelector,
+        showBorder: showExpandButton,
       );
     }
 
@@ -480,6 +481,7 @@ class WeightDataChart extends StatelessWidget {
     double chartHeight,
   ) tooltipBuilder;
   final Widget periodSelector;
+  final bool forExpandedChart;
 
   const WeightDataChart({
     super.key,
@@ -492,6 +494,7 @@ class WeightDataChart extends StatelessWidget {
     required this.timeOffset,
     required this.selectedDate,
     required this.periodSelector,
+    this.forExpandedChart = false,
     this.showYAxisKgHeader = false,
     this.omitOutOfRangeWeights = false,
     required this.onTimeOffsetChanged,
@@ -516,6 +519,7 @@ class WeightDataChart extends StatelessWidget {
         omitOutOfRangeWeights: omitOutOfRangeWeights,
         onTooltipChanged: onTooltipChanged,
         periodSelector: periodSelector,
+        forExpandedChart: forExpandedChart,
       );
     }
 
@@ -534,22 +538,31 @@ class WeightDataChart extends StatelessWidget {
         onTimeOffsetChanged: onTimeOffsetChanged,
         onTooltipChanged: onTooltipChanged,
         periodSelector: periodSelector,
+        forExpandedChart: forExpandedChart,
       );
     }
 
     return Container(
       height: chartHeight,
-      padding: healthChartCardPadding(context),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      padding: forExpandedChart
+          ? EdgeInsets.zero
+          : healthChartCardPadding(context),
+      decoration: forExpandedChart
+          ? null
+          : BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          periodSelector,
-          SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
+          if (!forExpandedChart) ...[
+            periodSelector,
+            SizedBox(
+                height: healthDp(
+                    context, ChartConstants.weightChartTabToPlotGap)),
+          ],
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -636,6 +649,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
   final ValueChanged<double> onTimeOffsetChanged;
   final void Function(int?, Offset?) onTooltipChanged;
   final Widget periodSelector;
+  final bool forExpandedChart;
 
   const _WeightMonthlyRangeChart({
     required this.chartData,
@@ -651,6 +665,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
     required this.onTimeOffsetChanged,
     required this.onTooltipChanged,
     required this.periodSelector,
+    this.forExpandedChart = false,
   });
 
   static const int _totalMonths = 12;
@@ -660,17 +675,25 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: healthChartCardPadding(context),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      padding: forExpandedChart
+          ? EdgeInsets.zero
+          : healthChartCardPadding(context),
+      decoration: forExpandedChart
+          ? null
+          : BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          periodSelector,
-          SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
+          if (!forExpandedChart) ...[
+            periodSelector,
+            SizedBox(
+                height: healthDp(
+                    context, ChartConstants.weightChartTabToPlotGap)),
+          ],
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final totalH = constraints.maxHeight;
@@ -1056,6 +1079,7 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
   final bool omitOutOfRangeWeights;
   final void Function(int?, Offset?) onTooltipChanged;
   final Widget periodSelector;
+  final bool forExpandedChart;
 
   const _WeightWeeklyRangeChart({
     required this.chartData,
@@ -1070,23 +1094,32 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
     required this.omitOutOfRangeWeights,
     required this.onTooltipChanged,
     required this.periodSelector,
+    this.forExpandedChart = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: chartHeight,
-      padding: healthChartCardPadding(context),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      padding: forExpandedChart
+          ? EdgeInsets.zero
+          : healthChartCardPadding(context),
+      decoration: forExpandedChart
+          ? null
+          : BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          periodSelector,
-          SizedBox(height: healthDp(context, ChartConstants.weightChartTabToPlotGap)),
+          if (!forExpandedChart) ...[
+            periodSelector,
+            SizedBox(
+                height: healthDp(
+                    context, ChartConstants.weightChartTabToPlotGap)),
+          ],
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final kgBand = showYAxisKgHeader && yLabels.length > 1

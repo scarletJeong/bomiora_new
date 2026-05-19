@@ -35,8 +35,7 @@ double _circleIntersectionAreaSameR(double r, double d) {
   if (d <= 0) return math.pi * r * r;
   if (d >= 2 * r) return 0;
   final half = d / 2;
-  return 2 * r * r * math.acos(half / r) -
-      half * math.sqrt(4 * r * r - d * d);
+  return 2 * r * r * math.acos(half / r) - half * math.sqrt(4 * r * r - d * d);
 }
 
 /// 겹침(+) 마커 테두리·플러스 색
@@ -89,10 +88,8 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   final unitReserve =
       xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth;
   final x0 = borderWidth + pointRadius;
-  final chartWidth = size.width -
-      (borderWidth * 2) -
-      (pointRadius * 2) -
-      unitReserve;
+  final chartWidth =
+      size.width - (borderWidth * 2) - (pointRadius * 2) - unitReserve;
 
   double yForValue(int v) {
     final clamped = v.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
@@ -227,9 +224,13 @@ class BloodSugarChartSection extends StatefulWidget {
   final bool isToday;
   final bool showPeriodSelector;
   final bool showLegend;
+
   /// 확대 화면 등에서 범례를 더 작게 표시
   final bool compactLegend;
   final bool showExpandButton;
+
+  /// 확대 팝업: 카드 테두리·내부 기간 탭 제거
+  final bool forExpandedChart;
   final bool showMeasurementFilter;
   final double chartHeight;
   final String selectedMeasurementFilter;
@@ -259,6 +260,7 @@ class BloodSugarChartSection extends StatefulWidget {
     this.showLegend = true,
     this.compactLegend = false,
     this.showExpandButton = true,
+    this.forExpandedChart = false,
     this.showMeasurementFilter = true,
     this.chartHeight = ChartConstants.weightChartHeight,
     this.selectedMeasurementFilter = '전체',
@@ -291,7 +293,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
     if (!_showsMeasurementFilter) _closeMeasurementFilterMenu();
   }
 
-  List<Map<String, dynamic>> _filteredChartData(List<Map<String, dynamic>> source) {
+  List<Map<String, dynamic>> _filteredChartData(
+      List<Map<String, dynamic>> source) {
     final selected = widget.selectedMeasurementFilter.trim();
     if (selected.isEmpty || selected == '전체') return source;
     if (selected == '식전/식후') {
@@ -301,7 +304,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       }).toList();
     }
     return source
-        .where((row) => (row['measurementType']?.toString() ?? '').trim() == selected)
+        .where((row) =>
+            (row['measurementType']?.toString() ?? '').trim() == selected)
         .toList();
   }
 
@@ -411,7 +415,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         (BloodSugarChartSection.measurementFilters.length - visibleRows)
             .clamp(0, BloodSugarChartSection.measurementFilters.length);
     final startIndex = (selectedIndex - 1).clamp(0, maxStartIndex);
-    _filterScrollController = ScrollController(initialScrollOffset: startIndex * rowHeight);
+    _filterScrollController =
+        ScrollController(initialScrollOffset: startIndex * rowHeight);
 
     _filterMenuEntry = OverlayEntry(
       builder: (context) => Stack(
@@ -452,10 +457,11 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                     padding: EdgeInsets.zero,
                     itemCount: BloodSugarChartSection.measurementFilters.length,
                     itemBuilder: (context, index) {
-                      final label = BloodSugarChartSection.measurementFilters[index];
+                      final label =
+                          BloodSugarChartSection.measurementFilters[index];
                       final hovered = _hoveredFilter == label;
-                      final hasThinBorder =
-                          index < BloodSugarChartSection.measurementFilters.length - 1;
+                      final hasThinBorder = index <
+                          BloodSugarChartSection.measurementFilters.length - 1;
                       return MouseRegion(
                         onEnter: (_) {
                           _hoveredFilter = label;
@@ -468,11 +474,12 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                         child: InkWell(
                           onTap: () {
                             _closeMeasurementFilterMenu();
-                            if (label == widget.selectedMeasurementFilter) return;
+                            if (label == widget.selectedMeasurementFilter)
+                              return;
                             widget.onSelectionChanged(null, null);
                             widget.onMeasurementFilterChanged?.call(label);
                           },
-                            child: Container(
+                          child: Container(
                             width: double.infinity,
                             height: rowHeight,
                             padding: EdgeInsets.all(healthDp(context, 5)),
@@ -525,7 +532,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         chart,
-        if (widget.showLegend) ...[
+        if (widget.showLegend && !widget.forExpandedChart) ...[
           SizedBox(
             height: healthDp(
               context,
@@ -651,6 +658,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
               onChanged: (period) => widget.onPeriodChanged?.call(period),
             )
           : null,
+      showBorder: !widget.forExpandedChart,
     );
   }
 
@@ -662,31 +670,36 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
   }) {
     return Container(
       height: chartHeight,
-      padding: healthChartCardPadding(context),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      padding: widget.forExpandedChart
+          ? EdgeInsets.zero
+          : healthChartCardPadding(context),
+      decoration: widget.forExpandedChart
+          ? null
+          : BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(healthDp(context, 12)),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.showPeriodSelector) ...[
+          if (widget.showPeriodSelector && !widget.forExpandedChart) ...[
             BloodSugarPeriodSelector(
               plainStyle: true,
               selectedPeriod: widget.selectedPeriod,
               onChanged: (period) => widget.onPeriodChanged?.call(period),
             ),
             SizedBox(
-                height: healthDp(
-                    context, ChartConstants.weightChartTabToPlotGap)),
+                height:
+                    healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           ],
           Expanded(
             child: LayoutBuilder(
               builder: (context, outerConstraints) {
                 final showYHeader = yLabels.length > 1;
-                final headerBand =
-                    showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
+                final headerBand = showYHeader
+                    ? bloodPressureYAxisUnitBandHeight(context)
+                    : 0.0;
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -724,7 +737,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
             ),
           ),
           SizedBox(
-            height: healthDp(context, 30),
+            height: widget.forExpandedChart
+                ? healthDp(context, 14.23)
+                : healthDp(context, 30),
             child: Padding(
               padding: EdgeInsets.only(
                 left: healthDp(
@@ -792,15 +807,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         children: [
           Positioned.fill(
             child: isEmpty
-                ? CustomPaint(
-                    painter: EmptyBloodSugarChartGridPainter(
-                      yLabels: widget.yLabels,
-                      minValue: widget.yLabels.last,
-                      maxValue: widget.yLabels.first,
-                      topPlotPad: topPad,
-                      bottomPlotPad: botPad,
-                    ),
-                  )
+                ? const SizedBox.expand()
                 : CustomPaint(
                     painter: BloodSugarChartPainter(
                       chartData,
@@ -813,7 +820,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                       selectedPeriod: widget.selectedPeriod,
                       topPlotPad: topPad,
                       bottomPlotPad: botPad,
-                      scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                      scale: healthTextScaleByWidth(
+                          MediaQuery.of(context).size.width),
                       xUnitReservedWidth: healthDp(
                           context, ChartConstants.weightXAxisUnitReservedWidth),
                     ),
@@ -832,7 +840,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 widget.yLabels.first,
                 topPad,
                 botPad,
-                scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                scale:
+                    healthTextScaleByWidth(MediaQuery.of(context).size.width),
                 xUnitReservedWidth: healthDp(
                     context, ChartConstants.weightXAxisUnitReservedWidth),
               ),
@@ -857,8 +866,16 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
   ) {
     if (chartData.isEmpty) return;
 
-    const double leftPadding = 0.0;
-    final double effectiveWidth = chartWidth - leftPadding;
+    const borderWidth = _bloodSugarChartBorderWidth;
+    final scale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final pointRadius = _bloodSugarChartPointRadius * scale;
+    final unitReserve =
+        healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
+    final leftPadding = borderWidth + pointRadius;
+    final effectiveWidth = math.max(
+      chartWidth - (borderWidth * 2) - (pointRadius * 2) - unitReserve,
+      1.0,
+    );
 
     int? closestIndex;
     double minDistance = double.infinity;
@@ -897,8 +914,8 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         plotTop: topPadding,
         plotBottom: bottomPadding,
         scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
-        xUnitReservedWidth: healthDp(
-            context, ChartConstants.weightXAxisUnitReservedWidth),
+        xUnitReservedWidth:
+            healthDp(context, ChartConstants.weightXAxisUnitReservedWidth),
       );
       for (var ci = 0; ci < occ.length; ci++) {
         final c = occ[ci];
@@ -909,9 +926,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
           c.centroid.dx,
           c.centroid.dy,
           -(ci + 1),
-          maxDistanceSq: 18 * 18,
-          xHitSlop: 18,
-          yHitSlop: 18,
+          maxDistanceSq: math.pow(24 * scale, 2).toDouble(),
+          xHitSlop: 24 * scale,
+          yHitSlop: 24 * scale,
         );
       }
     }
@@ -923,10 +940,10 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         if (minSugar == null || maxSugar == null) continue;
         final xPosition = (chartData[i]['xPosition'] as double?) ?? 0.5;
         final x = leftPadding + (effectiveWidth * xPosition);
-        final clampedMin =
-            minSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
-        final clampedMax =
-            maxSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
+        final clampedMin = minSugar.clamp(
+            widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
+        final clampedMax = maxSugar.clamp(
+            widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
         final normalizedMin = (widget.yLabels.first - clampedMin) /
             (widget.yLabels.first - widget.yLabels.last);
         final normalizedMax = (widget.yLabels.first - clampedMax) /
@@ -938,11 +955,11 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         final yTop = math.min(yMin, yMax);
         final yBottom = math.max(yMin, yMax);
         final yCenter = (yTop + yBottom) / 2;
-        const halfW = 14.0;
+        final halfW = math.max(18.0, 14.0 * scale);
         final inBand = tapPosition.dx >= x - halfW &&
             tapPosition.dx <= x + halfW &&
-            tapPosition.dy >= yTop - 10 &&
-            tapPosition.dy <= yBottom + 10;
+            tapPosition.dy >= yTop - (14 * scale) &&
+            tapPosition.dy <= yBottom + (14 * scale);
         if (!inBand) continue;
         minDistance = 0.0;
         closestIndex = i;
@@ -963,19 +980,19 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
       }
 
       final int bloodSugar = chartData[i]['bloodSugar'] as int;
-      final clamped =
-          bloodSugar.clamp(widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
-      final double normalizedValue =
-          (widget.yLabels.first - clamped) / (widget.yLabels.first - widget.yLabels.last);
+      final clamped = bloodSugar.clamp(
+          widget.yLabels.last.toInt(), widget.yLabels.first.toInt());
+      final double normalizedValue = (widget.yLabels.first - clamped) /
+          (widget.yLabels.first - widget.yLabels.last);
       final double y = topPadding +
           (chartHeight - topPadding - bottomPadding) * normalizedValue;
       considerPoint(
         x,
         y,
         i,
-        maxDistanceSq: 20 * 20,
-        xHitSlop: 20,
-        yHitSlop: 20,
+        maxDistanceSq: math.pow(28 * scale, 2).toDouble(),
+        xHitSlop: 28 * scale,
+        yHitSlop: 28 * scale,
       );
     }
 
@@ -1178,8 +1195,11 @@ Widget _buildBloodSugarXAxisWithUnit(
       Padding(
         // 점이 그려지는 플롯과 동일한 좌우 inset — scale 반영
         padding: EdgeInsets.only(
-          left: _bloodSugarChartBorderWidth + healthDp(context, _bloodSugarChartPointRadius),
-          right: unitReserve + _bloodSugarChartBorderWidth + healthDp(context, _bloodSugarChartPointRadius),
+          left: _bloodSugarChartBorderWidth +
+              healthDp(context, _bloodSugarChartPointRadius),
+          right: unitReserve +
+              _bloodSugarChartBorderWidth +
+              healthDp(context, _bloodSugarChartPointRadius),
         ),
         child: labelRow,
       ),
@@ -1249,8 +1269,10 @@ class BloodSugarChartPainter extends CustomPainter {
   final String selectedPeriod;
   final double topPlotPad;
   final double bottomPlotPad;
+
   /// 375 기준 1.0, 650 기준 ≈1.73 — healthTextScaleByWidth 값을 넘긴다.
   final double scale;
+
   /// 위젯 라벨 row의 (시)/(일)/(월) 오른쪽 여백과 동일하게 painter에도 전달.
   final double? xUnitReservedWidth;
 
@@ -1277,10 +1299,8 @@ class BloodSugarChartPainter extends CustomPainter {
     final double unitReserve =
         xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth;
     final x0 = borderWidth + pointRadius;
-    final chartWidth = size.width -
-        (borderWidth * 2) -
-        (pointRadius * 2) -
-        unitReserve;
+    final chartWidth =
+        size.width - (borderWidth * 2) - (pointRadius * 2) - unitReserve;
 
     if (selectedPeriod == '일') {
       _paintDailySeries(canvas, size, x0, chartWidth);
@@ -1309,18 +1329,21 @@ class BloodSugarChartPainter extends CustomPainter {
         final minSugar = data[i]['minBloodSugar'] as int?;
         final maxSugar = data[i]['maxBloodSugar'] as int?;
         final recordHour = data[i]['hour'] as int?;
-        if (minSugar == null || maxSugar == null || recordHour == null) continue;
+        if (minSugar == null || maxSugar == null || recordHour == null)
+          continue;
         if (recordHour < startHour || recordHour > endHour) continue;
         final xPosition = (data[i]['xPosition'] as double?) ?? 0.5;
         final xCenter = x0 + (chartWidth * xPosition);
-        final clampedMin = minSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
-        final clampedMax = maxSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+        final clampedMin =
+            minSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+        final clampedMax =
+            maxSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
         final minNorm = (maxValue - clampedMin) / (maxValue - minValue);
         final maxNorm = (maxValue - clampedMax) / (maxValue - minValue);
-        final yMin = topPlotPad +
-            (size.height - topPlotPad - bottomPlotPad) * minNorm;
-        final yMax = topPlotPad +
-            (size.height - topPlotPad - bottomPlotPad) * maxNorm;
+        final yMin =
+            topPlotPad + (size.height - topPlotPad - bottomPlotPad) * minNorm;
+        final yMax =
+            topPlotPad + (size.height - topPlotPad - bottomPlotPad) * maxNorm;
         final yTop = math.min(yMin, yMax);
         final yBottom = math.max(yMin, yMax);
         final centerY = (yTop + yBottom) / 2;
@@ -1369,10 +1392,11 @@ class BloodSugarChartPainter extends CustomPainter {
       }
 
       final bloodSugar = data[i]['bloodSugar'] as int;
-      final clamped = bloodSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
+      final clamped =
+          bloodSugar.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
       final normalized = (maxValue - clamped) / (maxValue - minValue);
-      final y = topPlotPad +
-          (size.height - topPlotPad - bottomPlotPad) * normalized;
+      final y =
+          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalized;
 
       points.add(Offset(x, y));
       pointIndices.add(i);
@@ -1380,7 +1404,8 @@ class BloodSugarChartPainter extends CustomPainter {
 
     for (int i = 0; i < points.length; i++) {
       final originalIndex = pointIndices[i];
-      final isHighlighted = highlightedIndex != null && highlightedIndex == originalIndex;
+      final isHighlighted =
+          highlightedIndex != null && highlightedIndex == originalIndex;
       final pointPaint = Paint()
         ..color = _seriesColorForDataIndex(originalIndex)
         ..style = PaintingStyle.fill;
@@ -1480,8 +1505,7 @@ class BloodSugarChartPainter extends CustomPainter {
     for (final i in indices) {
       if (inOverlap.contains(i)) continue;
       final o = offsetForIndex(i);
-      final isHighlighted =
-          highlightedIndex != null && highlightedIndex == i;
+      final isHighlighted = highlightedIndex != null && highlightedIndex == i;
       final pointPaint = Paint()
         ..color = _seriesColorForDataIndex(i)
         ..style = PaintingStyle.fill;
@@ -1511,7 +1535,9 @@ class BloodSugarChartPainter extends CustomPainter {
       canvas.drawCircle(
         o,
         r,
-        Paint()..color = Colors.white..style = PaintingStyle.fill,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill,
       );
       canvas.drawCircle(
         o,
@@ -1552,7 +1578,8 @@ class BloodSugarChartPainter extends CustomPainter {
     if (index < 0 || index >= data.length) {
       return const Color(0xFFE91E63);
     }
-    return _seriesColorForType(data[index]['measurementType']?.toString() ?? '');
+    return _seriesColorForType(
+        data[index]['measurementType']?.toString() ?? '');
   }
 
   Color _seriesColorForType(String type) {

@@ -18,6 +18,7 @@ import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
+import '../../health_common/widgets/health_expanded_chart_layout.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 
@@ -40,8 +41,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   String selectedPeriod = '일';
   double timeOffset = 0.0;
   VoidCallback? _refreshExpandedChart;
+
   /// 주간(월~일) 일자키 `YYYY-MM-DD` → 총 걸음 (`bm_steps` 집계)
   Map<String, int> weekStepsByDate = {};
+
   /// 선택 연도 1~12월 총 걸음
   List<int> monthSteps12 = List<int>.filled(12, 0);
   int? _tooltipIndex;
@@ -79,7 +82,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         StepsRepository.getStepsStatisticsByMbId(user.id),
         HealthGoalRepository.fetchLatest(user.id).catchError((_) => null),
         StepsRepository.getStepsDailyRange(user.id, start, end),
-        StepsRepository.getStepsMonthlyTotalsForYear(user.id, selectedDate.year),
+        StepsRepository.getStepsMonthlyTotalsForYear(
+            user.id, selectedDate.year),
       ]);
 
       setState(() {
@@ -133,7 +137,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         const maxStartSlot = 36;
         final now = DateTime.now();
         final currentSlot = now.hour * 2 + (now.minute >= 30 ? 1 : 0);
-        final maxOffset = ((currentSlot - 10).clamp(0, maxStartSlot)) / maxStartSlot;
+        final maxOffset =
+            ((currentSlot - 10).clamp(0, maxStartSlot)) / maxStartSlot;
         return next.clamp(0.0, maxOffset);
       }
       return next.clamp(0.0, 1.0);
@@ -149,8 +154,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final textScale = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: gmarketTheme,
@@ -216,7 +220,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                               icon: Icons.directions_walk,
                               value: (todayStepsRecord != null &&
                                       todayStepsRecord!.distance > 0)
-                                  ? todayStepsRecord!.distance.toStringAsFixed(1)
+                                  ? todayStepsRecord!.distance
+                                      .toStringAsFixed(1)
                                   : StepCalculator.kmFromSteps(
                                           todayStepsRecord?.totalSteps ?? 0)
                                       .toStringAsFixed(1),
@@ -511,9 +516,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   Widget _buildChartCard({
     bool showExpandButton = true,
     bool chartPeriodTabsInCard = true,
+    bool forExpandedChart = false,
     double? chartHeight,
   }) {
-    final h = chartHeight ?? healthDp(context, ChartConstants.weightChartHeight);
+    final h =
+        chartHeight ?? healthDp(context, ChartConstants.weightChartHeight);
     final showYHeader = _buildYAxisTicks().length > 1;
     final headerBand =
         showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
@@ -531,25 +538,28 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       children: [
         Container(
           height: h,
-          padding: healthChartCardPadding(context),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(healthDp(context, 12)),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
+          padding: forExpandedChart
+              ? EdgeInsets.zero
+              : healthChartCardPadding(context),
+          decoration: forExpandedChart
+              ? null
+              : BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(healthDp(context, 12)),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (chartPeriodTabsInCard) ...[
+              if (chartPeriodTabsInCard && !forExpandedChart) ...[
                 HealthPeriodSelector(
                   selectedPeriod: selectedPeriod,
                   onChanged: (period) {
                     setState(() {
                       selectedPeriod = period;
                       if (period == '일') {
-                        timeOffset = _isToday()
-                            ? _defaultDailyTimeOffset()
-                            : 0.0;
+                        timeOffset =
+                            _isToday() ? _defaultDailyTimeOffset() : 0.0;
                       } else if (period == '월') {
                         timeOffset = 0.0;
                       } else {
@@ -564,7 +574,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                     height: healthDp(
                         context, ChartConstants.weightChartTabToPlotGap)),
               ],
-              Expanded(child: _buildBarChartArea()),
+              Expanded(
+                child: _buildBarChartArea(
+                  forExpandedChart: forExpandedChart,
+                ),
+              ),
             ],
           ),
         ),
@@ -581,15 +595,16 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     );
   }
 
-  Widget _buildBarChartArea() {
+  Widget _buildBarChartArea({bool forExpandedChart = false}) {
     final data = _buildPeriodChartData();
     final maxValue = _chartMaxValue();
     final yTicks = _buildYAxisTicks();
+    final xAxisLabelHeight =
+        forExpandedChart ? healthDp(context, 14.23) : healthDp(context, 30);
 
     final yBand = bloodPressureYAxisUnitBandHeight(context);
     final yTickDoubles = _buildYAxisTicks().map((e) => e.toDouble()).toList();
-    final ySpacing =
-        healthDp(context, ChartConstants.weightChartYAxisPlotGap);
+    final ySpacing = healthDp(context, ChartConstants.weightChartYAxisPlotGap);
     final barW = healthDp(
       context,
       selectedPeriod == '일'
@@ -600,7 +615,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     );
     final chartPadTop = healthWeightChartVertPad(context);
     final chartPadBottom = healthWeightChartBottomPlotPad(context);
-    final chartPadRight = healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
+    final chartPadRight =
+        healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
     final barCornerR = healthDp(context, 10);
     final minBarH = healthDp(context, 4);
 
@@ -620,9 +636,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               final visibleData = _buildVisibleChartData(data);
               final forceWhiteBg =
                   selectedPeriod == '일' || selectedPeriod == '월';
-              final chartH = constraints.maxHeight -
-                  yBand -
-                  healthDp(context, 30);
+              final chartH = constraints.maxHeight - yBand - xAxisLabelHeight;
 
               return ColoredBox(
                 color: forceWhiteBg ? Colors.white : Colors.transparent,
@@ -667,23 +681,20 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                               );
                             });
                           },
-                          onPanUpdate:
-                              selectedPeriod == '일' || selectedPeriod == '월'
-                                  ? (details) {
-                                      final next = timeOffset -
-                                          (details.delta.dx /
+                          onPanUpdate: selectedPeriod == '일' ||
+                                  selectedPeriod == '월'
+                              ? (details) {
+                                  final next = timeOffset -
+                                      (details.delta.dx /
                                               math.max(
                                                   constraints.maxWidth, 1)) *
-                                              (selectedPeriod == '일'
-                                                  ? 2.4
-                                                  : 1.8);
-                                      setState(() {
-                                        timeOffset =
-                                            _clampTimeOffset(next);
-                                      });
-                                      _notifyExpandedChart();
-                                    }
-                                  : null,
+                                          (selectedPeriod == '일' ? 2.4 : 1.8);
+                                  setState(() {
+                                    timeOffset = _clampTimeOffset(next);
+                                  });
+                                  _notifyExpandedChart();
+                                }
+                              : null,
                           child: Stack(
                             children: [
                               CustomPaint(
@@ -720,7 +731,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         ),
                       ),
                       SizedBox(
-                        height: healthDp(context, 30),
+                        height: xAxisLabelHeight,
                         child: _buildXAxisLabelRow(context, labels),
                       ),
                     ],
@@ -787,9 +798,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     if (selectedPeriod == '일') {
       final startParity = _dailyStartSlot().isOdd ? 1 : 0;
       final relHalf = ((localX / safeW) * 7.0 - 0.5) * 2.0;
-      return (relHalf - startParity)
-          .round()
-          .clamp(0, visibleLength - 1);
+      return (relHalf - startParity).round().clamp(0, visibleLength - 1);
     }
     return ((localX / safeW) * visibleLength)
         .floor()
@@ -877,7 +886,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       const totalMonths = 12;
       const maxStart = totalMonths - visibleMonths;
       final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
-      return List<String>.generate(visibleMonths, (i) => '${startIndex + i + 1}');
+      return List<String>.generate(
+          visibleMonths, (i) => '${startIndex + i + 1}');
     }
     return _buildPeriodChartData().map((item) => item.label).toList();
   }
@@ -954,15 +964,14 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       clipBehavior: Clip.none,
       children: [
         Padding(
-          padding: EdgeInsets.only(
-            right: healthDp(
-                context, ChartConstants.weightXAxisUnitReservedWidth),
+          padding: const EdgeInsets.only(
+            right: ChartConstants.weightXAxisUnitReservedWidth,
           ),
           child: Row(children: rowChildren),
         ),
         Positioned(
-          right: -healthDp(context, 10),
-          top: healthDp(context, 1),
+          right: -10,
+          top: 1,
           bottom: 0,
           child: Align(
             alignment: Alignment.center,
@@ -979,7 +988,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   Future<void> _openExpandedChartPage() async {
     await openHealthChartExpandPage(
       context: context,
-      periodSelectorBuilder: (_) => HealthPeriodSelector(
+      periodSelectorBuilder: (ctx) => HealthExpandedPeriodSelector(
+        metrics: healthExpandedMetrics(ctx),
         selectedPeriod: selectedPeriod,
         onChanged: (period) {
           setState(() {
@@ -997,18 +1007,19 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       ),
       chartBuilder: (_) => LayoutBuilder(
         builder: (context, constraints) {
-          final scaledChartCap =
-              healthDp(context, ChartConstants.weightChartHeight);
+          final scaledChartCap = healthExpandedMetrics(context)
+              .d(HealthExpandedChartMetrics.chartHeightWithoutLegend);
           final scaledChartMin = healthDp(context, 160);
           final h = ChartConstants.healthExpandedChartHeight(
             constraints.maxHeight,
-            bottomLegendReserve: 34,
+            bottomLegendReserve: 0,
             maxChartHeight: scaledChartCap,
             minChartHeight: scaledChartMin,
           );
           return _buildChartCard(
             showExpandButton: false,
             chartPeriodTabsInCard: false,
+            forExpandedChart: true,
             chartHeight: h,
           );
         },

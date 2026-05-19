@@ -14,6 +14,7 @@ import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
+import '../../health_common/widgets/health_expanded_chart_layout.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
@@ -219,7 +220,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   List<Map<String, dynamic>> _buildDailyRangeChartData() {
-    final endDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final endDate =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
     final startDate = endDate.subtract(const Duration(days: 6));
     final result = <Map<String, dynamic>>[];
 
@@ -254,7 +256,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     for (int i = 0; i < visibleMonths; i++) {
       final month = startIndex + i + 1;
       final records = allRecords
-          .where((r) => r.measuredAt.year == year && r.measuredAt.month == month)
+          .where(
+              (r) => r.measuredAt.year == year && r.measuredAt.month == month)
           .toList()
         ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
 
@@ -583,8 +586,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
@@ -600,108 +602,109 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           child: isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 27),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                      HealthDateSelector(
-                        selectedDate: selectedDate,
-                        onDateChanged: (newDate) {
-                          setState(() {
-                            selectedDate = newDate;
-                            selectedChartPointIndex = null;
-                            tooltipPosition = null;
-
-                            // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
-                            final now = DateTime.now();
-                            final today =
-                                DateTime(now.year, now.month, now.day);
-                            final isSelectingToday =
-                                newDate.year == today.year &&
-                                    newDate.month == today.month &&
-                                    newDate.day == today.day;
-
-                            if (isSelectingToday) {
-                              final currentHour = now.hour;
-                              final startHourTarget =
-                                  (currentHour - 5).clamp(0, 18);
-                              timeOffset = startHourTarget / 18.0;
-                            } else {
-                              timeOffset = 0.0;
-                            }
-                          });
-
-                          // 새로운 날짜의 데이터 로드
-                          _loadDataForSelectedDate();
-                        },
-                        monthTextColor: const Color(0xFF898686),
-                        selectedTextColor: const Color(0xFFFF5A8D),
-                        unselectedTextColor: const Color(0xFFB7B7B7),
-                        dividerColor: const Color(0xFFD2D2D2),
-                        iconColor: const Color(0xFF898686),
-                      ),
-                      SizedBox(height: healthDp(context, 20)),
-                      _buildBloodPressureDisplay(),
-                      SizedBox(height: healthDp(context, 20)),
-                      _buildChart(
-                        chartHeight: healthDp(
-                          context,
-                          ChartConstants.weightChartHeight,
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 20)),
-                      Row(
-                        children: [
-                          const _GraphSeriesLegend(
-                              color: Color(0xFF86B0FF), label: '수축기'),
-                          SizedBox(width: healthDp(context, 12)),
-                          const _GraphSeriesLegend(
-                              color: Color(0xFFFFC686), label: '이완기'),
-                        ],
-                      ),
-                      SizedBox(height: healthDp(context, 24)),
-                      Padding(
-                        padding: EdgeInsets.only(bottom: healthDp(context, 20)),
-                        child: BtnRecord(
-                          text: '+기록하기',
-                          labelTextScaler: TextScaler.noScaling,
-                          textStyle: TextStyle(
-                            color: Colors.white,
-                            fontSize: healthSp(context, 16),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 27),
                           ),
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    BloodPressureInputScreen(
-                                      recordContextDate: selectedDate,
-                                    ),
-                              ),
-                            );
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              HealthDateSelector(
+                                selectedDate: selectedDate,
+                                onDateChanged: (newDate) {
+                                  setState(() {
+                                    selectedDate = newDate;
+                                    selectedChartPointIndex = null;
+                                    tooltipPosition = null;
 
-                            if (result == true) {
-                              _loadData();
-                            }
-                          },
-                          backgroundColor: const Color(0xFFFF5A8D),
-                        ),
-                      ),
-                    ],
+                                    // 오늘 날짜로 변경 시 현재 시간 기준으로 timeOffset 설정
+                                    final now = DateTime.now();
+                                    final today =
+                                        DateTime(now.year, now.month, now.day);
+                                    final isSelectingToday =
+                                        newDate.year == today.year &&
+                                            newDate.month == today.month &&
+                                            newDate.day == today.day;
+
+                                    if (isSelectingToday) {
+                                      final currentHour = now.hour;
+                                      final startHourTarget =
+                                          (currentHour - 5).clamp(0, 18);
+                                      timeOffset = startHourTarget / 18.0;
+                                    } else {
+                                      timeOffset = 0.0;
+                                    }
+                                  });
+
+                                  // 새로운 날짜의 데이터 로드
+                                  _loadDataForSelectedDate();
+                                },
+                                monthTextColor: const Color(0xFF898686),
+                                selectedTextColor: const Color(0xFFFF5A8D),
+                                unselectedTextColor: const Color(0xFFB7B7B7),
+                                dividerColor: const Color(0xFFD2D2D2),
+                                iconColor: const Color(0xFF898686),
+                              ),
+                              SizedBox(height: healthDp(context, 20)),
+                              _buildBloodPressureDisplay(),
+                              SizedBox(height: healthDp(context, 20)),
+                              _buildChart(
+                                chartHeight: healthDp(
+                                  context,
+                                  ChartConstants.weightChartHeight,
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 20)),
+                              Row(
+                                children: [
+                                  const _GraphSeriesLegend(
+                                      color: Color(0xFF86B0FF), label: '수축기'),
+                                  SizedBox(width: healthDp(context, 12)),
+                                  const _GraphSeriesLegend(
+                                      color: Color(0xFFFFC686), label: '이완기'),
+                                ],
+                              ),
+                              SizedBox(height: healthDp(context, 24)),
+                              Padding(
+                                padding: EdgeInsets.only(
+                                    bottom: healthDp(context, 20)),
+                                child: BtnRecord(
+                                  text: '+기록하기',
+                                  labelTextScaler: TextScaler.noScaling,
+                                  textStyle: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: healthSp(context, 16),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  onPressed: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            BloodPressureInputScreen(
+                                          recordContextDate: selectedDate,
+                                        ),
+                                      ),
+                                    );
+
+                                    if (result == true) {
+                                      _loadData();
+                                    }
+                                  },
+                                  backgroundColor: const Color(0xFFFF5A8D),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
         ),
       ),
     );
@@ -733,7 +736,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 child: _buildPressureSummaryCardNew(
                   label: '수축기',
                   value: systolic > 0 ? '$systolic' : '-',
-                  headerColor: _pressureHeaderColor(systolic > 0 ? systolic : null, '수축기'),
+                  headerColor: _pressureHeaderColor(
+                      systolic > 0 ? systolic : null, '수축기'),
                   diffText: _diffText(systolicDiff),
                   diffUp: _isUp(systolicDiff),
                 ),
@@ -743,7 +747,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 child: _buildPressureSummaryCardNew(
                   label: '이완기',
                   value: diastolic > 0 ? '$diastolic' : '-',
-                  headerColor: _pressureHeaderColor(diastolic > 0 ? diastolic : null, '이완기'),
+                  headerColor: _pressureHeaderColor(
+                      diastolic > 0 ? diastolic : null, '이완기'),
                   diffText: _diffText(diastolicDiff),
                   diffUp: _isUp(diastolicDiff),
                 ),
@@ -1092,9 +1097,17 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     Widget chartBody;
 
     if (_shouldShowBloodPressureNoDataCard()) {
-      chartBody = _buildNoDataMessage(chartHeight: chartHeight);
+      chartBody = _buildNoDataMessage(
+        chartHeight: chartHeight,
+        forExpandedChart: forExpandedChart,
+      );
     } else {
-      chartBody = _buildDataChart(chartData, yLabels, chartHeight: chartHeight);
+      chartBody = _buildDataChart(
+        chartData,
+        yLabels,
+        chartHeight: chartHeight,
+        forExpandedChart: forExpandedChart,
+      );
     }
 
     if (!showExpandButton) return chartBody;
@@ -1129,25 +1142,30 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   // 데이터 없음 메시지 빌드
-  Widget _buildNoDataMessage(
-      {double chartHeight = ChartConstants.weightChartHeight}) {
+  Widget _buildNoDataMessage({
+    double chartHeight = ChartConstants.weightChartHeight,
+    bool forExpandedChart = false,
+  }) {
     return HealthDailyNoDataChartCard(
       chartHeight: chartHeight,
       title: '해당 기간에 혈압 기록이 없습니다',
       subtitle: '혈압을 측정해보세요',
-      header: _buildPeriodButtons(plainStyle: true),
+      header: forExpandedChart ? null : _buildPeriodButtons(plainStyle: true),
+      showBorder: !forExpandedChart,
     );
   }
 
   // 데이터가 있는 차트 빌드
   Widget _buildDataChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
-      {double chartHeight = ChartConstants.weightChartHeight}) {
+      {double chartHeight = ChartConstants.weightChartHeight,
+      bool forExpandedChart = false}) {
     return _buildDraggableChart(
       chartData,
       yLabels,
       isEmpty: false,
       chartHeight: chartHeight,
+      forExpandedChart: forExpandedChart,
     );
   }
 
@@ -1155,22 +1173,31 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Widget _buildDraggableChart(
       List<Map<String, dynamic>> chartData, List<double> yLabels,
       {required bool isEmpty,
-      double chartHeight = ChartConstants.weightChartHeight}) {
+      double chartHeight = ChartConstants.weightChartHeight,
+      bool forExpandedChart = false}) {
+    final xAxisLabelHeight =
+        forExpandedChart ? healthDp(context, 14.23) : healthDp(context, 30);
+
     return Container(
       height: chartHeight,
-      padding: healthChartCardPadding(context),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      padding:
+          forExpandedChart ? EdgeInsets.zero : healthChartCardPadding(context),
+      decoration: forExpandedChart
+          ? null
+          : BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(healthDp(context, 12)),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPeriodButtons(plainStyle: true),
-          SizedBox(
-              height: healthDp(
-                  context, ChartConstants.weightChartTabToPlotGap)),
+          if (!forExpandedChart) ...[
+            _buildPeriodButtons(plainStyle: true),
+            SizedBox(
+                height:
+                    healthDp(context, ChartConstants.weightChartTabToPlotGap)),
+          ],
           Expanded(
             child: LayoutBuilder(builder: (context, outerConstraints) {
               final showYHeader = yLabels.length > 1;
@@ -1212,7 +1239,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             }),
           ),
           SizedBox(
-            height: healthDp(context, 30),
+            height: xAxisLabelHeight,
             child: Padding(
               padding: EdgeInsets.only(
                 left: healthDp(
@@ -1294,9 +1321,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       timeOffset: timeOffset,
                       cellCenterXSlots: true,
                       topPlotPad: healthWeightChartVertPad(context),
-                      scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
-                      xUnitReservedWidth: healthDp(context,
-                          ChartConstants.weightXAxisUnitReservedWidth),
+                      scale: healthTextScaleByWidth(
+                          MediaQuery.of(context).size.width),
+                      xUnitReservedWidth: healthDp(
+                          context, ChartConstants.weightXAxisUnitReservedWidth),
                       bottomPlotPad: healthWeightChartBottomPlotPad(context),
                     ),
                   ),
@@ -1344,8 +1372,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       topPadding: healthWeightChartVertPad(context),
       bottomPadding: healthWeightChartBottomPlotPad(context),
       scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
-      xUnitReservedWidth: healthDp(
-          context, ChartConstants.weightXAxisUnitReservedWidth),
+      xUnitReservedWidth:
+          healthDp(context, ChartConstants.weightXAxisUnitReservedWidth),
     );
     _setChartState(() {
       if (hit == null) {
@@ -1364,6 +1392,53 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Future<void> _openExpandedChartPage() async {
     await openHealthChartExpandPage(
       context: context,
+      periodSelectorBuilder: (ctx) => HealthExpandedPeriodSelector(
+        metrics: healthExpandedMetrics(ctx),
+        selectedPeriod: selectedPeriod,
+        onChanged: (period) {
+          _setChartState(() {
+            selectedPeriod = period;
+            selectedChartPointIndex = null;
+            tooltipPosition = null;
+            if (period == '월') {
+              timeOffset = 0.0;
+            } else if (period == '주') {
+              timeOffset = 0.0;
+            } else if (period == '일') {
+              if (_isToday()) {
+                final now = DateTime.now();
+                final currentHour = now.hour;
+                final startHourTarget = (currentHour - 5).clamp(0, 18);
+                timeOffset = startHourTarget / 18.0;
+              } else {
+                timeOffset = 0.0;
+              }
+              _ensureHourlyWindowShowsData();
+            } else {
+              timeOffset = 0.0;
+            }
+          });
+        },
+      ),
+      legendBuilder: (ctx) {
+        final m = healthExpandedMetrics(ctx);
+        final gap = m.d(12.62);
+        return Row(
+          children: [
+            HealthExpandedChartLegendItem(
+              metrics: m,
+              color: const Color(0xFF86B0FF),
+              label: '수축기',
+            ),
+            SizedBox(width: gap),
+            HealthExpandedChartLegendItem(
+              metrics: m,
+              color: const Color(0xFFFFC686),
+              label: '이완기',
+            ),
+          ],
+        );
+      },
       chartBuilder: (_) {
         final base = Theme.of(context);
         final gmarket = base.copyWith(
@@ -1373,12 +1448,12 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         );
         return LayoutBuilder(
           builder: (context, constraints) {
-            final scaledChartCap =
-                healthDp(context, ChartConstants.weightChartHeight);
+            final scaledChartCap = healthExpandedMetrics(context)
+                .d(HealthExpandedChartMetrics.chartHeightWithLegend);
             final scaledChartMin = healthDp(context, 160);
             final safeHeight = ChartConstants.healthExpandedChartHeight(
               constraints.maxHeight,
-              bottomLegendReserve: 34,
+              bottomLegendReserve: 0,
               maxChartHeight: scaledChartCap,
               minChartHeight: scaledChartMin,
             );
@@ -1390,29 +1465,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 data: MediaQuery.of(context).copyWith(
                   textScaler: TextScaler.linear(expandScale),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildChart(
-                      showExpandButton: false,
-                      forExpandedChart: true,
-                      chartHeight: safeHeight,
-                    ),
-                    SizedBox(height: healthDp(context, 6)),
-                    Row(
-                      children: [
-                          const _GraphSeriesLegend(
-                          color: Color(0xFF86B0FF),
-                          label: '수축기',
-                        ),
-                        SizedBox(width: healthDp(context, 6)),
-                        const _GraphSeriesLegend(
-                          color: Color(0xFFFFC686),
-                          label: '이완기',
-                        ),
-                      ],
-                    ),
-                  ],
+                child: _buildChart(
+                  showExpandButton: false,
+                  forExpandedChart: true,
+                  chartHeight: safeHeight,
                 ),
               ),
             );
@@ -1530,8 +1586,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => BloodPressureInputScreen(
-                        recordContextDate: selectedDate,
-                      ),
+                    recordContextDate: selectedDate,
+                  ),
                 ),
               );
 

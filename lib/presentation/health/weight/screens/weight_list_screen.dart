@@ -9,6 +9,7 @@ import '../../../common/chart_layout.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
+import '../../health_common/widgets/health_expanded_chart_layout.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import '../../../../data/models/health/weight/weight_record_model.dart';
 import '../../../../data/models/health/health_goal_record_model.dart';
@@ -232,12 +233,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
       final hourRecords = List<WeightRecord>.from(byHour[hour]!)
         ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
       if (hourRecords.length >= 2) {
-        final minW = hourRecords
-            .map((r) => r.weight)
-            .reduce((a, b) => a < b ? a : b);
-        final maxW = hourRecords
-            .map((r) => r.weight)
-            .reduce((a, b) => a > b ? a : b);
+        final minW =
+            hourRecords.map((r) => r.weight).reduce((a, b) => a < b ? a : b);
+        final maxW =
+            hourRecords.map((r) => r.weight).reduce((a, b) => a > b ? a : b);
         final slot = (hour - windowStartHour).clamp(0, 6).toInt();
         chartData.add({
           'date': '$hour시',
@@ -494,137 +493,136 @@ class _WeightListScreenState extends State<WeightListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '체중'),
-      child: MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(textScale),
-        ),
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 27),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                    // 0. 날짜 선택 공통 위젯
-                    HealthDateSelector(
-                      selectedDate: selectedDate,
-                      onDateChanged: (newDate) {
-                        setState(() {
-                          selectedDate = newDate;
-                          selectedChartPointIndex = null;
-                          tooltipPosition = null;
+        appBar: const HealthAppBar(title: '체중'),
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 27),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 0. 날짜 선택 공통 위젯
+                              HealthDateSelector(
+                                selectedDate: selectedDate,
+                                onDateChanged: (newDate) {
+                                  setState(() {
+                                    selectedDate = newDate;
+                                    selectedChartPointIndex = null;
+                                    tooltipPosition = null;
 
-                          timeOffset = _dailyOffsetForDate(newDate);
-                        });
-                        _notifyExpandedChart();
-                        _loadData();
-                      },
-                      monthTextColor: const Color(0xFF898686),
-                      selectedTextColor: const Color(0xFFFF5A8D),
-                      unselectedTextColor: const Color(0xFFB7B7B7),
-                      dividerColor: const Color(0xFFD2D2D2),
-                      iconColor: const Color(0xFF898686),
-                    ),
-                    SizedBox(height: healthDp(context, 16)),
-
-                    // 1~3. 상단 요약 카드 영역 (시안 기준)
-                    _buildTopWeightSummaryCard(),
-                    SizedBox(height: healthDp(context, 20)),
-                    _buildBmiSummaryCard(),
-                    SizedBox(height: healthDp(context, 30)),
-
-                    // 4~5. 체중 차트(기간 탭은 카드 안)
-                    WeightChartSection(
-                      chartContent: _buildChartContent(),
-                    ),
-                    SizedBox(height: healthDp(context, 20)),
-
-                    // 6. 눈바디 이미지
-                    _buildBodyImages(),
-                    SizedBox(height: healthDp(context, 20)),
-                    Padding(
-                      padding: EdgeInsets.only(bottom: healthDp(context, 20)),
-                      child: GestureDetector(
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => WeightInputScreen(
-                                recordContextDate: selectedDate,
+                                    timeOffset = _dailyOffsetForDate(newDate);
+                                  });
+                                  _notifyExpandedChart();
+                                  _loadData();
+                                },
+                                monthTextColor: const Color(0xFF898686),
+                                selectedTextColor: const Color(0xFFFF5A8D),
+                                unselectedTextColor: const Color(0xFFB7B7B7),
+                                dividerColor: const Color(0xFFD2D2D2),
+                                iconColor: const Color(0xFF898686),
                               ),
-                            ),
-                          );
+                              SizedBox(height: healthDp(context, 16)),
 
-                          if (result == true) {
-                            _loadData();
-                          }
-                        },
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final maxW = constraints.maxWidth;
-                            final desiredPad = healthDp(context, 146);
-                            // 스케일된 "+ 기록하기"가 들어갈 최소 가로 공간 (과한 패딩으로 …만 남지 않게)
-                            final minInner =
-                                healthDp(context, 240);
-                            final maxPad = math.max(
-                              0.0,
-                              (maxW - minInner) * 0.5,
-                            );
-                            final hPad = math.min(desiredPad, maxPad);
-                            return Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: hPad,
-                                vertical: healthDp(context, 10),
+                              // 1~3. 상단 요약 카드 영역 (시안 기준)
+                              _buildTopWeightSummaryCard(),
+                              SizedBox(height: healthDp(context, 20)),
+                              _buildBmiSummaryCard(),
+                              SizedBox(height: healthDp(context, 30)),
+
+                              // 4~5. 체중 차트(기간 탭은 카드 안)
+                              WeightChartSection(
+                                chartContent: _buildChartContent(),
                               ),
-                              decoration: ShapeDecoration(
-                                color: const Color(0xFFFF5A8D),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                      healthDp(context, 10)),
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '+ 기록하기',
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  textAlign: TextAlign.center,
-                                  textScaler: TextScaler.noScaling,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: healthSp(context, 16),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
+                              SizedBox(height: healthDp(context, 20)),
+
+                              // 6. 눈바디 이미지
+                              _buildBodyImages(),
+                              SizedBox(height: healthDp(context, 20)),
+                              Padding(
+                                padding: EdgeInsets.only(
+                                    bottom: healthDp(context, 20)),
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => WeightInputScreen(
+                                          recordContextDate: selectedDate,
+                                        ),
+                                      ),
+                                    );
+
+                                    if (result == true) {
+                                      _loadData();
+                                    }
+                                  },
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final maxW = constraints.maxWidth;
+                                      final desiredPad = healthDp(context, 146);
+                                      // 스케일된 "+ 기록하기"가 들어갈 최소 가로 공간 (과한 패딩으로 …만 남지 않게)
+                                      final minInner = healthDp(context, 240);
+                                      final maxPad = math.max(
+                                        0.0,
+                                        (maxW - minInner) * 0.5,
+                                      );
+                                      final hPad = math.min(desiredPad, maxPad);
+                                      return Container(
+                                        width: double.infinity,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: hPad,
+                                          vertical: healthDp(context, 10),
+                                        ),
+                                        decoration: ShapeDecoration(
+                                          color: const Color(0xFFFF5A8D),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                                healthDp(context, 10)),
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '+ 기록하기',
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            textAlign: TextAlign.center,
+                                            textScaler: TextScaler.noScaling,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: healthSp(context, 16),
+                                              fontFamily: 'Gmarket Sans TTF',
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
-                            );
-                          },
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
-                      ),
-                    ),
-                  ),
                 ),
-              ],
-            ),
-      ),
+        ),
       ),
     );
   }
@@ -642,14 +640,16 @@ class _WeightListScreenState extends State<WeightListScreen> {
     // 오늘의 체중 흰 카드 바깥 패딩 없음. 349 안 좌우는 논리 10. 세로: healthDp(18)·원193·10·수정·10·메트릭·10.
     final squareSide = healthDp(context, 349);
     final chartDiameter = healthDp(context, 193);
-    final ringStroke = healthDp(context, 18);  // 원형차트 굵기기
+    final ringStroke = healthDp(context, 18); // 원형차트 굵기기
     final chartTopGap = healthDp(context, 38);
     const double chartToButtonGap = 10;
     final chartBandH = chartTopGap + chartDiameter + chartToButtonGap;
     final buttonBandH = healthDp(context, 22);
+
     /// 수정하기 ↔ 메트릭 / 메트릭 ↔ 하단 (스케일 없이 10).
     const double gapBeforeMetricsBand = 10;
     const double gapAfterMetricsBand = 10;
+
     /// 301 정사각형 안 메트릭 행 최소 높이 (375 기준 66).
     final metricsBandH = healthDp(context, 66);
     final innerContentH = chartBandH +
@@ -781,208 +781,208 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 : '${lostWeight > 0 ? '+' : '-'}${lostWeight.abs().toStringAsFixed(1)}'));
 
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: chartBandH,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: chartTopGap),
-                    Center(
-                      child: SizedBox(
-                        width: chartDiameter,
-                        height: chartDiameter,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            CustomPaint(
-                              size: Size(chartDiameter, chartDiameter),
-                              painter: _WeightGoalRingPainter(
-                                progress: progressRatio,
-                                trackColor: const Color(0x7FD9D9D9),
-                                progressColor: const Color(0xFFFF5A8D),
-                                strokeWidth: ringStroke,
-                              ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '오늘의 체중',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 20,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w300,
-                                  ),
-                                ),
-                                Text(
-                                  weight > 0
-                                      ? '${weight.toStringAsFixed(1)}kg'
-                                      : '-',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 32,
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // 오늘 체중 미입력 시 감량 몸무게(흰 원) 숨김
-                            if (goalRingActive && weight > 0)
-                              Positioned(
-                                left: knobEnd.dx - knobSize / 2,
-                                top: knobEnd.dy - knobSize / 2,
-                                child: Container(
-                                  width: knobSize,
-                                  height: knobSize,
-                                  decoration: ShapeDecoration(
-                                    color: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(knobCornerR),
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      knobDeltaText,
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 10,
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        fontWeight: FontWeight.w300,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: chartToButtonGap),
-                  ],
-                ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: Padding(
-                      padding: EdgeInsets.only(top: healthDp(context, 8)),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: chartBandH,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(height: chartTopGap),
+                  Center(
+                    child: SizedBox(
+                      width: chartDiameter,
+                      height: chartDiameter,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
                         children: [
-                          Text(
-                            '목표체중',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                          Text(
-                            targetWeight > 0
-                                ? '${targetWeight.toStringAsFixed(1)}kg'
-                                : '-',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
                           CustomPaint(
-                            size: Size(
-                              healthDp(context, 7),
-                              healthDp(context, 7),
-                            ),
-                            painter: const _GoalTargetDownTrianglePainter(
-                              color: Colors.black,
+                            size: Size(chartDiameter, chartDiameter),
+                            painter: _WeightGoalRingPainter(
+                              progress: progressRatio,
+                              trackColor: const Color(0x7FD9D9D9),
+                              progressColor: const Color(0xFFFF5A8D),
+                              strokeWidth: ringStroke,
                             ),
                           ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '오늘의 체중',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 20,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                              Text(
+                                weight > 0
+                                    ? '${weight.toStringAsFixed(1)}kg'
+                                    : '-',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 32,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // 오늘 체중 미입력 시 감량 몸무게(흰 원) 숨김
+                          if (goalRingActive && weight > 0)
+                            Positioned(
+                              left: knobEnd.dx - knobSize / 2,
+                              top: knobEnd.dy - knobSize / 2,
+                              child: Container(
+                                width: knobSize,
+                                height: knobSize,
+                                decoration: ShapeDecoration(
+                                  color: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(knobCornerR),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    knobDeltaText,
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 10,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: buttonBandH,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: HealthListEditButton(
-                onTap: _openSelectedDateEditorPopup,
+                  SizedBox(height: chartToButtonGap),
+                ],
               ),
-            ),
-          ),
-          SizedBox(height: gapBeforeMetricsBand),
-          SizedBox(
-            height: metricsBandH,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: healthDp(context, 0.5),
-                  width: double.infinity,
-                  child: const ColoredBox(
-                    color: Color(0x7FD2D2D2),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: healthDp(context, 8)),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '목표체중',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 10,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        Text(
+                          targetWeight > 0
+                              ? '${targetWeight.toStringAsFixed(1)}kg'
+                              : '-',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 10,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        CustomPaint(
+                          size: Size(
+                            healthDp(context, 7),
+                            healthDp(context, 7),
+                          ),
+                          painter: const _GoalTargetDownTrianglePainter(
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                SizedBox(height: healthDp(context, 10)),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _buildTopMetricCell(
-                        title: '키',
-                        value: heightCm > 0 ? '${heightCm.toInt()}' : '-',
-                        unit: 'cm',
-                      ),
-                      _buildVerticalDivider(),
-                      _buildTopMetricCell(
-                        title: '목표 체중',
-                        value: targetWeight > 0
-                            ? '${targetWeight.toStringAsFixed(1)}'
-                            : '-',
-                        unit: 'kg',
-                      ),
-                      _buildVerticalDivider(),
-                      _buildTopMetricCell(
-                        title: '감량 몸무게',
-                        value: lostWeight != 0
-                            ? '${lostWeight > 0 ? '+' : '-'}${lostWeight.abs().toStringAsFixed(1)}'
-                            : '0',
-                        unit: 'kg',
-                        valueColor: const Color(0xFFFF5A8D),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: buttonBandH,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: HealthListEditButton(
+              onTap: _openSelectedDateEditorPopup,
             ),
           ),
-          const SizedBox(height: 10),
-        ],
+        ),
+        SizedBox(height: gapBeforeMetricsBand),
+        SizedBox(
+          height: metricsBandH,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: healthDp(context, 0.5),
+                width: double.infinity,
+                child: const ColoredBox(
+                  color: Color(0x7FD2D2D2),
+                ),
+              ),
+              SizedBox(height: healthDp(context, 10)),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildTopMetricCell(
+                      title: '키',
+                      value: heightCm > 0 ? '${heightCm.toInt()}' : '-',
+                      unit: 'cm',
+                    ),
+                    _buildVerticalDivider(),
+                    _buildTopMetricCell(
+                      title: '목표 체중',
+                      value: targetWeight > 0
+                          ? '${targetWeight.toStringAsFixed(1)}'
+                          : '-',
+                      unit: 'kg',
+                    ),
+                    _buildVerticalDivider(),
+                    _buildTopMetricCell(
+                      title: '감량 몸무게',
+                      value: lostWeight != 0
+                          ? '${lostWeight > 0 ? '+' : '-'}${lostWeight.abs().toStringAsFixed(1)}'
+                          : '0',
+                      unit: 'kg',
+                      valueColor: const Color(0xFFFF5A8D),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
     );
   }
 
@@ -1446,10 +1446,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
     final resolvedChartHeight =
         chartHeight ?? healthDp(context, ChartConstants.weightChartHeight);
     final chartData = getChartData();
-    final yLabels = expandedChartView
-        ? getYAxisLabelsExpanded()
-        : getYAxisLabelsMain();
-    final periodTabs = _buildPeriodButtons(plainStyle: true);
+    final yLabels =
+        expandedChartView ? getYAxisLabelsExpanded() : getYAxisLabelsMain();
+    final periodTabs = expandedChartView
+        ? const SizedBox.shrink()
+        : _buildPeriodButtons(plainStyle: true);
     return WeightChartContent(
       selectedPeriod: selectedPeriod,
       chartData: chartData,
@@ -1469,11 +1470,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
         timeOffset: timeOffset,
         selectedDate: selectedDate,
         periodSelector: tabs,
+        forExpandedChart: expandedChartView,
         showYAxisKgHeader: true,
         // 월별은 Y축 범위로 클램프하여 표시(실제값은 툴팁에 유지)
-        omitOutOfRangeWeights: selectedPeriod == '일'
-            ? !expandedChartView
-            : selectedPeriod == '월',
+        omitOutOfRangeWeights:
+            selectedPeriod == '일' ? !expandedChartView : selectedPeriod == '월',
         onTimeOffsetChanged: (newOffset) {
           setState(() {
             timeOffset = newOffset;
@@ -1505,6 +1506,25 @@ class _WeightListScreenState extends State<WeightListScreen> {
   Future<void> _openExpandedChartPage() async {
     await openHealthChartExpandPage(
       context: context,
+      periodSelectorBuilder: (ctx) => HealthExpandedPeriodSelector(
+        metrics: healthExpandedMetrics(ctx),
+        selectedPeriod: selectedPeriod,
+        onChanged: (period) {
+          setState(() {
+            selectedPeriod = period;
+            selectedChartPointIndex = null;
+            tooltipPosition = null;
+            if (period == '월') {
+              timeOffset = 0.0;
+            } else if (period == '주') {
+              timeOffset = 0.0;
+            } else if (period == '일') {
+              timeOffset = _dailyOffsetForDate(selectedDate);
+            }
+          });
+          _notifyExpandedChart();
+        },
+      ),
       chartBuilder: (ctx) {
         final base = Theme.of(ctx);
         final gmarket = base.copyWith(
@@ -1514,12 +1534,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
         );
         return LayoutBuilder(
           builder: (context, constraints) {
-            final scaledChartCap =
-                healthDp(context, ChartConstants.healthChartHeight);
+            final scaledChartCap = healthExpandedMetrics(context)
+                .d(HealthExpandedChartMetrics.chartHeightWithoutLegend);
             final scaledChartMin = healthDp(context, 160);
             final safeHeight = ChartConstants.healthExpandedChartHeight(
               constraints.maxHeight,
-              bottomLegendReserve: 34,
+              bottomLegendReserve: 0,
               maxChartHeight: scaledChartCap,
               minChartHeight: scaledChartMin,
             );
@@ -1531,16 +1551,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 data: MediaQuery.of(context).copyWith(
                   textScaler: TextScaler.linear(expandScale),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildChartContent(
-                      showExpandButton: false,
-                      chartHeight: safeHeight,
-                      expandedChartView: true,
-                    ),
-                    SizedBox(height: healthDp(context, 6)),
-                  ],
+                child: _buildChartContent(
+                  showExpandButton: false,
+                  chartHeight: safeHeight,
+                  expandedChartView: true,
                 ),
               ),
             );
@@ -1596,9 +1610,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
       onPanUpdate: (details) {
         if (selectedPeriod == '일' || selectedPeriod == '월') {
           final deltaX = details.localPosition.dx - (_dragStartX ?? 0);
-          _handleDragUpdate(
-              deltaX,
-              constraints.maxWidth);
+          _handleDragUpdate(deltaX, constraints.maxWidth);
           _dragStartX = details.localPosition.dx;
         }
       },
@@ -1688,8 +1700,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 children: [
                   // 이미지 표시
                   ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 12)),
+                    borderRadius: BorderRadius.circular(healthDp(context, 12)),
                     child: kIsWeb
                         ? Image.network(
                             imagePath,
@@ -1900,8 +1911,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
       if (selectedPeriod == '일' && data['hourSlotBar'] == true) {
         final minW = (data['minWeight'] as num).toDouble();
         final maxW = (data['maxWeight'] as num).toDouble();
-        if (omitOutOfRangeWeights &&
-            (maxW < minWeight || minW > maxWeight)) {
+        if (omitOutOfRangeWeights && (maxW < minWeight || minW > maxWeight)) {
           continue;
         }
         final weightRange = maxWeight - minWeight;
@@ -1913,10 +1923,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
             ChartConstants.weightXAxisUnitReservedWidth;
         final xCenter = leftPad + (chartWidth - leftPad - rightPad) * xPosition;
         final drawableHeight = chartHeight - topPadChart - botPadChart;
-        final yHi = topPadChart +
-            drawableHeight * ((maxWeight - maxW) / weightRange);
-        final yLo = topPadChart +
-            drawableHeight * ((maxWeight - minW) / weightRange);
+        final yHi =
+            topPadChart + drawableHeight * ((maxWeight - maxW) / weightRange);
+        final yLo =
+            topPadChart + drawableHeight * ((maxWeight - minW) / weightRange);
         var yTop = math.min(yHi, yLo);
         var yBottom = math.max(yHi, yLo);
         yTop = yTop.clamp(drawableTop, drawableBottom);
@@ -2055,8 +2065,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
       if (selectedPeriod == '일' && data['hourSlotBar'] == true) {
         final minW = (data['minWeight'] as num).toDouble();
         final maxW = (data['maxWeight'] as num).toDouble();
-        if (omitOutOfRangeWeights &&
-            (maxW < minWeight || minW > maxWeight)) {
+        if (omitOutOfRangeWeights && (maxW < minWeight || minW > maxWeight)) {
           continue;
         }
         final weightRange = maxWeight - minWeight;
@@ -2066,13 +2075,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
         const leftPad = ChartConstants.weightDailyChartInnerPadH;
         const rightPad = ChartConstants.weightDailyChartInnerPadH +
             ChartConstants.weightXAxisUnitReservedWidth;
-        final xCenter =
-            leftPad + (chartWidth - leftPad - rightPad) * xPosition;
+        final xCenter = leftPad + (chartWidth - leftPad - rightPad) * xPosition;
         final drawableHeight = chartHeight - topPadChart - botPadChart;
-        final yHi = topPadChart +
-            drawableHeight * ((maxWeight - maxW) / weightRange);
-        final yLo = topPadChart +
-            drawableHeight * ((maxWeight - minW) / weightRange);
+        final yHi =
+            topPadChart + drawableHeight * ((maxWeight - maxW) / weightRange);
+        final yLo =
+            topPadChart + drawableHeight * ((maxWeight - minW) / weightRange);
         var yTop = math.min(yHi, yLo);
         var yBottom = math.max(yHi, yLo);
         yTop = yTop.clamp(drawableTop, drawableBottom);
@@ -2221,9 +2229,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
     const tooltipHeight = 56.0;
 
     if (tooltipX < 0) tooltipX = 0;
-    if (tooltipX > chartWidth - tooltipWidth) tooltipX = chartWidth - tooltipWidth;
+    if (tooltipX > chartWidth - tooltipWidth)
+      tooltipX = chartWidth - tooltipWidth;
     if (tooltipY < 0) tooltipY = tooltipPosition!.dy + 20;
-    if (tooltipY > chartHeight - tooltipHeight) tooltipY = chartHeight - tooltipHeight;
+    if (tooltipY > chartHeight - tooltipHeight)
+      tooltipY = chartHeight - tooltipHeight;
 
     final timeStyle = TextStyle(
       color: Colors.grey[700],
@@ -2259,7 +2269,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: selectedPeriod == '일'
               ? [
-                  Text(timeLabel, style: timeStyle, textAlign: TextAlign.center),
+                  Text(timeLabel,
+                      style: timeStyle, textAlign: TextAlign.center),
                   const SizedBox(height: 4),
                   Text(
                     weightLine,
@@ -2274,7 +2285,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 2),
-                  Text(timeLabel, style: timeStyle, textAlign: TextAlign.center),
+                  Text(timeLabel,
+                      style: timeStyle, textAlign: TextAlign.center),
                 ],
         ),
       ),
@@ -2524,16 +2536,15 @@ class WeightChartPainter extends CustomPainter {
         final minW = (data['minWeight'] as num).toDouble();
         final maxW = (data['maxWeight'] as num).toDouble();
         final recordHour = data['hour'] as int;
-        if (omitOutOfRangeWeights &&
-            (maxW < minWeight || minW > maxWeight)) {
+        if (omitOutOfRangeWeights && (maxW < minWeight || minW > maxWeight)) {
           continue;
         }
         if (recordHour < startHour || recordHour > endHour) {
           continue;
         }
         final xPosition = (data['xPosition'] as double?) ?? 0.5;
-        final xCenter = leftPadding +
-            (size.width - leftPadding - rightPadding) * xPosition;
+        final xCenter =
+            leftPadding + (size.width - leftPadding - rightPadding) * xPosition;
         final yHi = topPadding +
             (size.height - topPadding - bottomPadding) *
                 ((maxWeight - maxW) / weightRange);
@@ -2551,8 +2562,7 @@ class WeightChartPainter extends CustomPainter {
         }
         final midY = (yTop + yBottom) / 2;
         final barH = math.max(yBottom - yTop, 4.0);
-        final isSel =
-            selectedPointIndex != null && selectedPointIndex == i;
+        final isSel = selectedPointIndex != null && selectedPointIndex == i;
         final wBar = isSel ? barWidth + 3 : barWidth;
         final rect = RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -2580,8 +2590,7 @@ class WeightChartPainter extends CustomPainter {
       if (weight == null) continue; // null 값 스킵
 
       final w = (weight as num).toDouble();
-      if (omitOutOfRangeWeights &&
-          (w < minWeight || w > maxWeight)) {
+      if (omitOutOfRangeWeights && (w < minWeight || w > maxWeight)) {
         continue;
       }
 
@@ -2596,8 +2605,7 @@ class WeightChartPainter extends CustomPainter {
       double x;
       if (selectedPeriod == '일') {
         final xPosition = (data['xPosition'] as double?) ?? 0.5;
-        x = leftPadding +
-            (size.width - leftPadding - rightPadding) * xPosition;
+        x = leftPadding + (size.width - leftPadding - rightPadding) * xPosition;
       } else {
         if (data['xPosition'] == null) continue;
         final xPosition = data['xPosition'] as double;

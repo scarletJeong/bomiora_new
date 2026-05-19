@@ -16,6 +16,7 @@ import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_chart_expand_page.dart';
+import '../../health_common/widgets/health_expanded_chart_layout.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_period_selector.dart';
@@ -213,10 +214,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   ) {
     if (records.isEmpty) return [];
 
-    final exercise =
-        records.where((r) => r.isExerciseForChart).toList();
-    final daily =
-        records.where((r) => !r.isExerciseForChart).toList();
+    final exercise = records.where((r) => r.isExerciseForChart).toList();
+    final daily = records.where((r) => !r.isExerciseForChart).toList();
 
     final out = <Map<String, dynamic>>[];
 
@@ -351,9 +350,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     }
 
     if (t.isHourBucket && t.hourRecords != null && t.bucketHour != null) {
-      final daily = t.hourRecords!
-          .where((r) => !r.isExerciseForChart)
-          .toList()
+      final daily = t.hourRecords!.where((r) => !r.isExerciseForChart).toList()
         ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
       final exercise = t.hourRecords!
           .where((r) => r.isExerciseForChart)
@@ -460,8 +457,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       final isEx = parts[1] == 'E';
       final list = List<HeartRateRecord>.from(e.value)
         ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
-      final color =
-          _heartRateColorForStatus(isEx ? '운동' : '일상');
+      final color = _heartRateColorForStatus(isEx ? '운동' : '일상');
 
       /// X축 7칸 라벨 중앙과 동일: (slot + 0.5) / 7
       final slot = bucketHour - startHour;
@@ -512,8 +508,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
 
     return Theme(
       data: gmarketTheme,
@@ -536,98 +531,97 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    HealthDateSelector(
-                      selectedDate: selectedDate,
-                      onDateChanged: (newDate) {
-                        _setChartState(() {
-                          selectedDate = newDate;
-                          _recordsCacheDateKey = null;
-                          _recordsCacheForDate = null;
-                          selectedChartPointIndex = null;
-                          tooltipPosition = null;
-                          _dailyChartTooltip = null;
-                          if (_isToday()) {
-                            final now = DateTime.now();
-                            timeOffset =
-                                (now.hour - 5).clamp(0, 18) / 18.0;
-                          } else {
-                            timeOffset = 0.0;
-                          }
-                        });
-                      },
-                      monthTextColor: const Color(0xFF898686),
-                      selectedTextColor: const Color(0xFFFF5A8D),
-                      unselectedTextColor: const Color(0xFFB7B7B7),
-                      dividerColor: const Color(0xFFD2D2D2),
-                      iconColor: const Color(0xFF898686),
-                    ),
-                    SizedBox(height: healthDp(context, 16)),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _summaryCard(context, '최저 심박수', minBpm),
+                        HealthDateSelector(
+                          selectedDate: selectedDate,
+                          onDateChanged: (newDate) {
+                            _setChartState(() {
+                              selectedDate = newDate;
+                              _recordsCacheDateKey = null;
+                              _recordsCacheForDate = null;
+                              selectedChartPointIndex = null;
+                              tooltipPosition = null;
+                              _dailyChartTooltip = null;
+                              if (_isToday()) {
+                                final now = DateTime.now();
+                                timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
+                              } else {
+                                timeOffset = 0.0;
+                              }
+                            });
+                          },
+                          monthTextColor: const Color(0xFF898686),
+                          selectedTextColor: const Color(0xFFFF5A8D),
+                          unselectedTextColor: const Color(0xFFB7B7B7),
+                          dividerColor: const Color(0xFFD2D2D2),
+                          iconColor: const Color(0xFF898686),
                         ),
-                        SizedBox(width: healthDp(context, 10)),
-                        Expanded(
-                          child: _summaryCard(context, '최고 심박수', maxBpm),
+                        SizedBox(height: healthDp(context, 16)),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _summaryCard(context, '최저 심박수', minBpm),
+                            ),
+                            SizedBox(width: healthDp(context, 10)),
+                            Expanded(
+                              child: _summaryCard(context, '최고 심박수', maxBpm),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    SizedBox(height: healthDp(context, 20)),
-                    _buildChart(
-                      chartHeight: healthDp(
-                        context,
-                        ChartConstants.weightChartHeight,
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 12)),
-                    Row(
-                      children: [
-                        const _HeartLegend(
-                          color: Color(0xFFFF8686),
-                          label: '운동',
+                        SizedBox(height: healthDp(context, 20)),
+                        _buildChart(
+                          chartHeight: healthDp(
+                            context,
+                            ChartConstants.weightChartHeight,
+                          ),
                         ),
-                        SizedBox(width: healthDp(context, 10)),
-                        const _HeartLegend(
-                          color: Color(0xFF86B0FF),
-                          label: '일상',
+                        SizedBox(height: healthDp(context, 12)),
+                        Row(
+                          children: [
+                            const _HeartLegend(
+                              color: Color(0xFFFF8686),
+                              label: '운동',
+                            ),
+                            SizedBox(width: healthDp(context, 10)),
+                            const _HeartLegend(
+                              color: Color(0xFF86B0FF),
+                              label: '일상',
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    SizedBox(height: healthDp(context, 16)),
-                    ...todayRecords.reversed.map(_recordTile),
-                    SizedBox(height: healthDp(context, 24)),
-                    SizedBox(
-                      width: double.infinity,
-                      height: healthDp(context, 45),
-                      child: ElevatedButton(
-                        onPressed: _loadData,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5A8D),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              healthDp(context, 10),
+                        SizedBox(height: healthDp(context, 16)),
+                        ...todayRecords.reversed.map(_recordTile),
+                        SizedBox(height: healthDp(context, 24)),
+                        SizedBox(
+                          width: double.infinity,
+                          height: healthDp(context, 45),
+                          child: ElevatedButton(
+                            onPressed: _loadData,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF5A8D),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  healthDp(context, 10),
+                                ),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              '동기화 하기',
+                              textScaler: TextScaler.noScaling,
+                              style: TextStyle(
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontSize: healthSp(context, 16),
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                          elevation: 0,
                         ),
-                        child: Text(
-                          '동기화 하기',
-                          textScaler: TextScaler.noScaling,
-                          style: TextStyle(
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontSize: healthSp(context, 16),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                        SizedBox(height: healthDp(context, 24)),
+                      ],
                     ),
-                    SizedBox(height: healthDp(context, 24)),
-                  ],
+                  ),
                 ),
-              ),
-            ),
         ),
       ),
     );
@@ -746,8 +740,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                   ),
                 ),
                 heartRateTooltipValueRowWithBadge(
-                  badgeLabel:
-                      record.isExerciseForChart ? '운' : '일',
+                  badgeLabel: record.isExerciseForChart ? '운' : '일',
                   badgeColor: record.isExerciseForChart
                       ? heartRateTooltipExerciseColor
                       : heartRateTooltipDailyColor,
@@ -820,9 +813,9 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         yAxisCount: yLabels.length,
         useCalendarYearMonths: selectedPeriod == '월',
         showPeriodSelector: chartPeriodTabsInCard,
-        onPeriodChanged:
-            chartPeriodTabsInCard ? _handlePeriodChanged : null,
+        onPeriodChanged: chartPeriodTabsInCard ? _handlePeriodChanged : null,
         cardBackgroundColor: Colors.white,
+        forExpandedChart: !chartPeriodTabsInCard && !showExpandButton,
       );
     } else if (_recordsForSelectedDate().isEmpty) {
       chartBody = HealthDailyNoDataChartCard(
@@ -836,12 +829,14 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                 plainStyle: true,
               )
             : null,
+        showBorder: chartPeriodTabsInCard,
       );
     } else {
       chartBody = _buildDailyChart(
         yLabels,
         chartPeriodTabsInCard: chartPeriodTabsInCard,
         chartHeight: chartHeight,
+        forExpandedChart: !chartPeriodTabsInCard && !showExpandButton,
       );
     }
 
@@ -879,18 +874,24 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     List<double> yLabels, {
     required bool chartPeriodTabsInCard,
     double chartHeight = ChartConstants.weightChartHeight,
+    bool forExpandedChart = false,
   }) {
     final dailyVisuals = _buildDailyHeartVisuals();
     final topPad = healthWeightChartVertPad(context);
     final botPad = healthWeightChartBottomPlotPad(context);
+    final xAxisLabelHeight =
+        forExpandedChart ? healthDp(context, 14.23) : healthDp(context, 30);
     return Container(
       height: chartHeight,
-      padding: healthChartCardPadding(context),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      padding:
+          forExpandedChart ? EdgeInsets.zero : healthChartCardPadding(context),
+      decoration: forExpandedChart
+          ? null
+          : BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(healthDp(context, 12)),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -901,8 +902,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
               plainStyle: true,
             ),
             SizedBox(
-                height: healthDp(
-                    context, ChartConstants.weightChartTabToPlotGap)),
+                height:
+                    healthDp(context, ChartConstants.weightChartTabToPlotGap)),
           ],
           Expanded(
             child: LayoutBuilder(
@@ -947,16 +948,17 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                     final double anchorLeft =
                                         _dailyChartTooltip!.chartLocal.dx
                                             .clamp(
-                                      tooltipPad,
-                                      math.max(
-                                        tooltipPad,
-                                        w - tooltipPad,
-                                      ),
-                                    ).toDouble();
+                                              tooltipPad,
+                                              math.max(
+                                                tooltipPad,
+                                                w - tooltipPad,
+                                              ),
+                                            )
+                                            .toDouble();
+
                                     /// [HeartRateTooltip._positionedCard]와 동일
-                                    final double maxTooltipW = (w -
-                                                anchorLeft -
-                                                tooltipPad)
+                                    final double maxTooltipW =
+                                        (w - anchorLeft - tooltipPad)
                                             .clamp(
                                               tooltipMinW,
                                               tooltipMaxWCap,
@@ -966,14 +968,15 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                         (_dailyChartTooltip!.chartLocal.dy -
                                                 tooltipLift)
                                             .clamp(
-                                      tooltipPad,
-                                      math.max(
-                                        tooltipPad,
-                                        h -
-                                            tooltipBottomReserve -
-                                            tooltipPad,
-                                      ),
-                                    ).toDouble();
+                                              tooltipPad,
+                                              math.max(
+                                                tooltipPad,
+                                                h -
+                                                    tooltipBottomReserve -
+                                                    tooltipPad,
+                                              ),
+                                            )
+                                            .toDouble();
                                     dailyTooltipOverlay = Positioned(
                                       left: anchorLeft,
                                       top: topY,
@@ -1006,39 +1009,34 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                             dailyVisuals,
                                           );
                                         },
-                                        onPanStart:
-                                            (selectedPeriod == '일' ||
-                                                    selectedPeriod == '월')
-                                                ? (details) {
-                                                    _setChartState(
-                                                      () => _dailyChartTooltip =
-                                                          null,
-                                                    );
-                                                    _dragStartX = details
-                                                        .localPosition.dx;
-                                                  }
-                                                : null,
-                                        onPanUpdate:
-                                            (selectedPeriod == '일' ||
-                                                    selectedPeriod == '월')
-                                                ? (details) {
-                                                    if (_dragStartX != null) {
-                                                      final deltaX = details
-                                                              .localPosition
-                                                              .dx -
+                                        onPanStart: (selectedPeriod == '일' ||
+                                                selectedPeriod == '월')
+                                            ? (details) {
+                                                _setChartState(
+                                                  () =>
+                                                      _dailyChartTooltip = null,
+                                                );
+                                                _dragStartX =
+                                                    details.localPosition.dx;
+                                              }
+                                            : null,
+                                        onPanUpdate: (selectedPeriod == '일' ||
+                                                selectedPeriod == '월')
+                                            ? (details) {
+                                                if (_dragStartX != null) {
+                                                  final deltaX =
+                                                      details.localPosition.dx -
                                                           _dragStartX!;
-                                                      _handleDragUpdate(
-                                                          deltaX, w);
-                                                      _dragStartX = details
-                                                          .localPosition.dx;
-                                                    }
-                                                  }
-                                                : null,
-                                        onPanEnd:
-                                            (selectedPeriod == '일' ||
-                                                    selectedPeriod == '월')
-                                                ? (_) => _dragStartX = null
-                                                : null,
+                                                  _handleDragUpdate(deltaX, w);
+                                                  _dragStartX =
+                                                      details.localPosition.dx;
+                                                }
+                                              }
+                                            : null,
+                                        onPanEnd: (selectedPeriod == '일' ||
+                                                selectedPeriod == '월')
+                                            ? (_) => _dragStartX = null
+                                            : null,
                                         child: CustomPaint(
                                           size: Size(w, h),
                                           painter: _HeartRateChartPainter(
@@ -1047,7 +1045,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                             maxValue: 250,
                                             topPlotPad: topPad,
                                             bottomPlotPad: botPad,
-                                            scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                                            scale: healthTextScaleByWidth(
+                                                MediaQuery.of(context)
+                                                    .size
+                                                    .width),
                                             xUnitReservedWidth: healthDp(
                                               context,
                                               ChartConstants
@@ -1073,7 +1074,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
             ),
           ),
           SizedBox(
-            height: healthDp(context, 30),
+            height: xAxisLabelHeight,
             child: Padding(
               padding: EdgeInsets.only(
                 left: healthDp(
@@ -1097,7 +1098,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
   Future<void> _openExpandedChartPage() async {
     await openHealthChartExpandPage(
       context: context,
-      periodSelectorBuilder: (_) => HealthPeriodSelector(
+      periodSelectorBuilder: (ctx) => HealthExpandedPeriodSelector(
+        metrics: healthExpandedMetrics(ctx),
         selectedPeriod: selectedPeriod,
         onChanged: (period) => _setChartState(() {
           selectedPeriod = period;
@@ -1114,6 +1116,25 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           }
         }),
       ),
+      legendBuilder: (ctx) {
+        final m = healthExpandedMetrics(ctx);
+        final gap = m.d(17.62);
+        return Row(
+          children: [
+            HealthExpandedChartLegendItem(
+              metrics: m,
+              color: const Color(0xFFFF8686),
+              label: '운동',
+            ),
+            SizedBox(width: gap),
+            HealthExpandedChartLegendItem(
+              metrics: m,
+              color: const Color(0xFF86B0FF),
+              label: '일상',
+            ),
+          ],
+        );
+      },
       chartBuilder: (_) {
         final base = Theme.of(context);
         final gmarket = base.copyWith(
@@ -1123,12 +1144,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         );
         return LayoutBuilder(
           builder: (context, constraints) {
-            final scaledChartCap =
-                healthDp(context, ChartConstants.weightChartHeight);
+            final scaledChartCap = healthExpandedMetrics(context)
+                .d(HealthExpandedChartMetrics.chartHeightWithLegend);
             final scaledChartMin = healthDp(context, 160);
             final safeHeight = ChartConstants.healthExpandedChartHeight(
               constraints.maxHeight,
-              bottomLegendReserve: 34,
+              bottomLegendReserve: 0,
               maxChartHeight: scaledChartCap,
               minChartHeight: scaledChartMin,
             );
@@ -1140,31 +1161,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                 data: MediaQuery.of(context).copyWith(
                   textScaler: TextScaler.linear(expandScale),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildChart(
-                      showExpandButton: false,
-                      chartPeriodTabsInCard: false,
-                      chartHeight: safeHeight,
-                    ),
-                    SizedBox(height: healthDp(context, 6)),
-                    Row(
-                      children: [
-                        const _HeartLegend(
-                          color: Color(0xFFFF8686),
-                          label: '운동',
-                          compact: true,
-                        ),
-                        SizedBox(width: healthDp(context, 6)),
-                        const _HeartLegend(
-                          color: Color(0xFF86B0FF),
-                          label: '일상',
-                          compact: true,
-                        ),
-                      ],
-                    ),
-                  ],
+                child: _buildChart(
+                  showExpandButton: false,
+                  chartPeriodTabsInCard: false,
+                  chartHeight: safeHeight,
                 ),
               ),
             );
@@ -1180,6 +1180,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 /// 시간대별(일) 차트 탭 시 표시
 class _DailyChartTooltip {
   final Offset chartLocal;
+
   /// true: 해당 시에 기록 2건 이상 → 일상/운동 구간을 한 카드에 표시
   final bool isHourBucket;
   final HeartRateRecord? record;

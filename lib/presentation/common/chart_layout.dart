@@ -114,6 +114,7 @@ class HealthDailyNoDataChartCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.header,
+    this.showBorder = true,
   });
 
   final double chartHeight;
@@ -121,6 +122,7 @@ class HealthDailyNoDataChartCard extends StatelessWidget {
   final String subtitle;
   /// 카드 상단(예: 기간 탭)
   final Widget? header;
+  final bool showBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +132,7 @@ class HealthDailyNoDataChartCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: showBorder ? Border.all(color: Colors.grey[200]!) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
