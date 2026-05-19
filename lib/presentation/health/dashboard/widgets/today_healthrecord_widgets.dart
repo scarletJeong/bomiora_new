@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../core/constants/app_assets.dart';
 
 import '../../../../data/models/health/blood_pressure/blood_pressure_record_model.dart';
 import '../../../../data/models/health/blood_sugar/blood_sugar_record_model.dart';
@@ -126,7 +129,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                             statusText: _bloodSugarStatusLabel(
                               latestBloodSugarRecord,
                             ),
-                            icon: Icons.favorite,
+                            iconAsset: AppAssets.mainCardIconBloodSugar,
                             compact: true,
                             compactAfterHeaderGap: healthDp(context, 5),
                             titleFontSize: 14,
@@ -136,8 +139,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                               if (!isLoggedIn) {
                                 showLoginRequiredDialog(
                                   context,
-                                  message:
-                                      '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                                  message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
                                 );
                                 return;
                               }
@@ -164,7 +166,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                               systolicBP,
                               diastolicBP,
                             ),
-                            icon: Icons.monitor_heart,
+                            iconAsset: AppAssets.mainCardIconBloodPressure,
                             compact: true,
                             compactAfterHeaderGap: healthDp(context, 10.53),
                             titleFontSize: 14,
@@ -174,16 +176,14 @@ class TodayHealthRecordSection extends StatelessWidget {
                               if (!isLoggedIn) {
                                 showLoginRequiredDialog(
                                   context,
-                                  message:
-                                      '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                                  message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
                                 );
                                 return;
                               }
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      BloodPressureListScreen(
+                                  builder: (context) => BloodPressureListScreen(
                                     initialDate: selectedDate,
                                   ),
                                 ),
@@ -219,7 +219,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                       child: _buildBottomRecordCard(
                         context,
                         title: '심박수',
-                        titleIcon: Icons.monitor_heart,
+                        titleIconAsset: AppAssets.mainCardIconHeartRate,
                         value: latestHeartRateRecord != null ? null : '입력하세요.',
                         valueWidget: latestHeartRateRecord != null
                             ? Text(
@@ -244,8 +244,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                           if (!isLoggedIn) {
                             showLoginRequiredDialog(
                               context,
-                              message:
-                                  '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
                             );
                             return;
                           }
@@ -265,7 +264,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                       child: _buildBottomRecordCard(
                         context,
                         title: '생리주기',
-                        titleIcon: Icons.calendar_today,
+                        titleIconAsset: AppAssets.mainCardIconMenstrual,
                         valueWidget: Text(
                           _periodText(
                             latestMenstrualCycleRecord,
@@ -290,8 +289,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                           if (!isLoggedIn) {
                             showLoginRequiredDialog(
                               context,
-                              message:
-                                  '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+                              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
                             );
                             return;
                           }
@@ -355,13 +353,38 @@ String _bloodSugarStatusLabel(BloodSugarRecord? latestBloodSugarRecord) {
   return '의심';
 }
 
+Widget _buildMainCardIcon(BuildContext context, String assetPath) {
+  final box = healthDp(context, 28);
+  final icon = healthDp(context, 18);
+  return Container(
+    width: box,
+    height: box,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(healthDp(context, 15)),
+      border: Border.all(
+        color: const Color(0x7FD2D2D2),
+        width: 0.5,
+      ),
+    ),
+    child: Center(
+      child: SvgPicture.asset(
+        assetPath,
+        width: icon,
+        height: icon,
+        fit: BoxFit.contain,
+      ),
+    ),
+  );
+}
+
 Widget _buildRecordCard(
   BuildContext context, {
   required String title,
   required String value,
   required String subtitle,
   required String statusText,
-  required IconData icon,
+  required String iconAsset,
   required VoidCallback onMore,
   bool compact = false,
   double? compactAfterHeaderGap,
@@ -393,24 +416,7 @@ Widget _buildRecordCard(
           children: [
             Row(
               children: [
-                Container(
-                  width: healthDp(context, 28),
-                  height: healthDp(context, 28),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 15)),
-                    border: Border.all(
-                      color: const Color(0x7FD2D2D2),
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: healthDp(context, 18),
-                    color: const Color(0xFFFF5A8D),
-                  ),
-                ),
+                _buildMainCardIcon(context, iconAsset),
                 SizedBox(width: healthDp(context, 5)),
                 Text(
                   title,
@@ -487,7 +493,12 @@ Widget _buildRecordCard(
                   color: const Color(0xFFFFF1F5),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Icon(icon, size: iconSz, color: const Color(0xFFFF5A8D)),
+                child: SvgPicture.asset(
+                  iconAsset,
+                  width: iconSz,
+                  height: iconSz,
+                  fit: BoxFit.contain,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
@@ -557,9 +568,8 @@ Widget _buildStepsCard(
       dashboardLayout ? healthDp(context, 65.6) : healthDp(context, 72);
   final double strokeW =
       dashboardLayout ? healthDp(context, 5) : healthDp(context, 7);
-  final Color trackCol = dashboardLayout
-      ? const Color(0x7FD9D9D9)
-      : const Color(0xFFF3F4F6);
+  final Color trackCol =
+      dashboardLayout ? const Color(0x7FD9D9D9) : const Color(0xFFF3F4F6);
   final double titleSz =
       dashboardLayout ? healthSp(context, 14) : healthSp(context, 15);
 
@@ -631,14 +641,12 @@ Widget _buildStepsCard(
     );
   }
 
-  final int targetSteps =
-      (latestHealthGoal?.dailyStepGoal != null &&
-              latestHealthGoal!.dailyStepGoal! > 0)
-          ? latestHealthGoal.dailyStepGoal!
-          : 0;
-  final double ratio = (targetSteps <= 0)
-      ? 0.0
-      : (steps / targetSteps).clamp(0.0, 1.0);
+  final int targetSteps = (latestHealthGoal?.dailyStepGoal != null &&
+          latestHealthGoal!.dailyStepGoal! > 0)
+      ? latestHealthGoal.dailyStepGoal!
+      : 0;
+  final double ratio =
+      (targetSteps <= 0) ? 0.0 : (steps / targetSteps).clamp(0.0, 1.0);
   final fmt = NumberFormat('#,###');
 
   return GestureDetector(
@@ -757,7 +765,7 @@ Widget _buildBottomRecordCard(
   String? value,
   Widget? valueWidget,
   required VoidCallback onMore,
-  IconData titleIcon = Icons.favorite_border,
+  required String titleIconAsset,
   double titleFontSize = 16,
   double valueFontSize = 20,
   bool dashboardStyle = false,
@@ -785,24 +793,7 @@ Widget _buildBottomRecordCard(
           children: [
             Row(
               children: [
-                Container(
-                  width: healthDp(context, 28),
-                  height: healthDp(context, 28),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 15)),
-                    border: Border.all(
-                      color: const Color(0x7FD2D2D2),
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Icon(
-                    titleIcon,
-                    size: healthDp(context, 18),
-                    color: const Color(0xFFFF5A8D),
-                  ),
-                ),
+                _buildMainCardIcon(context, titleIconAsset),
                 SizedBox(width: healthDp(context, 5)),
                 Text(
                   title,
@@ -853,7 +844,12 @@ Widget _buildBottomRecordCard(
         children: [
           Row(
             children: [
-              Icon(titleIcon, color: const Color(0xFFFF5A8D), size: 18),
+              SvgPicture.asset(
+                titleIconAsset,
+                width: 18,
+                height: 18,
+                fit: BoxFit.contain,
+              ),
               const SizedBox(width: 6),
               Text(
                 title,
