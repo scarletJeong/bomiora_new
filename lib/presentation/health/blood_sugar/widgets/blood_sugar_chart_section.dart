@@ -68,6 +68,8 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   double maxValue, {
   required double plotTop,
   required double plotBottom,
+  double scale = 1.0,
+  double? xUnitReservedWidth,
 }) {
   final indices = <int>[];
   for (var i = 0; i < data.length; i++) {
@@ -83,12 +85,14 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   final maxMergeDistSq = maxMergeDist * maxMergeDist;
 
   const double borderWidth = 0.5;
-  const double pointRadius = 8;
+  final double pointRadius = 8 * scale;
+  final unitReserve =
+      xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth;
   final x0 = borderWidth + pointRadius;
   final chartWidth = size.width -
       (borderWidth * 2) -
       (pointRadius * 2) -
-      ChartConstants.weightXAxisUnitReservedWidth;
+      unitReserve;
 
   double yForValue(int v) {
     final clamped = v.clamp(minValue.toInt(), maxValue.toInt()).toDouble();
@@ -809,6 +813,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                       selectedPeriod: widget.selectedPeriod,
                       topPlotPad: topPad,
                       bottomPlotPad: botPad,
+                      scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                      xUnitReservedWidth: healthDp(
+                          context, ChartConstants.weightXAxisUnitReservedWidth),
                     ),
                   ),
           ),
@@ -825,6 +832,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
                 widget.yLabels.first,
                 topPad,
                 botPad,
+                scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                xUnitReservedWidth: healthDp(
+                    context, ChartConstants.weightXAxisUnitReservedWidth),
               ),
               selectedPeriod: widget.selectedPeriod,
               selectedDate: widget.selectedDate,
@@ -886,6 +896,9 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
         widget.yLabels.first,
         plotTop: topPadding,
         plotBottom: bottomPadding,
+        scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+        xUnitReservedWidth: healthDp(
+            context, ChartConstants.weightXAxisUnitReservedWidth),
       );
       for (var ci = 0; ci < occ.length; ci++) {
         final c = occ[ci];
@@ -986,8 +999,10 @@ Map<String, dynamic> _tooltipRowForChartIndex(
   double minValue,
   double maxValue,
   double plotTop,
-  double plotBottom,
-) {
+  double plotBottom, {
+  double scale = 1.0,
+  double? xUnitReservedWidth,
+}) {
   if (index < 0) {
     final ci = -index - 1;
     final clusters = bloodSugarComputeWeekMonthOverlapClusters(
@@ -997,6 +1012,8 @@ Map<String, dynamic> _tooltipRowForChartIndex(
       maxValue,
       plotTop: plotTop,
       plotBottom: plotBottom,
+      scale: scale,
+      xUnitReservedWidth: xUnitReservedWidth,
     );
     if (ci < 0 || ci >= clusters.length) {
       return chartData.isNotEmpty ? chartData[0] : {};
@@ -1030,6 +1047,10 @@ Map<String, dynamic> _tooltipRowForChartIndex(
   return chartData.isNotEmpty ? chartData[0] : {};
 }
 
+const double _bloodSugarChartBorderWidth = 0.5;
+const double _bloodSugarChartPointRadius = 8.0;
+// X축 라벨 inset은 위젯에서 scale 반영 후 동적으로 계산한다.
+
 Widget buildBloodSugarXAxisLabels(
   BuildContext context, {
   required String selectedPeriod,
@@ -1062,11 +1083,14 @@ Widget buildBloodSugarXAxisLabels(
     final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
     final isCurrentHour = isToday && hour == currentHour;
     hourLabels.add(
-      Text(
-        hourLabel,
-        style: healthChartAxisTickTextStyle(
-          context,
-          color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
+      Expanded(
+        child: Text(
+          hourLabel,
+          textAlign: TextAlign.center,
+          style: healthChartAxisTickTextStyle(
+            context,
+            color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
+          ),
         ),
       ),
     );
@@ -1074,10 +1098,7 @@ Widget buildBloodSugarXAxisLabels(
 
   return _buildBloodSugarXAxisWithUnit(
     context,
-    labelRow: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: hourLabels,
-    ),
+    labelRow: Row(children: hourLabels),
     unitText: '(시)',
   );
 }
@@ -1097,7 +1118,6 @@ Widget _buildBloodSugarPeriodXAxisLabels(
     return _buildBloodSugarXAxisWithUnit(
       context,
       labelRow: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(visibleMonths, (i) {
           final m = startIndex + i + 1;
           return Expanded(
@@ -1127,7 +1147,6 @@ Widget _buildBloodSugarPeriodXAxisLabels(
   }
 
   final dateRow = Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: allDateLabels.map((label) {
       return Expanded(
         child: Text(
@@ -1157,7 +1176,11 @@ Widget _buildBloodSugarXAxisWithUnit(
     clipBehavior: Clip.none,
     children: [
       Padding(
-        padding: EdgeInsets.only(right: unitReserve),
+        // 점이 그려지는 플롯과 동일한 좌우 inset — scale 반영
+        padding: EdgeInsets.only(
+          left: _bloodSugarChartBorderWidth + healthDp(context, _bloodSugarChartPointRadius),
+          right: unitReserve + _bloodSugarChartBorderWidth + healthDp(context, _bloodSugarChartPointRadius),
+        ),
         child: labelRow,
       ),
       Positioned(
@@ -1226,6 +1249,10 @@ class BloodSugarChartPainter extends CustomPainter {
   final String selectedPeriod;
   final double topPlotPad;
   final double bottomPlotPad;
+  /// 375 기준 1.0, 650 기준 ≈1.73 — healthTextScaleByWidth 값을 넘긴다.
+  final double scale;
+  /// 위젯 라벨 row의 (시)/(일)/(월) 오른쪽 여백과 동일하게 painter에도 전달.
+  final double? xUnitReservedWidth;
 
   BloodSugarChartPainter(
     this.data,
@@ -1238,43 +1265,22 @@ class BloodSugarChartPainter extends CustomPainter {
     required this.selectedPeriod,
     required this.topPlotPad,
     required this.bottomPlotPad,
+    this.scale = 1.0,
+    this.xUnitReservedWidth,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
-    const double borderWidth = 0.5;
-    const double pointRadius = 8;
+    const double borderWidth = _bloodSugarChartBorderWidth;
+    final double pointRadius = _bloodSugarChartPointRadius * scale;
+    final double unitReserve =
+        xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth;
     final x0 = borderWidth + pointRadius;
     final chartWidth = size.width -
         (borderWidth * 2) -
         (pointRadius * 2) -
-        ChartConstants.weightXAxisUnitReservedWidth;
-
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-    final dashedGridPaint = Paint()
-      ..color = Colors.grey[200]!
-      ..strokeWidth = 0.5;
-    final yValues = (yLabels != null && yLabels!.length >= 2)
-        ? yLabels!
-        : [maxValue, minValue];
-
-    for (int i = 0; i < yValues.length; i++) {
-      final y = topPlotPad +
-          (size.height - topPlotPad - bottomPlotPad) * i / (yValues.length - 1);
-      canvas.drawLine(Offset(x0, y), Offset(x0 + chartWidth, y), gridPaint);
-    }
-
-    for (int i = 0; i < yValues.length - 1; i++) {
-      final normalizedY = (i + 0.5) / (yValues.length - 1);
-      final y =
-          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalizedY;
-      for (double x = x0; x < x0 + chartWidth; x += 4) {
-        canvas.drawLine(Offset(x, y), Offset(x + 2, y), dashedGridPaint);
-      }
-    }
+        unitReserve;
 
     if (selectedPeriod == '일') {
       _paintDailySeries(canvas, size, x0, chartWidth);
@@ -1296,7 +1302,7 @@ class BloodSugarChartPainter extends CustomPainter {
     final points = <Offset>[];
     final pointIndices = <int>[];
     final barPaint = Paint()..style = PaintingStyle.fill;
-    const barWidth = 10.0;
+    final barWidth = 10.0 * scale;
 
     for (int i = 0; i < data.length; i++) {
       if (data[i]['hourSlotBar'] == true) {
@@ -1379,17 +1385,17 @@ class BloodSugarChartPainter extends CustomPainter {
         ..color = _seriesColorForDataIndex(originalIndex)
         ..style = PaintingStyle.fill;
       if (isHighlighted) {
-        canvas.drawCircle(points[i], 8, pointPaint);
+        canvas.drawCircle(points[i], 8 * scale, pointPaint);
         canvas.drawCircle(
           points[i],
-          8,
+          8 * scale,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2,
         );
       } else {
-        canvas.drawCircle(points[i], 5, pointPaint);
+        canvas.drawCircle(points[i], 5 * scale, pointPaint);
       }
     }
   }
@@ -1415,6 +1421,8 @@ class BloodSugarChartPainter extends CustomPainter {
       maxValue,
       plotTop: topPlotPad,
       plotBottom: bottomPlotPad,
+      scale: scale,
+      xUnitReservedWidth: xUnitReservedWidth,
     );
 
     double yForValue(int v) {
@@ -1478,17 +1486,17 @@ class BloodSugarChartPainter extends CustomPainter {
         ..color = _seriesColorForDataIndex(i)
         ..style = PaintingStyle.fill;
       if (isHighlighted) {
-        canvas.drawCircle(o, 8, pointPaint);
+        canvas.drawCircle(o, 8 * scale, pointPaint);
         canvas.drawCircle(
           o,
-          8,
+          8 * scale,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2,
         );
       } else {
-        canvas.drawCircle(o, 5, pointPaint);
+        canvas.drawCircle(o, 5 * scale, pointPaint);
       }
     }
 
@@ -1499,7 +1507,7 @@ class BloodSugarChartPainter extends CustomPainter {
       final highlighted = highlightedIndex != null &&
           (highlightedIndex == clusterTapIndex ||
               cluster.dataIndices.contains(highlightedIndex));
-      final r = highlighted ? 8.0 : 5.0;
+      final r = (highlighted ? 8.0 : 5.0) * scale;
       canvas.drawCircle(
         o,
         r,
@@ -1535,7 +1543,9 @@ class BloodSugarChartPainter extends CustomPainter {
         oldDelegate.timeOffset != timeOffset ||
         oldDelegate.selectedPeriod != selectedPeriod ||
         oldDelegate.topPlotPad != topPlotPad ||
-        oldDelegate.bottomPlotPad != bottomPlotPad;
+        oldDelegate.bottomPlotPad != bottomPlotPad ||
+        oldDelegate.scale != scale ||
+        oldDelegate.xUnitReservedWidth != xUnitReservedWidth;
   }
 
   Color _seriesColorForDataIndex(int index) {

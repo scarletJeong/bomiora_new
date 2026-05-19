@@ -84,12 +84,6 @@ class HourlyStepsChart extends StatelessWidget {
                 // 차트
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(color: Colors.grey[300]!, width: 1),
-                        bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                    ),
                     child: CustomPaint(
                       painter: BarChartPainter(
                         data: fullDayData,
@@ -190,12 +184,6 @@ class HourlyStepsChart extends StatelessWidget {
                 // 차트
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(color: Colors.grey[300]!, width: 1),
-                        bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                    ),
                     child: CustomPaint(
                       painter: WeeklyBarChartPainter(
                         data: weeklyData,
@@ -290,12 +278,6 @@ class HourlyStepsChart extends StatelessWidget {
                 // 차트
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(color: Colors.grey[300]!, width: 1),
-                        bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                    ),
                     child: CustomPaint(
                       painter: MonthlyBarChartPainter(
                         data: monthlyData,

@@ -86,8 +86,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 시간 범위 계산 (통합 로직)
   Map<String, double> _calculateTimeRange() {
     const maxStartHour = 18; // 24시 - 6시간 = 18시 (7개 라벨)
-    final startHour =
-        (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
+    // X축 라벨과 데이터 슬롯이 같은 시작 시간을 쓰도록 round 기준으로 통일한다.
+    final startHour = (timeOffset * maxStartHour)
+        .clamp(0.0, maxStartHour.toDouble())
+        .roundToDouble();
     final endHour = (startHour + 6.0).clamp(6.0, 24.0);
 
     return {'min': startHour, 'max': endHour};
@@ -310,11 +312,14 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }) {
     final unitReserve =
         healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
+    final inset = BloodPressureChartPainter.borderWidth +
+        healthDp(context, BloodPressureChartPainter.basePointRadius);
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Padding(
-          padding: EdgeInsets.only(right: unitReserve),
+          // 플롯 시작/끝 좌표와 동일한 inset을 라벨 행에도 적용 (scale 반영)
+          padding: EdgeInsets.only(left: inset, right: unitReserve + inset),
           child: labelRow,
         ),
         Positioned(
@@ -336,8 +341,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Widget _buildBloodPressureXAxisLabels() {
     if (selectedPeriod == '일') {
       const maxStartHour = 18;
-      final startHour =
-          (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
+      final startHour = _calculateTimeRange()['min']!.round();
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -352,20 +356,20 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
         final isCurrentHour = isToday && hour == currentHour;
         hourLabels.add(
-          Text(
-            hourLabel,
-            style: healthChartAxisTickTextStyle(
-              context,
-              color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
+          Expanded(
+            child: Text(
+              hourLabel,
+              textAlign: TextAlign.center,
+              style: healthChartAxisTickTextStyle(
+                context,
+                color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
+              ),
             ),
           ),
         );
       }
       return _buildBloodPressureXAxisWithUnit(
-        labelRow: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: hourLabels,
-        ),
+        labelRow: Row(children: hourLabels),
         unitText: '(시)',
       );
     }
@@ -378,7 +382,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
       return _buildBloodPressureXAxisWithUnit(
         labelRow: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(visibleMonths, (i) {
             final m = startIndex + i + 1;
             return Expanded(
@@ -402,7 +405,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     final startDate = endDate.subtract(Duration(days: days - 1));
 
     final dateRow = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(days, (i) {
         final date = startDate.add(Duration(days: i));
         return Expanded(
@@ -1290,9 +1292,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                       highlightedIndex: selectedChartPointIndex,
                       isToday: _isToday(),
                       timeOffset: timeOffset,
-                      cellCenterXSlots:
-                          selectedPeriod == '주' || selectedPeriod == '월',
+                      cellCenterXSlots: true,
                       topPlotPad: healthWeightChartVertPad(context),
+                      scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                      xUnitReservedWidth: healthDp(context,
+                          ChartConstants.weightXAxisUnitReservedWidth),
                       bottomPlotPad: healthWeightChartBottomPlotPad(context),
                     ),
                   ),
@@ -1329,8 +1333,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     double chartWidth,
     double chartHeight,
   ) {
-    final cellCenter =
-        selectedPeriod == '주' || selectedPeriod == '월';
     final hit = hitTestBloodPressureChartSlot(
       tapPosition: tapPosition,
       chartData: chartData,
@@ -1338,9 +1340,12 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       maxValue: maxValue,
       chartWidth: chartWidth,
       chartHeight: chartHeight,
-      cellCenterXSlots: cellCenter,
+      cellCenterXSlots: true,
       topPadding: healthWeightChartVertPad(context),
       bottomPadding: healthWeightChartBottomPlotPad(context),
+      scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+      xUnitReservedWidth: healthDp(
+          context, ChartConstants.weightXAxisUnitReservedWidth),
     );
     _setChartState(() {
       if (hit == null) {

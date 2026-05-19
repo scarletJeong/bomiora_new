@@ -4,16 +4,16 @@ import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_period_selector.dart';
-import '../../weight/widgets/weight_chart_section.dart';
 import 'heart_rate_tooltip.dart';
 
 double _plotLeftPad() => ChartConstants.weightDailyChartInnerPadH;
 
-double _plotRightPad() =>
+double _plotRightPad([double? xUnitReservedWidth]) =>
     ChartConstants.weightDailyChartInnerPadH +
-    ChartConstants.weightXAxisUnitReservedWidth;
+    (xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth);
 
 /// 주·월(캘린더 월) 슬롯 중심 X. 날짜 라벨(7칸 Expanded) 중심과 맞춤: (index+0.5)/7.
 double? heartRatePeriodSlotCenterX({
@@ -22,12 +22,13 @@ double? heartRatePeriodSlotCenterX({
   required double timeOffset,
   required bool useCalendarYearMonths,
   required double chartWidth,
+  double? xUnitReservedWidth,
 }) {
   final xPosition = data['xPosition'] as double?;
   if (xPosition == null) return null;
 
   final leftPad = _plotLeftPad();
-  final rightPad = _plotRightPad();
+  final rightPad = _plotRightPad(xUnitReservedWidth);
   final effW = chartWidth - leftPad - rightPad;
   if (effW <= 0) return null;
 
@@ -61,6 +62,124 @@ double? heartRatePeriodSlotCenterX({
   // 슬롯 중심((index+0.5)/7)과 정확히 정렬된다.
   final dataIndex = (xPosition * (totalDays - 1)).round().clamp(0, totalDays - 1);
   return leftPad + effW * (dataIndex + 0.5) / 7;
+}
+
+Widget buildHeartRateXAxisLabels({
+  required BuildContext context,
+  required String selectedPeriod,
+  required DateTime selectedDate,
+  required double timeOffset,
+}) {
+  if (selectedPeriod == '일') {
+    const maxStartHour = 18;
+    final startHour = (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selDay =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final isToday = selDay == today;
+    final currentHour = now.hour;
+
+    return _buildHeartRateXAxisWithUnit(
+      context: context,
+      labelRow: Row(
+        children: List.generate(7, (i) {
+          final hour = (startHour + i).clamp(0, 24);
+          final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
+          final isCurrentHour = isToday && hour == currentHour;
+          return Expanded(
+            child: Text(
+              hourLabel,
+              textAlign: TextAlign.center,
+              style: healthChartAxisTickTextStyle(
+                context,
+                color: isCurrentHour ? healthChartAxisCurrentHourColor : null,
+              ),
+            ),
+          );
+        }),
+      ),
+      unitText: '(시)',
+    );
+  }
+
+  if (selectedPeriod == '월') {
+    const totalMonths = 12;
+    const visibleMonths = 7;
+    final maxStart = totalMonths - visibleMonths;
+    final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+
+    return _buildHeartRateXAxisWithUnit(
+      context: context,
+      labelRow: Row(
+        children: List.generate(visibleMonths, (i) {
+          final m = startIndex + i + 1;
+          return Expanded(
+            child: Text(
+              '$m',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              style: healthChartAxisTickTextStyle(context),
+            ),
+          );
+        }),
+      ),
+      unitText: '(월)',
+    );
+  }
+
+  const days = 7;
+  final endDate =
+      DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+  final startDate = endDate.subtract(Duration(days: days - 1));
+
+  return _buildHeartRateXAxisWithUnit(
+    context: context,
+    labelRow: Row(
+      children: List.generate(days, (i) {
+        final date = startDate.add(Duration(days: i));
+        return Expanded(
+          child: Text(
+            '${date.day}',
+            textAlign: TextAlign.center,
+            style: healthChartAxisTickTextStyle(context),
+          ),
+        );
+      }),
+    ),
+    unitText: '(일)',
+  );
+}
+
+Widget _buildHeartRateXAxisWithUnit({
+  required BuildContext context,
+  required Widget labelRow,
+  required String unitText,
+}) {
+  final unitReserve =
+      healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
+  return Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Padding(
+        padding: EdgeInsets.only(right: unitReserve),
+        child: labelRow,
+      ),
+      Positioned(
+        right: -healthDp(context, 10),
+        top: healthDp(context, 1),
+        bottom: 0,
+        child: Align(
+          alignment: Alignment.center,
+          child: Text(
+            unitText,
+            style: healthChartAxisUnitTextStyle(context),
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 /// 심박수 주·월(연간 월 축) 전용 차트. [PeriodChartWidget]에 넣지 않음.
@@ -178,7 +297,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
                   ChartConstants.weightChartYAxisStripWidth,
                 ),
               ),
-              child: buildWeightXAxisLabels(
+              child: buildHeartRateXAxisLabels(
                 context: context,
                 selectedPeriod: widget.selectedPeriod,
                 selectedDate: widget.selectedDate,
@@ -231,6 +350,11 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
                   useCalendarYearMonths: widget.useCalendarYearMonths,
                   topPlotPad: topPad,
                   bottomPlotPad: botPad,
+                  scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                  xUnitReservedWidth: healthDp(
+                    context,
+                    ChartConstants.weightXAxisUnitReservedWidth,
+                  ),
                 ),
                 size: Size(chartAreaWidth, chartAreaHeight),
               ),
@@ -262,9 +386,10 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
 
     final minValue = widget.yLabels[widget.yAxisCount - 1];
     final maxValue = widget.yLabels[0];
-    const barWidth = 10.0;
-    const minBarHeight = 5.0;
-    const dotRadius = 6.0;
+    final scale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final barWidth = 10.0 * scale;
+    final minBarHeight = 5.0 * scale;
+    final dotRadius = 6.0 * scale;
     const hitSlop = 14.0;
 
     final plotH = chartHeight - topPadding - bottomPadding;
@@ -274,8 +399,10 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
     }
 
     // 탭된 x로부터 "가장 가까운 슬롯 인덱스"를 역산해서 후보만 검사 (성능 개선)
+    final unitReserve =
+        healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
     final leftPad = _plotLeftPad();
-    final rightPad = _plotRightPad();
+    final rightPad = _plotRightPad(unitReserve);
     final effW = chartWidth - leftPad - rightPad;
     if (effW <= 0) {
       widget.onTooltipChanged(null, null);
@@ -374,6 +501,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
           timeOffset: widget.timeOffset,
           useCalendarYearMonths: widget.useCalendarYearMonths,
           chartWidth: chartWidth,
+          xUnitReservedWidth: unitReserve,
         );
       }
 
@@ -446,6 +574,10 @@ class _HeartRateChartPainter extends CustomPainter {
   final double topPlotPad;
   final double bottomPlotPad;
 
+  /// 375 기준 1.0 — healthTextScaleByWidth 값을 넘긴다.
+  final double scale;
+  final double? xUnitReservedWidth;
+
   _HeartRateChartPainter({
     required this.chartData,
     required this.yLabels,
@@ -456,6 +588,8 @@ class _HeartRateChartPainter extends CustomPainter {
     required this.useCalendarYearMonths,
     required this.topPlotPad,
     required this.bottomPlotPad,
+    this.scale = 1.0,
+    this.xUnitReservedWidth,
   });
 
   @override
@@ -466,28 +600,14 @@ class _HeartRateChartPainter extends CustomPainter {
     final maxValue = yLabels[0];
 
     final leftPad = _plotLeftPad();
-    final rightPad = _plotRightPad();
-
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-
-    for (int i = 0; i < yAxisCount; i++) {
-      final y = topPlotPad +
-          (size.height - topPlotPad - bottomPlotPad) * i / (yAxisCount - 1);
-      canvas.drawLine(
-        Offset(leftPad, y),
-        Offset(size.width - rightPad, y),
-        gridPaint,
-      );
-    }
+    final rightPad = _plotRightPad(xUnitReservedWidth);
 
     if (maxValue == minValue) return;
 
-    const barWidth = 10.0;
-    const minBarHeight = 5.0;
-    const dotOuter = 6.0;
-    const dotInner = 4.0;
+    final barWidth = 10.0 * scale;
+    final minBarHeight = 5.0 * scale;
+    final dotOuter = 6.0 * scale;
+    final dotInner = 4.0 * scale;
 
     final plotH = size.height - topPlotPad - bottomPlotPad;
     if (plotH <= 0) return;
@@ -508,6 +628,7 @@ class _HeartRateChartPainter extends CustomPainter {
         timeOffset: timeOffset,
         useCalendarYearMonths: useCalendarYearMonths,
         chartWidth: size.width,
+        xUnitReservedWidth: xUnitReservedWidth,
       );
       if (x == null) continue;
 
@@ -559,8 +680,8 @@ class _HeartRateChartPainter extends CustomPainter {
         } else if (kind == 'dot') {
           final bpm = seg['bpm'] as int;
           final y = toY(bpm.toDouble());
-          final rOuter = isSelected ? 8.0 : dotOuter;
-          final rInner = isSelected ? 5.0 : dotInner;
+          final rOuter = isSelected ? 8.0 * scale : dotOuter;
+          final rInner = isSelected ? 5.0 * scale : dotInner;
           if (exercise) {
             canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);
             canvas.drawCircle(Offset(x, y), rInner, Paint()..color = Colors.white);
@@ -593,6 +714,8 @@ class _HeartRateChartPainter extends CustomPainter {
         oldDelegate.yAxisCount != yAxisCount ||
         oldDelegate.useCalendarYearMonths != useCalendarYearMonths ||
         oldDelegate.topPlotPad != topPlotPad ||
-        oldDelegate.bottomPlotPad != bottomPlotPad;
+        oldDelegate.bottomPlotPad != bottomPlotPad ||
+        oldDelegate.scale != scale ||
+        oldDelegate.xUnitReservedWidth != xUnitReservedWidth;
   }
 }

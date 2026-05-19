@@ -289,6 +289,9 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       maxValue: 250,
       topPlotPad: topPad,
       bottomPlotPad: botPad,
+      scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+      xUnitReservedWidth:
+          healthDp(context, ChartConstants.weightXAxisUnitReservedWidth),
     );
     _DailyChartTooltip? nextTooltip;
     if (idx == null) {
@@ -438,9 +441,6 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     final startHour =
         (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
     final endHour = startHour + 6;
-    final minHour = startHour.toDouble();
-    final range = (endHour - minHour).toDouble();
-    if (range <= 0) return [];
 
     final records = _recordsForSelectedDate();
     final groups = <String, List<HeartRateRecord>>{};
@@ -463,9 +463,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       final color =
           _heartRateColorForStatus(isEx ? '운동' : '일상');
 
-      /// X축 정수 시 라벨(10시)과 동일: 해당 시각 0분 위치 (평균 시각 아님)
-      final hourTickX =
-          (bucketHour - minHour) / range.clamp(0.001, double.infinity);
+      /// X축 7칸 라벨 중앙과 동일: (slot + 0.5) / 7
+      final slot = bucketHour - startHour;
+      if (slot < 0 || slot >= 7) continue;
+      final hourTickX = (slot + 0.5) / 7.0;
       if (list.length >= 2) {
         final bpms = list.map((r) => r.heartRate).toList();
         final minB = bpms.reduce(math.min);
@@ -1046,6 +1047,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                             maxValue: 250,
                                             topPlotPad: topPad,
                                             bottomPlotPad: botPad,
+                                            scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
+                                            xUnitReservedWidth: healthDp(
+                                              context,
+                                              ChartConstants
+                                                  .weightXAxisUnitReservedWidth,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1074,7 +1081,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                   ChartConstants.weightChartYAxisStripWidth,
                 ),
               ),
-              child: buildWeightXAxisLabels(
+              child: buildHeartRateXAxisLabels(
                 context: context,
                 selectedPeriod: '일',
                 selectedDate: selectedDate,
@@ -1306,22 +1313,27 @@ class _HeartRateChartPainter extends CustomPainter {
   final double topPlotPad;
   final double bottomPlotPad;
 
+  /// 375 기준 1.0 — healthTextScaleByWidth 값을 넘긴다.
+  final double scale;
+  final double? xUnitReservedWidth;
+
   _HeartRateChartPainter({
     required this.visuals,
     required this.minValue,
     required this.maxValue,
     required this.topPlotPad,
     required this.bottomPlotPad,
+    this.scale = 1.0,
+    this.xUnitReservedWidth,
   });
 
   static const double _leftPad = ChartConstants.weightDailyChartInnerPadH;
-  // X축 라벨(끝의 '(시)')이 차지하는 오른쪽 여백과 동일하게 맞춰야
-  // 정시 라벨 중심과 점/막대가 정확히 정렬된다.
-  static const double _rightPad = ChartConstants.weightDailyChartInnerPadH +
-      ChartConstants.weightXAxisUnitReservedWidth;
-  static const double _dotRadius = 6.0;
-  static const double _barWidth = 10.0;
-  static const double _minBarHeight = 5.0;
+  static double _rightPad([double? xUnitReservedWidth]) =>
+      ChartConstants.weightDailyChartInnerPadH +
+      (xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth);
+  static const double _baseDotRadius = 6.0;
+  static const double _baseBarWidth = 10.0;
+  static const double _baseMinBarHeight = 5.0;
   static const double _hitSlop = 14.0;
 
   /// 탭 위치가 점/막대에 가까우면 인덱스, 아니면 null (위에서 그린 순서 우선)
@@ -1333,12 +1345,18 @@ class _HeartRateChartPainter extends CustomPainter {
     required double maxValue,
     required double topPlotPad,
     required double bottomPlotPad,
+    double scale = 1.0,
+    double? xUnitReservedWidth,
   }) {
     if (visuals.isEmpty) return null;
     final plotH = size.height - topPlotPad - bottomPlotPad;
-    final plotW = size.width - _leftPad - _rightPad;
+    final plotW = size.width - _leftPad - _rightPad(xUnitReservedWidth);
     final rangeBpm = maxValue - minValue;
     if (rangeBpm <= 0 || plotW <= 0 || plotH <= 0) return null;
+
+    final dotRadius = _baseDotRadius * scale;
+    final barWidth = _baseBarWidth * scale;
+    final minBarHeight = _baseMinBarHeight * scale;
 
     double toY(double bpm) {
       final n = (maxValue - bpm) / rangeBpm;
@@ -1357,21 +1375,21 @@ class _HeartRateChartPainter extends CustomPainter {
           yLow = t;
         }
         var barH = yLow - yHigh;
-        if (barH < _minBarHeight) {
+        if (barH < minBarHeight) {
           final mid = (yHigh + yLow) / 2;
-          yHigh = mid - _minBarHeight / 2;
-          barH = _minBarHeight;
+          yHigh = mid - minBarHeight / 2;
+          barH = minBarHeight;
         }
         final rect = Rect.fromLTRB(
-          x - _barWidth / 2 - _hitSlop,
+          x - barWidth / 2 - _hitSlop,
           yHigh - _hitSlop,
-          x + _barWidth / 2 + _hitSlop,
+          x + barWidth / 2 + _hitSlop,
           yHigh + barH + _hitSlop,
         );
         if (rect.contains(local)) return i;
       } else {
         final y = toY(v.singleBpm.toDouble());
-        if ((local - Offset(x, y)).distance <= _dotRadius + _hitSlop) {
+        if ((local - Offset(x, y)).distance <= dotRadius + _hitSlop) {
           return i;
         }
       }
@@ -1387,25 +1405,11 @@ class _HeartRateChartPainter extends CustomPainter {
     );
 
     const leftPad = _leftPad;
-    const rightPad = _rightPad;
+    final rightPad = _rightPad(xUnitReservedWidth);
     final topPad = topPlotPad;
     final botPad = bottomPlotPad;
     final plotH = size.height - topPad - botPad;
     final plotW = size.width - leftPad - rightPad;
-
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-
-    const yAxisCount = 5;
-    for (int i = 0; i < yAxisCount; i++) {
-      final y = topPad + plotH * i / (yAxisCount - 1);
-      canvas.drawLine(
-        Offset(leftPad, y),
-        Offset(size.width - rightPad, y),
-        gridPaint,
-      );
-    }
 
     if (visuals.isEmpty) return;
 
@@ -1417,9 +1421,9 @@ class _HeartRateChartPainter extends CustomPainter {
       return topPad + plotH * n;
     }
 
-    const dotRadius = _dotRadius;
-    const barWidth = _barWidth;
-    const minBarHeight = _minBarHeight;
+    final dotRadius = _baseDotRadius * scale;
+    final barWidth = _baseBarWidth * scale;
+    final minBarHeight = _baseMinBarHeight * scale;
 
     for (final v in visuals) {
       final x = leftPad + plotW * v.xNorm.clamp(0.0, 1.0);
@@ -1466,6 +1470,8 @@ class _HeartRateChartPainter extends CustomPainter {
         oldDelegate.minValue != minValue ||
         oldDelegate.maxValue != maxValue ||
         oldDelegate.topPlotPad != topPlotPad ||
-        oldDelegate.bottomPlotPad != bottomPlotPad;
+        oldDelegate.bottomPlotPad != bottomPlotPad ||
+        oldDelegate.scale != scale ||
+        oldDelegate.xUnitReservedWidth != xUnitReservedWidth;
   }
 }

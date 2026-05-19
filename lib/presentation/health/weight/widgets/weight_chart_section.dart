@@ -450,15 +450,7 @@ class _WeightEmptyChartGridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-
-    final n = horizontalSegments < 1 ? 1 : horizontalSegments;
-    for (int i = 0; i <= n; i++) {
-      final y = size.height * i / n;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
+    // 빈 차트도 데이터 영역의 배경 라인을 표시하지 않는다.
   }
 
   @override
@@ -755,6 +747,8 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
                                         bottomPlotPad:
                                             healthWeightChartBottomPlotPad(
                                                 context),
+                                        scale: healthTextScaleByWidth(
+                                            MediaQuery.of(context).size.width),
                                       ),
                                       size: Size(chartW, zoneH),
                                     ),
@@ -949,6 +943,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
   final bool omitOutOfRangeWeights;
   final double topPlotPad;
   final double bottomPlotPad;
+  final double scale;
 
   _WeightMonthlyRangePainter({
     required this.chartData,
@@ -958,6 +953,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
     required this.omitOutOfRangeWeights,
     required this.topPlotPad,
     required this.bottomPlotPad,
+    this.scale = 1.0,
   });
 
   static const int _totalMonths = 12;
@@ -976,19 +972,6 @@ class _WeightMonthlyRangePainter extends CustomPainter {
     const double rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
     final chartWidth = size.width - leftPadding - rightPadding;
     final chartHeight = size.height - topPlotPad - bottomPlotPad;
-
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-    final gridSegments = yLabels.length - 1;
-    for (int i = 0; i <= gridSegments; i++) {
-      final y = topPlotPad + chartHeight * i / gridSegments;
-      canvas.drawLine(
-        Offset(leftPadding, y),
-        Offset(size.width - rightPadding, y),
-        gridPaint,
-      );
-    }
 
     final maxStart = _totalMonths - _visibleMonths;
     final startIndex =
@@ -1032,13 +1015,13 @@ class _WeightMonthlyRangePainter extends CustomPainter {
 
       // 월별은 "해당 월 측정 2건 이상"이면 높이가 작아도 막대로 유지
       if (count == 1) {
-        final radius = selectedIndex == dataIndex ? 6.5 : 5.0;
+        final radius = (selectedIndex == dataIndex ? 6.5 : 5.0) * scale;
         canvas.drawCircle(
             Offset(x, (yMin + yMax) / 2), radius, singlePointPaint);
       } else {
         final effectivePaint = Paint()
           ..color = const Color(0xFFFF5A8D)
-          ..strokeWidth = selectedIndex == dataIndex ? 12 : 10
+          ..strokeWidth = (selectedIndex == dataIndex ? 12 : 10) * scale
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke;
         canvas.drawLine(Offset(x, yMax), Offset(x, yMin), effectivePaint);
@@ -1054,7 +1037,8 @@ class _WeightMonthlyRangePainter extends CustomPainter {
         oldDelegate.selectedIndex != selectedIndex ||
         oldDelegate.omitOutOfRangeWeights != omitOutOfRangeWeights ||
         oldDelegate.topPlotPad != topPlotPad ||
-        oldDelegate.bottomPlotPad != bottomPlotPad;
+        oldDelegate.bottomPlotPad != bottomPlotPad ||
+        oldDelegate.scale != scale;
   }
 }
 
@@ -1167,6 +1151,10 @@ class _WeightWeeklyRangeChart extends StatelessWidget {
                                                 bottomPlotPad:
                                                     healthWeightChartBottomPlotPad(
                                                         context),
+                                                scale: healthTextScaleByWidth(
+                                                    MediaQuery.of(context)
+                                                        .size
+                                                        .width),
                                               ),
                                               size: Size(plotW, plotH),
                                             ),
@@ -1385,6 +1373,7 @@ class _WeightWeeklyRangePainter extends CustomPainter {
   final bool omitOutOfRangeWeights;
   final double topPlotPad;
   final double bottomPlotPad;
+  final double scale;
 
   _WeightWeeklyRangePainter({
     required this.chartData,
@@ -1393,6 +1382,7 @@ class _WeightWeeklyRangePainter extends CustomPainter {
     this.omitOutOfRangeWeights = false,
     required this.topPlotPad,
     required this.bottomPlotPad,
+    this.scale = 1.0,
   });
 
   @override
@@ -1410,19 +1400,6 @@ class _WeightWeeklyRangePainter extends CustomPainter {
     const double rightPadding = ChartConstants.weightXAxisUnitReservedWidth;
     final chartWidth = size.width - leftPadding - rightPadding;
     final chartHeight = size.height - topPlotPad - bottomPlotPad;
-
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-    final gridSegments = yLabels.length - 1;
-    for (int i = 0; i <= gridSegments; i++) {
-      final y = topPlotPad + chartHeight * i / gridSegments;
-      canvas.drawLine(
-        Offset(leftPadding, y),
-        Offset(size.width - rightPadding, y),
-        gridPaint,
-      );
-    }
 
     final singlePointPaint = Paint()
       ..color = const Color(0xFFFF5A8D)
@@ -1463,7 +1440,7 @@ class _WeightWeeklyRangePainter extends CustomPainter {
       final drawableBottom = size.height - bottomPlotPad;
 
       if (dayCount == 1 || (yLo - yHi).abs() < 2) {
-        final radius = selectedIndex == i ? 6.5 : 5.0;
+        final radius = (selectedIndex == i ? 6.5 : 5.0) * scale;
         final cy = ((yLo + yHi) / 2).clamp(drawableTop, drawableBottom);
         canvas.drawCircle(Offset(x, cy), radius, singlePointPaint);
       } else {
@@ -1474,13 +1451,13 @@ class _WeightWeeklyRangePainter extends CustomPainter {
         if ((cb - ct).abs() < 0.5) {
           canvas.drawCircle(
             Offset(x, ((ct + cb) / 2).clamp(drawableTop, drawableBottom)),
-            selectedIndex == i ? 6.5 : 5.0,
+            (selectedIndex == i ? 6.5 : 5.0) * scale,
             singlePointPaint,
           );
         } else {
           final effectivePaint = Paint()
             ..color = const Color(0xFFFF5A8D)
-            ..strokeWidth = selectedIndex == i ? 12 : 10
+            ..strokeWidth = (selectedIndex == i ? 12 : 10) * scale
             ..strokeCap = StrokeCap.round
             ..style = PaintingStyle.stroke;
           canvas.drawLine(Offset(x, ct), Offset(x, cb), effectivePaint);
@@ -1496,7 +1473,8 @@ class _WeightWeeklyRangePainter extends CustomPainter {
         oldDelegate.selectedIndex != selectedIndex ||
         oldDelegate.omitOutOfRangeWeights != omitOutOfRangeWeights ||
         oldDelegate.topPlotPad != topPlotPad ||
-        oldDelegate.bottomPlotPad != bottomPlotPad;
+        oldDelegate.bottomPlotPad != bottomPlotPad ||
+        oldDelegate.scale != scale;
   }
 }
 

@@ -2498,25 +2498,9 @@ class WeightChartPainter extends CustomPainter {
     final weightRange = maxWeight - minWeight;
     if (weightRange == 0) return;
 
-    // 그리드 선 그리기 (패딩 적용)
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-
     const double leftPadding = ChartConstants.weightDailyChartInnerPadH;
     const double rightPadding = ChartConstants.weightDailyChartInnerPadH +
         ChartConstants.weightXAxisUnitReservedWidth;
-    final gridSegments = yLabels.length - 1;
-
-    for (int i = 0; i <= gridSegments; i++) {
-      final y = topPadding +
-          (size.height - topPadding - bottomPadding) * i / gridSegments;
-      canvas.drawLine(
-        Offset(leftPadding, y),
-        Offset(size.width - rightPadding, y),
-        gridPaint,
-      );
-    }
 
     // 데이터: 같은 시(hour)에 2건 이상이면 막대, 그 외는 점
     List<Offset> points = [];

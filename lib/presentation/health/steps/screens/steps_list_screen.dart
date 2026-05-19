@@ -637,12 +637,17 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                           behavior: HitTestBehavior.opaque,
                           onTapDown: (d) {
                             if (visibleData.isEmpty) return;
-                            final w = math.max(constraints.maxWidth, 1.0);
+                            final contentW = math.max(
+                              constraints.maxWidth - chartPadRight,
+                              1.0,
+                            );
                             final localX =
-                                d.localPosition.dx.clamp(0.0, w);
-                            final idx = ((localX / w) * visibleData.length)
-                                .floor()
-                                .clamp(0, visibleData.length - 1);
+                                d.localPosition.dx.clamp(0.0, contentW);
+                            final idx = _hitVisibleBarIndex(
+                              localX,
+                              visibleData.length,
+                              contentW,
+                            );
                             if (visibleData[idx].value <= 0) {
                               setState(() {
                                 _tooltipIndex = null;
@@ -652,8 +657,14 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             }
                             setState(() {
                               _tooltipIndex = idx;
-                              _tooltipPosition =
-                                  Offset(localX, healthDp(context, 30));
+                              _tooltipPosition = Offset(
+                                _visibleBarCenterX(
+                                  idx,
+                                  visibleData.length,
+                                  contentW,
+                                ),
+                                healthDp(context, 30),
+                              );
                             });
                           },
                           onPanUpdate:
@@ -684,6 +695,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   topPadding: chartPadTop,
                                   bottomPadding: chartPadBottom,
                                   rightPadding: chartPadRight,
+                                  isDailyHalfHour: selectedPeriod == '일',
+                                  dailyStartSlot: selectedPeriod == '일'
+                                      ? _dailyStartSlot()
+                                      : 0,
                                   barCornerRadius: barCornerR,
                                   minBarHeight: minBarH,
                                   gridStrokeWidth: healthDp(context, 0.5),
@@ -762,6 +777,40 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     };
   }
 
+  int _hitVisibleBarIndex(
+    double localX,
+    int visibleLength,
+    double contentWidth,
+  ) {
+    if (visibleLength <= 1) return 0;
+    final safeW = math.max(contentWidth, 1.0);
+    if (selectedPeriod == '일') {
+      final startParity = _dailyStartSlot().isOdd ? 1 : 0;
+      final relHalf = ((localX / safeW) * 7.0 - 0.5) * 2.0;
+      return (relHalf - startParity)
+          .round()
+          .clamp(0, visibleLength - 1);
+    }
+    return ((localX / safeW) * visibleLength)
+        .floor()
+        .clamp(0, visibleLength - 1);
+  }
+
+  double _visibleBarCenterX(
+    int index,
+    int visibleLength,
+    double contentWidth,
+  ) {
+    final safeW = math.max(contentWidth, 1.0);
+    if (selectedPeriod == '일') {
+      final startParity = _dailyStartSlot().isOdd ? 1 : 0;
+      final relHalf = startParity + index;
+      return safeW * ((0.5 + (relHalf / 2.0)) / 7.0);
+    }
+    final slotW = safeW / math.max(visibleLength, 1);
+    return slotW * (index + 0.5);
+  }
+
   List<_StepsBarData> _buildPeriodChartData() {
     if (selectedPeriod == '일') {
       final raw = todayStepsRecord?.halfHourSteps ?? const <int>[];
@@ -817,9 +866,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
   List<String> _buildXAxisLabels() {
     if (selectedPeriod == '일') {
-      const visibleSlots = 12;
-      const maxStart = 48 - visibleSlots;
-      final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+      final startIndex = _dailyStartSlot();
       return List<String>.generate(7, (i) {
         final hour = ((startIndex + (i * 2)) ~/ 2).toString().padLeft(2, '0');
         return hour;
@@ -838,8 +885,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   List<_StepsBarData> _buildVisibleChartData(List<_StepsBarData> data) {
     if (selectedPeriod == '일') {
       const visibleSlots = 12;
-      final maxStart = data.length - visibleSlots;
-      final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+      final startIndex = _dailyStartSlot();
       return data.sublist(startIndex, startIndex + visibleSlots);
     }
     if (selectedPeriod == '월') {
@@ -849,6 +895,12 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       return data.sublist(startIndex, startIndex + visibleMonths);
     }
     return data;
+  }
+
+  int _dailyStartSlot() {
+    const visibleSlots = 12;
+    const maxStart = 48 - visibleSlots;
+    return (timeOffset * maxStart).round().clamp(0, maxStart);
   }
 
   Widget _buildXAxisLabelRow(BuildContext context, List<String> labels) {
@@ -867,9 +919,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
     late final List<Widget> rowChildren;
     if (selectedPeriod == '일') {
-      const visibleSlots = 12;
-      const maxStart = 48 - visibleSlots;
-      final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
+      final startIndex = _dailyStartSlot();
       rowChildren = List.generate(7, (i) {
         final hour = (startIndex + (i * 2)) ~/ 2;
         final hourLabel = hour.toString().padLeft(2, '0');
@@ -1046,6 +1096,8 @@ class _StepsBarChartPainter extends CustomPainter {
   final double topPadding;
   final double bottomPadding;
   final double rightPadding;
+  final bool isDailyHalfHour;
+  final int dailyStartSlot;
   final double barCornerRadius;
   final double minBarHeight;
   final double gridStrokeWidth;
@@ -1058,6 +1110,8 @@ class _StepsBarChartPainter extends CustomPainter {
     this.topPadding = 20,
     this.bottomPadding = 20,
     this.rightPadding = 18,
+    this.isDailyHalfHour = false,
+    this.dailyStartSlot = 0,
     this.barCornerRadius = 10,
     this.minBarHeight = 4,
     this.gridStrokeWidth = 0.5,
@@ -1070,18 +1124,9 @@ class _StepsBarChartPainter extends CustomPainter {
     final chartWidth = size.width - rightPadding;
     final chartHeight = size.height - topPadding - bottomPadding;
 
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = gridStrokeWidth;
     final barPaint = Paint()
       ..color = const Color(0xFFFF5A8D)
       ..style = PaintingStyle.fill;
-
-    final segments = math.max(yTickCount - 1, 1);
-    for (int i = 0; i <= segments; i++) {
-      final y = topPadding + chartHeight * i / segments;
-      canvas.drawLine(Offset(0, y), Offset(chartWidth, y), gridPaint);
-    }
 
     final slotWidth = chartWidth / data.length;
     final scaleMax = maxValue <= 0 ? 1 : maxValue;
@@ -1094,7 +1139,11 @@ class _StepsBarChartPainter extends CustomPainter {
       );
       if (barHeight == 0) continue;
 
-      final x = slotWidth * i + (slotWidth - barWidth) / 2;
+      final xCenter = isDailyHalfHour
+          ? chartWidth *
+              ((0.5 + (((dailyStartSlot.isOdd ? 1 : 0) + i) / 2.0)) / 7.0)
+          : slotWidth * (i + 0.5);
+      final x = xCenter - (barWidth / 2);
       final y = topPadding + chartHeight - barHeight;
       final rect = RRect.fromRectAndCorners(
         Rect.fromLTWH(x, y, barWidth, barHeight),
@@ -1116,6 +1165,8 @@ class _StepsBarChartPainter extends CustomPainter {
         oldDelegate.topPadding != topPadding ||
         oldDelegate.bottomPadding != bottomPadding ||
         oldDelegate.rightPadding != rightPadding ||
+        oldDelegate.isDailyHalfHour != isDailyHalfHour ||
+        oldDelegate.dailyStartSlot != dailyStartSlot ||
         oldDelegate.barCornerRadius != barCornerRadius ||
         oldDelegate.minBarHeight != minBarHeight ||
         oldDelegate.gridStrokeWidth != gridStrokeWidth;

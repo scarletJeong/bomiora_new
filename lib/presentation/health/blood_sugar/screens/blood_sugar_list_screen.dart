@@ -237,13 +237,15 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       double minHourDiff,
       double maxHourDiff) {
     const normalizedMinute = 0;
-    final range = maxHourDiff - minHourDiff;
+    const slotCount = 7;
+    final windowStartHour = minHourDiff.round();
+    final slot = recordHour - windowStartHour;
 
-    // 단일 데이터도 분 단위가 아닌 해당 시간 정각 슬롯에 고정
-    final xPosition = (recordHour - minHourDiff) / range;
-    if (xPosition < 0.0 || xPosition > 1.0) {
+    // X축 7칸 균등 분할 중앙 — 라벨(Expanded·center)과 동일
+    if (slot < 0 || slot >= slotCount) {
       return null;
     }
+    final xPosition = (slot + 0.5) / slotCount;
 
     final dateStr = '$recordHour시';
 
@@ -282,7 +284,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         return recordDateStr == dateKey;
       }).toList();
 
-      final xPos = days <= 1 ? 0.5 : i / (days - 1);
+      final xPos = (i + 0.5) / days;
       final dateLabel = '${date.day}';
 
       if (dayRecords.isEmpty) continue;
@@ -341,7 +343,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
           )
           .toList();
 
-      final xPos = visibleMonths <= 1 ? 0.5 : i / (visibleMonths - 1);
+      final xPos = (i + 0.5) / visibleMonths;
       final label = '$month월';
 
       if (monthRecords.isEmpty) continue;

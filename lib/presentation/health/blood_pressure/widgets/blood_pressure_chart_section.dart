@@ -123,6 +123,11 @@ class BloodPressureChartPainter extends CustomPainter {
   final double topPlotPad;
   final double bottomPlotPad;
 
+  /// 375 기준 1.0 — healthTextScaleByWidth 값을 넘긴다.
+  final double scale;
+  /// 위젯 라벨 row의 (시)/(일)/(월) 오른쪽 여백과 동일하게 painter에도 전달.
+  final double? xUnitReservedWidth;
+
   BloodPressureChartPainter(
     this.data,
     this.minValue,
@@ -134,17 +139,28 @@ class BloodPressureChartPainter extends CustomPainter {
     this.cellCenterXSlots = false,
     this.topPlotPad = 20,
     this.bottomPlotPad = 10,
+    this.scale = 1.0,
+    this.xUnitReservedWidth,
   });
 
-  static const double _borderWidth = 0.5;
-  static const double _pointRadius = 5.0;
+  static const double borderWidth = 0.5;
+  static const double basePointRadius = 5.0;
+
+  /// X축 라벨 행에 적용할 좌우 inset (375 기준). 위젯에서 scale 반영 후 사용.
+  static const double baseXInset = borderWidth + basePointRadius;
 
   /// X축 라벨 Row의 `weightXAxisUnitReservedWidth`와 동일하게 오른쪽 여백 제외
-  static double _contentWidth(double plotWidth) {
+  static double _contentWidth(
+    double plotWidth, {
+    double pointRadius = basePointRadius,
+    double? xUnitReservedWidth,
+  }) {
+    final unit =
+        xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth;
     return plotWidth -
-        (_borderWidth * 2) -
-        (_pointRadius * 2) -
-        ChartConstants.weightXAxisUnitReservedWidth;
+        (borderWidth * 2) -
+        (pointRadius * 2) -
+        unit;
   }
 
   /// 탭 히트 영역과 동일한 슬롯 중심 X
@@ -153,9 +169,15 @@ class BloodPressureChartPainter extends CustomPainter {
     int slotCount,
     double plotWidth, {
     required bool cellCenterXSlots,
+    double pointRadius = basePointRadius,
+    double? xUnitReservedWidth,
   }) {
-    final left = _borderWidth + _pointRadius;
-    final cw = _contentWidth(plotWidth);
+    final left = borderWidth + pointRadius;
+    final cw = _contentWidth(
+      plotWidth,
+      pointRadius: pointRadius,
+      xUnitReservedWidth: xUnitReservedWidth,
+    );
     if (cw <= 1) {
       return plotWidth / 2;
     }
@@ -173,8 +195,14 @@ class BloodPressureChartPainter extends CustomPainter {
     double plotWidth,
     int slotCount, {
     required bool cellCenterXSlots,
+    double pointRadius = basePointRadius,
+    double? xUnitReservedWidth,
   }) {
-    final cw = _contentWidth(plotWidth);
+    final cw = _contentWidth(
+      plotWidth,
+      pointRadius: pointRadius,
+      xUnitReservedWidth: xUnitReservedWidth,
+    );
     if (cw <= 1 || slotCount < 1) return 24.0;
     if (slotCount == 1) return cw * 0.48;
     if (cellCenterXSlots) {
@@ -188,47 +216,16 @@ class BloodPressureChartPainter extends CustomPainter {
     if (data.isEmpty) return;
 
     // 막대 두께는 체중 주/월 막대와 동일(10 / 선택 12). 단일 점은 체중 일별과 같이 5 / 선택 8
-    const double highlightRadius = 8.0;
-    const double barStrokeWidth = 10.0;
-    final left = _borderWidth + _pointRadius;
-    final contentW = _contentWidth(size.width);
+    final double pointRadius = basePointRadius * scale;
+    final double highlightRadius = 8.0 * scale;
+    final double barStrokeWidth = 10.0 * scale;
+    final left = borderWidth + pointRadius;
+    final contentW = _contentWidth(
+      size.width,
+      pointRadius: pointRadius,
+      xUnitReservedWidth: xUnitReservedWidth,
+    );
     final plotRight = left + contentW;
-
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-
-    final dashedGridPaint = Paint()
-      ..color = Colors.grey[200]!
-      ..strokeWidth = 0.5;
-
-    final yValues = (yLabels != null && yLabels!.length >= 2)
-        ? yLabels!
-        : [maxValue, minValue];
-
-    for (int i = 0; i < yValues.length; i++) {
-      double y = topPlotPad +
-          (size.height - topPlotPad - bottomPlotPad) * i / (yValues.length - 1);
-      canvas.drawLine(
-        Offset(left, y),
-        Offset(plotRight, y),
-        gridPaint,
-      );
-    }
-
-    for (int i = 0; i < yValues.length - 1; i++) {
-      final normalizedY = (i + 0.5) / (yValues.length - 1);
-      double y =
-          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalizedY;
-
-      for (double x = left; x < plotRight; x += 4) {
-        canvas.drawLine(
-          Offset(x, y),
-          Offset(x + 2, y),
-          dashedGridPaint,
-        );
-      }
-    }
 
     for (int i = 0; i < data.length; i++) {
       final recordCount = (data[i]['recordCount'] as int?) ?? 0;
@@ -239,6 +236,8 @@ class BloodPressureChartPainter extends CustomPainter {
         data.length,
         size.width,
         cellCenterXSlots: cellCenterXSlots,
+        pointRadius: pointRadius,
+        xUnitReservedWidth: xUnitReservedWidth,
       );
       final isHighlighted = highlightedIndex != null && highlightedIndex == i;
 
@@ -273,7 +272,7 @@ class BloodPressureChartPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       if (recordCount >= 2) {
-        final strokeW = isHighlighted ? 12.0 : barStrokeWidth;
+        final strokeW = isHighlighted ? 12.0 * scale : barStrokeWidth;
 
         final barPaintSys = Paint()
           ..color = _systolicColor
@@ -294,9 +293,9 @@ class BloodPressureChartPainter extends CustomPainter {
         final yDia = toY(diastolicMax);
         // 점도 동일 X (세로 위치만 다름)
         canvas.drawCircle(
-            Offset(x, yDia), isHighlighted ? highlightRadius : _pointRadius, diaPaint);
+            Offset(x, yDia), isHighlighted ? highlightRadius : pointRadius, diaPaint);
         canvas.drawCircle(
-            Offset(x, ySys), isHighlighted ? highlightRadius : _pointRadius, sysPaint);
+            Offset(x, ySys), isHighlighted ? highlightRadius : pointRadius, sysPaint);
 
         if (isHighlighted) {
           canvas.drawCircle(
@@ -331,7 +330,9 @@ class BloodPressureChartPainter extends CustomPainter {
         oldDelegate.timeOffset != timeOffset ||
         oldDelegate.isToday != isToday ||
         oldDelegate.topPlotPad != topPlotPad ||
-        oldDelegate.bottomPlotPad != bottomPlotPad;
+        oldDelegate.bottomPlotPad != bottomPlotPad ||
+        oldDelegate.scale != scale ||
+        oldDelegate.xUnitReservedWidth != xUnitReservedWidth;
   }
 }
 
@@ -349,39 +350,7 @@ class EmptyChartGridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-
-    final dashedGridPaint = Paint()
-      ..color = Colors.grey[200]!
-      ..strokeWidth = 0.5;
-
-    final yValues = yLabels.length >= 2 ? yLabels : [200, 0];
-
-    for (int i = 0; i < yValues.length; i++) {
-      double y = topPlotPad +
-          (size.height - topPlotPad - bottomPlotPad) * i / (yValues.length - 1);
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        gridPaint,
-      );
-    }
-
-    for (int i = 0; i < yValues.length - 1; i++) {
-      final normalizedY = (i + 0.5) / (yValues.length - 1);
-      double y =
-          topPlotPad + (size.height - topPlotPad - bottomPlotPad) * normalizedY;
-
-      for (double x = 0; x < size.width; x += 4) {
-        canvas.drawLine(
-          Offset(x, y),
-          Offset(x + 2, y),
-          dashedGridPaint,
-        );
-      }
-    }
+    // 빈 차트도 배경 그리드를 그리지 않는다.
   }
 
   @override

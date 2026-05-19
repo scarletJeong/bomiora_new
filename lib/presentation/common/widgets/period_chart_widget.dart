@@ -609,11 +609,6 @@ class PeriodChartPainter extends CustomPainter {
     /// 일·주 체중 그래프와 동일한 포인트 색
     const weightPointColor = Color(0xFFFF5A8D);
 
-    // 그리드 선 그리기 (패딩 적용)
-    final gridPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
-
     final double leftPadding = dataType == 'weight'
         ? ChartConstants.weightDailyChartInnerPadH
         : 10.0;
@@ -622,15 +617,6 @@ class PeriodChartPainter extends CustomPainter {
         : 10.0;
     const double topPadding = 20.0;
     const double bottomPadding = 20.0;
-
-    for (int i = 0; i < yAxisCount; i++) {
-      final y = topPadding + (size.height - topPadding - bottomPadding) * i / (yAxisCount - 1);
-      canvas.drawLine(
-        Offset(leftPadding, y),
-        Offset(size.width - rightPadding, y),
-        gridPaint,
-      );
-    }
 
     // 데이터 포인트 계산 및 필터링
     List<Offset> systolicPoints = [];

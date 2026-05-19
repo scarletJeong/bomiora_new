@@ -31,13 +31,19 @@ BloodPressureChartHit? hitTestBloodPressureChartSlot({
   double maxPickDistance = 220,
   double topPadding = 20,
   double bottomPadding = 10,
+  double scale = 1.0,
+  double? xUnitReservedWidth,
 }) {
   if (chartData.isEmpty) return null;
+
+  final pointRadius = BloodPressureChartPainter.basePointRadius * scale;
 
   final halfHitW = BloodPressureChartPainter.slotHitHalfWidth(
     chartWidth,
     chartData.length,
     cellCenterXSlots: cellCenterXSlots,
+    pointRadius: pointRadius,
+    xUnitReservedWidth: xUnitReservedWidth,
   );
 
   int? closestIndex;
@@ -61,6 +67,8 @@ BloodPressureChartHit? hitTestBloodPressureChartSlot({
       chartData.length,
       chartWidth,
       cellCenterXSlots: cellCenterXSlots,
+      pointRadius: pointRadius,
+      xUnitReservedWidth: xUnitReservedWidth,
     );
 
     final dx = (tapPosition.dx - x).abs();
