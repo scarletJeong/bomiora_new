@@ -242,7 +242,7 @@ class _TodayMealMacroBar extends StatelessWidget {
           borderRadius: barRadius,
           border: Border.all(
             color: const Color(0xCCD2D2D2),
-            width: healthDp(context, 1),
+            width: healthDp(context, 0.5),
           ),
         ),
         child: ClipRRect(
