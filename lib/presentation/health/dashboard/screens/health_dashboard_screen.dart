@@ -477,11 +477,11 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                       ),
                     ),
                     Text(
-                      '${currentUser?.name ?? '-'} 님',
+                      '${currentUser?.name ?? '-'}님 !',
                       style: const TextStyle(
                         color: Colors.white,
                         fontFamily: 'Gmarket Sans TTF',
-                        fontSize: 20,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -749,14 +749,15 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
   }
 
   Widget _buildBodyMetricsSection() {
-    final String heightValue =
-        latestWeightRecord == null ? '-' : '${height.toStringAsFixed(1)}cm';
-    // 당일 기록이 없으면 키·체중·BMI 모두 '-' (다른 날 데이터로 채우지 않음)
+    // 당일 기록이 없으면 단위/플레이스홀더 표시 (다른 날 데이터로 채우지 않음)
+    final String heightValue = latestWeightRecord == null
+        ? '- cm'
+        : '${height.toStringAsFixed(1)}cm';
     final String weightValue = latestWeightRecord == null
-        ? '-'
+        ? '- kg'
         : '${currentWeight.toStringAsFixed(1)}kg';
     final String bmiValue =
-        latestWeightRecord == null ? '-' : bmi.toStringAsFixed(2);
+        latestWeightRecord == null ? '- - -' : bmi.toStringAsFixed(2);
 
     return Container(
       padding: const EdgeInsets.all(2),
@@ -826,6 +827,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 color: Color(0xFF707070),
                 fontWeight: FontWeight.w300,
                 decoration: TextDecoration.underline,
+                decorationStyle: TextDecorationStyle.dotted,
                 decorationColor: Color(0xFFB5B5B5),
                 decorationThickness: 1,
               ),
