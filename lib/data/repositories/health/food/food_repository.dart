@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+
 import 'package:http/http.dart' as http;
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
@@ -151,6 +151,7 @@ class FoodRecordSummary {
   final num? carbs;
   final num? fat;
   final num? other;
+  final String? imagePath;
   final List<FoodRecordItemSummary> items;
 
   FoodRecordSummary({
@@ -162,6 +163,7 @@ class FoodRecordSummary {
     this.carbs,
     this.fat,
     this.other,
+    this.imagePath,
     this.items = const [],
   });
 
@@ -185,6 +187,7 @@ class FoodRecordSummary {
       carbs: json['carbs'] != null ? num.tryParse(json['carbs'].toString()) : null,
       fat: json['fat'] != null ? num.tryParse(json['fat'].toString()) : null,
       other: json['other'] != null ? num.tryParse(json['other'].toString()) : null,
+      imagePath: _parseImagePath(json),
       items: items,
     );
   }
@@ -197,6 +200,14 @@ const Map<String, String> _mealKeyToFoodTime = {
   '저녁': 'dinner',
   '간식': 'snack',
 };
+
+String? _parseImagePath(Map<String, dynamic> json) {
+  for (final key in ['image_path', 'imagePath', 'photo']) {
+    final v = json[key]?.toString();
+    if (v != null && v.isNotEmpty) return v;
+  }
+  return null;
+}
 
 class FoodRepository {
   static String get _baseUrl => ApiClient.baseUrl;
@@ -308,19 +319,8 @@ class FoodRepository {
       if (offset >= sorted.length) return [];
       final end = (offset + limit) > sorted.length ? sorted.length : (offset + limit);
       final result = sorted.sublist(offset, end);
-
-      if (kDebugMode) {
-        debugPrint('[칼로리 검색] 질의="$q", offset=$offset, limit=$limit, 결과 수: ${result.length}');
-        for (var i = 0; i < result.length; i++) {
-          final it = result[i];
-          debugPrint(
-            '  ${i + 1}. ${it.manufacturerName} ${it.foodName} | food_code: ${it.foodCode} | ${it.energy ?? 0}kcal',
-          );
-        }
-      }
       return result;
     } catch (e) {
-      print('음식 검색 오류: $e');
       return [];
     }
   }
@@ -348,7 +348,6 @@ class FoodRepository {
           .map((e) => FoodRecordSummary.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
     } catch (e) {
-      print('식사 기록 조회 오류: $e');
       return [];
     }
   }
@@ -380,7 +379,6 @@ class FoodRepository {
       }
       return null;
     } catch (e) {
-      print('식사 기록 생성 오류: $e');
       return null;
     }
   }
@@ -399,24 +397,13 @@ class FoodRepository {
         'fat': item.fat?.toDouble() ?? 0.0,
         'other': item.otherGrams?.toDouble() ?? 0.0,
       };
-      if (kDebugMode) {
-        debugPrint('[식사 기록 추가] POST $uri');
-        debugPrint('[식사 기록 추가] body: $body');
-      }
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: json.encode(body),
       );
-      if (kDebugMode && response.statusCode >= 400) {
-        debugPrint('[식사 기록 추가] 응답 ${response.statusCode}: ${response.body}');
-      }
-      if (response.statusCode == 500) {
-        debugPrint('[식사 기록 추가] 500 원인 확인용 body: ${response.body}');
-      }
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      if (kDebugMode) debugPrint('식사 기록 항목 추가 오류: $e');
       return false;
     }
   }
@@ -431,7 +418,6 @@ class FoodRepository {
       );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      if (kDebugMode) debugPrint('식사 기록 항목 삭제 오류: $e');
       return false;
     }
   }
@@ -439,5 +425,46 @@ class FoodRepository {
   /// mealKey(아침/점심/저녁/간식)에 해당하는 food_time
   static String foodTimeFromMealKey(String mealKey) {
     return _mealKeyToFoodTime[mealKey] ?? 'snack';
+  }
+
+  /// 식사 사진 업로드 (체중 이미지 업로드와 동일 패턴)
+  static Future<String?> uploadMealImage(dynamic imageFile) async {
+    try {
+      final response = await ApiClient.uploadFile(
+        ApiEndpoints.foodUploadImage,
+        imageFile,
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map && data['success'] == true && data['url'] != null) {
+          final relativeUrl = data['url'].toString();
+          if (relativeUrl.startsWith('http')) return relativeUrl;
+          return '${ApiClient.baseUrl}$relativeUrl';
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 식사 기록에 사진 URL 저장
+  static Future<bool> updateRecordImagePath(
+    String foodRecordId,
+    String imageUrl,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '$_baseUrl${ApiEndpoints.foodRecordUpdate(foodRecordId)}',
+      );
+      final response = await http.put(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'image_path': imageUrl}),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
   }
 }
