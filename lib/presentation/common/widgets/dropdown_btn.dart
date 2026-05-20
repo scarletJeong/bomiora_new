@@ -1,6 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 class DropdownBtn extends StatefulWidget {
+  static OverlayEntry? _sharedOverlayEntry;
+
   final List<String> items;
   final String value;
   final ValueChanged<String> onChanged;
@@ -8,6 +12,133 @@ class DropdownBtn extends StatefulWidget {
   final double panelMaxHeight;
   final String emptyText;
   final bool enabled;
+
+  /// 앵커 위젯 기준으로 드롭다운 메뉴 표시 (사진 추가 등 커스텀 버튼용)
+  static void showMenu({
+    required BuildContext context,
+    GlobalKey? anchorKey,
+    BuildContext? anchorContext,
+    required List<String> items,
+    required ValueChanged<String> onSelected,
+    double gap = 6,
+    double panelMaxHeight = 260,
+    double? menuWidth,
+    double itemFontSize = 14,
+    String itemFontFamily = 'Gmarket Sans TTF',
+    FontWeight itemFontWeight = FontWeight.w300,
+    bool blurBackdrop = false,
+    double blurSigma = 4,
+    double backdropOpacity = 0.72,
+  }) {
+    closeMenu();
+
+    final ctx = anchorContext ?? anchorKey?.currentContext;
+    if (ctx == null || items.isEmpty) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final size = box.size;
+    final offset = box.localToGlobal(Offset.zero);
+    final panelWidth = menuWidth ?? size.width;
+
+    void close() {
+      closeMenu();
+    }
+
+    final overlay = Overlay.of(context);
+
+    _sharedOverlayEntry = OverlayEntry(
+      builder: (overlayContext) {
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: close,
+                child: blurBackdrop
+                    ? BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: blurSigma,
+                          sigmaY: blurSigma,
+                        ),
+                        child: Container(
+                          color: Colors.white.withValues(alpha: backdropOpacity),
+                        ),
+                      )
+                    : const ColoredBox(color: Colors.transparent),
+              ),
+            ),
+            Positioned(
+              left: offset.dx,
+              top: offset.dy + size.height + gap,
+              width: panelWidth,
+              child: Material(
+                color: Colors.white,
+                elevation: 4,
+                borderRadius: BorderRadius.circular(10),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: panelMaxHeight),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (int i = 0; i < items.length; i++)
+                          Material(
+                            color: Colors.white,
+                            child: InkWell(
+                              onTap: () {
+                                onSelected(items[i]);
+                                close();
+                              },
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                  horizontal: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      width: i == items.length - 1 ? 0 : 0.5,
+                                      color: const Color(0x7FD2D2D2),
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  items[i],
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: itemFontSize,
+                                    fontFamily: itemFontFamily,
+                                    fontWeight: itemFontWeight,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    overlay.insert(_sharedOverlayEntry!);
+  }
+
+  static void closeMenu() {
+    _sharedOverlayEntry?.remove();
+    _sharedOverlayEntry = null;
+  }
 
   const DropdownBtn({
     super.key,
@@ -27,24 +158,18 @@ class DropdownBtn extends StatefulWidget {
 class _DropdownBtnState extends State<DropdownBtn> {
   static const String _fontFamily = 'Gmarket Sans TTF';
 
-  OverlayEntry? _overlayEntry;
   final GlobalKey _anchorKey = GlobalKey();
 
-  bool get _open => _overlayEntry != null;
+  bool get _open => DropdownBtn._sharedOverlayEntry != null;
 
   @override
   void dispose() {
-    _removeOverlay();
+    DropdownBtn.closeMenu();
     super.dispose();
   }
 
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
   void _closeAndRebuild() {
-    _removeOverlay();
+    DropdownBtn.closeMenu();
     if (mounted) setState(() {});
   }
 
@@ -55,96 +180,16 @@ class _DropdownBtnState extends State<DropdownBtn> {
       return;
     }
 
-    final ctx = _anchorKey.currentContext;
-    if (ctx == null) return;
-    final box = ctx.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-
-    final size = box.size;
-    final offset = box.localToGlobal(Offset.zero);
-
-    _overlayEntry = OverlayEntry(
-      builder: (overlayContext) {
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _closeAndRebuild,
-              ),
-            ),
-            Positioned(
-              left: offset.dx,
-              top: offset.dy + size.height + 6,
-              width: size.width,
-              child: Material(
-                color: Colors.white,
-                elevation: 4,
-                borderRadius: BorderRadius.circular(10),
-                clipBehavior: Clip.antiAlias,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: widget.panelMaxHeight),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (int i = 0; i < widget.items.length; i++)
-                          Material(
-                            color: Colors.white,
-                            child: InkWell(
-                              onTap: () {
-                                widget.onChanged(widget.items[i]);
-                                _closeAndRebuild();
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                  horizontal: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      width: i == widget.items.length - 1 ? 0 : 0.5,
-                                      color: const Color(0x7FD2D2D2),
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      widget.items[i],
-                                      style: TextStyle(
-                                        color: widget.items[i] == widget.value
-                                            ? const Color(0xFFFF5B8C)
-                                            : const Color(0xFF1A1A1A),
-                                        fontSize: 14,
-                                        fontFamily: _fontFamily,
-                                        fontWeight: widget.items[i] == widget.value
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
+    DropdownBtn.showMenu(
+      context: context,
+      anchorKey: _anchorKey,
+      items: widget.items,
+      panelMaxHeight: widget.panelMaxHeight,
+      onSelected: (item) {
+        widget.onChanged(item);
+        if (mounted) setState(() {});
       },
     );
-
-    Overlay.of(ctx).insert(_overlayEntry!);
     setState(() {});
   }
 

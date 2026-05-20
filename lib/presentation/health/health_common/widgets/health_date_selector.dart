@@ -936,11 +936,11 @@ class HealthDateSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // AppBar 하단 ↔ 년·월 밴드 = 20, 년·월 ↔ 날짜 숫자 행 = 8 (375 기준)
+    // AppBar 하단 ↔ 년·월 밴드 = 20, 년·월 ↔ 날짜 숫자 행 = 5 (375 기준)
     final appBarToMonthGap = healthDp(context, topGapBase);
     final monthFontSize = healthSp(context, 12);
     final monthIconGap = healthDp(context, 3);
-    final monthToDateGap = healthDp(context, 8);
+    final monthToDateGap = healthDp(context, 5);
     final dateRowH = healthDp(context, 36);
     final dateChipGap = healthDp(context, 8);
     final dateChipFontSize = healthSp(context, 16);

@@ -71,7 +71,7 @@ class DateTopWidget extends StatelessWidget {
     final appBarToMonthGap = healthDp(context, 20);
     final monthFontSize = healthSp(context, 12);
     final iconSize = healthDp(context, 12);
-    final monthToDateGap = healthDp(context, 8);
+    final monthToDateGap = healthDp(context, 5);
     final dateRowH = healthDp(context, 70);
     final dateRowVPad = healthDp(context, 10);
     final dateRowHPad = healthDp(context, 9);
