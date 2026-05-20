@@ -1,6 +1,8 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ImagePickerUtils {
@@ -59,6 +61,91 @@ class ImagePickerUtils {
       );
     } catch (e) {
       print('카메라 이미지 선택 오류: $e');
+      return null;
+    }
+  }
+
+  /// 식사 사진: 라이브러리 / 촬영 / 파일 선택
+  static Future<void> showMealPhotoSourceBottomSheet(
+    BuildContext context,
+    void Function(XFile?) onImageSelected,
+  ) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text(
+                  '라이브러리에서 선택',
+                  style: TextStyle(fontFamily: 'Gmarket Sans TTF'),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'gallery'),
+              ),
+              ListTile(
+                title: const Text(
+                  '사진찍기',
+                  style: TextStyle(fontFamily: 'Gmarket Sans TTF'),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'camera'),
+              ),
+              ListTile(
+                title: const Text(
+                  '파일가져오기',
+                  style: TextStyle(fontFamily: 'Gmarket Sans TTF'),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'file'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (choice == null) return;
+
+    XFile? image;
+    switch (choice) {
+      case 'gallery':
+        image = await pickImageFromGallery();
+        break;
+      case 'camera':
+        image = await pickImageFromCamera();
+        break;
+      case 'file':
+        image = await pickImageFromFile();
+        break;
+    }
+    onImageSelected(image);
+  }
+
+  /// 파일에서 이미지 선택
+  static Future<XFile?> pickImageFromFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: kIsWeb,
+      );
+      if (result == null || result.files.isEmpty) return null;
+      final file = result.files.single;
+      if (kIsWeb && file.bytes != null) {
+        return XFile.fromData(
+          file.bytes!,
+          name: file.name.isNotEmpty ? file.name : 'image.jpg',
+        );
+      }
+      if (file.path != null && file.path!.isNotEmpty) {
+        return XFile(file.path!);
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) debugPrint('파일 이미지 선택 오류: $e');
       return null;
     }
   }

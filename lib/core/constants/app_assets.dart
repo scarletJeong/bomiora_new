@@ -28,6 +28,8 @@ abstract final class AppAssets {
   static const String footerIcon1 = '${_img}footer_icon1.svg'; // 로고1
   static const String footerIcon2 = '${_img}footer_icon2.svg'; // 로고2 _글씨
 
+  // 검색 아이콘
+  static const String searchIcon = '${_img}search_icon.svg';
 
   /* 1. 홈 */
   // 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 assets/img/review_card_overlay.png`
@@ -72,6 +74,17 @@ abstract final class AppAssets {
   static const String menstrualIcon2 = '${_img}menstrual_icon2.png';
   static const String menstrualIcon3 = '${_img}menstrual_icon3.png';
 
+  // 건강대시보드 - 걸음 수 카드 아이콘
+  static const String stepsDown = '${_img}step_arrow_down.svg';
+  static const String stepsUp = '${_img}step_arrow_up.svg';
+  static const String stepsDistanceCard = '${_img}step_distanceCard.svg';
+  static const String stepsCaloriesCard = '${_img}step_caloriesCard.svg';
+
+  // 건강대시보드 - 섭취 칼로리 카드 아이콘
+  static const String foodCaloriesCard = '${_img}food_nothingCard.svg';
+
+  // 건강대시보드 - 음식 촬영 아이콘
+  static const String foodCamera = '${_img}food_camera.svg';
 
   /* 5. 스토어 */
   // 메인 퀵 탭 아이콘

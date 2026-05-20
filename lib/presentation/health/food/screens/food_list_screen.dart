@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/utils/image_url_helper.dart';
 
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
@@ -119,17 +123,22 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
           ),
           child: Column(
             children: [
-              HealthDateSelector(
-                selectedDate: selectedDate,
-                onDateChanged: (date) {
-                  setState(() => selectedDate = date);
-                  _loadMealData();
-                },
-                monthTextColor: const Color(0xFF898686),
-                selectedTextColor: const Color(0xFFFF5A8D),
-                unselectedTextColor: const Color(0xFFB7B7B7),
-                dividerColor: const Color(0xFFD2D2D2),
-                iconColor: const Color(0xFF898686),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 27),
+                ),
+                child: HealthDateSelector(
+                  selectedDate: selectedDate,
+                  onDateChanged: (date) {
+                    setState(() => selectedDate = date);
+                    _loadMealData();
+                  },
+                  monthTextColor: const Color(0xFF898686),
+                  selectedTextColor: const Color(0xFFFF5A8D),
+                  unselectedTextColor: const Color(0xFFB7B7B7),
+                  dividerColor: const Color(0xFFD2D2D2),
+                  iconColor: const Color(0xFF898686),
+                ),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -137,43 +146,49 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     healthDp(context, 27),
                     healthDp(context, 14),
                     healthDp(context, 27),
-                    healthDp(context, 16),
+                    healthDp(context, 14),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              '총 섭취 칼로리',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 20,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
+                        child: MediaQuery(
+                          data: MediaQuery.of(context)
+                              .copyWith(textScaler: TextScaler.noScaling),
+                          child: Column(
+                            children: [
+                              Text(
+                                '총 섭취 칼로리',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: healthSp(context, 20),
+                                  height: 1.0,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w300,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: healthDp(context, 5)),
-                            Text(
-                              '${NumberFormat('#,###').format(totalCalories)} kcal',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 36,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
+                              SizedBox(height: healthDp(context, 5)),
+                              Text(
+                                '${NumberFormat('#,###').format(totalCalories)} kcal',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: healthSp(context, 32),
+                                  height: 1.0,
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 10)),
+                      SizedBox(height: healthDp(context, 14)),
                       _buildDashboardMacroBar(context),
-                      SizedBox(height: healthDp(context, 8)),
+                      SizedBox(height: healthDp(context, 10)),
                       _buildMacroLegendRow(context),
-                      SizedBox(height: healthDp(context, 28)),
+                      SizedBox(height: healthDp(context, 14)),
                   _buildMealDetailCard(
                     context,
                     title: '아침',
@@ -186,17 +201,18 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('아침'),
                   ),
                   if (_expandedMealKey == '아침') ...[
-                    SizedBox(height: healthDp(context, 12)),
+                    SizedBox(height: healthDp(context, 5)),
                     CalorieSearchBlock(
                       mealKey: '아침',
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('아침')?.id ?? '',
+                      mealImagePath: _recordFor('아침')?.imagePath,
                       addedItems: _recordFor('아침')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                  SizedBox(height: healthDp(context, 8)),
+                  SizedBox(height: healthDp(context, 14)),
                   _buildMealDetailCard(
                     context,
                     title: '점심',
@@ -209,17 +225,18 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('점심'),
                   ),
                   if (_expandedMealKey == '점심') ...[
-                    SizedBox(height: healthDp(context, 12)),
+                    SizedBox(height: healthDp(context, 5)),
                     CalorieSearchBlock(
                       mealKey: '점심',
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('점심')?.id ?? '',
+                      mealImagePath: _recordFor('점심')?.imagePath,
                       addedItems: _recordFor('점심')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                  SizedBox(height: healthDp(context, 8)),
+                  SizedBox(height: healthDp(context, 14)),
                   _buildMealDetailCard(
                     context,
                     title: '저녁',
@@ -232,17 +249,18 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('저녁'),
                   ),
                   if (_expandedMealKey == '저녁') ...[
-                    SizedBox(height: healthDp(context, 12)),
+                    SizedBox(height: healthDp(context, 5)),
                     CalorieSearchBlock(
                       mealKey: '저녁',
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('저녁')?.id ?? '',
+                      mealImagePath: _recordFor('저녁')?.imagePath,
                       addedItems: _recordFor('저녁')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                  SizedBox(height: healthDp(context, 8)),
+                  SizedBox(height: healthDp(context, 14)),
                   _buildMealDetailCard(
                     context,
                     title: '간식',
@@ -255,12 +273,13 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                     onTap: () => _toggleFoodSearchFor('간식'),
                   ),
                   if (_expandedMealKey == '간식') ...[
-                    SizedBox(height: healthDp(context, 12)),
+                    SizedBox(height: healthDp(context, 5)),
                     CalorieSearchBlock(
                       mealKey: '간식',
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('간식')?.id ?? '',
+                      mealImagePath: _recordFor('간식')?.imagePath,
                       addedItems: _recordFor('간식')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
@@ -330,13 +349,13 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        const MacroLegend(color: Color(0xFFFFDFC3), label: '탄수화물'),
+        MacroLegend(color: const Color(0xFFFFDFC3), label: '탄수화물'),
         SizedBox(width: gap),
-        const MacroLegend(color: Color(0xFFFEA38E), label: '단백질'),
+        MacroLegend(color: const Color(0xFFFEA38E), label: '단백질'),
         SizedBox(width: gap),
-        const MacroLegend(color: Color(0xFFFCF4C1), label: '지방'),
+        MacroLegend(color: const Color(0xFFFCF4C1), label: '지방'),
         SizedBox(width: gap),
-        const MacroLegend(color: Color(0xFFD6DEE8), label: '기타'),
+        MacroLegend(color: const Color(0xFFD6DEE8), label: '기타'),
       ],
     );
   }
@@ -354,45 +373,35 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
   }) {
     final isEmptyMeal = mealRecord == null ||
         (mealRecord.items.isEmpty && (mealRecord.calories ?? 0) == 0);
+    final imagePath = mealRecord?.imagePath;
+    final hasPhoto = imagePath != null && imagePath.isNotEmpty;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(healthDp(context, 10)),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0x19000000),
-              blurRadius: healthDp(context, 4.17),
+      child: SizedBox(
+        height: healthDp(context, 76.5),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(healthDp(context, 10)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            border: Border.all(
+              width: healthDp(context, 0.5),
+              color: const Color(0xFFD9D9D9),
             ),
-          ],
-        ),
-        child: Row(
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(healthDp(context, 5)),
-                child: Container(
-                  width: healthDp(context, 47.08),
-                  height: healthDp(context, 48.33),
-                  decoration: BoxDecoration(
-                    color: isEmptyMeal
-                        ? const Color(0xFFD9D9D9)
-                        : const Color(0xFFFF5A8D),
-                  ),
-                  alignment: Alignment.center,
-                  child: isEmptyMeal
-                      ? Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: healthDp(context, 22),
-                        )
-                      : null,
-                ),
+              _buildMealThumbnail(
+                context,
+                isEmptyMeal: isEmptyMeal,
+                hasPhoto: hasPhoto,
+                imagePath: imagePath,
               ),
-              SizedBox(width: healthDp(context, 12)),
+              SizedBox(width: healthDp(context, 20)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,11 +411,12 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       style: const TextStyle(
                         color: Colors.black,
                         fontSize: 16,
+                        height: 1.0,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 0)),
+                    SizedBox(height: healthDp(context, 6)),
                     MediaQuery(
                       data: MediaQuery.of(context)
                           .copyWith(textScaler: TextScaler.noScaling),
@@ -418,6 +428,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                               style: TextStyle(
                                 color: const Color(0xFFFF5A8D),
                                 fontSize: healthSp(context, 12),
+                                height: 1.0,
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w700,
                               ),
@@ -427,6 +438,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                               style: TextStyle(
                                 color: Colors.black,
                                 fontSize: healthSp(context, 12),
+                                height: 1.0,
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w300,
                               ),
@@ -435,7 +447,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 3)),
+                    SizedBox(height: healthDp(context, 6)),
                     Wrap(
                       spacing: healthDp(context, 6),
                       runSpacing: healthDp(context, 2),
@@ -443,20 +455,84 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                         _buildNutrientText(context, '탄수화물', carb),
                         _buildNutrientText(context, '단백질', protein),
                         _buildNutrientText(context, '지방', fat),
-                        _buildNutrientText(context, '기타', other),
+                        // _buildNutrientText(context, '기타', other),
                       ],
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.expand_more,
-                size: healthDp(context, 10),
-                color: const Color(0xFF898383),
+              Align(
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.expand_more,
+                  size: healthDp(context, 10),
+                  color: const Color(0xFF898383),
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildMealThumbnail(
+    BuildContext context, {
+    required bool isEmptyMeal,
+    required bool hasPhoto,
+    String? imagePath,
+  }) {
+    final thumbW = healthDp(context, 47.08);
+    final thumbH = healthDp(context, 48.33);
+
+    if (isEmptyMeal) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(healthDp(context, 5)),
+        child: Container(
+          width: thumbW,
+          height: thumbH,
+          color: const Color(0xFFD9D9D9),
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.add,
+            color: Colors.white,
+            size: healthDp(context, 20),
+          ),
+        ),
+      );
+    }
+
+    if (hasPhoto) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(healthDp(context, 5)),
+        child: Image.network(
+          ImageUrlHelper.getImageUrl(imagePath),
+          width: thumbW,
+          height: thumbH,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _mealPlaceholderSvg(context, thumbW, thumbH),
+        ),
+      );
+    }
+
+    return _mealPlaceholderSvg(context, thumbW, thumbH);
+  }
+
+  Widget _mealPlaceholderSvg(BuildContext context, double w, double h) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(healthDp(context, 5)),
+      child: Container(
+        width: w,
+        height: h,
+        color: const Color(0xFFFDF2F8),
+        alignment: Alignment.center,
+        child: SvgPicture.asset(
+          AppAssets.foodCaloriesCard,
+          width: w,
+          height: h,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 
@@ -469,7 +545,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
         text: TextSpan(
           style: TextStyle(
             color: const Color(0xFF898383),
-            fontSize: healthSp(context, 8),
+            fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
@@ -480,6 +556,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
               style: const TextStyle(
                 color: Color(0xFF1A1A1A),
                 decoration: TextDecoration.underline,
+                decorationStyle: TextDecorationStyle.dotted,
               ),
             ),
             const TextSpan(text: 'g'),

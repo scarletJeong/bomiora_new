@@ -727,9 +727,10 @@ Widget _buildStepsCard(
                                 fontSize: healthSp(context, 12),
                                 fontWeight: FontWeight.w700,
                                 color: const Color(0xFFFF5A8D),
-                                height: 1.1,
+                                height: 1.0,
                               ),
                             ),
+                            SizedBox(height: healthDp(context, 2)),
                             Text(
                               targetSteps > 0
                                   ? '/${fmt.format(targetSteps)}'
@@ -741,7 +742,7 @@ Widget _buildStepsCard(
                                 fontSize: healthSp(context, 9),
                                 fontWeight: FontWeight.w300,
                                 color: const Color(0xB2FF5A8D),
-                                height: 1.1,
+                                height: 1.0,
                               ),
                             ),
                           ],

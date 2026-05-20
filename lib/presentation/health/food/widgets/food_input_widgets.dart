@@ -1,6 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/utils/image_picker_utils.dart';
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/repositories/health/food/food_repository.dart';
+import '../../../common/widgets/dropdown_btn.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_delete_popup.dart';
 
@@ -12,6 +21,7 @@ class CalorieSearchBlock extends StatefulWidget {
   final DateTime selectedDate;
   final String mbId;
   final String foodRecordId;
+  final String? mealImagePath;
   final List<FoodRecordItemSummary> addedItems;
   final VoidCallback? onItemAdded;
 
@@ -21,6 +31,7 @@ class CalorieSearchBlock extends StatefulWidget {
     required this.selectedDate,
     required this.mbId,
     this.foodRecordId = '',
+    this.mealImagePath,
     this.addedItems = const [],
     this.onItemAdded,
   });
@@ -39,8 +50,14 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   bool _isLoadingMore = false;
   bool _hasMore = false;
   bool _isAdding = false;
+  bool _isUploadingPhoto = false;
   String _currentKeyword = '';
   int _currentOffset = 0;
+  static const List<String> _photoSourceLabels = [
+    '라이브러리에서 선택',
+    '사진찍기',
+    '파일가져오기',
+  ];
 
   Future<void> _doSearch() async {
     final keyword = _searchController.text.trim();
@@ -120,9 +137,6 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
 
   Future<void> _addToMealRecord(FoodSearchItem item) async {
     if (_isAdding) return;
-    if (kDebugMode) {
-      debugPrint('[+] 선택한 음식: "${item.foodName}" | food_code: ${item.foodCode} | energy: ${item.energy} | 식사: ${widget.mealKey}');
-    }
     setState(() => _isAdding = true);
     try {
       final records = await FoodRepository.getRecordsForDate(widget.mbId, widget.selectedDate);
@@ -160,6 +174,91 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     }
   }
 
+  Future<String?> _ensureFoodRecordId() async {
+    if (widget.foodRecordId.isNotEmpty) return widget.foodRecordId;
+    if (widget.mbId.isEmpty) return null;
+    final created = await FoodRepository.createRecord(
+      widget.mbId,
+      widget.selectedDate,
+      widget.mealKey,
+    );
+    return created?.id;
+  }
+
+  void _openPhotoSourceDropdown(BuildContext anchorContext) {
+    if (_isUploadingPhoto) return;
+    DropdownBtn.showMenu(
+      context: context,
+      anchorContext: anchorContext,
+      items: _photoSourceLabels,
+      menuWidth: healthDp(context, 110),
+      itemFontSize: healthDp(context, 10),
+      itemFontFamily: 'Gmarket Sans TTF',
+      itemFontWeight: FontWeight.w300,
+      blurBackdrop: true,
+      blurSigma: 2,
+      backdropOpacity: 0.35,
+      onSelected: _onPhotoSourceSelected,
+    );
+  }
+
+  Future<void> _onPhotoSourceSelected(String label) async {
+    XFile? image;
+    switch (label) {
+      case '라이브러리에서 선택':
+        image = await ImagePickerUtils.pickImageFromGallery();
+        break;
+      case '사진찍기':
+        image = await ImagePickerUtils.pickImageFromCamera();
+        break;
+      case '파일가져오기':
+        image = await ImagePickerUtils.pickImageFromFile();
+        break;
+    }
+    await _uploadPickedMealPhoto(image);
+  }
+
+  Future<void> _uploadPickedMealPhoto(XFile? image) async {
+    if (image == null || !mounted) return;
+    setState(() => _isUploadingPhoto = true);
+    try {
+      final recordId = await _ensureFoodRecordId();
+      if (recordId == null || recordId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('식사 기록을 먼저 만들 수 없습니다.')),
+          );
+        }
+        return;
+      }
+
+      final imageUrl = kIsWeb
+          ? await FoodRepository.uploadMealImage(image)
+          : await FoodRepository.uploadMealImage(File(image.path));
+
+      if (imageUrl == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('사진 업로드에 실패했습니다.')),
+          );
+        }
+        return;
+      }
+
+      final ok = await FoodRepository.updateRecordImagePath(recordId, imageUrl);
+      if (!mounted) return;
+      if (ok) {
+        widget.onItemAdded?.call();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('사진 저장에 실패했습니다.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
   Future<void> _deleteItem(BuildContext context, String foodRecordId, String itemId, String foodName) async {
     final confirmed = await showHealthDeletePopup(
       context: context,
@@ -176,6 +275,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
 
   @override
   void dispose() {
+    DropdownBtn.closeMenu();
     _searchController.dispose();
     _focusNode.dispose();
     _resultsScrollController.dispose();
@@ -193,50 +293,99 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 사진 추가하기 (기능 미구현) — 375 기준 80×80
-        Container(
-          width: healthDp(context, 80),
-          height: healthDp(context, 80),
-          clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
-            color: const Color(0xFFD9D9D9),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: healthDp(context, 50),
-                height: healthDp(context, 50),
+        Builder(
+          builder: (anchorContext) {
+            return GestureDetector(
+              onTap: _isUploadingPhoto
+                  ? null
+                  : () => _openPhotoSourceDropdown(anchorContext),
+              child: Container(
+                width: healthDp(context, 80),
+                height: healthDp(context, 80),
                 clipBehavior: Clip.antiAlias,
-                decoration: const BoxDecoration(),
-                child: const Stack(),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9D9D9),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+                child: _isUploadingPhoto
+                ? Center(
+                    child: SizedBox(
+                      width: healthDp(context, 24),
+                      height: healthDp(context, 24),
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                : widget.mealImagePath != null &&
+                        widget.mealImagePath!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
+                        child: Image.network(
+                          ImageUrlHelper.getImageUrl(widget.mealImagePath),
+                          width: healthDp(context, 80),
+                          height: healthDp(context, 80),
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: healthDp(context, 50),
+                            height: healthDp(context, 50),
+                            child: SvgPicture.asset(
+                              AppAssets.foodCamera,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          SizedBox(height: healthDp(context, 4)),
+                          const Text(
+                            '사진추가하기',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              height: 1.0,
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
-              Text(
-                '사진추가하기',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
+            );
+          },
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        Row(
+          children: [
+            const Text(
+              '음식 검색',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            const Spacer(),
+            MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.noScaling),
+              child: Text(
+                '출처: 식품영양성분 데이터베이스',
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 10),
+                  height: 1.0,
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w300,
                 ),
               ),
-            ],
-          ),
-        ),
-        SizedBox(height: healthDp(context, 14)),
-        const Text(
-          '음식 검색',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w300,
-          ),
+            ),
+          ],
         ),
         SizedBox(height: healthDp(context, 5)),
         Container(
@@ -281,17 +430,20 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
               ),
               GestureDetector(
                 onTap: _isLoading ? null : _doSearch,
-                child: Icon(
-                  Icons.search,
-                  color: _isLoading ? const Color(0xFFCCCCCC) : const Color(0xFF898383),
-                  size: healthDp(context, 18),
+                child: SizedBox(
+                  width: healthDp(context, 24),
+                  height: healthDp(context, 24),
+                  child: SvgPicture.asset(
+                    AppAssets.searchIcon,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             ],
           ),
         ),
         if (_isLoading) ...[
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 3)),
           Center(
             child: Padding(
               padding: EdgeInsets.all(healthDp(context, 12)),
@@ -306,7 +458,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
             ),
           ),
         ] else if (_searchController.text.trim().isNotEmpty && _results.isEmpty) ...[
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 3)),
           Container(
             padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
             decoration: BoxDecoration(
@@ -329,19 +481,12 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         ],
         // 검색 결과 리스트 (항상 보이는 일반 컬럼 렌더링)
         if (_results.isNotEmpty) ...[
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 3)),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: const Color(0xFFD2D2D2)),
               borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0x1A000000),
-                  blurRadius: healthDp(context, 8),
-                  offset: Offset(0, healthDp(context, 2)),
-                ),
-              ],
             ),
             constraints: BoxConstraints(maxHeight: healthDp(context, 220)),
             child: ListView.separated(
@@ -382,7 +527,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
           ),
         ],
         if (widget.addedItems.isNotEmpty) ...[
-          SizedBox(height: healthDp(context, 14)),
+          SizedBox(height: healthDp(context, 5)),
           ...List.generate(widget.addedItems.length, (i) {
             final item = widget.addedItems[i];
             return Padding(
@@ -440,19 +585,13 @@ class AddedFoodCard extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        border: Border.all(
+          width: healthDp(context, 0.5),
+          color: const Color(0xFFD9D9D9),
         ),
-        shadows: [
-          BoxShadow(
-            color: const Color(0x19000000),
-            blurRadius: healthDp(context, 4.17),
-            offset: Offset.zero,
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: MediaQuery(
         data: noScale,
@@ -467,6 +606,7 @@ class AddedFoodCard extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.black,
                         fontSize: healthSp(context, 12),
+                        height: 1.0,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
                       ),
@@ -505,8 +645,9 @@ class AddedFoodCard extends StatelessWidget {
                       child: Text(
                         desc,
                         style: TextStyle(
-                          color: Colors.black,
+                          color: const Color(0xFF898383),
                           fontSize: healthSp(context, 8),
+                          height: 1.0,
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
                         ),
@@ -606,23 +747,34 @@ class SearchResultRow extends StatelessWidget {
             ),
             SizedBox(width: healthDp(context, 8)),
             SizedBox(
-              height: healthDp(context, 28),
+              width: healthDp(context, 26),
+              height: healthDp(context, 19),
               child: TextButton(
                 onPressed: onSelect,
                 style: TextButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
-                  minimumSize: Size.zero,
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size(
+                    healthDp(context, 26),
+                    healthDp(context, 19),
+                  ),
+                  fixedSize: Size(
+                    healthDp(context, 26),
+                    healthDp(context, 19),
+                  ),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  overlayColor: Colors.transparent,
+                  splashFactory: NoSplash.splashFactory,
                   side: const BorderSide(color: Color(0xFFD2D2D2)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 6)),
+                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
                   ),
                 ),
                 child: Text(
                   '선택',
                   style: TextStyle(
-                    color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(context, 12),
+                    color: const Color(0xFF898383),
+                    fontSize: healthSp(context, 8),
+                    height: 1.0,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -664,12 +816,10 @@ class SearchResultCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0x19000000),
-              blurRadius: healthDp(context, 4.17),
-            ),
-          ],
+          border: Border.all(
+            width: healthDp(context, 0.5),
+            color: const Color(0xFFD9D9D9),
+          ),
         ),
         child: MediaQuery(
           data: noScale,
@@ -764,6 +914,7 @@ class MacroLegend extends StatelessWidget {
             style: TextStyle(
               color: Colors.black,
               fontSize: healthSp(context, 10),
+              height: 1.0,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
             ),

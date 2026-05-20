@@ -229,42 +229,66 @@ class _TodayMealMacroBar extends StatelessWidget {
     }
     final filledFlex = (fillRatio * 100).round().clamp(0, 100);
     final emptyFlex = (100 - filledFlex).clamp(1, 100);
+    final barHeight = healthDp(context, 8);
+    final barRadius = BorderRadius.circular(999);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(999),
-      child: SizedBox(
-        height: healthDp(context, 8),
-        child: Row(
-          children: [
-            if (filledFlex > 0)
-              Expanded(
-                flex: filledFlex,
-                child: Row(
+    // 빈 상태: 흰 배경 + 테두리만으로 트랙이 보이도록 decoration에 color 지정
+    return SizedBox(
+      width: double.infinity,
+      height: barHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: barRadius,
+          border: Border.all(
+            color: const Color(0xCCD2D2D2),
+            width: healthDp(context, 1),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: barRadius,
+          child: filledFlex > 0
+              ? Row(
                   children: [
                     Expanded(
-                      flex: carbsFlex,
-                      child: Container(color: const Color(0xFFFFDFC3)),
+                      flex: filledFlex,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: carbsFlex,
+                            child: Container(
+                              color: const Color(0xFFFFDFC3),
+                            ),
+                          ),
+                          Expanded(
+                            flex: proteinFlex,
+                            child: Container(
+                              color: const Color(0xFFFEA38E),
+                            ),
+                          ),
+                          Expanded(
+                            flex: fatFlex,
+                            child: Container(
+                              color: const Color(0xFFFCF4C1),
+                            ),
+                          ),
+                          Expanded(
+                            flex: otherFlex,
+                            child: Container(
+                              color: const Color(0xFFD6DEE8),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    Expanded(
-                      flex: proteinFlex,
-                      child: Container(color: const Color(0xFFFEA38E)),
-                    ),
-                    Expanded(
-                      flex: fatFlex,
-                      child: Container(color: const Color(0xFFFCF4C1)),
-                    ),
-                    Expanded(
-                      flex: otherFlex,
-                      child: Container(color: const Color(0xFFD6DEE8)),
-                    ),
+                    if (emptyFlex > 0)
+                      Expanded(
+                        flex: emptyFlex,
+                        child: const ColoredBox(color: Colors.white),
+                      ),
                   ],
-                ),
-              ),
-            Expanded(
-              flex: emptyFlex,
-              child: Container(color: const Color(0xFFF3F5F7)),
-            ),
-          ],
+                )
+              : const SizedBox.expand(),
         ),
       ),
     );
@@ -350,11 +374,11 @@ class _TodayMealItemCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: healthDp(context, 4)),
+                  SizedBox(height: healthDp(context, 0)),
                   Icon(
                     Icons.add,
                     color: Colors.white,
-                    size: healthDp(context, 28),
+                    size: healthDp(context,30),
                   ),
                 ],
               ),

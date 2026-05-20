@@ -20,10 +20,11 @@ TextStyle healthChartAxisUnitTextStyle(BuildContext context) => TextStyle(
 TextStyle healthChartAxisTickTextStyle(
   BuildContext context, {
   Color? color,
+  double fontSize = 12,
 }) =>
     TextStyle(
       fontFamily: healthChartAxisFontFamily,
-      fontSize: 12,
+      fontSize: fontSize,
       color: color ?? healthChartAxisLabelColor,
       fontWeight: FontWeight.w400,
     );

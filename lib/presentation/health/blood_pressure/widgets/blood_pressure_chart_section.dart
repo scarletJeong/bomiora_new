@@ -13,6 +13,7 @@ Widget buildBloodPressureYAxisStrip({
   required List<double> yLabels,
   required bool showYAxisHeader,
   String unitLabel = '(mmHg)',
+  double tickFontSize = 12,
 }) {
   return LayoutBuilder(
     builder: (context, constraints) {
@@ -49,7 +50,10 @@ Widget buildBloodPressureYAxisStrip({
                       maxLines: 1,
                       softWrap: false,
                       overflow: TextOverflow.clip,
-                      style: healthChartAxisTickTextStyle(context),
+                      style: healthChartAxisTickTextStyle(
+                        context,
+                        fontSize: tickFontSize,
+                      ),
                     ),
                   );
                 }).toList(),

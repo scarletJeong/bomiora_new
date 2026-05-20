@@ -107,6 +107,9 @@ class ApiEndpoints {
       '/api/health/food/records/$foodRecordId/items';
   static String foodRecordItemDelete(String foodRecordId, String itemId) =>
       '/api/health/food/records/$foodRecordId/items/$itemId';
+  static const String foodUploadImage = '/api/health/food/upload-image';
+  static String foodRecordUpdate(String foodRecordId) =>
+      '/api/health/food/records/$foodRecordId';
 
   // 포인트 관련
   static String userPoint(String userId) => '/api/user/point?mb_id=$userId';

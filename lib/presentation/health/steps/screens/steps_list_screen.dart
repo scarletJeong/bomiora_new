@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+
+import '../../../../core/constants/app_assets.dart';
 
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
@@ -183,11 +186,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                   ),
                 )
               : SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 27),
-                    vertical: healthDp(context, 20),
-                  ),
-                  child: Column(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 27),
+                    ),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       HealthDateSelector(
@@ -208,7 +211,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         iconColor: const Color(0xFF898686),
                         dividerColor: const Color(0xFFD2D2D2),
                       ),
-                      SizedBox(height: healthDp(context, 5)),
+                      SizedBox(height: healthDp(context, 20)),
                       _buildTotalStepsCard(),
                       SizedBox(height: healthDp(context, 20)),
                       Row(
@@ -217,7 +220,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             child: _buildSummaryCard(
                               title: '거리',
                               unitSmall: '(km)',
-                              icon: Icons.directions_walk,
+                              iconAsset: AppAssets.stepsDistanceCard,
                               value: (todayStepsRecord != null &&
                                       todayStepsRecord!.distance > 0)
                                   ? todayStepsRecord!.distance
@@ -233,7 +236,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             child: _buildSummaryCard(
                               title: '칼로리',
                               unitSmall: '(kcal)',
-                              icon: Icons.local_fire_department,
+                              iconAsset: AppAssets.stepsCaloriesCard,
                               value: (todayStepsRecord != null &&
                                       todayStepsRecord!.calories > 0)
                                   ? todayStepsRecord!.calories.toString()
@@ -252,9 +255,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                           ChartConstants.weightChartHeight,
                         ),
                       ),
+                      SizedBox(height: healthDp(context, 20)),
                     ],
                   ),
                 ),
+              ),
         ),
       ),
     );
@@ -271,13 +276,12 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         stepsStatistics?.stepsDifference ??
         0;
     final diffUp = diff > 0;
-    final diffDown = diff < 0;
 
-    final ringOuter = healthDp(context, 204);
-    final ringPaint = healthDp(context, 192);
+    final ringOuter = healthDp(context, 193);
+    final ringPaint = healthDp(context, 181);
     final strokeW = healthDp(context, 18);
     return Container(
-      padding: EdgeInsets.all(healthDp(context, 16)),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 16)),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
       ),
@@ -307,29 +311,32 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                               progressStrokeWidth: strokeW,
                             ),
                           ),
-                          Column(
+                          Transform.translate(
+                            offset: Offset(0, healthDp(context, 8)),
+                            child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Text(
                                 '총 걸음 수',
                                 style: TextStyle(
                                   color: Color(0xFF1A1A1A),
-                                  fontSize: 16,
+                                  fontSize: 20,
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
                                 ),
                               ),
-                              SizedBox(height: healthDp(context, 4)),
+                              SizedBox(height: healthDp(context, 2)),
                               Text(
                                 NumberFormat('#,###').format(totalSteps),
                                 style: const TextStyle(
                                   color: Color(0xFFFF5A8D),
-                                  fontSize: 28,
+                                  fontSize: 32,
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
+                          ),
                           ),
                         ],
                       ),
@@ -351,7 +358,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 6)),
+                    SizedBox(height: healthDp(context, 5)),
                     Text(
                       goalSteps != null
                           ? NumberFormat('#,###').format(goalSteps)
@@ -363,7 +370,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 18)),
+                    SizedBox(height: healthDp(context, 20)),
                     const Text(
                       '전날 대비',
                       style: TextStyle(
@@ -398,12 +405,15 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             ),
                           ),
                           SizedBox(width: healthDp(context, 4)),
-                          Icon(
-                            diffUp ? Icons.arrow_upward : Icons.arrow_downward,
-                            size: healthDp(context, 16),
-                            color: diffDown
-                                ? const Color(0xFF002BFF)
-                                : const Color(0xFFFF0000),
+                          SizedBox(
+                            width: healthDp(context, 16),
+                            height: healthDp(context, 16),
+                            child: SvgPicture.asset(
+                              diffUp
+                                  ? AppAssets.stepsUp
+                                  : AppAssets.stepsDown,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ],
                       ],
@@ -421,14 +431,14 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   Widget _buildSummaryCard({
     required String title,
     required String unitSmall,
-    required IconData icon,
+    required String iconAsset,
     required String value,
     required String valueUnit,
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: healthDp(context, 10),
-        vertical: healthDp(context, 8),
+        vertical: healthDp(context, 10),
       ),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -442,6 +452,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -475,15 +486,18 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                   color: const Color(0xFFFDF2F8),
                   borderRadius: BorderRadius.circular(healthDp(context, 9999)),
                 ),
-                child: Icon(
-                  icon,
-                  size: healthDp(context, 16),
-                  color: const Color(0xFFFF5A8D),
+                child: Center(
+                  child: SvgPicture.asset(
+                    iconAsset,
+                    width: healthDp(context, 16),
+                    height: healthDp(context, 16),
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: healthDp(context, 6)),
+          SizedBox(height: healthDp(context, 10)),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -491,7 +505,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 value,
                 style: const TextStyle(
                   color: Color(0xFFFF5A8D),
-                  fontSize: 22,
+                  fontSize: 20,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w700,
                 ),
@@ -501,7 +515,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                 valueUnit,
                 style: const TextStyle(
                   color: Color(0xFF1A1A1A),
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w300,
                 ),
@@ -575,8 +589,25 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                         context, ChartConstants.weightChartTabToPlotGap)),
               ],
               Expanded(
-                child: _buildBarChartArea(
+                child: _buildBarChartPlotArea(
                   forExpandedChart: forExpandedChart,
+                ),
+              ),
+              SizedBox(
+                height: forExpandedChart
+                    ? healthDp(context, 14.23)
+                    : healthDp(context, 30),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: healthDp(
+                      context,
+                      ChartConstants.weightChartYAxisStripWidth,
+                    ),
+                  ),
+                  child: _buildXAxisLabelRow(
+                    context,
+                    _buildXAxisLabels(),
+                  ),
                 ),
               ),
             ],
@@ -595,15 +626,14 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     );
   }
 
-  Widget _buildBarChartArea({bool forExpandedChart = false}) {
+  Widget _buildBarChartPlotArea({bool forExpandedChart = false}) {
     final data = _buildPeriodChartData();
     final maxValue = _chartMaxValue();
     final yTicks = _buildYAxisTicks();
-    final xAxisLabelHeight =
-        forExpandedChart ? healthDp(context, 14.23) : healthDp(context, 30);
-
-    final yBand = bloodPressureYAxisUnitBandHeight(context);
-    final yTickDoubles = _buildYAxisTicks().map((e) => e.toDouble()).toList();
+    final yTickDoubles = yTicks.map((e) => e.toDouble()).toList();
+    final showYHeader = yTickDoubles.length > 1;
+    final headerBand =
+        showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
     final ySpacing = healthDp(context, ChartConstants.weightChartYAxisPlotGap);
     final barW = healthDp(
       context,
@@ -620,41 +650,41 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     final barCornerR = healthDp(context, 10);
     final minBarH = healthDp(context, 4);
 
+    final visibleData = _buildVisibleChartData(data);
+    final forceWhiteBg = selectedPeriod == '일' || selectedPeriod == '월';
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         buildBloodPressureYAxisStrip(
           yLabels: yTickDoubles,
-          showYAxisHeader: yTickDoubles.length > 1,
+          showYAxisHeader: showYHeader,
           unitLabel: _yAxisUnitLabel(),
+          tickFontSize: selectedPeriod == '일' ? 12 : 10,
         ),
         SizedBox(width: ySpacing),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final labels = _buildXAxisLabels();
-              final visibleData = _buildVisibleChartData(data);
-              final forceWhiteBg =
-                  selectedPeriod == '일' || selectedPeriod == '월';
-              final chartH = constraints.maxHeight - yBand - xAxisLabelHeight;
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showYHeader) SizedBox(height: headerBand),
+              Expanded(
+                child: ColoredBox(
+                  color: forceWhiteBg ? Colors.white : Colors.transparent,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _clearTooltip,
+                    child: LayoutBuilder(
+                      builder: (context, plotConstraints) {
+                        final plotW = plotConstraints.maxWidth;
+                        final plotH = plotConstraints.maxHeight;
+                        final contentW =
+                            math.max(plotW - chartPadRight, 1.0);
 
-              return ColoredBox(
-                color: forceWhiteBg ? Colors.white : Colors.transparent,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _clearTooltip,
-                  child: Column(
-                    children: [
-                      SizedBox(height: yBand),
-                      Expanded(
-                        child: GestureDetector(
+                        return GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTapDown: (d) {
                             if (visibleData.isEmpty) return;
-                            final contentW = math.max(
-                              constraints.maxWidth - chartPadRight,
-                              1.0,
-                            );
                             final localX =
                                 d.localPosition.dx.clamp(0.0, contentW);
                             final idx = _hitVisibleBarIndex(
@@ -686,8 +716,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                               ? (details) {
                                   final next = timeOffset -
                                       (details.delta.dx /
-                                              math.max(
-                                                  constraints.maxWidth, 1)) *
+                                              math.max(plotW, 1)) *
                                           (selectedPeriod == '일' ? 2.4 : 1.8);
                                   setState(() {
                                     timeOffset = _clampTimeOffset(next);
@@ -714,7 +743,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   minBarHeight: minBarH,
                                   gridStrokeWidth: healthDp(context, 0.5),
                                 ),
-                                size: Size(double.infinity, chartH),
+                                size: Size(plotW, plotH),
                               ),
                               StepsChartTooltip(
                                 selectedPeriod: selectedPeriod,
@@ -723,22 +752,18 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   visibleIndex: _tooltipIndex,
                                 ),
                                 tooltipPosition: _tooltipPosition,
-                                chartWidth: constraints.maxWidth,
-                                chartHeight: chartH,
+                                chartWidth: plotW,
+                                chartHeight: plotH,
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: xAxisLabelHeight,
-                        child: _buildXAxisLabelRow(context, labels),
-                      ),
-                    ],
+                        );
+                      },
+                    ),
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
       ],
@@ -840,7 +865,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         final key =
             '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
         return _StepsBarData(
-          label: '${d.month}.${d.day}',
+          label: '${d.day}',
           value: weekStepsByDate[key] ?? 0,
         );
       });
@@ -868,7 +893,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   List<int> _buildYAxisTicks() {
     final cap = _chartMaxValue();
     final step = (cap / 5).round();
-    return List<int>.generate(6, (i) => math.max(0, cap - (step * i)));
+    return List<int>.generate(5, (i) => cap - (step * i));
   }
 
   String _yAxisUnitLabel() => '(보)';
