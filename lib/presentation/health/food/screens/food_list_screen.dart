@@ -121,37 +121,31 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
           ),
-          child: Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 27),
-                ),
-                child: HealthDateSelector(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 14),
+              healthDp(context, 27),
+              healthDp(context, 14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                HealthDateSelector(
                   selectedDate: selectedDate,
                   onDateChanged: (date) {
                     setState(() => selectedDate = date);
                     _loadMealData();
                   },
+                  topGapBase: 0,
                   monthTextColor: const Color(0xFF898686),
                   selectedTextColor: const Color(0xFFFF5A8D),
                   unselectedTextColor: const Color(0xFFB7B7B7),
                   dividerColor: const Color(0xFFD2D2D2),
                   iconColor: const Color(0xFF898686),
                 ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 14),
-                    healthDp(context, 27),
-                    healthDp(context, 14),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
+                SizedBox(height: healthDp(context, 14)),
+                Center(
                         child: MediaQuery(
                           data: MediaQuery.of(context)
                               .copyWith(textScaler: TextScaler.noScaling),
@@ -284,11 +278,8 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       onItemAdded: _onFoodItemAdded,
                     ),
                   ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
