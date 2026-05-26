@@ -145,12 +145,21 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
     }
   }
 
+  void _onDeletePressed() {
+    if (_isSaving) return;
+    if (widget.record == null) {
+      Navigator.pop(context);
+      return;
+    }
+    _showDeleteConfirmDialog();
+  }
+
   // 삭제 확인 다이얼로그
   Future<void> _showDeleteConfirmDialog() async {
     final shouldDelete = await showHealthDeletePopup(
       context: context,
       title: '혈당 기록 삭제',
-      message: '이 혈당 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
+      message: '해당 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
       cancelText: '취소',
       deleteText: '삭제',
     );
@@ -266,7 +275,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        SizedBox(height: healthDp(context, 10)),
+        SizedBox(height: healthDp(context, 5)),
         Row(
           children: [
             Expanded(
@@ -452,9 +461,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
           child: SizedBox(
             height: healthDp(context, 38),
             child: OutlinedButton(
-              onPressed: (widget.record != null && !_isSaving)
-                  ? _showDeleteConfirmDialog
-                  : null,
+              onPressed: _isSaving ? null : _onDeletePressed,
               style: OutlinedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 foregroundColor: const Color(0xFF898383),
@@ -471,7 +478,7 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
                 ),
               ),
               child: Text(
-                '삭제',
+                widget.record == null ? '취소' : '삭제',
                 textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',

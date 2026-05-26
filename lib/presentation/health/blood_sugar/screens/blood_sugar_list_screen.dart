@@ -949,7 +949,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                         textAlign: TextAlign.center,
                         textScaler: TextScaler.noScaling,
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
+                          color: Colors.black,
                           fontSize: healthSp(context, 8),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
@@ -1154,31 +1154,32 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                   ),
                 ),
                 SizedBox(width: healthDp(ctx, 8)),
-                Container(
-                  padding: EdgeInsets.all(healthDp(ctx, 3)),
-                  decoration: ShapeDecoration(
-                    color: _sugarStatusBadgeColor(record),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(healthDp(ctx, 4)),
+                SizedBox(
+                  width: _sugarMeasurementTypeBadgeWidth(ctx),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(ctx, 3),
+                      vertical: healthDp(ctx, 3),
                     ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        record.measurementType,
-                        textScaler: TextScaler.noScaling,
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
-                          fontSize: healthSp(ctx, 10),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: healthDp(ctx, -0.3),
-                        ),
+                    alignment: Alignment.center,
+                    decoration: ShapeDecoration(
+                      color: _sugarStatusBadgeColor(record),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(healthDp(ctx, 4)),
                       ),
-                    ],
+                    ),
+                    child: Text(
+                      record.measurementType,
+                      textAlign: TextAlign.center,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: healthSp(ctx, 10),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthDp(ctx, -0.3),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1204,6 +1205,22 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     if ((result == true || result == null) && mounted) {
       await _loadData();
     }
+  }
+
+  /// 바텀시트 측정 유형 배지 너비 — 3글자(취침전) 기준, 식후·공복 등 2글자도 동일 폭.
+  double _sugarMeasurementTypeBadgeWidth(BuildContext context) {
+    final style = TextStyle(
+      fontSize: healthSp(context, 10),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w500,
+      letterSpacing: healthDp(context, -0.3),
+    );
+    final painter = TextPainter(
+      text: TextSpan(text: '취침전', style: style),
+      textDirection: Directionality.of(context),
+      maxLines: 1,
+    )..layout();
+    return painter.width + healthDp(context, 6);
   }
 
   /// 수정 바텀시트·상태 배지: 정상·전단계·의심 색 (목록 범례와 동일).
@@ -1294,10 +1311,10 @@ class _SugarLegend extends StatelessWidget {
             label,
             textScaler: TextScaler.noScaling,
             style: TextStyle(
-              color: Colors.grey,
+              color: Colors.black,
               fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w300,
             ),
           ),
         ],

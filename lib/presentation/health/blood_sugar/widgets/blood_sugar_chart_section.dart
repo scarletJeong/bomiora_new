@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import '../../../common/chart_layout.dart';
@@ -76,7 +76,7 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   }
   if (indices.isEmpty) return [];
 
-  const double overlapCircleRadiusPx = 5.0;
+  const double overlapCircleRadiusPx = 4.0;
   final maxMergeDist = _maxCenterDistanceForCircleOverlapFraction(
     overlapCircleRadiusPx,
     minAreaFraction: 1.0 / 3.0,
@@ -84,7 +84,7 @@ List<BloodSugarOverlapCluster> bloodSugarComputeWeekMonthOverlapClusters(
   final maxMergeDistSq = maxMergeDist * maxMergeDist;
 
   const double borderWidth = 0.5;
-  final double pointRadius = 8 * scale;
+  final double pointRadius = 4 * scale;
   final unitReserve =
       xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth;
   final x0 = borderWidth + pointRadius;
@@ -1065,7 +1065,7 @@ Map<String, dynamic> _tooltipRowForChartIndex(
 }
 
 const double _bloodSugarChartBorderWidth = 0.5;
-const double _bloodSugarChartPointRadius = 8.0;
+const double _bloodSugarChartPointRadius = 4.0;
 // X축 라벨 inset은 위젯에서 scale 반영 후 동적으로 계산한다.
 
 Widget buildBloodSugarXAxisLabels(
@@ -1322,7 +1322,7 @@ class BloodSugarChartPainter extends CustomPainter {
     final points = <Offset>[];
     final pointIndices = <int>[];
     final barPaint = Paint()..style = PaintingStyle.fill;
-    final barWidth = 10.0 * scale;
+    final barWidth = 5.0 * scale;
 
     for (int i = 0; i < data.length; i++) {
       if (data[i]['hourSlotBar'] == true) {
@@ -1410,17 +1410,17 @@ class BloodSugarChartPainter extends CustomPainter {
         ..color = _seriesColorForDataIndex(originalIndex)
         ..style = PaintingStyle.fill;
       if (isHighlighted) {
-        canvas.drawCircle(points[i], 8 * scale, pointPaint);
+        canvas.drawCircle(points[i], 6 * scale, pointPaint);
         canvas.drawCircle(
           points[i],
-          8 * scale,
+          6 * scale,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2,
         );
       } else {
-        canvas.drawCircle(points[i], 5 * scale, pointPaint);
+        canvas.drawCircle(points[i], 4 * scale, pointPaint);
       }
     }
   }
@@ -1510,17 +1510,17 @@ class BloodSugarChartPainter extends CustomPainter {
         ..color = _seriesColorForDataIndex(i)
         ..style = PaintingStyle.fill;
       if (isHighlighted) {
-        canvas.drawCircle(o, 8 * scale, pointPaint);
+        canvas.drawCircle(o, 6 * scale, pointPaint);
         canvas.drawCircle(
           o,
-          8 * scale,
+          6 * scale,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2,
         );
       } else {
-        canvas.drawCircle(o, 5 * scale, pointPaint);
+        canvas.drawCircle(o, 4 * scale, pointPaint);
       }
     }
 
