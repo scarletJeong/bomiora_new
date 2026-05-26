@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -86,94 +88,114 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(27, 0, 27, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '사용 중인 건강 어플을 선택 후 연동해주세요.',
-                        style: TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 14,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 5),
+            healthDp(context, 27),
+            healthDp(context, 0),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '사용 중인 건강 어플을 선택 후 연동해주세요.',
+                style: TextStyle(
+                  color: Color(0xFF1A1A1A),
+                  fontSize: 14,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              SizedBox(height: healthDp(context, 40)),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 20),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildProviderBlock(
-                          serviceName: _kSamsung,
-                          label: '삼성 헬스',
-                          child: _SamsungHealthMark(),
+                        Expanded(
+                          child: _buildProviderBlock(
+                            serviceName: _kSamsung,
+                            label: '삼성 헬스',
+                            child: _buildFullConnectMark(
+                              AppAssets.healthConnectSamsung,
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 24),
-                        _buildProviderBlock(
-                          serviceName: _kApple,
-                          label: '애플 건강',
-                          child: _AppleHealthMark(),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildProviderBlock(
-                          serviceName: _kGoogle,
-                          label: 'Google Fit',
-                          child: _GoogleFitMark(),
+                        SizedBox(width: healthDp(context, 20)),
+                        Expanded(
+                          child: _buildProviderBlock(
+                            serviceName: _kGoogle,
+                            label: 'Google Fit',
+                            child: _buildGoogleConnectMark(),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  if (_syncedSteps != null || _syncedHeartRate != null) ...[
-                    const SizedBox(height: 32),
-                    _buildSyncedSummary(),
+                    SizedBox(height: healthDp(context, 24)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildProviderBlock(
+                            serviceName: _kApple,
+                            label: '애플 건강',
+                            child: _buildFullConnectMark(
+                              AppAssets.healthConnectApple,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: healthDp(context, 20)),
+                        const Expanded(child: SizedBox()),
+                      ],
+                    ),
                   ],
-                  const SizedBox(height: 50),
-                ],
-              ),
-            ),
-          ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
-              child: SafeArea(
-              top: false,
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _isSyncing ? null : _onConnectBarPressed,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5A8D),
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(0xFFFF5A8D)
-                        .withValues(alpha: 0.5),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(
-                    _isSyncing ? '연동 중…' : '연동하기',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
                 ),
               ),
-              ),
-            ),
-          ],
+              if (_syncedSteps != null || _syncedHeartRate != null) ...[
+                SizedBox(height: healthDp(context, 32)),
+                _buildSyncedSummary(),
+              ],
+              SizedBox(height: healthDp(context, 50)),
+              _buildConnectButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 38),
+      child: FilledButton(
+        onPressed: _isSyncing ? null : _onConnectBarPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFFFF5A8D),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor:
+              const Color(0xFFFF5A8D).withValues(alpha: 0.5),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          ),
+        ),
+        child: Text(
+          _isSyncing ? '연동 중…' : '연동하기',
+          textScaler: TextScaler.noScaling,
+          style: const TextStyle(
+            fontSize: 16,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1,
+          ),
         ),
       ),
     );
@@ -184,52 +206,103 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
     required String label,
     required Widget child,
   }) {
-    final selected = _selectedServiceName == serviceName;
     final connected = _connectionState[serviceName] ?? false;
     final supported = _isSupportedOnCurrentDevice(serviceName);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => setState(() => _selectedServiceName = serviceName),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
+    return GestureDetector(
+      onTap: supported
+          ? () => setState(() => _selectedServiceName = serviceName)
+          : null,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          children: [
+            child,
+            const SizedBox(height: 10),
+            Text(
+              connected ? '$label · 연동됨' : label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: supported
+                    ? const Color(0xFF898383)
+                    : const Color(0xFFB3B3B3),
+                fontSize: 12,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 삼성·애플 — SVG 전체(100×100)를 카드로 사용.
+  Widget _buildFullConnectMark(String assetPath) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: SvgPicture.asset(
+        assetPath,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
+  /// 구글 — 흰 카드 유지, 안쪽 Google Fit 막대 아이콘.
+  /// (connect_google.svg는 PNG embed라 flutter_svg 미표시 → 벡터로 그림)
+  Widget _buildGoogleConnectMark() {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = constraints.maxWidth;
+          final radius = size * 0.2;
+          final borderW = size * 0.0155;
+          final barW = size * 0.14;
+          final gap = size * 0.04;
+          return Stack(
+            alignment: Alignment.center,
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+              Container(
+                width: size,
+                height: size,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(radius),
                   border: Border.all(
-                    color: selected
-                        ? const Color(0xFFFF5A8D)
-                        : Colors.transparent,
-                    width: 2,
+                    color: const Color(0xFFE0E0E0),
+                    width: borderW,
                   ),
                 ),
-                padding: const EdgeInsets.all(6),
-                child: Opacity(
-                  opacity: supported ? 1 : 0.45,
-                  child: child,
-                ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                connected ? '$label · 연동됨' : label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: supported
-                      ? const Color(0xFF898383)
-                      : const Color(0xFFB3B3B3),
-                  fontSize: 12,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _googleFitBar(barW, size * 0.28, const Color(0xFF4285F4)),
+                  SizedBox(width: gap),
+                  _googleFitBar(barW, size * 0.40, const Color(0xFFEA4335)),
+                  SizedBox(width: gap),
+                  _googleFitBar(barW, size * 0.34, const Color(0xFFFBBC05)),
+                  SizedBox(width: gap),
+                  _googleFitBar(barW, size * 0.22, const Color(0xFF34A853)),
+                ],
               ),
             ],
-          ),
-        ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _googleFitBar(double width, double height, Color color) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(width * 0.21),
       ),
     );
   }
@@ -262,144 +335,6 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           Text(
             '심박수: ${_syncedHeartRate != null ? '$_syncedHeartRate bpm' : '-'}',
             style: const TextStyle(fontSize: 12, color: Color(0xFF555555)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 삼성 헬스 톤 그라데이션 마크 (100×100)
-class _SamsungHealthMark extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF8C9EFF),
-            Color(0xFF1DE9B6),
-            Color(0xFF29B6F6),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AppleHealthMark extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 100,
-      height: 100,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFFE0E0E0),
-                width: 1.55,
-              ),
-            ),
-          ),
-          Container(
-            width: 47,
-            height: 41,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFFF5DA3),
-                  Color(0xFFFF435F),
-                  Color(0xFFFF291D),
-                ],
-              ),
-              border: Border.all(
-                color: const Color(0xFFFF5DA3),
-                width: 0.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GoogleFitMark extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 100,
-      height: 100,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFFE0E0E0),
-                width: 1.55,
-              ),
-            ),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                width: 14,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4285F4),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                width: 14,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEA4335),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                width: 14,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFBBC05),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                width: 14,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF34A853),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ],
           ),
         ],
       ),

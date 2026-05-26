@@ -53,6 +53,11 @@ abstract final class AppAssets {
   
 
   /* 4. 건강대시보드 */
+  // 건강대시보드 연동 아이콘
+  static const String healthConnectApple = '${_img}connect_apple.svg';
+  static const String healthConnectSamsung = '${_img}connect_samsung.svg';
+  static const String healthConnectGoogle = '${_img}connect_google.svg';
+
   // 건강대시보드 그래프 확대 아이콘
   static const String healthZoomin = '${_img}graph_zoomin.svg';
 
