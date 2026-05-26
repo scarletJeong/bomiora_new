@@ -1336,8 +1336,8 @@ class _HeartRateChartPainter extends CustomPainter {
   static double _rightPad([double? xUnitReservedWidth]) =>
       ChartConstants.weightDailyChartInnerPadH +
       (xUnitReservedWidth ?? ChartConstants.weightXAxisUnitReservedWidth);
-  static const double _baseDotRadius = 6.0;
-  static const double _baseBarWidth = 10.0;
+  static const double _baseDotRadius = 4.0;
+  static const double _baseBarWidth = 5.0;
   static const double _baseMinBarHeight = 5.0;
   static const double _hitSlop = 14.0;
 

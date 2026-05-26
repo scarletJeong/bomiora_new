@@ -169,14 +169,10 @@ Widget _buildHeartRateXAxisWithUnit({
       ),
       Positioned(
         right: -healthDp(context, 10),
-        top: healthDp(context, 1),
-        bottom: 0,
-        child: Align(
-          alignment: Alignment.center,
-          child: Text(
-            unitText,
-            style: healthChartAxisUnitTextStyle(context),
-          ),
+        top: healthDp(context, 3),
+        child: Text(
+          unitText,
+          style: healthChartAxisUnitTextStyle(context),
         ),
       ),
     ],
@@ -398,9 +394,9 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
     final minValue = widget.yLabels[widget.yAxisCount - 1];
     final maxValue = widget.yLabels[0];
     final scale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
-    final barWidth = 10.0 * scale;
+    final barWidth = 5.0 * scale;
     final minBarHeight = 5.0 * scale;
-    final dotRadius = 6.0 * scale;
+    final dotRadius = 4.0 * scale;
     const hitSlop = 14.0;
 
     final plotH = chartHeight - topPadding - bottomPadding;
@@ -616,10 +612,10 @@ class _HeartRateChartPainter extends CustomPainter {
 
     if (maxValue == minValue) return;
 
-    final barWidth = 10.0 * scale;
+    final barWidth = 5.0 * scale;
     final minBarHeight = 5.0 * scale;
-    final dotOuter = 6.0 * scale;
-    final dotInner = 4.0 * scale;
+    final dotOuter = 4.0 * scale;
+    final dotInner = 3.0 * scale;
 
     final plotH = size.height - topPlotPad - bottomPlotPad;
     if (plotH <= 0) return;
@@ -693,8 +689,8 @@ class _HeartRateChartPainter extends CustomPainter {
         } else if (kind == 'dot') {
           final bpm = seg['bpm'] as int;
           final y = toY(bpm.toDouble());
-          final rOuter = isSelected ? 8.0 * scale : dotOuter;
-          final rInner = isSelected ? 5.0 * scale : dotInner;
+          final rOuter = isSelected ? 6.0 * scale : dotOuter;
+          final rInner = isSelected ? 4.0 * scale : dotInner;
           if (exercise) {
             canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);
             canvas.drawCircle(
