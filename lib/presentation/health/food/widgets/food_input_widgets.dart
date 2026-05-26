@@ -420,17 +420,20 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
               ),
             ),
             const Spacer(),
-            MediaQuery(
-              data: MediaQuery.of(context)
-                  .copyWith(textScaler: TextScaler.noScaling),
-              child: Text(
-                '출처: 식품영양성분 데이터베이스',
-                style: TextStyle(
-                  color: const Color(0xFF898686),
-                  fontSize: healthSp(context, 10),
-                  height: 1.0,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
+            Padding(
+              padding: EdgeInsets.only(top: healthDp(context, 4)),
+              child: MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.noScaling),
+                child: Text(
+                  '출처: 식품영양성분 데이터베이스',
+                  style: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 10),
+                    height: 1.0,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
                 ),
               ),
             ),
