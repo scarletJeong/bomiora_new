@@ -74,7 +74,13 @@ Future<T?> _showHealthPickerDialog<T>({
                 ),
               ),
             ),
-            builder(dialogContext),
+            Align(
+              alignment: Alignment.center,
+              child: Transform.translate(
+                offset: Offset(0, -healthDp(dialogContext, 60)),
+                child: builder(dialogContext),
+              ),
+            ),
           ],
         ),
       );
@@ -295,12 +301,12 @@ class _HealthDatePickerDialogState extends State<_HealthDatePickerDialog> {
       healthDp(context, 20),
       healthDp(context, 16),
     );
-    final monthTitleFs = healthSp(context, 15);
+    final monthTitleFs = healthSp(context, 14);
     final navBtnSize = healthDp(context, 36);
     final navIconSize = healthDp(context, 24);
     final dividerH = healthDp(context, 24);
     final dividerThickness = healthDp(context, 0.84);
-    final weekdayFs = healthSp(context, 11);
+    final weekdayFs = healthSp(context, 10);
     final weekGap = healthDp(context, 8);
     final rowBottomPad = healthDp(context, 6);
     final rowH = healthDp(context, 32);
@@ -567,23 +573,26 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
   Widget build(BuildContext context) {
     final dialogInsetH = healthDp(context, 16);
     final dialogInsetV = healthDp(context, 24);
+    final wheelAreaH = healthDp(context, 200);
     final itemExtent = healthDp(context, 44);
+    final wheelVisibleRows = 4;
     final cardPad = EdgeInsets.fromLTRB(
       healthDp(context, 13),
-      healthDp(context, 16),
+      healthDp(context, 18),
       healthDp(context, 13),
-      healthDp(context, 16),
+      healthDp(context, 18),
     );
     final cardRadius = healthDp(context, 16);
-    final wheelHighlightRadius = healthDp(context, 12);
     final wheelBorderW = healthDp(context, 0.5);
-    final colonPadH = healthDp(context, 4);
+    final wheelColW = healthDp(context, 48);
+    final colonGapW = healthDp(context, 60);
+    final wheelsStripW = wheelColW * 2 + colonGapW;
     final btnGap = healthDp(context, 10);
-    final btnPadV = healthDp(context, 12);
+    final btnRowH = healthDp(context, 38);
     final btnRadius = healthDp(context, 10);
     final btnFontSize = healthSp(context, 16);
     final actionsTopGap = healthDp(context, 16);
-    final wheelExtraH = healthDp(context, 8);
+    final wheelExtraH = wheelAreaH - itemExtent * wheelVisibleRows;
 
     // insetPadding horizontal 16 + 16 — cardW가 이 값보다 크면 RenderFlex 오버플로(약 12px 등) 발생
     final cardW = _healthDialogMaxWidth(
@@ -617,11 +626,14 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                height: itemExtent * 4 + wheelExtraH,
+                height: wheelAreaH,
                 width: double.infinity,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final innerW = constraints.maxWidth;
+                    final highlightBorder = BorderSide(
+                      color: _kTimeBorder,
+                      width: wheelBorderW,
+                    );
                     return Stack(
                       alignment: Alignment.center,
                       clipBehavior: Clip.none,
@@ -630,24 +642,24 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                           child: Center(
                             child: Container(
                               height: itemExtent,
-                              width: innerW * 0.88,
+                              width: wheelsStripW,
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius:
-                                    BorderRadius.circular(wheelHighlightRadius),
-                                border: Border.all(
-                                  color: _kTimeBorder,
-                                  width: wheelBorderW,
+                                border: Border(
+                                  top: highlightBorder,
+                                  bottom: highlightBorder,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: itemExtent * 4,
+                        Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: wheelColW,
+                                height: itemExtent * wheelVisibleRows,
                                 child: Listener(
                                   onPointerSignal: (event) {
                                     if (!kIsWeb || event is! PointerScrollEvent)
@@ -715,19 +727,19 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                   ),
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding:
-                                  EdgeInsets.symmetric(horizontal: colonPadH),
-                              child: Text(
-                                ':',
-                                textScaler: TextScaler.noScaling,
-                                style: _timeRowStyle(context, 0),
+                              SizedBox(
+                                width: colonGapW,
+                                child: Center(
+                                  child: Text(
+                                    ':',
+                                    textScaler: TextScaler.noScaling,
+                                    style: _timeRowStyle(context, 0),
+                                  ),
+                                ),
                               ),
-                            ),
-                            Expanded(
-                              child: SizedBox(
-                                height: itemExtent * 4,
+                              SizedBox(
+                                width: wheelColW,
+                                height: itemExtent * wheelVisibleRows,
                                 child: Listener(
                                   onPointerSignal: (event) {
                                     if (!kIsWeb || event is! PointerScrollEvent)
@@ -774,8 +786,8 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     );
@@ -786,54 +798,64 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: _kBorderGray,
-                        side: BorderSide(
-                          color: _kBorderGray,
-                          width: wheelBorderW,
+                    child: SizedBox(
+                      height: btnRowH,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _kBorderGray,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          side: BorderSide(
+                            color: _kBorderGray,
+                            width: wheelBorderW,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(btnRadius),
+                          ),
                         ),
-                        padding: EdgeInsets.symmetric(vertical: btnPadV),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(btnRadius),
-                        ),
-                      ),
-                      child: Text(
-                        '닫기',
-                        textScaler: TextScaler.noScaling,
-                        style: TextStyle(
-                          fontSize: btnFontSize,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
+                        child: Text(
+                          '닫기',
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
+                            fontSize: btnFontSize,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   SizedBox(width: btnGap),
                   Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        Navigator.pop(
-                          context,
-                          TimeOfDay(hour: _hour, minute: _minute),
-                        );
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _kAccentPink,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: btnPadV),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(btnRadius),
+                    child: SizedBox(
+                      height: btnRowH,
+                      child: FilledButton(
+                        onPressed: () {
+                          Navigator.pop(
+                            context,
+                            TimeOfDay(hour: _hour, minute: _minute),
+                          );
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _kAccentPink,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(btnRadius),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        '등록',
-                        textScaler: TextScaler.noScaling,
-                        style: TextStyle(
-                          fontSize: btnFontSize,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
+                        child: Text(
+                          '등록',
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
+                            fontSize: btnFontSize,
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
@@ -855,7 +877,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
           : const Color(0xFF1A1A1A).withValues(alpha: 0.58),
       fontSize: healthSp(context, 22),
       fontFamily: 'Gmarket Sans TTF',
-      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w300,
+      fontWeight: isSelected ? FontWeight.w500 : FontWeight.w300,
     );
   }
 

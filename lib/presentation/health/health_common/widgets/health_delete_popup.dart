@@ -27,18 +27,22 @@ Future<bool?> showHealthDeletePopup({
       final popupW = math.min(healthDp(dialogContext, 272), availW);
       final popupH = healthDp(dialogContext, 221);
 
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: EdgeInsets.symmetric(horizontal: horizontalInset),
-        child: SizedBox(
-          width: popupW,
-          height: popupH,
-          child: HealthDeletePopup(
-            title: title,
-            message: message,
-            cancelText: cancelText,
-            deleteText: deleteText,
+      return Align(
+        alignment: Alignment.center,
+        child: Transform.translate(
+          offset: Offset(0, -healthDp(dialogContext, 48)),
+          child: Material(
+            color: Colors.transparent,
+            child: SizedBox(
+              width: popupW,
+              height: popupH,
+              child: HealthDeletePopup(
+                title: title,
+                message: message,
+                cancelText: cancelText,
+                deleteText: deleteText,
+              ),
+            ),
           ),
         ),
       );
@@ -62,8 +66,7 @@ class HealthDeletePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final r = healthDp(context, 32);
-    final rBtn = healthDp(context, 20);
+    final r = healthDp(context, 20);
     return ClipRRect(
         borderRadius: BorderRadius.circular(r),
         child: BackdropFilter(
@@ -143,7 +146,7 @@ class HealthDeletePopup extends StatelessWidget {
                               message,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: const Color(0xFF6B7280),
+                                color: const Color(0xFF898686),
                                 fontSize: healthSp(context, 14),
                                 height: 1.5,
                                 fontFamily: 'Gmarket Sans TTF',
@@ -163,16 +166,16 @@ class HealthDeletePopup extends StatelessWidget {
                             child: InkWell(
                               onTap: () => Navigator.pop(context, false),
                               borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(rBtn),
+                                bottomLeft: Radius.circular(r),
                               ),
                               child: Container(
                                 width: double.infinity,
                                 height: double.infinity,
                                 decoration: ShapeDecoration(
-                                  color: const Color(0xFFF8F8F8),
+                                  color: const Color(0xFFF7F7F7),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.only(
-                                      bottomLeft: Radius.circular(rBtn),
+                                      bottomLeft: Radius.circular(r),
                                     ),
                                   ),
                                 ),
@@ -199,7 +202,7 @@ class HealthDeletePopup extends StatelessWidget {
                             child: InkWell(
                               onTap: () => Navigator.pop(context, true),
                               borderRadius: BorderRadius.only(
-                                bottomRight: Radius.circular(rBtn),
+                                bottomRight: Radius.circular(r),
                               ),
                               child: Container(
                                 width: double.infinity,
@@ -208,7 +211,7 @@ class HealthDeletePopup extends StatelessWidget {
                                   color: const Color(0xFFFF5A8D),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.only(
-                                      bottomRight: Radius.circular(rBtn),
+                                      bottomRight: Radius.circular(r),
                                     ),
                                   ),
                                 ),

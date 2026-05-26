@@ -58,7 +58,7 @@ Future<T?> showHealthEditBottomSheet<T>({
     backgroundColor: Colors.white,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(
-        top: Radius.circular(healthDp(context, 40)),
+        top: Radius.circular(healthDp(context, 50)),
       ),
     ),
     builder: (sheetContext) {
@@ -75,10 +75,10 @@ Future<T?> showHealthEditBottomSheet<T>({
             height: maxHeight,
             child: Padding(
               padding: EdgeInsets.fromLTRB(
-                healthDp(sheetContext, 16),
-                healthDp(sheetContext, 12),
-                healthDp(sheetContext, 16),
-                healthDp(sheetContext, 12),
+                healthDp(sheetContext, 30),
+                healthDp(sheetContext, 20),
+                healthDp(sheetContext, 30),
+                healthDp(sheetContext, 30),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,7 +86,7 @@ Future<T?> showHealthEditBottomSheet<T>({
                   Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: healthDp(sheetContext, 4),
-                      vertical: healthDp(sheetContext, 8),
+                      vertical: 0,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -95,14 +95,14 @@ Future<T?> showHealthEditBottomSheet<T>({
                           title,
                           textScaler: TextScaler.noScaling,
                           style: TextStyle(
-                            fontSize: healthSp(sheetContext, 18),
+                            fontSize: healthSp(sheetContext, 20),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         IconButton(
                           icon: Icon(
                             Icons.close,
-                            size: healthDp(sheetContext, 24),
+                            size: healthDp(sheetContext, 20),
                           ),
                           onPressed: () => Navigator.pop(sheetContext),
                           padding: EdgeInsets.zero,
@@ -111,13 +111,14 @@ Future<T?> showHealthEditBottomSheet<T>({
                       ],
                     ),
                   ),
-                  const Divider(),
-                  SizedBox(height: healthDp(sheetContext, 8)),
+                  SizedBox(height: healthDp(sheetContext, 10)),
+                  const Divider(height: 0),
+                  SizedBox(height: healthDp(sheetContext, 20)),
                   Expanded(
                     child: ListView.separated(
                       itemCount: items.length,
                       separatorBuilder: (_, __) =>
-                          SizedBox(height: healthDp(sheetContext, 8)),
+                          SizedBox(height: healthDp(sheetContext, 20)),
                       itemBuilder: (_, index) {
                         final item = items[index];
                         return InkWell(
@@ -131,18 +132,14 @@ Future<T?> showHealthEditBottomSheet<T>({
                             decoration: ShapeDecoration(
                               color: Colors.white,
                               shape: RoundedRectangleBorder(
+                                side: BorderSide(
+                                  width: healthDp(sheetContext, 0.5),
+                                  color: const Color(0x7FD2D2D2),
+                                ),
                                 borderRadius: BorderRadius.circular(
                                   healthDp(sheetContext, 10),
                                 ),
                               ),
-                              shadows: [
-                                BoxShadow(
-                                  color: const Color(0x19000000),
-                                  blurRadius: healthDp(sheetContext, 4.17),
-                                  offset: Offset.zero,
-                                  spreadRadius: 0,
-                                ),
-                              ],
                             ),
                             child: Row(
                               children: [
