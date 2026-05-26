@@ -73,6 +73,13 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     'Snack': 0,
   };
 
+  final Map<String, List<String>> mealImagePaths = {
+    'Breakfast': const [],
+    'Lunch': const [],
+    'Dinner': const [],
+    'Snack': const [],
+  };
+
   @override
   void initState() {
     super.initState();
@@ -109,6 +116,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           mealCalories['Lunch'] = 0;
           mealCalories['Dinner'] = 0;
           mealCalories['Snack'] = 0;
+          mealImagePaths['Breakfast'] = const [];
+          mealImagePaths['Lunch'] = const [];
+          mealImagePaths['Dinner'] = const [];
+          mealImagePaths['Snack'] = const [];
           steps = 0;
           heartRate = 0;
           systolicBP = 0;
@@ -195,14 +206,19 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
             foodRecords.fold<num>(0, (sum, r) => sum + (r.protein ?? 0));
         totalFat = foodRecords.fold<num>(0, (sum, r) => sum + (r.fat ?? 0));
         totalOther = foodRecords.fold<num>(0, (sum, r) => sum + (r.other ?? 0));
-        mealCalories['Breakfast'] =
-            _recordForMeal(foodRecords, '아침')?.calories ?? 0;
-        mealCalories['Lunch'] =
-            _recordForMeal(foodRecords, '점심')?.calories ?? 0;
-        mealCalories['Dinner'] =
-            _recordForMeal(foodRecords, '저녁')?.calories ?? 0;
-        mealCalories['Snack'] =
-            _recordForMeal(foodRecords, '간식')?.calories ?? 0;
+        mealImagePaths.updateAll((_, __) => <String>[]);
+        final breakfast = FoodRepository.recordForMealKey(foodRecords, '아침');
+        final lunch = FoodRepository.recordForMealKey(foodRecords, '점심');
+        final dinner = FoodRepository.recordForMealKey(foodRecords, '저녁');
+        final snack = FoodRepository.recordForMealKey(foodRecords, '간식');
+        mealCalories['Breakfast'] = breakfast?.calories ?? 0;
+        mealCalories['Lunch'] = lunch?.calories ?? 0;
+        mealCalories['Dinner'] = dinner?.calories ?? 0;
+        mealCalories['Snack'] = snack?.calories ?? 0;
+        mealImagePaths['Breakfast'] = breakfast?.imagePaths ?? const [];
+        mealImagePaths['Lunch'] = lunch?.imagePaths ?? const [];
+        mealImagePaths['Dinner'] = dinner?.imagePaths ?? const [];
+        mealImagePaths['Snack'] = snack?.imagePaths ?? const [];
 
         isLoading = false;
       });
@@ -224,17 +240,6 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     if (sameDayRecords.isEmpty) return null;
     sameDayRecords.sort((a, b) => getDateTime(b).compareTo(getDateTime(a)));
     return sameDayRecords.first;
-  }
-
-  FoodRecordSummary? _recordForMeal(
-    List<FoodRecordSummary> records,
-    String mealKey,
-  ) {
-    final foodTime = FoodRepository.foodTimeFromMealKey(mealKey).toLowerCase();
-    for (final r in records) {
-      if (r.foodTime.toLowerCase() == foodTime) return r;
-    }
-    return null;
   }
 
   @override
@@ -302,7 +307,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                           healthDp(context, 18),
                                           0,
                                           healthDp(context, 18),
-                                          healthDp(context, 24),
+                                          0,
                                         ),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
@@ -348,6 +353,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                               totalFat: totalFat,
                                               totalOther: totalOther,
                                               mealCalories: mealCalories,
+                                              mealImagePaths: mealImagePaths,
                                               selectedDate: selectedDate,
                                               isLoggedIn: currentUser != null,
                                               onAfterDietReturn: () {
@@ -413,10 +419,10 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        healthDp(context, 18),
-        healthDp(context, 18),
-        healthDp(context, 18),
-        healthDp(context, 36),
+        healthDp(context, 27),
+        healthDp(context, 20),
+        healthDp(context, 27),
+        healthDp(context, 35),
       ),
       color: const Color(0xFFFFACC6),
       child: Column(
@@ -463,7 +469,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   ),
                 ],
               ),
-              SizedBox(width: healthDp(context, 14)),
+              SizedBox(width: healthDp(context, 10)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../common/chart_layout.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
 import '../../health_common/health_chart_axis_style.dart';
+import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_period_selector.dart';
 import 'heart_rate_tooltip.dart';
@@ -393,11 +394,11 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
 
     final minValue = widget.yLabels[widget.yAxisCount - 1];
     final maxValue = widget.yLabels[0];
-    final scale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
-    final barWidth = 5.0 * scale;
-    final minBarHeight = 5.0 * scale;
-    final dotRadius = 4.0 * scale;
-    const hitSlop = 14.0;
+    final m = HealthChartMetrics.of(context);
+    final barWidth = m.barWidth;
+    final minBarHeight = m.minBarHeightHeart;
+    final dotRadius = m.pointRadius;
+    final hitSlop = m.hitSlop;
 
     final plotH = chartHeight - topPadding - bottomPadding;
     if (plotH <= 0 || maxValue == minValue) {
@@ -612,10 +613,11 @@ class _HeartRateChartPainter extends CustomPainter {
 
     if (maxValue == minValue) return;
 
-    final barWidth = 5.0 * scale;
-    final minBarHeight = 5.0 * scale;
-    final dotOuter = 4.0 * scale;
-    final dotInner = 3.0 * scale;
+    final m = HealthChartMetrics(scale);
+    final barWidth = m.barWidth;
+    final minBarHeight = m.minBarHeightHeart;
+    final dotOuter = m.dotOuter;
+    final dotInner = m.dotInner;
 
     final plotH = size.height - topPlotPad - bottomPlotPad;
     if (plotH <= 0) return;
@@ -667,7 +669,9 @@ class _HeartRateChartPainter extends CustomPainter {
             yHigh = mid - minBarHeight / 2;
             barH = minBarHeight;
           }
-          final w = isSelected ? barWidth + 3 : barWidth;
+          final w = isSelected
+              ? barWidth + m.barWidthSelectedExtra
+              : barWidth;
           final barRect = Rect.fromLTWH(x - w / 2, yHigh, w, barH);
           final cornerR = math.min(w / 2, barH / 2);
           final fill = Paint()
@@ -683,14 +687,15 @@ class _HeartRateChartPainter extends CustomPainter {
               Paint()
                 ..color = Colors.white
                 ..style = PaintingStyle.stroke
-                ..strokeWidth = 2,
+                ..strokeWidth = m.highlightRingStroke,
             );
           }
         } else if (kind == 'dot') {
           final bpm = seg['bpm'] as int;
           final y = toY(bpm.toDouble());
-          final rOuter = isSelected ? 6.0 * scale : dotOuter;
-          final rInner = isSelected ? 4.0 * scale : dotInner;
+          final rOuter =
+              isSelected ? m.pointRadiusHighlighted : dotOuter;
+          final rInner = isSelected ? m.pointRadius : dotInner;
           if (exercise) {
             canvas.drawCircle(Offset(x, y), rOuter, Paint()..color = color);
             canvas.drawCircle(
@@ -706,7 +711,7 @@ class _HeartRateChartPainter extends CustomPainter {
               Paint()
                 ..color = Colors.white
                 ..style = PaintingStyle.stroke
-                ..strokeWidth = 2,
+                ..strokeWidth = m.highlightRingStroke,
             );
           }
         }

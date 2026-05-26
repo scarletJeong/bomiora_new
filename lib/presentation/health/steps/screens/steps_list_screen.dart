@@ -16,6 +16,7 @@ import '../../../../data/services/auth_service.dart';
 import '../utils/step_calculator.dart';
 import '../widgets/steps_chart_tooltip.dart';
 import '../../health_common/health_chart_axis_style.dart';
+import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../blood_pressure/widgets/blood_pressure_chart_section.dart';
 import '../../health_common/widgets/health_app_bar.dart';
@@ -279,7 +280,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
     // 링 지름 375 기준 188 — CustomPaint도 동일 크기
     final ringSize = healthDp(context, 188);
-    final strokeW = healthDp(context, 18);
+    final ringScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final strokeW = 18 * ringScale;
     return Container(
       padding: EdgeInsets.only(left: healthDp(context, 16)),
       decoration: BoxDecoration(
@@ -326,7 +329,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                             ),
                             SizedBox(height: healthDp(context, 2)),
                             Text(
-                              NumberFormat('#,###').format(totalSteps),
+                              '$totalSteps',
                               style: const TextStyle(
                                 color: Color(0xFFFF5A8D),
                                 fontSize: 32,
@@ -365,9 +368,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                     ),
                     SizedBox(height: healthDp(context, 5)),
                     Text(
-                      goalSteps != null
-                          ? NumberFormat('#,###').format(goalSteps)
-                          : '-',
+                      goalSteps != null ? '$goalSteps' : '-',
                       style: const TextStyle(
                         color: Color(0xFF1A1A1A),
                         fontSize: 20,
@@ -648,20 +649,20 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     final headerBand =
         showYHeader ? bloodPressureYAxisUnitBandHeight(context) : 0.0;
     final ySpacing = healthDp(context, ChartConstants.weightChartYAxisPlotGap);
-    final barW = healthDp(
+    final chartScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+    final chartMetrics = HealthChartMetrics(chartScale);
+    // 막대 width: Painter에서 375 기준 5 × [chartScale] (일·주·월 동일)
+    final xUnitReserved = healthDp(
       context,
-      selectedPeriod == '일'
-          ? 8.0
-          : selectedPeriod == '월'
-              ? 12.0
-              : 14.0,
+      ChartConstants.weightXAxisUnitReservedWidth,
     );
     final chartPadTop = healthWeightChartVertPad(context);
     final chartPadBottom = healthWeightChartBottomPlotPad(context);
-    final chartPadRight =
-        healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
-    final barCornerR = healthDp(context, 10);
-    final minBarH = healthDp(context, 4);
+    final barCornerR = math.min(
+      _StepsBarChartPainter.barWidthFor(scale: chartScale) / 2,
+      healthDp(context, 10),
+    );
 
     final visibleData = _buildVisibleChartData(data);
     final forceWhiteBg = selectedPeriod == '일' || selectedPeriod == '월';
@@ -691,19 +692,19 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                       builder: (context, plotConstraints) {
                         final plotW = plotConstraints.maxWidth;
                         final plotH = plotConstraints.maxHeight;
-                        final contentW =
-                            math.max(plotW - chartPadRight, 1.0);
 
                         return GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTapDown: (d) {
                             if (visibleData.isEmpty) return;
                             final localX =
-                                d.localPosition.dx.clamp(0.0, contentW);
+                                d.localPosition.dx.clamp(0.0, plotW);
                             final idx = _hitVisibleBarIndex(
                               localX,
                               visibleData.length,
-                              contentW,
+                              plotW,
+                              chartScale,
+                              xUnitReserved,
                             );
                             if (visibleData[idx].value <= 0) {
                               setState(() {
@@ -718,7 +719,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                 _visibleBarCenterX(
                                   idx,
                                   visibleData.length,
-                                  contentW,
+                                  plotW,
+                                  chartScale,
+                                  xUnitReserved,
                                 ),
                                 healthDp(context, 30),
                               );
@@ -744,17 +747,16 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   data: visibleData,
                                   maxValue: maxValue,
                                   yTickCount: yTicks.length,
-                                  barWidth: barW,
+                                  isDailyHalfHour: selectedPeriod == '일',
+                                  scale: chartScale,
+                                  xUnitReservedWidth: xUnitReserved,
                                   topPadding: chartPadTop,
                                   bottomPadding: chartPadBottom,
-                                  rightPadding: chartPadRight,
-                                  isDailyHalfHour: selectedPeriod == '일',
                                   dailyStartSlot: selectedPeriod == '일'
                                       ? _dailyStartSlot()
                                       : 0,
                                   barCornerRadius: barCornerR,
-                                  minBarHeight: minBarH,
-                                  gridStrokeWidth: healthDp(context, 0.5),
+                                  gridStrokeWidth: chartMetrics.gridStroke,
                                 ),
                                 size: Size(plotW, plotH),
                               ),
@@ -829,16 +831,43 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   int _hitVisibleBarIndex(
     double localX,
     int visibleLength,
-    double contentWidth,
+    double plotWidth,
+    double scale,
+    double xUnitReservedWidth,
   ) {
     if (visibleLength <= 1) return 0;
-    final safeW = math.max(contentWidth, 1.0);
     if (selectedPeriod == '일') {
       final startParity = _dailyStartSlot().isOdd ? 1 : 0;
-      final relHalf = ((localX / safeW) * 7.0 - 0.5) * 2.0;
+      final relHalf = _stepsDailyRelHalfFromLocalX(
+        localX,
+        plotWidth,
+        scale: scale,
+        xUnitReservedWidth: xUnitReservedWidth,
+      );
       return (relHalf - startParity).round().clamp(0, visibleLength - 1);
     }
-    return ((localX / safeW) * visibleLength)
+    final plotW = _stepsWeekMonthPlotWidth(
+      plotWidth,
+      xUnitReservedWidth: xUnitReservedWidth,
+    );
+    final barW = _StepsBarChartPainter.barWidthFor(scale: scale);
+    final halfW = math.max(barW / 2 + healthDp(context, 4), 8.0);
+    var best = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < visibleLength; i++) {
+      final cx = _stepsWeekMonthSlotCenterX(
+        index: i,
+        slotCount: visibleLength,
+        plotContentWidth: plotW,
+      );
+      final d = (localX - cx).abs();
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    if (bestDist <= halfW) return best;
+    return (localX / math.max(plotW, 1) * visibleLength)
         .floor()
         .clamp(0, visibleLength - 1);
   }
@@ -846,16 +875,19 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
   double _visibleBarCenterX(
     int index,
     int visibleLength,
-    double contentWidth,
+    double plotWidth,
+    double scale,
+    double xUnitReservedWidth,
   ) {
-    final safeW = math.max(contentWidth, 1.0);
-    if (selectedPeriod == '일') {
-      final startParity = _dailyStartSlot().isOdd ? 1 : 0;
-      final relHalf = startParity + index;
-      return safeW * ((0.5 + (relHalf / 2.0)) / 7.0);
-    }
-    final slotW = safeW / math.max(visibleLength, 1);
-    return slotW * (index + 0.5);
+    return _stepsBarSlotCenterX(
+      index: index,
+      slotCount: visibleLength,
+      plotWidth: plotWidth,
+      scale: scale,
+      xUnitReservedWidth: xUnitReservedWidth,
+      isDailyHalfHour: selectedPeriod == '일',
+      dailyStartSlot: _dailyStartSlot(),
+    );
   }
 
   List<_StepsBarData> _buildPeriodChartData() {
@@ -1002,13 +1034,16 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       clipBehavior: Clip.none,
       children: [
         Padding(
-          padding: const EdgeInsets.only(
-            right: ChartConstants.weightXAxisUnitReservedWidth,
+          padding: EdgeInsets.only(
+            right: healthDp(
+              context,
+              ChartConstants.weightXAxisUnitReservedWidth,
+            ),
           ),
           child: Row(children: rowChildren),
         ),
         Positioned(
-          right: -10,
+          right: -healthDp(context, 10),
           top: 1,
           bottom: 0,
           child: Align(
@@ -1137,65 +1172,148 @@ class _StepsBarData {
   });
 }
 
+/// 혈압·체중 차트와 동일: (시)/(일)/(월) 단위 여백 + 좌측 inset 반영한 플롯 폭
+double _stepsChartContentWidth(
+  double plotWidth, {
+  required double scale,
+  required double xUnitReservedWidth,
+}) {
+  final m = HealthChartMetrics(scale);
+  return plotWidth -
+      BloodPressureChartPainter.borderWidth * 2 -
+      m.pointRadius * 2 -
+      xUnitReservedWidth;
+}
+
+double _stepsDailyRelHalfFromLocalX(
+  double localX,
+  double plotWidth, {
+  required double scale,
+  required double xUnitReservedWidth,
+}) {
+  final m = HealthChartMetrics(scale);
+  final left = BloodPressureChartPainter.borderWidth + m.pointRadius;
+  final cw = _stepsChartContentWidth(
+    plotWidth,
+    scale: scale,
+    xUnitReservedWidth: xUnitReservedWidth,
+  );
+  if (cw <= 1) return 0;
+  return ((localX - left) / cw * 7.0 - 0.5) * 2.0;
+}
+
+/// 주·월 플롯 폭 — 체중 주간 차트와 동일(좌 inset 없음, 우 (일)/(월) 여백만 제외)
+double _stepsWeekMonthPlotWidth(
+  double plotWidth, {
+  required double xUnitReservedWidth,
+}) {
+  return math.max(plotWidth - xUnitReservedWidth, 1.0);
+}
+
+double _stepsWeekMonthSlotCenterX({
+  required int index,
+  required int slotCount,
+  required double plotContentWidth,
+}) {
+  return plotContentWidth * (index + 0.5) / slotCount;
+}
+
+double _stepsBarSlotCenterX({
+  required int index,
+  required int slotCount,
+  required double plotWidth,
+  required double scale,
+  required double xUnitReservedWidth,
+  required bool isDailyHalfHour,
+  required int dailyStartSlot,
+}) {
+  if (isDailyHalfHour) {
+    final relHalf = (dailyStartSlot.isOdd ? 1 : 0) + index;
+    final m = HealthChartMetrics(scale);
+    final left = BloodPressureChartPainter.borderWidth + m.pointRadius;
+    final cw = _stepsChartContentWidth(
+      plotWidth,
+      scale: scale,
+      xUnitReservedWidth: xUnitReservedWidth,
+    );
+    return left + cw * (0.5 + relHalf / 2.0) / 7.0;
+  }
+  return _stepsWeekMonthSlotCenterX(
+    index: index,
+    slotCount: slotCount,
+    plotContentWidth: _stepsWeekMonthPlotWidth(
+      plotWidth,
+      xUnitReservedWidth: xUnitReservedWidth,
+    ),
+  );
+}
+
 class _StepsBarChartPainter extends CustomPainter {
+  /// 375 기준 막대 width (일·주·월 공통, × scale → 650pt 폭에서 8.67)
+  static const double barWidthBase = 5.0;
+
+  static double barWidthFor({required double scale}) => barWidthBase * scale;
+
   final List<_StepsBarData> data;
   final int maxValue;
   final int yTickCount;
-  final double barWidth;
+  final double scale;
+  final double xUnitReservedWidth;
   final double topPadding;
   final double bottomPadding;
-  final double rightPadding;
   final bool isDailyHalfHour;
   final int dailyStartSlot;
   final double barCornerRadius;
-  final double minBarHeight;
   final double gridStrokeWidth;
 
   _StepsBarChartPainter({
     required this.data,
     required this.maxValue,
     required this.yTickCount,
-    required this.barWidth,
+    this.scale = 1.0,
+    required this.xUnitReservedWidth,
     this.topPadding = 20,
     this.bottomPadding = 20,
-    this.rightPadding = 18,
-    this.isDailyHalfHour = false,
+    required this.isDailyHalfHour,
     this.dailyStartSlot = 0,
     this.barCornerRadius = 10,
-    this.minBarHeight = 4,
     this.gridStrokeWidth = 0.5,
   });
+
+  double get _barWidth => barWidthFor(scale: scale);
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    final chartWidth = size.width - rightPadding;
     final chartHeight = size.height - topPadding - bottomPadding;
 
     final barPaint = Paint()
       ..color = const Color(0xFFFF5A8D)
       ..style = PaintingStyle.fill;
 
-    final slotWidth = chartWidth / data.length;
     final scaleMax = maxValue <= 0 ? 1 : maxValue;
     final corner = Radius.circular(barCornerRadius);
     for (int i = 0; i < data.length; i++) {
+      if (data[i].value <= 0) continue;
       final factor = (data[i].value / scaleMax).clamp(0.0, 1.0);
-      final barHeight = math.max(
-        chartHeight * factor,
-        data[i].value > 0 ? minBarHeight : 0.0,
-      );
-      if (barHeight == 0) continue;
+      final barHeight = chartHeight * factor;
+      if (barHeight <= 0) continue;
 
-      final xCenter = isDailyHalfHour
-          ? chartWidth *
-              ((0.5 + (((dailyStartSlot.isOdd ? 1 : 0) + i) / 2.0)) / 7.0)
-          : slotWidth * (i + 0.5);
-      final x = xCenter - (barWidth / 2);
+      final xCenter = _stepsBarSlotCenterX(
+        index: i,
+        slotCount: data.length,
+        plotWidth: size.width,
+        scale: scale,
+        xUnitReservedWidth: xUnitReservedWidth,
+        isDailyHalfHour: isDailyHalfHour,
+        dailyStartSlot: dailyStartSlot,
+      );
+      final w = _barWidth;
+      final x = xCenter - (w / 2);
       final y = topPadding + chartHeight - barHeight;
       final rect = RRect.fromRectAndCorners(
-        Rect.fromLTWH(x, y, barWidth, barHeight),
+        Rect.fromLTWH(x, y, w, barHeight),
         topLeft: corner,
         topRight: corner,
         bottomLeft: Radius.zero,
@@ -1210,14 +1328,13 @@ class _StepsBarChartPainter extends CustomPainter {
     return oldDelegate.data != data ||
         oldDelegate.maxValue != maxValue ||
         oldDelegate.yTickCount != yTickCount ||
-        oldDelegate.barWidth != barWidth ||
+        oldDelegate.scale != scale ||
+        oldDelegate.isDailyHalfHour != isDailyHalfHour ||
+        oldDelegate.xUnitReservedWidth != xUnitReservedWidth ||
         oldDelegate.topPadding != topPadding ||
         oldDelegate.bottomPadding != bottomPadding ||
-        oldDelegate.rightPadding != rightPadding ||
-        oldDelegate.isDailyHalfHour != isDailyHalfHour ||
         oldDelegate.dailyStartSlot != dailyStartSlot ||
         oldDelegate.barCornerRadius != barCornerRadius ||
-        oldDelegate.minBarHeight != minBarHeight ||
         oldDelegate.gridStrokeWidth != gridStrokeWidth;
   }
 }

@@ -21,6 +21,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../core/utils/image_picker_utils.dart';
 import '../widgets/weight_chart_section.dart';
 import '../utils/weight_goal_progress.dart';
+import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_list_edit_button.dart';
@@ -1597,7 +1598,12 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 omitOutOfRangeWeights: omitOutOfRangeWeights,
                 topPadding: healthWeightChartVertPad(context),
                 bottomPadding: healthWeightChartBottomPlotPad(context),
-                barWidth: healthDp(context, 5),
+                barWidth: HealthChartMetrics(
+                  healthTextScaleByWidth(MediaQuery.sizeOf(context).width),
+                ).barWidth,
+                scale: healthTextScaleByWidth(
+                  MediaQuery.sizeOf(context).width,
+                ),
               ),
               size: Size(
                 constraints.maxWidth,
@@ -2463,6 +2469,7 @@ class WeightChartPainter extends CustomPainter {
   final double topPadding;
   final double bottomPadding;
   final double barWidth;
+  final double scale;
 
   WeightChartPainter({
     required this.chartData,
@@ -2473,7 +2480,8 @@ class WeightChartPainter extends CustomPainter {
     this.omitOutOfRangeWeights = false,
     this.topPadding = 20,
     this.bottomPadding = 10,
-    this.barWidth = 10,
+    this.barWidth = 5,
+    this.scale = 1.0,
   });
 
   @override
@@ -2485,6 +2493,7 @@ class WeightChartPainter extends CustomPainter {
     final weightRange = maxWeight - minWeight;
     if (weightRange == 0) return;
 
+    final m = HealthChartMetrics(scale);
     const double leftPadding = ChartConstants.weightDailyChartInnerPadH;
     const double rightPadding = ChartConstants.weightDailyChartInnerPadH +
         ChartConstants.weightXAxisUnitReservedWidth;
@@ -2536,9 +2545,11 @@ class WeightChartPainter extends CustomPainter {
           yBottom = t;
         }
         final midY = (yTop + yBottom) / 2;
-        final barH = math.max(yBottom - yTop, 4.0);
+        final barH = math.max(yBottom - yTop, m.minBarHeight);
         final isSel = selectedPointIndex != null && selectedPointIndex == i;
-        final wBar = isSel ? barWidth + 3 : barWidth;
+        final wBar = isSel
+            ? barWidth + m.barWidthSelectedExtra
+            : barWidth;
         final rect = RRect.fromRectAndRadius(
           Rect.fromCenter(
             center: Offset(xCenter, midY),
@@ -2554,7 +2565,7 @@ class WeightChartPainter extends CustomPainter {
             Paint()
               ..color = Colors.white
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
+              ..strokeWidth = m.highlightRingStroke,
           );
         }
         continue;
@@ -2624,23 +2635,32 @@ class WeightChartPainter extends CustomPainter {
           selectedPointIndex != null && selectedPointIndex == originalIndex;
 
       if (isSelected) {
-        // 선택된 점 - 더 크게, 꽉 찬 원 + 흰색 외곽선
-        canvas.drawCircle(point, 6, pointPaint);
+        canvas.drawCircle(point, m.pointRadiusHighlighted, pointPaint);
         canvas.drawCircle(
           point,
-          6,
+          m.pointRadiusHighlighted,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2,
+            ..strokeWidth = m.highlightRingStroke,
         );
       } else {
-        // 일반 점 - 꽉 찬 원
-        canvas.drawCircle(point, 4, pointPaint);
+        canvas.drawCircle(point, m.pointRadius, pointPaint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant WeightChartPainter oldDelegate) {
+    return oldDelegate.chartData != chartData ||
+        oldDelegate.yLabels != yLabels ||
+        oldDelegate.timeOffset != timeOffset ||
+        oldDelegate.selectedPeriod != selectedPeriod ||
+        oldDelegate.selectedPointIndex != selectedPointIndex ||
+        oldDelegate.omitOutOfRangeWeights != omitOutOfRangeWeights ||
+        oldDelegate.topPadding != topPadding ||
+        oldDelegate.bottomPadding != bottomPadding ||
+        oldDelegate.barWidth != barWidth ||
+        oldDelegate.scale != scale;
+  }
 }

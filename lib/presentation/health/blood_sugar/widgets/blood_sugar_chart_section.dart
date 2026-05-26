@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../common/chart_layout.dart';
 import '../../health_common/health_chart_axis_style.dart';
+import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_chart_expand_control.dart';
 import '../../health_common/widgets/health_period_selector.dart';
@@ -1315,10 +1316,11 @@ class BloodSugarChartPainter extends CustomPainter {
     final startHour =
         (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
     final endHour = startHour + 6;
+    final m = HealthChartMetrics(scale);
     final points = <Offset>[];
     final pointIndices = <int>[];
     final barPaint = Paint()..style = PaintingStyle.fill;
-    final barWidth = 5.0 * scale;
+    final barWidth = m.barWidth;
 
     for (int i = 0; i < data.length; i++) {
       if (data[i]['hourSlotBar'] == true) {
@@ -1343,13 +1345,15 @@ class BloodSugarChartPainter extends CustomPainter {
         final yTop = math.min(yMin, yMax);
         final yBottom = math.max(yMin, yMax);
         final centerY = (yTop + yBottom) / 2;
-        final barHeight = math.max(yBottom - yTop, 4.0);
+        final barHeight = math.max(yBottom - yTop, m.minBarHeight);
         final isHighlighted = highlightedIndex != null && highlightedIndex == i;
         final barColor = data[i]['barColor'] is Color
             ? data[i]['barColor'] as Color
             : const Color(0xFFFF5A8D);
         barPaint.color = barColor;
-        final w = isHighlighted ? barWidth + 3 : barWidth;
+        final w = isHighlighted
+            ? barWidth + m.barWidthSelectedExtra
+            : barWidth;
         final rect = RRect.fromRectAndRadius(
           Rect.fromCenter(
             center: Offset(xCenter, centerY),
@@ -1365,7 +1369,7 @@ class BloodSugarChartPainter extends CustomPainter {
             Paint()
               ..color = Colors.white
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
+              ..strokeWidth = m.highlightRingStroke,
           );
         }
         continue;
@@ -1406,17 +1410,17 @@ class BloodSugarChartPainter extends CustomPainter {
         ..color = _seriesColorForDataIndex(originalIndex)
         ..style = PaintingStyle.fill;
       if (isHighlighted) {
-        canvas.drawCircle(points[i], 6 * scale, pointPaint);
+        canvas.drawCircle(points[i], m.pointRadiusHighlighted, pointPaint);
         canvas.drawCircle(
           points[i],
-          6 * scale,
+          m.pointRadiusHighlighted,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2,
+            ..strokeWidth = m.highlightRingStroke,
         );
       } else {
-        canvas.drawCircle(points[i], 4 * scale, pointPaint);
+        canvas.drawCircle(points[i], m.pointRadius, pointPaint);
       }
     }
   }
@@ -1467,6 +1471,7 @@ class BloodSugarChartPainter extends CustomPainter {
       }
     }
 
+    final m = HealthChartMetrics(scale);
     final byType = <String, List<int>>{};
     for (final i in indices) {
       final t = data[i]['measurementType']?.toString() ?? '';
@@ -1474,7 +1479,7 @@ class BloodSugarChartPainter extends CustomPainter {
     }
 
     final lineBase = Paint()
-      ..strokeWidth = 2.5
+      ..strokeWidth = m.seriesLineStroke
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -1506,17 +1511,17 @@ class BloodSugarChartPainter extends CustomPainter {
         ..color = _seriesColorForDataIndex(i)
         ..style = PaintingStyle.fill;
       if (isHighlighted) {
-        canvas.drawCircle(o, 6 * scale, pointPaint);
+        canvas.drawCircle(o, m.pointRadiusHighlighted, pointPaint);
         canvas.drawCircle(
           o,
-          6 * scale,
+          m.pointRadiusHighlighted,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2,
+            ..strokeWidth = m.highlightRingStroke,
         );
       } else {
-        canvas.drawCircle(o, 4 * scale, pointPaint);
+        canvas.drawCircle(o, m.pointRadius, pointPaint);
       }
     }
 
@@ -1527,7 +1532,9 @@ class BloodSugarChartPainter extends CustomPainter {
       final highlighted = highlightedIndex != null &&
           (highlightedIndex == clusterTapIndex ||
               cluster.dataIndices.contains(highlightedIndex));
-      final r = (highlighted ? 8.0 : 5.0) * scale;
+      final r = highlighted
+          ? m.overlapClusterRadiusHighlighted
+          : m.overlapClusterRadius;
       canvas.drawCircle(
         o,
         r,
@@ -1541,12 +1548,12 @@ class BloodSugarChartPainter extends CustomPainter {
         Paint()
           ..color = bloodSugarOverlapAccentColor
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
+          ..strokeWidth = m.highlightRingStroke,
       );
       final arm = r * 0.45;
       final plus = Paint()
         ..color = bloodSugarOverlapAccentColor
-        ..strokeWidth = 1.6
+        ..strokeWidth = m.plusArmStroke
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke;
       canvas.drawLine(o + Offset(-arm, 0), o + Offset(arm, 0), plus);
@@ -1602,6 +1609,7 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
   final double maxValue;
   final double topPlotPad;
   final double bottomPlotPad;
+  final double scale;
 
   EmptyBloodSugarChartGridPainter({
     this.yLabels,
@@ -1609,19 +1617,21 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
     this.maxValue = 200,
     required this.topPlotPad,
     required this.bottomPlotPad,
+    this.scale = 1.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    const x0 = 8.5;
+    final m = HealthChartMetrics(scale);
+    final x0 = m.emptyGridLeftInset;
     final plotRight =
         size.width - ChartConstants.weightXAxisUnitReservedWidth - x0;
     final gridPaint = Paint()
       ..color = Colors.grey[300]!
-      ..strokeWidth = 0.5;
+      ..strokeWidth = m.gridStroke;
     final dashedGridPaint = Paint()
       ..color = Colors.grey[200]!
-      ..strokeWidth = 0.5;
+      ..strokeWidth = m.gridStroke;
     final yValues = (yLabels != null && yLabels!.length >= 2)
         ? yLabels!
         : [maxValue, minValue];
@@ -1648,5 +1658,6 @@ class EmptyBloodSugarChartGridPainter extends CustomPainter {
       oldDelegate.minValue != minValue ||
       oldDelegate.maxValue != maxValue ||
       oldDelegate.topPlotPad != topPlotPad ||
-      oldDelegate.bottomPlotPad != bottomPlotPad;
+      oldDelegate.bottomPlotPad != bottomPlotPad ||
+      oldDelegate.scale != scale;
 }

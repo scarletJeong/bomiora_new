@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../common/chart_layout.dart';
+import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
 
@@ -201,13 +202,16 @@ class BloodPressureChartPainter extends CustomPainter {
     required bool cellCenterXSlots,
     double pointRadius = basePointRadius,
     double? xUnitReservedWidth,
+    double scale = 1.0,
   }) {
     final cw = _contentWidth(
       plotWidth,
       pointRadius: pointRadius,
       xUnitReservedWidth: xUnitReservedWidth,
     );
-    if (cw <= 1 || slotCount < 1) return 24.0;
+    if (cw <= 1 || slotCount < 1) {
+      return HealthChartMetrics(scale).slotHitHalfWidthFallback;
+    }
     if (slotCount == 1) return cw * 0.48;
     if (cellCenterXSlots) {
       return cw / (2 * slotCount) * 1.05;
@@ -219,11 +223,11 @@ class BloodPressureChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    // 막대 두께는 체중 주/월 막대와 동일(10 / 선택 12). 단일 점은 체중 일별과 같이 5 / 선택 8
-    final double pointRadius = basePointRadius * scale;
-    final double highlightRadius = 6.0 * scale;
-    final double barStrokeWidth = 5.0 * scale;
-    final left = borderWidth + pointRadius;
+    final m = HealthChartMetrics(scale);
+    final double pointRadius = m.pointRadius;
+    final double highlightRadius = m.pointRadiusHighlighted;
+    final double barStrokeWidth = m.barStroke;
+    final left = m.borderStroke + pointRadius;
     final contentW = _contentWidth(
       size.width,
       pointRadius: pointRadius,
@@ -276,7 +280,8 @@ class BloodPressureChartPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       if (recordCount >= 2) {
-        final strokeW = isHighlighted ? 8.0 * scale : barStrokeWidth;
+        final strokeW =
+            isHighlighted ? m.barStrokeSelected : barStrokeWidth;
 
         final barPaintSys = Paint()
           ..color = _systolicColor
@@ -308,7 +313,7 @@ class BloodPressureChartPainter extends CustomPainter {
             Paint()
               ..color = Colors.white
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
+              ..strokeWidth = m.highlightRingStroke,
           );
           canvas.drawCircle(
             Offset(x, ySys),
@@ -316,7 +321,7 @@ class BloodPressureChartPainter extends CustomPainter {
             Paint()
               ..color = Colors.white
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2,
+              ..strokeWidth = m.highlightRingStroke,
           );
         }
       }

@@ -74,19 +74,13 @@ Future<T?> showHealthEditBottomSheet<T>({
             width: double.infinity,
             height: maxHeight,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(sheetContext, 30),
-                healthDp(sheetContext, 20),
-                healthDp(sheetContext, 30),
-                healthDp(sheetContext, 30),
-              ),
+              padding: healthEditSheetOuterPadding(sheetContext),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(sheetContext, 4),
-                      vertical: 0,
+                      horizontal: healthEditSheetTitleHorizontalPad(sheetContext),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -105,20 +99,30 @@ Future<T?> showHealthEditBottomSheet<T>({
                             size: healthDp(sheetContext, 20),
                           ),
                           onPressed: () => Navigator.pop(sheetContext),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                          padding: EdgeInsets.all(
+                            healthDp(sheetContext, 4),
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: healthDp(sheetContext, 24),
+                            minHeight: healthDp(sheetContext, 24),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: healthDp(sheetContext, 10)),
-                  const Divider(height: 0),
-                  SizedBox(height: healthDp(sheetContext, 20)),
+                  SizedBox(height: healthEditSheetTitleToDividerGap(sheetContext)),
+                  Divider(
+                    height: healthDp(sheetContext, 1),
+                    thickness: healthDp(sheetContext, 0.5),
+                    color: const Color(0xFFD2D2D2),
+                  ),
+                  SizedBox(height: healthEditSheetDividerToListGap(sheetContext)),
                   Expanded(
                     child: ListView.separated(
                       itemCount: items.length,
-                      separatorBuilder: (_, __) =>
-                          SizedBox(height: healthDp(sheetContext, 20)),
+                      separatorBuilder: (_, __) => SizedBox(
+                        height: healthEditSheetListItemGap(sheetContext),
+                      ),
                       itemBuilder: (_, index) {
                         final item = items[index];
                         return InkWell(
@@ -128,7 +132,7 @@ Future<T?> showHealthEditBottomSheet<T>({
                           onTap: () => Navigator.pop(sheetContext, item.data),
                           child: Container(
                             width: double.infinity,
-                            padding: EdgeInsets.all(healthDp(sheetContext, 10)),
+                            padding: healthEditSheetItemPadding(sheetContext),
                             decoration: ShapeDecoration(
                               color: Colors.white,
                               shape: RoundedRectangleBorder(
@@ -152,7 +156,9 @@ Future<T?> showHealthEditBottomSheet<T>({
                                     color: const Color(0xFF707070),
                                   ),
                                 ),
-                                SizedBox(width: healthDp(sheetContext, 15)),
+                                SizedBox(
+                                  width: healthEditSheetTimeIconGap(sheetContext),
+                                ),
                                 Expanded(
                                   child: Row(
                                     mainAxisAlignment:
@@ -173,8 +179,10 @@ Future<T?> showHealthEditBottomSheet<T>({
                                         children: [
                                           item.buildTrailing(sheetContext),
                                           SizedBox(
-                                              width:
-                                                  healthDp(sheetContext, 10)),
+                                            width: healthEditSheetTrailingChevronGap(
+                                              sheetContext,
+                                            ),
+                                          ),
                                           Icon(
                                             Icons.chevron_right,
                                             color: const Color(0xFF9CA3AF),

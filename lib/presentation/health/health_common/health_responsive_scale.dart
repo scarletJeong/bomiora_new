@@ -60,3 +60,39 @@ EdgeInsets healthChartCardPadding(BuildContext context) =>
       healthDp(context, 6),
     );
 
+/// 「수정할 시간 선택」 바텀시트 — 외곽 패딩 (375 기준 LTRB 30,20,30,30).
+EdgeInsets healthEditSheetOuterPadding(BuildContext context) =>
+    EdgeInsets.fromLTRB(
+      healthDp(context, 30),
+      healthDp(context, 20),
+      healthDp(context, 30),
+      healthDp(context, 30),
+    );
+
+/// 바텀시트 제목 행 좌우 패딩 (375 기준 4).
+double healthEditSheetTitleHorizontalPad(BuildContext context) =>
+    healthDp(context, 4);
+
+/// 제목 ↔ 구분선 (375 기준 10).
+double healthEditSheetTitleToDividerGap(BuildContext context) =>
+    healthDp(context, 10);
+
+/// 구분선 ↔ 목록 (375 기준 20).
+double healthEditSheetDividerToListGap(BuildContext context) =>
+    healthDp(context, 20);
+
+/// 시간 항목 사이 간격 (375 기준 20).
+double healthEditSheetListItemGap(BuildContext context) =>
+    healthDp(context, 20);
+
+/// 시간 항목 카드 내부 패딩 (375 기준 10).
+EdgeInsets healthEditSheetItemPadding(BuildContext context) =>
+    EdgeInsets.all(healthDp(context, 10));
+
+/// 시간 아이콘 ↔ 시각 텍스트 (375 기준 15).
+double healthEditSheetTimeIconGap(BuildContext context) => healthDp(context, 15);
+
+/// trailing ↔ chevron (375 기준 10).
+double healthEditSheetTrailingChevronGap(BuildContext context) =>
+    healthDp(context, 10);
+

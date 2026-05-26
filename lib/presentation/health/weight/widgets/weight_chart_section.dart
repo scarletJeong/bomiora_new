@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../common/chart_layout.dart';
 import '../../health_common/health_chart_axis_style.dart';
+import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_chart_expand_control.dart';
 
@@ -1000,6 +1001,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
     final startIndex =
         (timeOffset * maxStart).round().clamp(0, maxStart);
 
+    final m = HealthChartMetrics(scale);
     final singlePointPaint = Paint()
       ..color = const Color(0xFFFF5A8D)
       ..style = PaintingStyle.fill;
@@ -1036,15 +1038,29 @@ class _WeightMonthlyRangePainter extends CustomPainter {
       final yMin = toY(visibleMin);
       final yMax = toY(visibleMax);
 
-      // 월별은 "해당 월 측정 2건 이상"이면 높이가 작아도 막대로 유지
+      // 월별은 "해당 월 측정 2건 이상"이면 높이가 작아도 막대로 유지 (두께: 혈압 막대/원과 동일)
+      final isHighlighted = selectedIndex == dataIndex;
       if (count == 1) {
-        final radius = (selectedIndex == dataIndex ? 6.5 : 5.0) * scale;
-        canvas.drawCircle(
-            Offset(x, (yMin + yMax) / 2), radius, singlePointPaint);
+        final radius =
+            isHighlighted ? m.pointRadiusHighlighted : m.pointRadius;
+        final cy = Offset(x, (yMin + yMax) / 2);
+        canvas.drawCircle(cy, radius, singlePointPaint);
+        if (isHighlighted) {
+          canvas.drawCircle(
+            cy,
+            radius,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = m.highlightRingStroke,
+          );
+        }
       } else {
+        final strokeW =
+            isHighlighted ? m.barStrokeSelected : m.barStroke;
         final effectivePaint = Paint()
           ..color = const Color(0xFFFF5A8D)
-          ..strokeWidth = (selectedIndex == dataIndex ? 12 : 10) * scale
+          ..strokeWidth = strokeW
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke;
         canvas.drawLine(Offset(x, yMax), Offset(x, yMin), effectivePaint);
@@ -1434,6 +1450,7 @@ class _WeightWeeklyRangePainter extends CustomPainter {
     final chartWidth = size.width - leftPadding - rightPadding;
     final chartHeight = size.height - topPlotPad - bottomPlotPad;
 
+    final m = HealthChartMetrics(scale);
     final singlePointPaint = Paint()
       ..color = const Color(0xFFFF5A8D)
       ..style = PaintingStyle.fill;
@@ -1472,25 +1489,52 @@ class _WeightWeeklyRangePainter extends CustomPainter {
       final drawableTop = topPlotPad;
       final drawableBottom = size.height - bottomPlotPad;
 
+      final isHighlighted = selectedIndex == i;
       if (dayCount == 1 || (yLo - yHi).abs() < 2) {
-        final radius = (selectedIndex == i ? 6.5 : 5.0) * scale;
+        final radius =
+            isHighlighted ? m.pointRadiusHighlighted : m.pointRadius;
         final cy = ((yLo + yHi) / 2).clamp(drawableTop, drawableBottom);
-        canvas.drawCircle(Offset(x, cy), radius, singlePointPaint);
+        final center = Offset(x, cy);
+        canvas.drawCircle(center, radius, singlePointPaint);
+        if (isHighlighted) {
+          canvas.drawCircle(
+            center,
+            radius,
+            Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = m.highlightRingStroke,
+          );
+        }
       } else {
         final topY = math.min(yLo, yHi);
         final botY = math.max(yLo, yHi);
         final ct = topY.clamp(drawableTop, drawableBottom);
         final cb = botY.clamp(drawableTop, drawableBottom);
         if ((cb - ct).abs() < 0.5) {
-          canvas.drawCircle(
-            Offset(x, ((ct + cb) / 2).clamp(drawableTop, drawableBottom)),
-            (selectedIndex == i ? 6.5 : 5.0) * scale,
-            singlePointPaint,
+          final radius =
+              isHighlighted ? m.pointRadiusHighlighted : m.pointRadius;
+          final center = Offset(
+            x,
+            ((ct + cb) / 2).clamp(drawableTop, drawableBottom),
           );
+          canvas.drawCircle(center, radius, singlePointPaint);
+          if (isHighlighted) {
+            canvas.drawCircle(
+              center,
+              radius,
+              Paint()
+                ..color = Colors.white
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = m.highlightRingStroke,
+            );
+          }
         } else {
+          final strokeW =
+              isHighlighted ? m.barStrokeSelected : m.barStroke;
           final effectivePaint = Paint()
             ..color = const Color(0xFFFF5A8D)
-            ..strokeWidth = (selectedIndex == i ? 12 : 10) * scale
+            ..strokeWidth = strokeW
             ..strokeCap = StrokeCap.round
             ..style = PaintingStyle.stroke;
           canvas.drawLine(Offset(x, ct), Offset(x, cb), effectivePaint);

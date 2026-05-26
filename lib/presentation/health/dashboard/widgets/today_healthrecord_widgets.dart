@@ -309,6 +309,7 @@ class TodayHealthRecordSection extends StatelessWidget {
               ),
             ],
           ),
+          SizedBox(height: healthDp(context, 20)),
         ],
       ),
     );

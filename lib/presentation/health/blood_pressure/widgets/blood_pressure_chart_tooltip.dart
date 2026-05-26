@@ -44,6 +44,7 @@ BloodPressureChartHit? hitTestBloodPressureChartSlot({
     cellCenterXSlots: cellCenterXSlots,
     pointRadius: pointRadius,
     xUnitReservedWidth: xUnitReservedWidth,
+    scale: scale,
   );
 
   int? closestIndex;
