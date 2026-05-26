@@ -148,7 +148,7 @@ class BloodPressureChartPainter extends CustomPainter {
   });
 
   static const double borderWidth = 0.5;
-  static const double basePointRadius = 5.0;
+  static const double basePointRadius = 4.0;
 
   /// X축 라벨 행에 적용할 좌우 inset (375 기준). 위젯에서 scale 반영 후 사용.
   static const double baseXInset = borderWidth + basePointRadius;
@@ -221,8 +221,8 @@ class BloodPressureChartPainter extends CustomPainter {
 
     // 막대 두께는 체중 주/월 막대와 동일(10 / 선택 12). 단일 점은 체중 일별과 같이 5 / 선택 8
     final double pointRadius = basePointRadius * scale;
-    final double highlightRadius = 8.0 * scale;
-    final double barStrokeWidth = 10.0 * scale;
+    final double highlightRadius = 6.0 * scale;
+    final double barStrokeWidth = 5.0 * scale;
     final left = borderWidth + pointRadius;
     final contentW = _contentWidth(
       size.width,
@@ -276,7 +276,7 @@ class BloodPressureChartPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       if (recordCount >= 2) {
-        final strokeW = isHighlighted ? 12.0 * scale : barStrokeWidth;
+        final strokeW = isHighlighted ? 8.0 * scale : barStrokeWidth;
 
         final barPaintSys = Paint()
           ..color = _systolicColor

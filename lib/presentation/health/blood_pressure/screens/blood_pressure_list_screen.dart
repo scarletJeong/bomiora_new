@@ -327,14 +327,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         ),
         Positioned(
           right: -healthDp(context, 10),
-          top: healthDp(context, 1),
-          bottom: 0,
-          child: Align(
-            alignment: Alignment.center,
-            child: Text(
-              unitText,
-              style: healthChartAxisUnitTextStyle(context),
-            ),
+          top: healthDp(context, 3),
+          child: Text(
+            unitText,
+            style: healthChartAxisUnitTextStyle(context),
           ),
         ),
       ],
@@ -921,7 +917,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                         textAlign: TextAlign.center,
                         textScaler: TextScaler.noScaling,
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
+                          color: Colors.black,
                           fontSize: healthSp(context, 8),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
@@ -1629,10 +1625,10 @@ class _PressureLegend extends StatelessWidget {
             label,
             textScaler: TextScaler.noScaling,
             style: TextStyle(
-              color: Colors.grey,
+              color: Colors.black,
               fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w300,
             ),
           ),
         ],
@@ -1657,6 +1653,7 @@ class _GraphSeriesLegend extends StatelessWidget {
     final fontSize = healthSp(context, 12);
     return Row(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           width: dot,

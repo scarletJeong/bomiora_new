@@ -150,12 +150,21 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
     }
   }
 
+  void _onDeletePressed() {
+    if (_isSaving) return;
+    if (widget.record == null) {
+      Navigator.pop(context);
+      return;
+    }
+    _showDeleteConfirmDialog();
+  }
+
   // 삭제 확인 다이얼로그
   Future<void> _showDeleteConfirmDialog() async {
     final shouldDelete = await showHealthDeletePopup(
       context: context,
       title: '혈압 기록 삭제',
-      message: '이 혈압 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
+      message: '해당 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
       cancelText: '취소',
       deleteText: '삭제',
     );
@@ -227,7 +236,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: healthDp(context, 0)),
+                  SizedBox(height: healthDp(context, 5)),
                   Text(
                     '오늘의 혈압을 등록해주세요',
                     textScaler: TextScaler.noScaling,
@@ -378,7 +387,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        SizedBox(height: healthDp(context, 10)),
+        SizedBox(height: healthDp(context, 5)),
         Container(
           height: healthDp(context, 40),
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
@@ -467,9 +476,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
           child: SizedBox(
             height: healthDp(context, 38),
             child: OutlinedButton(
-              onPressed: (widget.record != null && !_isSaving)
-                  ? _showDeleteConfirmDialog
-                  : null,
+              onPressed: _isSaving ? null : _onDeletePressed,
               style: OutlinedButton.styleFrom(
                 side: BorderSide(
                   width: healthDp(context, 0.5),
@@ -480,7 +487,7 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
                 ),
               ),
               child: Text(
-                '삭제',
+                widget.record == null ? '취소' : '삭제',
                 textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
