@@ -201,7 +201,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('아침')?.id ?? '',
-                      mealImagePath: _recordFor('아침')?.imagePath,
+                      mealImagePaths: _recordFor('아침')?.imagePaths ?? const [],
                       addedItems: _recordFor('아침')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
@@ -225,7 +225,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('점심')?.id ?? '',
-                      mealImagePath: _recordFor('점심')?.imagePath,
+                      mealImagePaths: _recordFor('점심')?.imagePaths ?? const [],
                       addedItems: _recordFor('점심')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
@@ -249,7 +249,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('저녁')?.id ?? '',
-                      mealImagePath: _recordFor('저녁')?.imagePath,
+                      mealImagePaths: _recordFor('저녁')?.imagePaths ?? const [],
                       addedItems: _recordFor('저녁')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
@@ -273,7 +273,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                       selectedDate: selectedDate,
                       mbId: _currentUser?.id ?? '',
                       foodRecordId: _recordFor('간식')?.id ?? '',
-                      mealImagePath: _recordFor('간식')?.imagePath,
+                      mealImagePaths: _recordFor('간식')?.imagePaths ?? const [],
                       addedItems: _recordFor('간식')?.items ?? [],
                       onItemAdded: _onFoodItemAdded,
                     ),
@@ -392,10 +392,14 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
   }) {
     final isEmptyMeal = mealRecord == null ||
         (mealRecord.items.isEmpty && (mealRecord.calories ?? 0) == 0);
-    final imagePath = mealRecord?.imagePath;
-    final hasPhoto = imagePath != null &&
-        imagePath.isNotEmpty &&
-        !ImageUrlHelper.isCorruptStoredImagePath(imagePath);
+    final imagePaths = (mealRecord?.imagePaths ?? const [])
+        .where(
+          (p) =>
+              p.isNotEmpty && !ImageUrlHelper.isCorruptStoredImagePath(p),
+        )
+        .take(3)
+        .toList();
+    final hasPhoto = imagePaths.isNotEmpty;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -420,7 +424,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                 context,
                 isEmptyMeal: isEmptyMeal,
                 hasPhoto: hasPhoto,
-                imagePath: imagePath,
+                imagePaths: imagePaths,
               ),
               SizedBox(width: healthDp(context, 20)),
               Expanded(
@@ -501,7 +505,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     BuildContext context, {
     required bool isEmptyMeal,
     required bool hasPhoto,
-    String? imagePath,
+    List<String> imagePaths = const [],
   }) {
     final thumbW = healthDp(context, 47.08);
     final thumbH = healthDp(context, 48.33);
@@ -526,17 +530,55 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     if (hasPhoto) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(healthDp(context, 5)),
-        child: Image.network(
-          ImageUrlHelper.getImageUrl(imagePath),
+        child: SizedBox(
           width: thumbW,
           height: thumbH,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _mealPlaceholderSvg(context, thumbW, thumbH),
+          child: _mealThumbPhotoCollage(imagePaths),
         ),
       );
     }
 
     return _mealPlaceholderSvg(context, thumbW, thumbH);
+  }
+
+  Widget _mealThumbPhotoCollage(List<String> paths) {
+    Widget cell(String path) {
+      return Image.network(
+        ImageUrlHelper.getImageUrl(path),
+        key: ValueKey(path),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) =>
+            const ColoredBox(color: Color(0xFF6C6C6C)),
+      );
+    }
+
+    if (paths.length == 1) return cell(paths.first);
+    if (paths.length == 2) {
+      return Row(
+        children: [
+          Expanded(child: cell(paths[0])),
+          const SizedBox(width: 1),
+          Expanded(child: cell(paths[1])),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: cell(paths[0])),
+              const SizedBox(width: 1),
+              Expanded(child: cell(paths[1])),
+            ],
+          ),
+        ),
+        const SizedBox(height: 1),
+        Expanded(child: cell(paths[2])),
+      ],
+    );
   }
 
   Widget _mealPlaceholderSvg(BuildContext context, double w, double h) {

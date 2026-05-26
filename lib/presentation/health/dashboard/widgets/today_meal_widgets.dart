@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../food/screens/food_list_screen.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -15,6 +16,7 @@ class TodayMealSection extends StatelessWidget {
     required this.totalFat,
     required this.totalOther,
     required this.mealCalories,
+    required this.mealImagePaths,
     required this.selectedDate,
     required this.isLoggedIn,
     required this.onAfterDietReturn,
@@ -27,6 +29,7 @@ class TodayMealSection extends StatelessWidget {
   final num totalFat;
   final num totalOther;
   final Map<String, int> mealCalories;
+  final Map<String, List<String>> mealImagePaths;
   final DateTime selectedDate;
   final bool isLoggedIn;
   final VoidCallback onAfterDietReturn;
@@ -105,7 +108,8 @@ class TodayMealSection extends StatelessWidget {
                   ],
                 ),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
                       '$consumedCalories',
@@ -118,14 +122,18 @@ class TodayMealSection extends StatelessWidget {
                         height: 1,
                       ),
                     ),
-                    Text(
-                      ' / $targetCalories kcal',
-                      textScaler: TextScaler.noScaling,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
+                    Padding(
+                      padding: EdgeInsets.only(top: healthDp(context, 3)),
+                      child: Text(
+                        ' / $targetCalories kcal',
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: healthSp(context, 10),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                          height: 1,
+                        ),
                       ),
                     ),
                   ],
@@ -158,27 +166,31 @@ class TodayMealSection extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 _TodayMealItemCard(
+                  key: const ValueKey('dashboard-meal-breakfast'),
                   mealName: '아침',
                   calories: mealCalories['Breakfast'] ?? 0,
-                  hasMeal: (mealCalories['Breakfast'] ?? 0) > 0,
+                  imagePaths: mealImagePaths['Breakfast'] ?? const [],
                 ),
                 SizedBox(width: healthDp(context, 6)),
                 _TodayMealItemCard(
+                  key: const ValueKey('dashboard-meal-lunch'),
                   mealName: '점심',
                   calories: mealCalories['Lunch'] ?? 0,
-                  hasMeal: (mealCalories['Lunch'] ?? 0) > 0,
+                  imagePaths: mealImagePaths['Lunch'] ?? const [],
                 ),
                 SizedBox(width: healthDp(context, 6)),
                 _TodayMealItemCard(
+                  key: const ValueKey('dashboard-meal-dinner'),
                   mealName: '저녁',
                   calories: mealCalories['Dinner'] ?? 0,
-                  hasMeal: (mealCalories['Dinner'] ?? 0) > 0,
+                  imagePaths: mealImagePaths['Dinner'] ?? const [],
                 ),
                 SizedBox(width: healthDp(context, 6)),
                 _TodayMealItemCard(
+                  key: const ValueKey('dashboard-meal-snack'),
                   mealName: '간식',
                   calories: mealCalories['Snack'] ?? 0,
-                  hasMeal: (mealCalories['Snack'] ?? 0) > 0,
+                  imagePaths: mealImagePaths['Snack'] ?? const [],
                 ),
               ],
             ),
@@ -297,42 +309,109 @@ class _TodayMealMacroBar extends StatelessWidget {
 
 class _TodayMealItemCard extends StatelessWidget {
   const _TodayMealItemCard({
+    super.key,
     required this.mealName,
     required this.calories,
-    required this.hasMeal,
+    this.imagePaths = const [],
   });
 
   final String mealName;
   final int calories;
-  final bool hasMeal;
+  final List<String> imagePaths;
+
+  /// 대시보드 카드는 대표(첫 번째) 사진 1장만 표시
+  String? get _representativeImagePath {
+    for (final p in imagePaths) {
+      if (p.isNotEmpty && !ImageUrlHelper.isCorruptStoredImagePath(p)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  bool get _hasValidImage => _representativeImagePath != null;
+
+  bool get _hasMeal => calories > 0 || _hasValidImage;
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(healthDp(context, 10));
     return SizedBox(
       width: healthDp(context, 75),
       height: healthDp(context, 96),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(healthDp(context, 16)),
-          border: Border.all(color: const Color(0xFFEAEAEA)),
-          gradient: hasMeal
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFB8B8B8), Color(0xFF6C6C6C)],
-                )
-              : null,
-          color: hasMeal ? null : const Color(0xFFE2E2E2),
-        ),
-        child: hasMeal
-            ? Container(
-                padding: EdgeInsets.all(healthDp(context, 6)),
-                alignment: Alignment.bottomCenter,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(healthDp(context, 15)),
-                  color: Colors.black.withOpacity(0.25),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: const Color(0xFFEAEAEA)),
+            gradient: _hasMeal && !_hasValidImage
+                ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFFB8B8B8), Color(0xFF6C6C6C)],
+                  )
+                : null,
+            color: _hasMeal ? null : const Color(0xFFE2E2E2),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_hasValidImage)
+                Image.network(
+                  ImageUrlHelper.getImageUrl(_representativeImagePath!),
+                  key: ValueKey(_representativeImagePath),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (_, __, ___) =>
+                      const ColoredBox(color: Color(0xFF6C6C6C)),
                 ),
-                child: Column(
+              if (_hasMeal)
+                Container(
+                  padding: EdgeInsets.all(healthDp(context, 6)),
+                  alignment: Alignment.bottomCenter,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.05),
+                        Colors.black.withValues(alpha: 0.45),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        mealName,
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(context, 12),
+                          fontWeight: FontWeight.w800,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: healthDp(context, 4)),
+                      Text(
+                        '$calories kcal',
+                        textScaler: TextScaler.noScaling,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(context, 10),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w800,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -341,47 +420,20 @@ class _TodayMealItemCard extends StatelessWidget {
                       textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: healthSp(context, 12),
-                        fontWeight: FontWeight.w800,
+                        fontSize: healthSp(context, 14),
+                        fontWeight: FontWeight.w700,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: healthDp(context, 4)),
-                    Text(
-                      '$calories kcal',
-                      textScaler: TextScaler.noScaling,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w800,
-                      ),
-                      textAlign: TextAlign.center,
+                    Icon(
+                      Icons.add,
+                      color: Colors.white,
+                      size: healthDp(context, 30),
                     ),
                   ],
                 ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    mealName,
-                    textScaler: TextScaler.noScaling,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 14),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 0)),
-                  Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: healthDp(context,30),
-                  ),
-                ],
-              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -408,7 +460,7 @@ class _LegendDot extends StatelessWidget {
           label,
           textScaler: TextScaler.noScaling,
           style: TextStyle(
-            color: const Color(0xFF6B7280),
+            color: Colors.black,
             fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,

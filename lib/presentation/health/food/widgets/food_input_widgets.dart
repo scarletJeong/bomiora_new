@@ -21,7 +21,7 @@ class CalorieSearchBlock extends StatefulWidget {
   final DateTime selectedDate;
   final String mbId;
   final String foodRecordId;
-  final String? mealImagePath;
+  final List<String> mealImagePaths;
   final List<FoodRecordItemSummary> addedItems;
   final VoidCallback? onItemAdded;
 
@@ -31,7 +31,7 @@ class CalorieSearchBlock extends StatefulWidget {
     required this.selectedDate,
     required this.mbId,
     this.foodRecordId = '',
-    this.mealImagePath,
+    this.mealImagePaths = const [],
     this.addedItems = const [],
     this.onItemAdded,
   });
@@ -42,6 +42,7 @@ class CalorieSearchBlock extends StatefulWidget {
 
 class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
   static const int _pageSize = 20;
+  List<String> _localImagePaths = [];
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _resultsScrollController = ScrollController();
@@ -218,6 +219,32 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     await _uploadPickedMealPhoto(image);
   }
 
+  Future<void> _setRepresentativePhoto(int index) async {
+    final paths = List<String>.from(_localImagePaths);
+    if (index <= 0 || index >= paths.length) return;
+    final recordId = widget.foodRecordId;
+    if (recordId.isEmpty) return;
+    final reordered = [
+      paths[index],
+      ...paths.sublist(0, index),
+      ...paths.sublist(index + 1),
+    ];
+    final ok =
+        await FoodRepository.updateRecordImagePaths(recordId, reordered);
+    if (!mounted) return;
+    if (ok) {
+      setState(() => _localImagePaths = _sanitizeImagePaths(reordered));
+      _notifyParentRefresh();
+    }
+  }
+
+  void _notifyParentRefresh() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onItemAdded?.call();
+    });
+  }
+
   Future<void> _uploadPickedMealPhoto(XFile? image) async {
     if (image == null || !mounted) return;
     setState(() => _isUploadingPhoto = true);
@@ -245,13 +272,34 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
         return;
       }
 
-      final ok = await FoodRepository.updateRecordImagePath(recordId, imageUrl);
+      final current = List<String>.from(_localImagePaths);
+      if (current.length >= FoodRepository.maxMealImages) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '사진은 최대 ${FoodRepository.maxMealImages}장까지 등록할 수 있습니다.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      final updated = [...current, imageUrl];
+      final ok =
+          await FoodRepository.updateRecordImagePaths(recordId, updated);
       if (!mounted) return;
       if (ok) {
-        widget.onItemAdded?.call();
-      } else {
+        setState(() => _localImagePaths = _sanitizeImagePaths(updated));
+        _notifyParentRefresh();
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('사진 저장에 실패했습니다.')),
+          const SnackBar(
+            content: Text(
+              '사진 저장에 실패했습니다. DB에 photos 컬럼이 있는지 확인해 주세요.',
+            ),
+          ),
         );
       }
     } finally {
@@ -282,10 +330,70 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     super.dispose();
   }
 
+  List<String> _sanitizeImagePaths(List<String> paths) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final raw in paths) {
+      if (ImageUrlHelper.isCorruptStoredImagePath(raw)) continue;
+      final key = FoodRepository.normalizeMealImagePathForStorage(raw);
+      if (key.isEmpty || seen.contains(key)) continue;
+      seen.add(key);
+      out.add(key);
+      if (out.length >= FoodRepository.maxMealImages) break;
+    }
+    return out;
+  }
+
+  bool _pathsContentChanged(List<String> a, List<String> b) {
+    final na = _sanitizeImagePaths(a);
+    final nb = _sanitizeImagePaths(b);
+    if (na.length != nb.length) return true;
+    for (var i = 0; i < na.length; i++) {
+      if (na[i] != nb[i]) return true;
+    }
+    return false;
+  }
+
+  List<String> _mergeImagePathLists(List<String> primary, List<String> secondary) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final list in [primary, secondary]) {
+      for (final raw in list) {
+        if (ImageUrlHelper.isCorruptStoredImagePath(raw)) continue;
+        final key = FoodRepository.normalizeMealImagePathForStorage(raw);
+        if (key.isEmpty || seen.contains(key)) continue;
+        seen.add(key);
+        out.add(key);
+        if (out.length >= FoodRepository.maxMealImages) return out;
+      }
+    }
+    return out;
+  }
+
   @override
   void initState() {
     super.initState();
+    _localImagePaths = _sanitizeImagePaths(widget.mealImagePaths);
     _resultsScrollController.addListener(_onResultsScroll);
+  }
+
+  @override
+  void didUpdateWidget(CalorieSearchBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.foodRecordId != widget.foodRecordId) {
+      _localImagePaths = _sanitizeImagePaths(widget.mealImagePaths);
+      return;
+    }
+    if (_pathsContentChanged(oldWidget.mealImagePaths, widget.mealImagePaths)) {
+      final fromParent = _sanitizeImagePaths(widget.mealImagePaths);
+      if (fromParent.length >= _localImagePaths.length) {
+        _localImagePaths = fromParent;
+      } else if (fromParent.isEmpty) {
+        // 부모가 아직 갱신 전이면 로컬 유지
+      } else {
+        _localImagePaths = _mergeImagePathLists(_localImagePaths, fromParent);
+      }
+    }
   }
 
   @override
@@ -293,72 +401,11 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Builder(
-          builder: (anchorContext) {
-            return GestureDetector(
-              onTap: _isUploadingPhoto
-                  ? null
-                  : () => _openPhotoSourceDropdown(anchorContext),
-              child: Container(
-                width: healthDp(context, 80),
-                height: healthDp(context, 80),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD9D9D9),
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                ),
-                child: _isUploadingPhoto
-                ? Center(
-                    child: SizedBox(
-                      width: healthDp(context, 24),
-                      height: healthDp(context, 24),
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  )
-                : widget.mealImagePath != null &&
-                        widget.mealImagePath!.isNotEmpty &&
-                        !ImageUrlHelper.isCorruptStoredImagePath(
-                            widget.mealImagePath)
-                    ? ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 10)),
-                        child: Image.network(
-                          ImageUrlHelper.getImageUrl(widget.mealImagePath),
-                          width: healthDp(context, 80),
-                          height: healthDp(context, 80),
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: healthDp(context, 50),
-                            height: healthDp(context, 50),
-                            child: SvgPicture.asset(
-                              AppAssets.foodCamera,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          SizedBox(height: healthDp(context, 4)),
-                          const Text(
-                            '사진추가하기',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              height: 1.0,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            );
-          },
+        _MealPhotoStrip(
+          imagePaths: _localImagePaths,
+          isUploading: _isUploadingPhoto,
+          onAddTap: _openPhotoSourceDropdown,
+          onPhotoTap: _setRepresentativePhoto,
         ),
         SizedBox(height: healthDp(context, 5)),
         Row(
@@ -923,6 +970,186 @@ class MacroLegend extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 사진추가 카드 + 업로드된 사진(최대 3, 첫 장 = 대표)
+class _MealPhotoStrip extends StatelessWidget {
+  const _MealPhotoStrip({
+    required this.imagePaths,
+    required this.isUploading,
+    required this.onAddTap,
+    required this.onPhotoTap,
+  });
+
+  final List<String> imagePaths;
+  final bool isUploading;
+  final void Function(BuildContext anchorContext) onAddTap;
+  final void Function(int index) onPhotoTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final paths = imagePaths
+        .where((p) => !ImageUrlHelper.isCorruptStoredImagePath(p))
+        .take(FoodRepository.maxMealImages)
+        .toList();
+    final tile = healthDp(context, 80);
+    final gap = healthDp(context, 6);
+
+    return Builder(
+      builder: (anchorContext) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              if (paths.length < FoodRepository.maxMealImages)
+                _MealPhotoAddTile(
+                  size: tile,
+                  isUploading: isUploading,
+                  onTap: isUploading
+                      ? null
+                      : () => onAddTap(anchorContext),
+                ),
+              for (var i = 0; i < paths.length; i++) ...[
+                if (i > 0 || paths.length < FoodRepository.maxMealImages)
+                  SizedBox(width: gap),
+                _MealPhotoThumbnail(
+                  size: tile,
+                  imagePath: paths[i],
+                  isRepresentative: i == 0,
+                  onTap: i == 0 ? null : () => onPhotoTap(i),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MealPhotoAddTile extends StatelessWidget {
+  const _MealPhotoAddTile({
+    required this.size,
+    required this.isUploading,
+    this.onTap,
+  });
+
+  final double size;
+  final bool isUploading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: const Color(0xFFD9D9D9),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        ),
+        child: isUploading
+            ? Center(
+                child: SizedBox(
+                  width: healthDp(context, 24),
+                  height: healthDp(context, 24),
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: healthDp(context, 50),
+                    height: healthDp(context, 50),
+                    child: SvgPicture.asset(
+                      AppAssets.foodCamera,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 4)),
+                  const Text(
+                    '사진추가하기',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      height: 1.0,
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _MealPhotoThumbnail extends StatelessWidget {
+  const _MealPhotoThumbnail({
+    required this.size,
+    required this.imagePath,
+    required this.isRepresentative,
+    this.onTap,
+  });
+
+  final double size;
+  final String imagePath;
+  final bool isRepresentative;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(healthDp(context, 10));
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.network(
+                ImageUrlHelper.getImageUrl(imagePath),
+                key: ValueKey(imagePath),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    const ColoredBox(color: Color(0xFF6C6C6C)),
+              ),
+              if (isRepresentative)
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 6),
+                      vertical: healthDp(context, 4),
+                    ),
+                    color: const Color(0xB2FF5A8D),
+                    child: Text(
+                      '대표사진',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 10),
+                        height: 1.0,
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
