@@ -216,6 +216,15 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     }
   }
 
+  void _onDeletePressed() {
+    if (_isSaving) return;
+    if (widget.record == null) {
+      Navigator.pop(context);
+      return;
+    }
+    _showDeleteConfirmDialog();
+  }
+
   // 삭제 확인 팝업 (공통 위젯)
   Future<void> _showDeleteConfirmDialog() async {
     final shouldDelete = await showHealthDeletePopup(
@@ -607,9 +616,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
           child: SizedBox(
             height: healthDp(context, 38),
             child: OutlinedButton(
-              onPressed: (widget.record != null && !_isSaving)
-                  ? _showDeleteConfirmDialog
-                  : null,
+              onPressed: _isSaving ? null : _onDeletePressed,
               style: OutlinedButton.styleFrom(
                 side: BorderSide(
                   width: healthDp(context, 0.5),
@@ -620,7 +627,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
                 ),
               ),
               child: Text(
-                '삭제',
+                widget.record == null ? '취소' : '삭제',
                 textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
