@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import '../../../common/chart_layout.dart';
@@ -1205,14 +1205,10 @@ Widget _buildBloodSugarXAxisWithUnit(
       ),
       Positioned(
         right: -healthDp(context, 10),
-        top: healthDp(context, 1),
-        bottom: 0,
-        child: Align(
-          alignment: Alignment.center,
-          child: Text(
-            unitText,
-            style: healthChartAxisUnitTextStyle(context),
-          ),
+        top: healthDp(context, 3),
+        child: Text(
+          unitText,
+          style: healthChartAxisUnitTextStyle(context),
         ),
       ),
     ],
