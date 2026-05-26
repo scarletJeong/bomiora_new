@@ -162,7 +162,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                                   fontWeight: FontWeight.w300,
                                 ),
                               ),
-                              SizedBox(height: healthDp(context, 5)),
+                              SizedBox(height: healthDp(context, 10)),
                               Text(
                                 '${NumberFormat('#,###').format(totalCalories)} kcal',
                                 textAlign: TextAlign.center,
@@ -344,7 +344,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
                           ),
                           Expanded(
                             flex: oF,
-                            child: Container(color: const Color(0xFFD6DEE8)),
+                            child: Container(color: const Color(0xFFE2E2E2)),
                           ),
                         ],
                       ),
@@ -374,7 +374,7 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
         SizedBox(width: gap),
         MacroLegend(color: const Color(0xFFFCF4C1), label: '지방'),
         SizedBox(width: gap),
-        MacroLegend(color: const Color(0xFFD6DEE8), label: '기타'),
+        MacroLegend(color: const Color(0xFFE2E2E2), label: '기타'),
       ],
     );
   }
@@ -393,7 +393,9 @@ class _TodayDietScreenState extends State<TodayDietScreen> {
     final isEmptyMeal = mealRecord == null ||
         (mealRecord.items.isEmpty && (mealRecord.calories ?? 0) == 0);
     final imagePath = mealRecord?.imagePath;
-    final hasPhoto = imagePath != null && imagePath.isNotEmpty;
+    final hasPhoto = imagePath != null &&
+        imagePath.isNotEmpty &&
+        !ImageUrlHelper.isCorruptStoredImagePath(imagePath);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

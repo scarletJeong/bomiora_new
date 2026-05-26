@@ -201,12 +201,32 @@ const Map<String, String> _mealKeyToFoodTime = {
   '간식': 'snack',
 };
 
+bool _isCorruptImagePath(String path) {
+  final t = path.trim();
+  return t.contains('{type:') ||
+      t.contains('"type":"Buffer"') ||
+      t.contains('"type": "Buffer"');
+}
+
 String? _parseImagePath(Map<String, dynamic> json) {
   for (final key in ['image_path', 'imagePath', 'photo']) {
-    final v = json[key]?.toString();
-    if (v != null && v.isNotEmpty) return v;
+    final raw = json[key];
+    if (raw == null) continue;
+    final v = _bufferFieldToString(raw).trim();
+    if (v.isNotEmpty && !_isCorruptImagePath(v)) return v;
   }
   return null;
+}
+
+/// API 저장용 상대 경로 (체중 기록과 동일하게 경로 문자열만 전달)
+String _imagePathForApi(String imageUrl) {
+  var path = imageUrl.trim();
+  final base = ApiClient.baseUrl;
+  if (path.startsWith(base)) {
+    path = path.substring(base.length);
+  }
+  if (!path.startsWith('/')) path = '/$path';
+  return path;
 }
 
 class FoodRepository {
@@ -435,9 +455,12 @@ class FoodRepository {
         imageFile,
       );
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = _decodeResponseBody(response.body);
         if (data is Map && data['success'] == true && data['url'] != null) {
-          final relativeUrl = data['url'].toString();
+          final relativeUrl = _bufferFieldToString(data['url']).trim();
+          if (relativeUrl.isEmpty || _isCorruptImagePath(relativeUrl)) {
+            return null;
+          }
           if (relativeUrl.startsWith('http')) return relativeUrl;
           return '${ApiClient.baseUrl}$relativeUrl';
         }
@@ -460,7 +483,7 @@ class FoodRepository {
       final response = await http.put(
         uri,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'image_path': imageUrl}),
+        body: json.encode({'image_path': _imagePathForApi(imageUrl)}),
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {

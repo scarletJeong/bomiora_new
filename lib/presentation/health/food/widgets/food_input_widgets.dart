@@ -319,7 +319,9 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
                     ),
                   )
                 : widget.mealImagePath != null &&
-                        widget.mealImagePath!.isNotEmpty
+                        widget.mealImagePath!.isNotEmpty &&
+                        !ImageUrlHelper.isCorruptStoredImagePath(
+                            widget.mealImagePath)
                     ? ClipRRect(
                         borderRadius:
                             BorderRadius.circular(healthDp(context, 10)),
@@ -645,7 +647,7 @@ class AddedFoodCard extends StatelessWidget {
                       child: Text(
                         desc,
                         style: TextStyle(
-                          color: const Color(0xFF898383),
+                          color: Colors.black,
                           fontSize: healthSp(context, 8),
                           height: 1.0,
                           fontFamily: 'Gmarket Sans TTF',
