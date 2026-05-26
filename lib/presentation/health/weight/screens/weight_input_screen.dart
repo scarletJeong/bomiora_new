@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -220,7 +221,7 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     final shouldDelete = await showHealthDeletePopup(
       context: context,
       title: '체중 기록 삭제',
-      message: '헤딩 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
+      message: '해당 기록을\n삭제하시겠습니까?\n삭제된 데이터는 복구할 수\n없습니다.',
       cancelText: '취소',
       deleteText: '삭제',
     );
@@ -284,7 +285,12 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             textScaler: TextScaler.linear(textScale),
           ),
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 25)),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 5),
+              healthDp(context, 27),
+              healthDp(context, 0),
+            ),
             child: Form(
               key: _formKey,
               child: Column(
@@ -343,37 +349,22 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('측정일시'),
-        SizedBox(height: healthDp(context, 5)),
+        SizedBox(height: healthDp(context, 10)),
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: InkWell(
                 onTap: isEditMode ? null : _selectDateThenTime,
                 borderRadius: BorderRadius.circular(healthDp(context, 7)),
-                child: Container(
-                  height: healthDp(context, 40),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 10),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  decoration: ShapeDecoration(
-                    color: fieldFill,
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        width: healthDp(context, 1),
-                        color: fieldBorder,
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 7)),
-                    ),
-                  ),
-                  alignment: Alignment.centerLeft,
+                child: _buildFixedHeightFieldBox(
+                  fillColor: fieldFill,
+                  borderColor: fieldBorder,
                   child: Text(
                     dateStr,
                     style: TextStyle(
                       color: fieldText,
                       fontSize: 16,
+                      height: 1.0,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
                     ),
@@ -386,29 +377,15 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
               child: InkWell(
                 onTap: isEditMode ? null : _selectTimeOnly,
                 borderRadius: BorderRadius.circular(healthDp(context, 7)),
-                child: Container(
-                  height: healthDp(context, 40),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 10),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  decoration: ShapeDecoration(
-                    color: fieldFill,
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        width: healthDp(context, 1),
-                        color: fieldBorder,
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 7)),
-                    ),
-                  ),
-                  alignment: Alignment.centerLeft,
+                child: _buildFixedHeightFieldBox(
+                  fillColor: fieldFill,
+                  borderColor: fieldBorder,
                   child: Text(
                     timeStr,
                     style: TextStyle(
                       color: fieldText,
                       fontSize: 16,
+                      height: 1.0,
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
                     ),
@@ -427,12 +404,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('키(cm)'),
-        SizedBox(height: healthDp(context, 5)),
+        SizedBox(height: healthDp(context, 10)),
         _buildNumberInput(
           controller: _heightController,
           hintText: '예: 170',
           suffixText: 'cm',
-          inputHeight: healthDp(context, 30),
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               final height = double.tryParse(value);
@@ -452,12 +428,11 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('몸무게(kg)'),
-        SizedBox(height: healthDp(context, 5)),
+        SizedBox(height: healthDp(context, 10)),
         _buildNumberInput(
           controller: _weightController,
           hintText: '예: 65.5',
           suffixText: 'kg',
-          inputHeight: healthDp(context, 30),
           validator: (value) {
             if (value == null || value.isEmpty) {
               return '체중을 입력해주세요';
@@ -479,73 +454,97 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionLabel('눈바디'),
-        SizedBox(height: healthDp(context, 5)),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            SizedBox(
-              width: healthDp(context, 158),
-              height: healthDp(context, 158),
-              child: _buildImageContainer(
-                '정면',
-                _frontImagePath,
-                () => _selectImage('front'),
-              ),
-            ),
-            SizedBox(
-              width: healthDp(context, 158),
-              height: healthDp(context, 158),
-              child: _buildImageContainer(
-                '측면',
-                _sideImagePath,
-                () => _selectImage('side'),
-              ),
-            ),
-          ],
+        SizedBox(height: healthDp(context, 10)),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final gap = healthDp(context, 10);
+            final maxSide = healthDp(context, 158);
+            final side = math.min(
+              maxSide,
+              (constraints.maxWidth - gap) / 2,
+            );
+            return Row(
+              children: [
+                SizedBox(
+                  width: side,
+                  height: side,
+                  child: _buildImageContainer(
+                    '정면사진',
+                    _frontImagePath,
+                    () => _selectImage('front'),
+                  ),
+                ),
+                SizedBox(width: gap),
+                SizedBox(
+                  width: side,
+                  height: side,
+                  child: _buildImageContainer(
+                    '측면사진',
+                    _sideImagePath,
+                    () => _selectImage('side'),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
   }
 
   Widget _buildSectionLabel(String title, [IconData? icon]) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
-      clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (icon != null) ...[
-            SizedBox(
-              width: healthDp(context, 16),
-              height: healthDp(context, 16),
-              child: Icon(
-                icon,
-                size: healthDp(context, 16),
-                color: const Color(0xFF1A1A1A),
-              ),
-            ),
-            SizedBox(width: healthDp(context, 4)),
-          ],
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 16,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w700,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (icon != null) ...[
+          SizedBox(
+            width: healthDp(context, 16),
+            height: healthDp(context, 16),
+            child: Icon(
+              icon,
+              size: healthDp(context, 16),
+              color: const Color(0xFF1A1A1A),
             ),
           ),
+          SizedBox(width: healthDp(context, 4)),
         ],
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontSize: 16,
+            height: 1.0,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 375 기준 높이 40 — [healthDp] 고정 박스 (측정일시·키·몸무게 공통).
+  Widget _buildFixedHeightFieldBox({
+    required Widget child,
+    Color fillColor = Colors.transparent,
+    Color borderColor = const Color(0x7FD2D2D2),
+  }) {
+    return Container(
+      height: healthDp(context, 40),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      alignment: Alignment.centerLeft,
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: fillColor,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: borderColor,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        ),
       ),
+      child: child,
     );
   }
 
@@ -554,76 +553,48 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
     required String hintText,
     required String? Function(String?) validator,
     String? suffixText,
-    double inputHeight = 40,
   }) {
-    final verticalPadding =
-        ((inputHeight - healthDp(context, 20)) / 2).clamp(8.0, 28.0);
-    final padTop = (verticalPadding - 2).clamp(4.0, 28.0);
-    final padBottom = (verticalPadding + 2).clamp(4.0, 28.0);
-    return TextFormField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-      ],
-      validator: validator,
-      textAlignVertical: TextAlignVertical.center,
-      style: const TextStyle(
-        color: Color(0xFF1A1A1A),
-        fontSize: 18,
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w300,
-      ),
-      decoration: InputDecoration(
-        constraints: BoxConstraints(minHeight: inputHeight),
-        hintText: hintText,
-        hintStyle: const TextStyle(
+    return _buildFixedHeightFieldBox(
+      child: TextFormField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+        ],
+        validator: validator,
+        textAlignVertical: const TextAlignVertical(y: 0.45),
+        style: const TextStyle(
           color: Color(0xFF1A1A1A),
           fontSize: 16,
+          height: 1.0,
           fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w300,
         ),
-        suffixText: suffixText,
-        suffixStyle: const TextStyle(
-          color: Color(0xFF7C7C7C),
-          fontSize: 14,
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w400,
-        ),
-        isDense: false,
-        contentPadding: EdgeInsets.only(
-          left: healthDp(context, 10),
-          right: healthDp(context, 10),
-          top: padTop,
-          bottom: padBottom,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-          borderSide: BorderSide(
-            width: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontSize: 16,
+            height: 1.0,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
           ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-          borderSide: BorderSide(
-            width: healthDp(context, 1),
-            color: const Color(0x7FD2D2D2),
+          suffixText: suffixText,
+          suffixStyle: const TextStyle(
+            color: Color(0xFF7C7C7C),
+            fontSize: 14,
+            height: 1.0,
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w400,
           ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-          borderSide: BorderSide(
-            width: healthDp(context, 1),
-            color: const Color(0xFFFF8DA1),
-          ),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-          borderSide: BorderSide(
-            width: healthDp(context, 1),
-            color: const Color(0xFFFF8DA1),
-          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+          isCollapsed: true,
         ),
       ),
     );
@@ -714,10 +685,10 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          color: hasImage ? Colors.grey[100] : Colors.grey[200],
+          color: hasImage ? Colors.grey[100] : const Color(0xFFD9D9D9),
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
           border: Border.all(
-            color: hasImage ? Colors.grey[300]! : Colors.grey[200]!,
+            color: hasImage ? Colors.grey[300]! : const Color(0xFFD9D9D9),
             width: healthDp(context, 1),
           ),
         ),
@@ -781,17 +752,17 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          Icons.add_photo_alternate_outlined,
-          size: healthDp(context, 40),
-          color: Colors.grey[400],
+          Icons.add,
+          size: healthDp(context, 24),
+          color: Colors.white,
         ),
-        SizedBox(height: healthDp(context, 8)),
+        SizedBox(height: healthDp(context, 4)),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
             fontFamily: 'Gmarket Sans TTF',
-            fontSize: 12,
-            color: Colors.grey[600],
             fontWeight: FontWeight.w500,
           ),
         ),

@@ -15,7 +15,7 @@ class BtnRecord extends StatelessWidget {
   final TextStyle? textStyle;
   /// null이면 [TextScaler.noScaling] — [healthSp]와 이중 스케일 방지. 시스템 스케일 쓰려면 명시 전달.
   final TextScaler? labelTextScaler;
-  /// null이면 375 기준 40 ([healthDp]).
+  /// null이면 375 기준 38 ([healthDp]).
   final double? minimumHeight;
 
   const BtnRecord({
@@ -35,19 +35,19 @@ class BtnRecord extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minH = minimumHeight ?? healthDp(context, 40);
-    final defaultPad = EdgeInsets.symmetric(vertical: healthDp(context, 13));
+    final minH = minimumHeight ?? healthDp(context, 38);
     final defaultRadius = healthDp(context, 12);
     final effectiveTextScaler = labelTextScaler ?? TextScaler.noScaling;
 
     return SizedBox(
       width: double.infinity,
+      height: minH,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor ?? const Color(0xFFFF5A8D),
           foregroundColor: textColor ?? Colors.white,
-          padding: padding ?? defaultPad,
+          padding: padding ?? EdgeInsets.zero,
           minimumSize: Size(0, minH),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(

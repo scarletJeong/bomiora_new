@@ -35,14 +35,15 @@ class WeightRecord {
     return double.parse(bmi.toStringAsFixed(1)); // 소수점 1자리
   }
 
-  // BMI 상태 텍스트
+  // BMI 상태 텍스트 (아시아 기준 구간, 표시명: 구 비만→과체중, 구 경도비만→비만, 구 고도비만→과체중)
   String get bmiStatus {
     if (bmi == null) return '';
     if (bmi! < 18.5) return '저체중';
     if (bmi! < 23) return '정상';
     if (bmi! < 25) return '과체중';
-    if (bmi! < 30) return '비만';
-    return '고도비만';
+    if (bmi! < 30) return '과체중';
+    if (bmi! < 35) return '비만';
+    return '과체중';
   }
 
   // BMI 상태 색상
@@ -50,7 +51,8 @@ class WeightRecord {
     if (bmi == null) return 'gray';
     if (bmi < 18.5) return 'blue';
     if (bmi < 23) return 'green';
-    if (bmi < 25) return 'orange';
+    if (bmi < 30) return 'orange';
+    if (bmi < 35) return 'pink';
     return 'red';
   }
 

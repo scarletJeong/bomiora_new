@@ -146,13 +146,14 @@ class HealthProfileService {
     return weight / ((height / 100) * (height / 100));
   }
   
-  // BMI 분류
+  // BMI 분류 (WeightRecord.bmiStatus와 동일)
   static String getBMICategory(double bmi) {
     if (bmi < 18.5) return '저체중';
     if (bmi < 23) return '정상';
     if (bmi < 25) return '과체중';
-    if (bmi < 30) return '비만';
-    return '고도비만';
+    if (bmi < 30) return '과체중';
+    if (bmi < 35) return '비만';
+    return '과체중';
   }
   
   // 권장 체중 계산

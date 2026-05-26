@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:image_picker/image_picker.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/btn_record.dart';
 import '../../../common/chart_layout.dart';
 import '../../health_common/widgets/health_date_selector.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
@@ -554,10 +555,16 @@ class _WeightListScreenState extends State<WeightListScreen> {
                               _buildBodyImages(),
                               SizedBox(height: healthDp(context, 20)),
                               Padding(
-                                padding: EdgeInsets.only(
-                                    bottom: healthDp(context, 20)),
-                                child: GestureDetector(
-                                  onTap: () async {
+                                padding: EdgeInsets.only(bottom: healthDp(context, 20)),
+                                child: BtnRecord(
+                                  text: '+기록하기',
+                                  labelTextScaler: TextScaler.noScaling,
+                                  textStyle: TextStyle(
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontSize: healthSp(context, 16),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  onPressed: () async {
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -567,52 +574,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                       ),
                                     );
 
-                                    if (result == true) {
+                                    if (result == true && mounted) {
                                       _loadData();
                                     }
                                   },
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final maxW = constraints.maxWidth;
-                                      final desiredPad = healthDp(context, 146);
-                                      // 스케일된 "+ 기록하기"가 들어갈 최소 가로 공간 (과한 패딩으로 …만 남지 않게)
-                                      final minInner = healthDp(context, 240);
-                                      final maxPad = math.max(
-                                        0.0,
-                                        (maxW - minInner) * 0.5,
-                                      );
-                                      final hPad = math.min(desiredPad, maxPad);
-                                      return Container(
-                                        width: double.infinity,
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: hPad,
-                                          vertical: healthDp(context, 10),
-                                        ),
-                                        decoration: ShapeDecoration(
-                                          color: const Color(0xFFFF5A8D),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                                healthDp(context, 10)),
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '+ 기록하기',
-                                            maxLines: 1,
-                                            softWrap: false,
-                                            textAlign: TextAlign.center,
-                                            textScaler: TextScaler.noScaling,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: healthSp(context, 16),
-                                              fontFamily: 'Gmarket Sans TTF',
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                  backgroundColor: const Color(0xFFFF5A8D),
                                 ),
                               ),
                             ],
@@ -1321,7 +1287,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                         Color(0xFF4CAF50), // 초록색 (정상)
                         Color(0xFFFF9800), // 주황색 (과체중)
                         Color(0xFFE91E63), // 분홍색 (비만)
-                        Color(0xFFF44336), // 빨간색 (고도비만)
+                        Color(0xFFF44336), // 빨간색 (과체중·고BMI 구간)
                       ],
                     ),
                   ),
@@ -1395,7 +1361,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
               ),
             ),
             Text(
-              '고도비만',
+              '과체중',
               textScaler: TextScaler.noScaling,
               style: TextStyle(
                 fontSize: healthSp(context, 8),
@@ -1631,7 +1597,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 omitOutOfRangeWeights: omitOutOfRangeWeights,
                 topPadding: healthWeightChartVertPad(context),
                 bottomPadding: healthWeightChartBottomPlotPad(context),
-                barWidth: healthDp(context, 10),
+                barWidth: healthDp(context, 5),
               ),
               size: Size(
                 constraints.maxWidth,
@@ -1648,30 +1614,39 @@ class _WeightListScreenState extends State<WeightListScreen> {
   Widget _buildBodyImages() {
     final frontImagePath = selectedRecord?.frontImagePath;
     final sideImagePath = selectedRecord?.sideImagePath;
-    final side = healthDp(context, 158);
+    final gap = healthDp(context, 10);
+    final maxSide = healthDp(context, 158);
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        SizedBox(
-          width: side,
-          height: side,
-          child: _buildImageContainer(
-            '정면사진',
-            frontImagePath,
-            () => _selectImage('front'),
-          ),
-        ),
-        SizedBox(
-          width: side,
-          height: side,
-          child: _buildImageContainer(
-            '측면사진',
-            sideImagePath,
-            () => _selectImage('side'),
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = math.min(
+          maxSide,
+          (constraints.maxWidth - gap) / 2,
+        );
+        return Row(
+          children: [
+            SizedBox(
+              width: side,
+              height: side,
+              child: _buildImageContainer(
+                '정면사진',
+                frontImagePath,
+                () => _selectImage('front'),
+              ),
+            ),
+            SizedBox(width: gap),
+            SizedBox(
+              width: side,
+              height: side,
+              child: _buildImageContainer(
+                '측면사진',
+                sideImagePath,
+                () => _selectImage('side'),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -2650,10 +2625,10 @@ class WeightChartPainter extends CustomPainter {
 
       if (isSelected) {
         // 선택된 점 - 더 크게, 꽉 찬 원 + 흰색 외곽선
-        canvas.drawCircle(point, 8, pointPaint);
+        canvas.drawCircle(point, 6, pointPaint);
         canvas.drawCircle(
           point,
-          8,
+          6,
           Paint()
             ..color = Colors.white
             ..style = PaintingStyle.stroke
@@ -2661,7 +2636,7 @@ class WeightChartPainter extends CustomPainter {
         );
       } else {
         // 일반 점 - 꽉 찬 원
-        canvas.drawCircle(point, 5, pointPaint);
+        canvas.drawCircle(point, 4, pointPaint);
       }
     }
   }
