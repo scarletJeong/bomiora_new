@@ -68,8 +68,8 @@ class TodayHealthRecordSection extends StatelessWidget {
           Row(
             children: [
               SizedBox(
-                width: healthDp(context, 2),
-                height: healthDp(context, 22),
+                width: healthDp(context, 1.5),
+                height: healthDp(context, 16),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: const Color(0xFF1A1A1A),

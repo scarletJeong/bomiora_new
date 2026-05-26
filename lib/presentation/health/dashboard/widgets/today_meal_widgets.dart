@@ -65,8 +65,8 @@ class TodayMealSection extends StatelessWidget {
                 Row(
                   children: [
                     SizedBox(
-                      width: healthDp(context, 2),
-                      height: healthDp(context, 22),
+                      width: healthDp(context, 1.5),
+                      height: healthDp(context, 16),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A1A1A),
@@ -122,7 +122,7 @@ class TodayMealSection extends StatelessWidget {
                       ' / $targetCalories kcal',
                       textScaler: TextScaler.noScaling,
                       style: TextStyle(
-                        color: const Color(0xFF9CA3AF),
+                        color: Colors.black,
                         fontSize: healthSp(context, 10),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
@@ -150,7 +150,7 @@ class TodayMealSection extends StatelessWidget {
                 SizedBox(width: healthDp(context, 24)),
                 _LegendDot('지방', const Color(0xFFFCF4C1)),
                 SizedBox(width: healthDp(context, 24)),
-                _LegendDot('기타', const Color(0xFFD6DEE8)),
+                _LegendDot('기타', const Color(0xFFE2E2E2)),
               ],
             ),
             SizedBox(height: healthDp(context, 14)),
@@ -275,7 +275,7 @@ class _TodayMealMacroBar extends StatelessWidget {
                           Expanded(
                             flex: otherFlex,
                             child: Container(
-                              color: const Color(0xFFD6DEE8),
+                              color: const Color(0xFFE2E2E2),
                             ),
                           ),
                         ],

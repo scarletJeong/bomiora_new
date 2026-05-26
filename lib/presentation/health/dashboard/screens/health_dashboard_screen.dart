@@ -354,7 +354,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                                 if (mounted) _loadData();
                                               },
                                             ),
-                                            const SizedBox(height: 24),
+                                            SizedBox(
+                                                height: healthDp(context, 14)),
                                             TodayHealthRecordSection(
                                               isLoggedIn: currentUser != null,
                                               selectedDate: selectedDate,
@@ -529,9 +530,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
                 ),
-                child: const Text('목표설정 >',
+                child: const Text('목표수정 >',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 8,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500)),
               ),
@@ -556,7 +557,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ),
                 child: const Text('연동하기 >',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 8,
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500)),
               ),
@@ -584,7 +585,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         ? (goalTgt == goalTgt.roundToDouble()
             ? '${goalTgt.toInt()}kg'
             : '${goalTgt.toStringAsFixed(1)}kg')
-        : '-';
+        : '--- kg';
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -706,12 +707,12 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         ? (leftLabelWeight == leftLabelWeight.roundToDouble()
                             ? '${leftLabelWeight.toInt()}kg'
                             : '${leftLabelWeight.toStringAsFixed(1)}kg')
-                        : '-',
+                        : '--- kg',
                     style: const TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 11,
                     ),
                   ),
                   Text(
@@ -719,8 +720,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 11,
                     ),
                   ),
                 ],
@@ -759,14 +760,14 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     final String bmiValue =
         latestWeightRecord == null ? '- - -' : bmi.toStringAsFixed(2);
 
-    return Container(
-      padding: const EdgeInsets.all(2),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       child: Row(
         children: [
           Expanded(child: _buildMetricCard('키', heightValue)),
-          const SizedBox(width: 12),
+          SizedBox(width: healthDp(context, 12)),
           Expanded(child: _buildMetricCard('체중', weightValue)),
-          const SizedBox(width: 12),
+          SizedBox(width: healthDp(context, 12)),
           Expanded(child: _buildMetricCard('BMI', bmiValue)),
         ],
       ),
@@ -799,11 +800,11 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         }
       },
       child: Container(
-        constraints: const BoxConstraints(minHeight: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        height: healthDp(context, 28),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 8)),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
           border: Border.all(color: const Color(0xFFF0F0F0)),
         ),
         child: Row(
@@ -824,11 +825,11 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
               style: const TextStyle(
                 fontSize: 10,
                 fontFamily: 'Gmarket Sans TTF',
-                color: Color(0xFF707070),
+                color: Colors.black,
                 fontWeight: FontWeight.w300,
                 decoration: TextDecoration.underline,
                 decorationStyle: TextDecorationStyle.dotted,
-                decorationColor: Color(0xFFB5B5B5),
+                decorationColor: Colors.black,
                 decorationThickness: 1,
               ),
             ),

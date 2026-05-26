@@ -184,9 +184,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                       Padding(
                         padding: EdgeInsets.fromLTRB(
                           healthDp(context, 27),
-                          healthDp(context, 0),
+                          healthDp(context, 5),
                           healthDp(context, 27),
-                          healthDp(context, 8),
+                          healthDp(context, 20),
                         ),
                         child: Text(
                           '목표를 설정해주세요.',
@@ -203,7 +203,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                         child: SingleChildScrollView(
                           padding: EdgeInsets.fromLTRB(
                             healthDp(context, 27),
-                            0,
+                            healthDp(context, 0),
                             healthDp(context, 27),
                             healthDp(context, 20),
                           ),
@@ -296,7 +296,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
 
   Widget _buildStepsPickerSection() {
     final itemExtent = healthDp(context, _stepsItemExtentBase);
-    final wheelViewportH = healthDp(context, 150);
+    final wheelViewportH = healthDp(context, 120);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -394,6 +394,7 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
       children: [
         Text(
           title,
+          textScaler: TextScaler.noScaling,
           style: const TextStyle(
             color: Colors.black,
             fontSize: 16,
@@ -401,13 +402,57 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 10),
-        TextFormField(
+        SizedBox(height: healthDp(context, 10)),
+        _GoalTextField(
+          controller: controller,
+          hint: hint,
+          keyboardType: keyboardType,
+        ),
+      ],
+    );
+  }
+}
+
+/// 목표설정 체중 입력 — 375 기준 높이 40, [healthDp]로 스케일.
+class _GoalTextField extends StatelessWidget {
+  const _GoalTextField({
+    required this.controller,
+    required this.hint,
+    this.keyboardType,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final TextInputType? keyboardType;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: healthDp(context, 40),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      alignment: Alignment.centerLeft,
+      clipBehavior: Clip.none,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        ),
+      ),
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.noScaling,
+        ),
+        child: TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          textAlignVertical: TextAlignVertical.center,
           style: const TextStyle(
             color: Color(0xFF1A1A1A),
             fontSize: 16,
+            height: 1.0,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w400,
           ),
@@ -416,29 +461,18 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
             hintStyle: const TextStyle(
               color: Color(0xFF898383),
               fontSize: 16,
+              height: 1.0,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
             ),
+            border: InputBorder.none,
             isDense: true,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(7),
-              borderSide: const BorderSide(
-                width: 1,
-                color: Color(0x7FD2D2D2),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(7),
-              borderSide: const BorderSide(
-                width: 1.2,
-                color: Color(0xFFFF5A8D),
-              ),
+            contentPadding: EdgeInsets.only(
+              bottom: healthDp(context, 2),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
