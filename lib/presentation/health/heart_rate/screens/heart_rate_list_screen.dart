@@ -555,7 +555,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                           dividerColor: const Color(0xFFD2D2D2),
                           iconColor: const Color(0xFF898686),
                         ),
-                        SizedBox(height: healthDp(context, 16)),
+                        SizedBox(height: healthDp(context, 20)),
                         Row(
                           children: [
                             Expanded(
@@ -574,7 +574,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                             ChartConstants.weightChartHeight,
                           ),
                         ),
-                        SizedBox(height: healthDp(context, 12)),
+                        SizedBox(height: healthDp(context, 20)),
                         Row(
                           children: [
                             const _HeartLegend(
@@ -588,17 +588,23 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                             ),
                           ],
                         ),
-                        SizedBox(height: healthDp(context, 16)),
+                        SizedBox(height: healthDp(context, 20)),
                         ...todayRecords.reversed.map(_recordTile),
-                        SizedBox(height: healthDp(context, 24)),
                         SizedBox(
                           width: double.infinity,
-                          height: healthDp(context, 45),
+                          height: healthDp(context, 38),
                           child: ElevatedButton(
                             onPressed: _loadData,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFF5A8D),
                               foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                vertical: healthDp(context, 10),
+                              ),
+                              minimumSize: Size(
+                                double.infinity,
+                                healthDp(context, 38),
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
                                   healthDp(context, 10),
@@ -617,7 +623,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(height: healthDp(context, 24)),
+                        SizedBox(height: healthDp(context, 20)),
                       ],
                     ),
                   ),
@@ -629,10 +635,11 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 
   Widget _summaryCard(BuildContext context, String title, String value) {
     final bool hasData = value != '-';
-    final hPad = healthDp(context, 14);
-    final vPad = healthDp(context, 12);
-    return Container(
-      constraints: BoxConstraints(minHeight: healthDp(context, 90)),
+    final hPad = healthDp(context, 11.3);
+    final vPad = healthDp(context, 6.67);
+    return SizedBox(
+      height: healthDp(context, 83.33),
+      child: Container(
       padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
@@ -644,7 +651,6 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         ),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -653,12 +659,13 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
             textScaler: TextScaler.noScaling,
             style: TextStyle(
               color: const Color(0xFF1A1A1A),
-              fontSize: healthSp(context, 16.67),
+              fontSize: healthSp(context, 16),
+              height: 1.0,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 8.33)),
           RichText(
             textScaler: TextScaler.noScaling,
             text: TextSpan(
@@ -668,6 +675,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: healthSp(context, 20.83),
+                    height: 1.0,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: hasData ? FontWeight.w700 : FontWeight.w300,
                   ),
@@ -676,7 +684,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                   text: ' bpm',
                   style: TextStyle(
                     color: const Color(0xFF9C9393),
-                    fontSize: healthSp(context, 13.33),
+                    fontSize: healthSp(context, 12),
+                    height: 1.0,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w300,
                   ),
@@ -685,13 +694,14 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
             ),
           ),
           if (!hasData) ...[
-            SizedBox(height: healthDp(context, 5)),
+            SizedBox(height: healthDp(context, 4)),
             Text(
               '수치를 입력하세요',
               textScaler: TextScaler.noScaling,
               style: TextStyle(
-                color: const Color(0xFF9C9393),
-                fontSize: healthSp(context, 10),
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 8),
+                height: 1.0,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w300,
               ),
@@ -699,32 +709,40 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           ],
         ],
       ),
+      ),
     );
   }
 
   Widget _recordTile(HeartRateRecord record) {
-    final tilePad = healthDp(context, 12);
+    final textStyle = TextStyle(
+      color: Colors.black,
+      fontSize: healthSp(context, 16),
+      height: 1.0,
+      fontFamily: 'Gmarket Sans TTF',
+    );
     return Container(
-      margin: EdgeInsets.only(bottom: healthDp(context, 10)),
-      padding: EdgeInsets.all(tilePad),
+      height: healthDp(context, 44),
+      margin: EdgeInsets.only(bottom: healthDp(context, 20)),
+      padding: EdgeInsets.symmetric(
+        vertical: healthDp(context, 10),
+        horizontal: healthDp(context, 12),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x19000000),
-            blurRadius: healthDp(context, 4.17),
-          ),
-        ],
+        border: Border.all(
+          color: const Color(0x7FD2D2D2),
+          width: healthDp(context, 0.5),
+        ),
       ),
       child: Row(
         children: [
           Icon(
             Icons.access_time,
             color: Colors.grey,
-            size: healthDp(context, 20),
+            size: healthDp(context, 16),
           ),
-          SizedBox(width: healthDp(context, 15)),
+          SizedBox(width: healthDp(context, 12)),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -732,26 +750,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                 Text(
                   DateFormat('a h:mm', 'ko').format(record.measuredAt),
                   textScaler: TextScaler.noScaling,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: healthSp(context, 16),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: textStyle.copyWith(fontWeight: FontWeight.w500),
                 ),
-                heartRateTooltipValueRowWithBadge(
-                  badgeLabel: record.isExerciseForChart ? '운' : '일',
-                  badgeColor: record.isExerciseForChart
-                      ? heartRateTooltipExerciseColor
-                      : heartRateTooltipDailyColor,
-                  value: '${record.heartRate}bpm',
-                  valueStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: healthSp(context, 16),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
-                  ),
-                  valueTextScaler: TextScaler.noScaling,
+                Text(
+                  '${record.heartRate}bpm',
+                  textScaler: TextScaler.noScaling,
+                  style: textStyle.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
