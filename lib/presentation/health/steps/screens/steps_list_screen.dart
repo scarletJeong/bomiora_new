@@ -277,85 +277,90 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         0;
     final diffUp = diff > 0;
 
-    final ringOuter = healthDp(context, 193);
-    final ringPaint = healthDp(context, 181);
+    // 링 지름 375 기준 188 — CustomPaint도 동일 크기
+    final ringSize = healthDp(context, 188);
     final strokeW = healthDp(context, 18);
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 16)),
+      padding: EdgeInsets.only(left: healthDp(context, 16)),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
       ),
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                flex: 3,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Transform.translate(
-                    offset: Offset(-healthDp(context, 18), 0),
-                    child: SizedBox(
-                      width: ringOuter,
-                      height: ringOuter,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CustomPaint(
-                            size: Size(ringPaint, ringPaint),
-                            painter: _StepsGoalRingPainter(
-                              progress: ratio,
-                              trackColor: const Color(0x7FD9D9D9),
-                              progressColor: const Color(0xFFFF5A8D),
-                              strokeWidth: strokeW,
-                              progressStrokeWidth: strokeW,
-                            ),
-                          ),
-                          Transform.translate(
-                            offset: Offset(0, healthDp(context, 8)),
-                            child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                '총 걸음 수',
-                                style: TextStyle(
-                                  color: Color(0xFF1A1A1A),
-                                  fontSize: 20,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                              SizedBox(height: healthDp(context, 2)),
-                              Text(
-                                NumberFormat('#,###').format(totalSteps),
-                                style: const TextStyle(
-                                  color: Color(0xFFFF5A8D),
-                                  fontSize: 32,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                          ),
-                        ],
+              // Expanded 안에 두면 flex 3/5 폭(~173dp)에 링이 갇혀 실제로는 안 커짐
+              Transform.translate(
+                offset: Offset(-healthDp(context, 18), 0),
+                child: SizedBox(
+                  width: ringSize,
+                  height: ringSize,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      CustomPaint(
+                        size: Size(ringSize, ringSize),
+                        painter: _StepsGoalRingPainter(
+                          progress: ratio,
+                          trackColor: const Color(0x7FD9D9D9),
+                          progressColor: const Color(0xFFFF5A8D),
+                          strokeWidth: strokeW,
+                          progressStrokeWidth: strokeW,
+                        ),
                       ),
-                    ),
+                      Transform.translate(
+                        offset: Offset(0, -healthDp(context, 4)),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '총 걸음 수',
+                              style: TextStyle(
+                                color: Color(0xFF1A1A1A),
+                                fontSize: 20,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                            SizedBox(height: healthDp(context, 2)),
+                            Text(
+                              NumberFormat('#,###').format(totalSteps),
+                              style: const TextStyle(
+                                color: Color(0xFFFF5A8D),
+                                fontSize: 32,
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               Expanded(
-                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text(
-                      '목표 걸음수',
-                      style: TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 20,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Text(
+                          '목표 걸음수',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(context, 20),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
                       ),
                     ),
                     SizedBox(height: healthDp(context, 5)),
@@ -435,94 +440,102 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     required String value,
     required String valueUnit,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-        vertical: healthDp(context, 10),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        border: Border.all(
-          width: healthDp(context, 0.5),
-          color: const Color(0xFFD9D9D9),
+    return SizedBox(
+      height: healthDp(context, 85),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 8),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          border: Border.all(
+            width: healthDp(context, 0.5),
+            color: const Color(0xFFD9D9D9),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          height: 1.0,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
                       ),
-                    ),
-                    Text(
-                      unitSmall,
-                      style: const TextStyle(
-                        color: Color(0xFF898686),
-                        fontSize: 10,
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
+                      Text(
+                        unitSmall,
+                        style: const TextStyle(
+                          color: Color(0xFF898686),
+                          fontSize: 10,
+                          height: 1.0,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: healthDp(context, 30),
-                height: healthDp(context, 30),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFDF2F8),
-                  borderRadius: BorderRadius.circular(healthDp(context, 9999)),
-                ),
-                child: Center(
-                  child: SvgPicture.asset(
-                    iconAsset,
-                    width: healthDp(context, 16),
-                    height: healthDp(context, 16),
-                    fit: BoxFit.contain,
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Color(0xFFFF5A8D),
-                  fontSize: 20,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
+                Container(
+                  width: healthDp(context, 30),
+                  height: healthDp(context, 30),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDF2F8),
+                    borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      iconAsset,
+                      width: healthDp(context, 16),
+                      height: healthDp(context, 16),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
-              ),
-              SizedBox(width: healthDp(context, 5)),
-              Text(
-                valueUnit,
-                style: const TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: 12,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
+              ],
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Color(0xFFFF5A8D),
+                    fontSize: 20,
+                    height: 1.0,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                SizedBox(width: healthDp(context, 5)),
+                Text(
+                  valueUnit,
+                  style: const TextStyle(
+                    color: Color(0xFF1A1A1A),
+                    fontSize: 12,
+                    height: 1.0,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
