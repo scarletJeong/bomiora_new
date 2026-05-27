@@ -626,12 +626,17 @@ class WeightDataChart extends StatelessWidget {
           ),
           Padding(
             padding: EdgeInsets.only(left: _weightYAxisStripPlusGap(context)),
-            child: buildWeightXAxisLabels(
-              context: context,
-              selectedPeriod: selectedPeriod,
-              selectedDate: selectedDate,
-              timeOffset: timeOffset,
-              forExpandedChart: forExpandedChart,
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: forExpandedChart ? healthDp(context, 4) : 0,
+              ),
+              child: buildWeightXAxisLabels(
+                context: context,
+                selectedPeriod: selectedPeriod,
+                selectedDate: selectedDate,
+                timeOffset: timeOffset,
+                forExpandedChart: forExpandedChart,
+              ),
             ),
           ),
         ],

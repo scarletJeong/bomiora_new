@@ -522,19 +522,22 @@ class _WeightListScreenState extends State<WeightListScreen> {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
           ),
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
+          // 기간 탭 변경 시 전체 위젯 트리를 교체하면 스크롤 위치가 초기화됨
+          // (특히 '주/월'에서 _loadData()로 isLoading=true가 되며 상단으로 튀는 현상)
+          // → 스크롤 뷰는 유지하고 로딩 오버레이만 올린다.
+          child: Column(
+            children: [
+              Expanded(
+                child: Stack(
                   children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: healthDp(context, 27),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                    SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 27),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                               // 0. 날짜 선택 공통 위젯
                               HealthDateSelector(
                                 selectedDate: selectedDate,
@@ -600,12 +603,25 @@ class _WeightListScreenState extends State<WeightListScreen> {
                                 ),
                               ),
                             ],
-                          ),
                         ),
                       ),
                     ),
+                    if (isLoading)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          ignoring: true,
+                          child: Container(
+                            color: Colors.transparent,
+                            alignment: Alignment.center,
+                            child: const CircularProgressIndicator(),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
+              ),
+            ],
+          ),
         ),
       ),
     );
