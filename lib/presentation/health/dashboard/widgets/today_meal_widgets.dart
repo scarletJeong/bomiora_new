@@ -133,6 +133,7 @@ class TodayMealSection extends StatelessWidget {
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
                           height: 1,
+                          letterSpacing: -0.9,
                         ),
                       ),
                     ),

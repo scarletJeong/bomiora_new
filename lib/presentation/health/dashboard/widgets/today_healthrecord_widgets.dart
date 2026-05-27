@@ -356,7 +356,7 @@ String _bloodSugarStatusLabel(BloodSugarRecord? latestBloodSugarRecord) {
 
 Widget _buildMainCardIcon(BuildContext context, String assetPath) {
   final box = healthDp(context, 28);
-  final icon = healthDp(context, 18);
+  final icon = healthDp(context, 22);
   return Container(
     width: box,
     height: box,
@@ -468,7 +468,7 @@ Widget _buildRecordCard(
 
   final pad = 14.0;
   final iconBox = 30.0;
-  final iconSz = 18.0;
+  final iconSz = 22.0;
   const afterHeader = 10.0;
   final subtitleFs = subtitleFontSize ?? 12.0;
 
@@ -648,7 +648,6 @@ Widget _buildStepsCard(
       : 0;
   final double ratio =
       (targetSteps <= 0) ? 0.0 : (steps / targetSteps).clamp(0.0, 1.0);
-  final fmt = NumberFormat('#,###');
 
   return GestureDetector(
     onTap: () {
@@ -720,7 +719,7 @@ Widget _buildStepsCard(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              fmt.format(steps),
+                              '$steps',
                               textAlign: TextAlign.center,
                               textScaler: TextScaler.noScaling,
                               style: TextStyle(
@@ -734,7 +733,7 @@ Widget _buildStepsCard(
                             SizedBox(height: healthDp(context, 2)),
                             Text(
                               targetSteps > 0
-                                  ? '/${fmt.format(targetSteps)}'
+                                  ? '/$targetSteps'
                                   : '/-',
                               textAlign: TextAlign.center,
                               textScaler: TextScaler.noScaling,
@@ -744,6 +743,7 @@ Widget _buildStepsCard(
                                 fontWeight: FontWeight.w300,
                                 color: const Color(0xB2FF5A8D),
                                 height: 1.0,
+                                letterSpacing: -0.9,
                               ),
                             ),
                           ],
@@ -848,8 +848,8 @@ Widget _buildBottomRecordCard(
             children: [
               SvgPicture.asset(
                 titleIconAsset,
-                width: 18,
-                height: 18,
+                width: 22,
+                height: 22,
                 fit: BoxFit.contain,
               ),
               const SizedBox(width: 6),
