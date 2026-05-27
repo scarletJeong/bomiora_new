@@ -105,6 +105,11 @@ class ImageUrlHelper {
     // 상대 경로인 경우 base URL과 조합
     String normalizedPath = imageUrl;
     
+    // 건강 API 업로드 경로는 data/item 접두사 없음
+    if (isHealthApiImagePath(normalizedPath)) {
+      return _resolveHealthApiImageUrl(normalizedPath);
+    }
+
     // data/item/이 없으면 추가
     if (!normalizedPath.contains('/data/item/')) {
       if (normalizedPath.startsWith('/')) {
@@ -259,12 +264,98 @@ class ImageUrlHelper {
 
   /// 간단한 이미지 URL 반환 (일반적인 용도)
   /// 이미 전체 URL이면 그대로 반환, 아니면 normalizeImageUrl 사용
+  static bool isCorruptStoredImagePath(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return true;
+    final t = imageUrl.trim();
+    return t.contains('{type:') ||
+        t.contains('"type":"Buffer"') ||
+        t.contains('"type": "Buffer"');
+  }
+
+  /// 건강 API 업로드 경로(`/api/health/...`) — 쇼핑 `data/item`과 별도
+  static bool isHealthApiImagePath(String path) {
+    final p = path.toLowerCase();
+    return p.contains('/api/health/');
+  }
+
+  /// 과거 `normalizeImageUrl`이 붙인 `/data/item/api/health/...` 접두사 제거
+  static String fixHealthApiImagePath(String path) {
+    var p = path.trim();
+    final lower = p.toLowerCase();
+    if (lower.contains('/data/item/api/health/')) {
+      p = p.replaceFirst(
+        RegExp(r'/data/item(?=/api/health/)', caseSensitive: false),
+        '',
+      );
+    }
+    return p;
+  }
+
+  /// 건강 식사·체중 등 API 정적 파일의 호스트 (로컬 웹은 Node API 서버)
+  static String _healthApiImageOrigin() {
+    if (kIsWeb) {
+      final host = Uri.base.host;
+      if (host == 'localhost' ||
+          host == '127.0.0.1' ||
+          host.isEmpty) {
+        return ApiClient.baseUrl;
+      }
+      if (host.contains('mycafe24.com')) {
+        return 'https://$host';
+      }
+    }
+    return ApiClient.baseUrl;
+  }
+
+  static String _resolveHealthApiImageUrl(String imageUrl) {
+    final fixed = fixHealthApiImagePath(imageUrl);
+    late final String fullUrl;
+    if (fixed.startsWith('http://') || fixed.startsWith('https://')) {
+      fullUrl = fixed;
+    } else {
+      var path = fixed;
+      if (!path.startsWith('/')) path = '/$path';
+      fullUrl = '${_healthApiImageOrigin()}$path';
+    }
+
+    final uri = Uri.tryParse(fullUrl);
+    if (uri == null) return fullUrl;
+
+    if (kIsWeb) {
+      final webHost = Uri.base.host;
+      final isLocalWeb = webHost == 'localhost' ||
+          webHost == '127.0.0.1' ||
+          webHost.isEmpty;
+
+      // 로컬 웹 + 로컬 API 서버 파일 → 프록시 없이 직접 로드 (415·CORS 방지)
+      if (isLocalWeb &&
+          (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
+        return fullUrl;
+      }
+
+      // 로컬 웹인데 Cafe24 URL로 저장된 건강 API 경로 → 로컬 API로 재작성
+      if (isLocalWeb && isHealthApiImagePath(uri.path)) {
+        return '${ApiClient.baseUrl}${uri.path}';
+      }
+    }
+
+    return convertToLocalUrl(fullUrl);
+  }
+
   static String getImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
     }
+    if (isCorruptStoredImagePath(imageUrl)) {
+      return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
     if (isBrowserBlobOrInvalidImageUrl(imageUrl)) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
+
+    final normalizedPath = fixHealthApiImagePath(imageUrl);
+    if (isHealthApiImagePath(normalizedPath)) {
+      return _resolveHealthApiImageUrl(normalizedPath);
     }
 
     // localhost URL 수정 (잘못된 형태)
