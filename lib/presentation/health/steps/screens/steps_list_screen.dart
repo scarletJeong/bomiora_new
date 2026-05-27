@@ -626,7 +626,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
               ),
               SizedBox(
                 height: forExpandedChart
-                    ? healthDp(context, 14.23)
+                    ? healthDp(context, 30)
                     : healthDp(context, 30),
                 child: Padding(
                   padding: EdgeInsets.only(
