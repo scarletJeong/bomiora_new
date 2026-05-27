@@ -58,3 +58,26 @@ double healthDailyTimeOffsetForToday({bool forExpandedChart = false}) {
       ) /
       maxStart;
 }
+
+/// 월별 X축: 카드 7개월 / 확대 12개월 (+ `(월)` 단위 = 13)
+const int healthMonthlySlotsCard = 7;
+const int healthMonthlySlotsExpanded = 12;
+const int healthCalendarYearMonthCount = 12;
+
+int healthMonthlySlotCount(bool forExpandedChart) =>
+    forExpandedChart ? healthMonthlySlotsExpanded : healthMonthlySlotsCard;
+
+int healthMonthlyMaxStartIndex(bool forExpandedChart) =>
+    healthCalendarYearMonthCount - healthMonthlySlotCount(forExpandedChart);
+
+/// 선택 월이 창에 보이도록 timeOffset (확대 12개월이면 0)
+double healthMonthlyTimeOffsetForSelectedMonth(
+  int selectedMonth, {
+  bool forExpandedChart = false,
+}) {
+  final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
+  if (maxStart <= 0) return 0.0;
+  final slots = healthMonthlySlotCount(forExpandedChart);
+  final targetStart = (selectedMonth - slots).clamp(0, maxStart);
+  return targetStart / maxStart;
+}

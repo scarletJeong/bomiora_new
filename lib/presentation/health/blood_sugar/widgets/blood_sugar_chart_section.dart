@@ -739,7 +739,7 @@ class _BloodSugarChartSectionState extends State<BloodSugarChartSection> {
           ),
           SizedBox(
             height: widget.forExpandedChart
-                ? healthDp(context, 14.23)
+                ? healthDp(context, 16)
                 : healthDp(context, 30),
             child: Padding(
               padding: EdgeInsets.only(
@@ -1084,6 +1084,7 @@ Widget buildBloodSugarXAxisLabels(
       selectedPeriod: selectedPeriod,
       selectedDate: selectedDate,
       timeOffset: timeOffset,
+      forExpandedChart: forExpandedChart,
     );
   }
 
@@ -1122,6 +1123,7 @@ Widget buildBloodSugarXAxisLabels(
     context,
     labelRow: Row(children: hourLabels),
     unitText: '(시)',
+    forExpandedChart: forExpandedChart,
   );
 }
 
@@ -1130,11 +1132,11 @@ Widget _buildBloodSugarPeriodXAxisLabels(
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
+  bool forExpandedChart = false,
 }) {
   if (selectedPeriod == '월') {
-    const totalMonths = 12;
-    const visibleMonths = 7;
-    final maxStart = totalMonths - visibleMonths;
+    final visibleMonths = healthMonthlySlotCount(forExpandedChart);
+    final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
     final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
 
     return _buildBloodSugarXAxisWithUnit(
@@ -1154,6 +1156,7 @@ Widget _buildBloodSugarPeriodXAxisLabels(
         }),
       ),
       unitText: '(월)',
+      forExpandedChart: forExpandedChart,
     );
   }
 
@@ -1184,6 +1187,7 @@ Widget _buildBloodSugarPeriodXAxisLabels(
     context,
     labelRow: dateRow,
     unitText: '(일)',
+    forExpandedChart: forExpandedChart,
   );
 }
 
@@ -1191,29 +1195,35 @@ Widget _buildBloodSugarXAxisWithUnit(
   BuildContext context, {
   required Widget labelRow,
   required String unitText,
+  bool forExpandedChart = false,
 }) {
   final unitReserve =
       healthDp(context, ChartConstants.weightXAxisUnitReservedWidth);
+  final plotInset = _bloodSugarChartBorderWidth +
+      healthDp(context, _bloodSugarChartPointRadius);
+  // 확대: 12칸 월 라벨 + 점 inset 때문에 (월)이 밖으로 밀리기 쉬움 → 여유·안쪽 배치
+  final unitRight = forExpandedChart ? healthDp(context, 1) : -healthDp(context, 10);
   return Stack(
     clipBehavior: Clip.none,
     children: [
       Padding(
         // 점이 그려지는 플롯과 동일한 좌우 inset — scale 반영
         padding: EdgeInsets.only(
-          left: _bloodSugarChartBorderWidth +
-              healthDp(context, _bloodSugarChartPointRadius),
-          right: unitReserve +
-              _bloodSugarChartBorderWidth +
-              healthDp(context, _bloodSugarChartPointRadius),
+          left: plotInset,
+          right: unitReserve + plotInset,
         ),
         child: labelRow,
       ),
       Positioned(
-        right: -healthDp(context, 10),
-        top: healthDp(context, 3),
-        child: Text(
-          unitText,
-          style: healthChartAxisUnitTextStyle(context),
+        right: unitRight,
+        top: forExpandedChart ? 0 : healthDp(context, 3),
+        bottom: forExpandedChart ? 0 : null,
+        child: Align(
+          alignment: Alignment.center,
+          child: Text(
+            unitText,
+            style: healthChartAxisUnitTextStyle(context),
+          ),
         ),
       ),
     ],

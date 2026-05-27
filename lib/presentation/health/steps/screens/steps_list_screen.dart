@@ -990,9 +990,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       });
     }
     if (selectedPeriod == '월') {
-      const visibleMonths = 7;
-      const totalMonths = 12;
-      const maxStart = totalMonths - visibleMonths;
+      final visibleMonths = healthMonthlySlotCount(forExpandedChart);
+      final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
       final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
       return List<String>.generate(
           visibleMonths, (i) => '${startIndex + i + 1}');
@@ -1010,7 +1009,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       return data.sublist(startIndex, startIndex + visibleSlots);
     }
     if (selectedPeriod == '월') {
-      const visibleMonths = 7;
+      final visibleMonths = healthMonthlySlotCount(forExpandedChart);
       final maxStart = data.length - visibleMonths;
       final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
       return data.sublist(startIndex, startIndex + visibleMonths);

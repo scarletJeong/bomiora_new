@@ -149,17 +149,12 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   /// 월별: 선택 날짜의 달이 보이도록 7개월 창 시작 위치
-  void _syncMonthlyTimeOffsetForSelectedDate() {
+  void _syncMonthlyTimeOffsetForSelectedDate({bool forExpandedChart = false}) {
     if (selectedPeriod != '월') return;
-    const totalMonths = 12;
-    const visibleMonths = 7;
-    final maxStart = totalMonths - visibleMonths;
-    if (maxStart <= 0) {
-      timeOffset = 0.0;
-      return;
-    }
-    final targetStart = (selectedDate.month - visibleMonths).clamp(0, maxStart);
-    timeOffset = targetStart / maxStart;
+    timeOffset = healthMonthlyTimeOffsetForSelectedMonth(
+      selectedDate.month,
+      forExpandedChart: forExpandedChart,
+    );
   }
 
   // 드래그 민감도
@@ -194,6 +189,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       return _getWeeklyOrMonthlyData(
         period: targetPeriod,
         offset: targetOffset,
+        forExpandedChart: forExpandedChart,
       );
     }
 
@@ -297,12 +293,16 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   List<Map<String, dynamic>> _getWeeklyOrMonthlyData({
     String? period,
     double? offset,
+    bool forExpandedChart = false,
   }) {
     final targetPeriod = period ?? selectedPeriod;
     if (targetPeriod == '주') {
       return _buildWeeklyBloodSugarData();
     }
-    return _buildMonthlyBloodSugarData(offset: offset ?? timeOffset);
+    return _buildMonthlyBloodSugarData(
+      offset: offset ?? timeOffset,
+      forExpandedChart: forExpandedChart,
+    );
   }
 
   /// 주별: 각 날짜·측정유형별로 그날 해당 유형 수치의 최댓값 1점 (여러 점이 평면 리스트로 전달됨)
@@ -362,11 +362,13 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   /// 월별: 각 월·측정유형별로 해당 월 해당 유형 수치의 최댓값 1점
-  List<Map<String, dynamic>> _buildMonthlyBloodSugarData({double? offset}) {
-    const totalMonths = 12;
-    const visibleMonths = 7;
+  List<Map<String, dynamic>> _buildMonthlyBloodSugarData({
+    double? offset,
+    bool forExpandedChart = false,
+  }) {
+    final visibleMonths = healthMonthlySlotCount(forExpandedChart);
     final year = selectedDate.year;
-    final maxStart = totalMonths - visibleMonths;
+    final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
     final startMonthIndex =
         ((offset ?? timeOffset) * maxStart).round().clamp(0, maxStart);
 
@@ -1005,14 +1007,11 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     var expandedTooltipPosition = tooltipPosition;
     var expandedMeasurementFilter = selectedMeasurementFilter;
 
-    double monthlyOffsetForSelectedDate() {
-      const totalMonths = 12;
-      const visibleMonths = 7;
-      const maxStart = totalMonths - visibleMonths;
-      final targetStart =
-          (selectedDate.month - visibleMonths).clamp(0, maxStart);
-      return targetStart / maxStart;
-    }
+    double monthlyOffsetForSelectedDate() =>
+        healthMonthlyTimeOffsetForSelectedMonth(
+          selectedDate.month,
+          forExpandedChart: true,
+        );
 
     double dailyInitialOffset() {
       if (!_isToday()) return 0.0;

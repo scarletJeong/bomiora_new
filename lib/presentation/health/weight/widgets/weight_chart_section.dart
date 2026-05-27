@@ -213,6 +213,7 @@ Widget buildWeightXAxisLabels({
       selectedPeriod: selectedPeriod,
       selectedDate: selectedDate,
       timeOffset: timeOffset,
+      forExpandedChart: forExpandedChart,
     );
   }
 
@@ -263,11 +264,11 @@ Widget _buildWeightPeriodXAxisLabels({
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
+  bool forExpandedChart = false,
 }) {
   if (selectedPeriod == '월') {
-    const totalMonths = 12;
-    const visibleMonths = 7;
-    final maxStart = totalMonths - visibleMonths;
+    final visibleMonths = healthMonthlySlotCount(forExpandedChart);
+    final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
     final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
 
     return _buildXAxisLabelWithUnit(
@@ -673,8 +674,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
     this.forExpandedChart = false,
   });
 
-  static const int _totalMonths = 12;
-  static const int _visibleMonths = 7;
+  int get _visibleMonths => healthMonthlySlotCount(forExpandedChart);
 
   @override
   Widget build(BuildContext context) {
@@ -751,6 +751,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
                                     bottomPlotPad:
                                         healthWeightChartBottomPlotPad(
                                             context),
+                                    visibleMonths: _visibleMonths,
                                   );
                                   if (hit == null) {
                                     onTooltipChanged(null, null);
@@ -766,6 +767,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
                                         chartData: chartData,
                                         yLabels: yLabels,
                                         timeOffset: timeOffset,
+                                        visibleMonths: _visibleMonths,
                                         selectedIndex:
                                             selectedChartPointIndex,
                                         omitOutOfRangeWeights:
@@ -815,6 +817,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
               selectedPeriod: selectedPeriod,
               selectedDate: selectedDate,
               timeOffset: timeOffset,
+              forExpandedChart: forExpandedChart,
             ),
           ),
         ],
@@ -831,8 +834,12 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
     required bool omitOutOfRangeWeights,
     required double topPlotPad,
     required double bottomPlotPad,
+    required int visibleMonths,
   }) {
-    if (chartData.length < _totalMonths || yLabels.length < 2) return null;
+    if (chartData.length < healthCalendarYearMonthCount ||
+        yLabels.length < 2) {
+      return null;
+    }
 
     final minYWeight = yLabels.last;
     final maxYWeight = yLabels.first;
@@ -845,7 +852,7 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
     final drawableHeight =
         chartSize.height - topPlotPad - bottomPlotPad;
 
-    final maxStart = _totalMonths - _visibleMonths;
+    final maxStart = healthCalendarYearMonthCount - visibleMonths;
     final startIndex =
         (timeOffset * maxStart).round().clamp(0, maxStart);
 
@@ -862,9 +869,9 @@ class _WeightMonthlyRangeChart extends StatelessWidget {
       return topPlotPad + drawableHeight * normalized;
     }
 
-    final slotWidth = chartWidth / _visibleMonths;
+    final slotWidth = chartWidth / visibleMonths;
     final relX = tap.dx - leftPadding;
-    final v = (relX / slotWidth).floor().clamp(0, _visibleMonths - 1);
+    final v = (relX / slotWidth).floor().clamp(0, visibleMonths - 1);
     final dataIndex = startIndex + v;
     if (dataIndex < 0 || dataIndex >= chartData.length) return null;
 
@@ -967,6 +974,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
   final List<Map<String, dynamic>> chartData;
   final List<double> yLabels;
   final double timeOffset;
+  final int visibleMonths;
   final int? selectedIndex;
   final bool omitOutOfRangeWeights;
   final double topPlotPad;
@@ -977,6 +985,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
     required this.chartData,
     required this.yLabels,
     required this.timeOffset,
+    required this.visibleMonths,
     this.selectedIndex,
     required this.omitOutOfRangeWeights,
     required this.topPlotPad,
@@ -984,12 +993,12 @@ class _WeightMonthlyRangePainter extends CustomPainter {
     this.scale = 1.0,
   });
 
-  static const int _totalMonths = 12;
-  static const int _visibleMonths = 7;
-
   @override
   void paint(Canvas canvas, Size size) {
-    if (chartData.length < _totalMonths || yLabels.length < 2) return;
+    if (chartData.length < healthCalendarYearMonthCount ||
+        yLabels.length < 2) {
+      return;
+    }
 
     final minYWeight = yLabels.last;
     final maxYWeight = yLabels.first;
@@ -1001,7 +1010,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
     final chartWidth = size.width - leftPadding - rightPadding;
     final chartHeight = size.height - topPlotPad - bottomPlotPad;
 
-    final maxStart = _totalMonths - _visibleMonths;
+    final maxStart = healthCalendarYearMonthCount - visibleMonths;
     final startIndex =
         (timeOffset * maxStart).round().clamp(0, maxStart);
 
@@ -1015,7 +1024,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
       return topPlotPad + chartHeight * normalized;
     }
 
-    for (int v = 0; v < _visibleMonths; v++) {
+    for (int v = 0; v < visibleMonths; v++) {
       final dataIndex = startIndex + v;
       if (dataIndex < 0 || dataIndex >= chartData.length) continue;
 
@@ -1036,7 +1045,7 @@ class _WeightMonthlyRangePainter extends CustomPainter {
           ? maxWeight.clamp(minYWeight, maxYWeight).toDouble()
           : maxWeight;
 
-      final slotWidth = chartWidth / _visibleMonths;
+      final slotWidth = chartWidth / visibleMonths;
       final x = leftPadding + slotWidth * (v + 0.5);
 
       final yMin = toY(visibleMin);

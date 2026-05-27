@@ -104,11 +104,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     bool forExpandedChart = false,
   }) {
     if (selectedPeriod == '월') {
-      // 월별: 12개월 중 7개월 창 이동
-      final totalMonths = 12;
-      final visibleMonths = 7;
-      final maxStart = (totalMonths - visibleMonths).clamp(0, 99);
-      if (maxStart == 0) return 0.0;
+      if (healthMonthlyMaxStartIndex(forExpandedChart) == 0) {
+        return 0.0;
+      }
       return newOffset.clamp(0.0, 1.0);
     }
 
@@ -170,7 +168,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     if (selectedPeriod == '주') {
       return _buildDailyRangeChartData();
     }
-    return _buildMonthlyRangeChartData();
+    return _buildMonthlyRangeChartData(forExpandedChart: forExpandedChart);
   }
 
   /// 시간대별 차트는 N시간 창만 보여 줌. 창 밖에만 기록이 있으면 빈 그래프로 보이므로
@@ -263,12 +261,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return result;
   }
 
-  /// 체중 월별과 동일: [selectedDate] 연도 기준 1~12월 중 7개월 창 슬라이드
-  List<Map<String, dynamic>> _buildMonthlyRangeChartData() {
-    const totalMonths = 12;
-    const visibleMonths = 7;
+  /// 체중 월별과 동일: [selectedDate] 연도 기준 1~12월 중 N개월 창 슬라이드
+  List<Map<String, dynamic>> _buildMonthlyRangeChartData({
+    bool forExpandedChart = false,
+  }) {
+    final visibleMonths = healthMonthlySlotCount(forExpandedChart);
     final year = selectedDate.year;
-    final maxStart = totalMonths - visibleMonths;
+    final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
     final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
 
     final result = <Map<String, dynamic>>[];
@@ -395,9 +394,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     }
 
     if (selectedPeriod == '월') {
-      const totalMonths = 12;
-      const visibleMonths = 7;
-      final maxStart = totalMonths - visibleMonths;
+      final visibleMonths = healthMonthlySlotCount(forExpandedChart);
+      final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
       final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
 
       return _buildBloodPressureXAxisWithUnit(

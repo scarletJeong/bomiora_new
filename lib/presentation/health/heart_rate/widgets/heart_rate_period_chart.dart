@@ -24,6 +24,7 @@ double? heartRatePeriodSlotCenterX({
   required bool useCalendarYearMonths,
   required double chartWidth,
   double? xUnitReservedWidth,
+  bool forExpandedChart = false,
 }) {
   final xPosition = data['xPosition'] as double?;
   if (xPosition == null) return null;
@@ -37,12 +38,12 @@ double? heartRatePeriodSlotCenterX({
   final totalDays = selectedPeriod == '주' ? 7 : 30;
 
   if (selectedPeriod == '월' && useCalendarYearMonths) {
-    const totalMonths = 12;
-    const visibleMonths = 7;
-    final maxStart = totalMonths - visibleMonths;
+    final visibleMonths = healthMonthlySlotCount(forExpandedChart);
+    final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
     final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
     final endIndex = startIndex + visibleMonths;
-    final dataIndex = (xPosition * (totalMonths - 1)).round();
+    final dataIndex =
+        (xPosition * (healthCalendarYearMonthCount - 1)).round();
     if (dataIndex < startIndex || dataIndex >= endIndex) return null;
     final relativeIndex = dataIndex - startIndex;
     return leftPad + effW * (relativeIndex + 0.5) / visibleMonths;
@@ -109,9 +110,8 @@ Widget buildHeartRateXAxisLabels({
   }
 
   if (selectedPeriod == '월') {
-    const totalMonths = 12;
-    const visibleMonths = 7;
-    final maxStart = totalMonths - visibleMonths;
+    final visibleMonths = healthMonthlySlotCount(forExpandedChart);
+    final maxStart = healthMonthlyMaxStartIndex(forExpandedChart);
     final startIndex = (timeOffset * maxStart).round().clamp(0, maxStart);
 
     return _buildHeartRateXAxisWithUnit(
@@ -359,6 +359,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
                   selectedPointIndex: widget.selectedChartPointIndex,
                   yAxisCount: widget.yAxisCount,
                   useCalendarYearMonths: widget.useCalendarYearMonths,
+                  forExpandedChart: widget.forExpandedChart,
                   topPlotPad: topPad,
                   bottomPlotPad: botPad,
                   scale:
@@ -434,9 +435,9 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
       endIndexExclusive = 7;
       slots = 7;
     } else if (widget.selectedPeriod == '월' && widget.useCalendarYearMonths) {
-      const totalMonths = 12;
-      const visibleMonths = 7;
-      final maxStart = totalMonths - visibleMonths;
+      final visibleMonths =
+          healthMonthlySlotCount(widget.forExpandedChart);
+      final maxStart = healthMonthlyMaxStartIndex(widget.forExpandedChart);
       final s = (widget.timeOffset * maxStart).round().clamp(0, maxStart);
       final rel = ((tap.dx - leftPad) / effW) * visibleMonths - 0.5;
       candidateDataIndex = (s + rel.round()).clamp(s, s + visibleMonths - 1);
@@ -485,8 +486,9 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
             (dataIndex - candidateDataIndex).abs() > 1) continue;
         x = leftPad + effW * (dataIndex + 0.5) / 7;
       } else if (widget.selectedPeriod == '월' && widget.useCalendarYearMonths) {
-        const totalMonths = 12;
-        dataIndex = (xPosition * (totalMonths - 1)).round().clamp(0, 11);
+        dataIndex = (xPosition * (healthCalendarYearMonthCount - 1))
+            .round()
+            .clamp(0, healthCalendarYearMonthCount - 1);
         if (startIndex != null &&
             endIndexExclusive != null &&
             (dataIndex < startIndex || dataIndex >= endIndexExclusive))
@@ -515,6 +517,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
           useCalendarYearMonths: widget.useCalendarYearMonths,
           chartWidth: chartWidth,
           xUnitReservedWidth: unitReserve,
+          forExpandedChart: widget.forExpandedChart,
         );
       }
 
@@ -584,6 +587,7 @@ class _HeartRateChartPainter extends CustomPainter {
   final int? selectedPointIndex;
   final int yAxisCount;
   final bool useCalendarYearMonths;
+  final bool forExpandedChart;
   final double topPlotPad;
   final double bottomPlotPad;
 
@@ -599,6 +603,7 @@ class _HeartRateChartPainter extends CustomPainter {
     this.selectedPointIndex,
     required this.yAxisCount,
     required this.useCalendarYearMonths,
+    this.forExpandedChart = false,
     required this.topPlotPad,
     required this.bottomPlotPad,
     this.scale = 1.0,
@@ -643,6 +648,7 @@ class _HeartRateChartPainter extends CustomPainter {
         useCalendarYearMonths: useCalendarYearMonths,
         chartWidth: size.width,
         xUnitReservedWidth: xUnitReservedWidth,
+        forExpandedChart: forExpandedChart,
       );
       if (x == null) continue;
 
@@ -732,6 +738,7 @@ class _HeartRateChartPainter extends CustomPainter {
         oldDelegate.selectedPointIndex != selectedPointIndex ||
         oldDelegate.yAxisCount != yAxisCount ||
         oldDelegate.useCalendarYearMonths != useCalendarYearMonths ||
+        oldDelegate.forExpandedChart != forExpandedChart ||
         oldDelegate.topPlotPad != topPlotPad ||
         oldDelegate.bottomPlotPad != bottomPlotPad ||
         oldDelegate.scale != scale ||
