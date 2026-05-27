@@ -118,34 +118,43 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: _buildProviderBlock(
-                            serviceName: _kSamsung,
-                            label: '삼성 헬스',
-                            child: _buildFullConnectMark(
-                              AppAssets.healthConnectSamsung,
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: _buildProviderBlock(
+                              serviceName: _kSamsung,
+                              label: '삼성 헬스',
+                              child: _buildFullConnectMark(
+                                AppAssets.healthConnectSamsung,
+                              ),
                             ),
                           ),
                         ),
                         SizedBox(width: healthDp(context, 20)),
                         Expanded(
-                          child: _buildProviderBlock(
-                            serviceName: _kGoogle,
-                            label: 'Google Fit',
-                            child: _buildGoogleConnectMark(),
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: _buildProviderBlock(
+                              serviceName: _kGoogle,
+                              label: 'Google Fit',
+                              child: _buildGoogleConnectMark(),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 24)),
+                    SizedBox(height: healthDp(context, 20)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: _buildProviderBlock(
-                            serviceName: _kApple,
-                            label: '애플 건강',
-                            child: _buildFullConnectMark(
-                              AppAssets.healthConnectApple,
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: _buildProviderBlock(
+                              serviceName: _kApple,
+                              label: '애플 건강',
+                              child: _buildFullConnectMark(
+                                AppAssets.healthConnectApple,
+                              ),
                             ),
                           ),
                         ),
@@ -189,7 +198,6 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
         ),
         child: Text(
           _isSyncing ? '연동 중…' : '연동하기',
-          textScaler: TextScaler.noScaling,
           style: const TextStyle(
             fontSize: 16,
             fontFamily: 'Gmarket Sans TTF',
@@ -214,34 +222,32 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
           ? () => setState(() => _selectedServiceName = serviceName)
           : null,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          children: [
-            child,
-            const SizedBox(height: 10),
-            Text(
-              connected ? '$label · 연동됨' : label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: supported
-                    ? const Color(0xFF898383)
-                    : const Color(0xFFB3B3B3),
-                fontSize: 12,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          child,
+          SizedBox(height: healthDp(context, 10)),
+          Text(
+            connected ? '$label · 연동됨' : label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF898383),
+              fontSize: 12,
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  /// 삼성·애플 — SVG 전체(100×100)를 카드로 사용.
+  /// 삼성·애플 — SVG 전체(375 기준 100×100)를 카드로 사용.
   Widget _buildFullConnectMark(String assetPath) {
-    return AspectRatio(
-      aspectRatio: 1,
+    final size = healthDp(context, 100);
+    return SizedBox(
+      width: size,
+      height: size,
       child: SvgPicture.asset(
         assetPath,
         fit: BoxFit.contain,
@@ -249,60 +255,27 @@ class _HealthConnectScreenState extends State<HealthConnectScreen> {
     );
   }
 
-  /// 구글 — 흰 카드 유지, 안쪽 Google Fit 막대 아이콘.
-  /// (connect_google.svg는 PNG embed라 flutter_svg 미표시 → 벡터로 그림)
+  /// 구글 — 벡터 SVG, radius 10 (375 기준).
   Widget _buildGoogleConnectMark() {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final size = constraints.maxWidth;
-          final radius = size * 0.2;
-          final borderW = size * 0.0155;
-          final barW = size * 0.14;
-          final gap = size * 0.04;
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(radius),
-                  border: Border.all(
-                    color: const Color(0xFFE0E0E0),
-                    width: borderW,
-                  ),
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _googleFitBar(barW, size * 0.28, const Color(0xFF4285F4)),
-                  SizedBox(width: gap),
-                  _googleFitBar(barW, size * 0.40, const Color(0xFFEA4335)),
-                  SizedBox(width: gap),
-                  _googleFitBar(barW, size * 0.34, const Color(0xFFFBBC05)),
-                  SizedBox(width: gap),
-                  _googleFitBar(barW, size * 0.22, const Color(0xFF34A853)),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _googleFitBar(double width, double height, Color color) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(width * 0.21),
+    final size = healthDp(context, 100);
+    final radius = healthDp(context, 10);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: const Color(0xFFE0E0E0),
+            width: healthDp(context, 1.55),
+          ),
+        ),
+        padding: EdgeInsets.all(healthDp(context, 14)),
+        child: SvgPicture.asset(
+          AppAssets.healthConnectGoogle,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }

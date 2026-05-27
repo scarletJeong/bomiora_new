@@ -935,16 +935,14 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                       const AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : Center(
-                child: Text(
-                  '저장',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: healthSp(context, 16),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                    height: 1.0,
-                  ),
+            : const Text(
+                '저장',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  height: 1.0,
                 ),
               ),
       ),
