@@ -50,6 +50,40 @@ double _expandTextScale(double layoutWidth) {
   return scaled.clamp(1.0, kHealthWebExpandDialogWidth / 375.0);
 }
 
+/// [StatefulBuilder] 안에서 [onRegisterRefresh]를 매 빌드마다 호출하면
+/// 다이얼로그/라우트가 닫힌 뒤에도 이전 `setState`가 남아 웹에서
+/// `Trying to render a disposed EngineFlutterView`가 날 수 있음 → **한 번만** 등록.
+class _ExpandRegisterRefreshOnce extends StatefulWidget {
+  const _ExpandRegisterRefreshOnce({
+    required this.onRegisterRefresh,
+    required this.builder,
+  });
+
+  final ValueChanged<VoidCallback>? onRegisterRefresh;
+  final WidgetBuilder builder;
+
+  @override
+  State<_ExpandRegisterRefreshOnce> createState() =>
+      _ExpandRegisterRefreshOnceState();
+}
+
+class _ExpandRegisterRefreshOnceState extends State<_ExpandRegisterRefreshOnce> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.onRegisterRefresh?.call(() {
+        if (!mounted) return;
+        setState(() {});
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
+}
+
 Widget _buildExpandedShell({
   required BuildContext context,
   required VoidCallback onClose,
@@ -131,38 +165,36 @@ Future<void> _openWebPopup({
       barrierColor: Colors.black.withOpacity(0.45),
       barrierDismissible: true,
       builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (innerCtx, expandedSetState) {
-            onRegisterRefresh?.call(() => expandedSetState(() {}));
-            return Center(
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  width: kHealthWebExpandDialogWidth,
-                  height: kHealthWebExpandDialogHeight,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.18),
-                        blurRadius: 32,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: _buildExpandedShell(
-                    context: innerCtx,
-                    onClose: () => Navigator.of(dialogCtx).pop(),
-                    chartBuilder: chartBuilder,
-                    periodSelectorBuilder: periodSelectorBuilder,
-                    legendBuilder: legendBuilder,
-                  ),
+        return _ExpandRegisterRefreshOnce(
+          onRegisterRefresh: onRegisterRefresh,
+          builder: (innerCtx) => Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: kHealthWebExpandDialogWidth,
+                height: kHealthWebExpandDialogHeight,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.18),
+                      blurRadius: 32,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: _buildExpandedShell(
+                  context: innerCtx,
+                  onClose: () => Navigator.of(dialogCtx).pop(),
+                  chartBuilder: chartBuilder,
+                  periodSelectorBuilder: periodSelectorBuilder,
+                  legendBuilder: legendBuilder,
                 ),
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -192,9 +224,9 @@ Future<void> _openAppLandscapePage({
       context,
       MaterialPageRoute(
         builder: (pageCtx) {
-          return StatefulBuilder(
-            builder: (innerCtx, expandedSetState) {
-              onRegisterRefresh?.call(() => expandedSetState(() {}));
+          return _ExpandRegisterRefreshOnce(
+            onRegisterRefresh: onRegisterRefresh,
+            builder: (innerCtx) {
               final outerWidth = MediaQuery.sizeOf(innerCtx).width;
               final metrics = healthExpandedChartMetrics(outerWidth);
               final hPad = metrics.d(24);
