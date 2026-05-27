@@ -21,6 +21,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../core/utils/image_picker_utils.dart';
 import '../widgets/weight_chart_section.dart';
 import '../utils/weight_goal_progress.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_chart_metrics.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
@@ -102,15 +103,17 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }
 
   // 드래그 범위: 월 고정 / 일별은 6시간 창 슬라이드(오늘은 현재시각 기준)
-  double _clampDragOffset(double newOffset) {
+  double _clampDragOffset(
+    double newOffset, {
+    bool forExpandedChart = false,
+  }) {
     if (selectedPeriod == '월') {
       return newOffset.clamp(0.0, 1.0);
     }
     if (selectedPeriod == '일' && _isToday()) {
-      final now = DateTime.now();
-      final currentHour = now.hour;
-      final maxStartHour = (currentHour - 5).clamp(0, 18);
-      final maxOffset = maxStartHour / 18.0;
+      final maxOffset = healthDailyTimeOffsetForToday(
+        forExpandedChart: forExpandedChart,
+      );
       return newOffset.clamp(0.0, maxOffset);
     }
     if (selectedPeriod == '일') {
@@ -125,23 +128,32 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }
 
   // 공통 드래그 핸들러
-  void _handleDragUpdate(double deltaX, double chartWidth) {
+  void _handleDragUpdate(
+    double deltaX,
+    double chartWidth, {
+    bool forExpandedChart = false,
+  }) {
     final sensitivity = _getDragSensitivity();
     final dataDelta = -(deltaX / chartWidth) * sensitivity;
     final newOffset = timeOffset + dataDelta;
 
     setState(() {
-      timeOffset = _clampDragOffset(newOffset);
+      timeOffset = _clampDragOffset(
+        newOffset,
+        forExpandedChart: forExpandedChart,
+      );
     });
     _notifyExpandedChart();
   }
 
-  /// 혈압 일그래프와 동일: 6시간 뷰 시작·끝 시각
-  Map<String, double> _calculateTimeRange() {
-    const maxStartHour = 18;
+  /// 혈압 일그래프와 동일: N시간 뷰 시작·끝 시각
+  Map<String, double> _calculateTimeRange({bool forExpandedChart = false}) {
+    final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+    final slots = healthDailyHourSlotCount(forExpandedChart);
     final startHour =
         (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
-    final endHour = (startHour + 6.0).clamp(6.0, 24.0);
+    final endHour =
+        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
     return {'min': startHour, 'max': endHour};
   }
 
@@ -153,14 +165,17 @@ class _WeightListScreenState extends State<WeightListScreen> {
     );
   }
 
-  double _dailyOffsetForDate(DateTime date) {
+  double _dailyOffsetForDate(
+    DateTime date, {
+    bool forExpandedChart = false,
+  }) {
     final day = DateTime(date.year, date.month, date.day);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final maxStart = healthDailyMaxStartHour(forExpandedChart);
 
     if (day == today) {
-      final startHourTarget = (now.hour - 5).clamp(0, 18);
-      return startHourTarget / 18.0;
+      return healthDailyTimeOffsetForToday(forExpandedChart: forExpandedChart);
     }
 
     final recordsForDay = allRecords.where((record) {
@@ -176,8 +191,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
     recordsForDay.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
     final firstHour = recordsForDay.first.measuredAt.hour;
-    final startHourTarget = (firstHour - 1).clamp(0, 18);
-    return startHourTarget / 18.0;
+    final startHourTarget = (firstHour - 1).clamp(0, maxStart);
+    return startHourTarget / maxStart;
   }
 
   double? _latestWeight() {
@@ -198,7 +213,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }
 
   // 차트 데이터 생성
-  List<Map<String, dynamic>> getChartData() {
+  List<Map<String, dynamic>> getChartData({bool forExpandedChart = false}) {
     if (selectedPeriod == '월') {
       return _getCalendarYearMonthlyWeightData();
     }
@@ -215,7 +230,8 @@ class _WeightListScreenState extends State<WeightListScreen> {
 
     todayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
 
-    final timeRange = _calculateTimeRange();
+    final timeRange = _calculateTimeRange(forExpandedChart: forExpandedChart);
+    final slots = healthDailyHourSlotCount(forExpandedChart);
     final minHourDiff = timeRange['min']!;
     final maxHourDiff = timeRange['max']!;
     final range = maxHourDiff - minHourDiff;
@@ -239,7 +255,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
             hourRecords.map((r) => r.weight).reduce((a, b) => a < b ? a : b);
         final maxW =
             hourRecords.map((r) => r.weight).reduce((a, b) => a > b ? a : b);
-        final slot = (hour - windowStartHour).clamp(0, 6).toInt();
+        final slot = (hour - windowStartHour).clamp(0, slots - 1).toInt();
         chartData.add({
           'date': '$hour시',
           'weight': null,
@@ -251,13 +267,14 @@ class _WeightListScreenState extends State<WeightListScreen> {
           'record': hourRecords.last,
           'records': hourRecords,
           'count': hourRecords.length,
-          'xPosition': (slot + 0.5) / 7.0,
+          'xPosition': (slot + 0.5) / slots,
         });
       } else {
         final record = hourRecords.single;
         final recordHour = record.measuredAt.hour;
         const normalizedMinute = 0;
-        final slot = (recordHour - windowStartHour).clamp(0, 6).toInt();
+        final slot =
+            (recordHour - windowStartHour).clamp(0, slots - 1).toInt();
 
         chartData.add({
           'date': '$recordHour시',
@@ -265,7 +282,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
           'record': record,
           'hour': recordHour,
           'normalizedMinute': normalizedMinute,
-          'xPosition': (slot + 0.5) / 7.0,
+          'xPosition': (slot + 0.5) / slots,
         });
       }
     }
@@ -1412,7 +1429,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
   }) {
     final resolvedChartHeight =
         chartHeight ?? healthDp(context, ChartConstants.weightChartHeight);
-    final chartData = getChartData();
+    final chartData = getChartData(forExpandedChart: expandedChartView);
     final yLabels =
         expandedChartView ? getYAxisLabelsExpanded() : getYAxisLabelsMain();
     final periodTabs = expandedChartView
@@ -1455,7 +1472,13 @@ class _WeightListScreenState extends State<WeightListScreen> {
           });
           _notifyExpandedChart();
         },
-        chartAreaBuilder: (a, b, c, d) => _buildChartArea(a, b, c, d),
+        chartAreaBuilder: (a, b, c, d) => _buildChartArea(
+              a,
+              b,
+              c,
+              d,
+              forExpandedChart: expandedChartView,
+            ),
         tooltipBuilder: _buildChartTooltip,
       ),
       emptyChartBuilder: (height, tabs) => WeightEmptyChart(
@@ -1486,7 +1509,10 @@ class _WeightListScreenState extends State<WeightListScreen> {
             } else if (period == '주') {
               timeOffset = 0.0;
             } else if (period == '일') {
-              timeOffset = _dailyOffsetForDate(selectedDate);
+              timeOffset = _dailyOffsetForDate(
+                selectedDate,
+                forExpandedChart: true,
+              );
             }
           });
           _notifyExpandedChart();
@@ -1542,8 +1568,9 @@ class _WeightListScreenState extends State<WeightListScreen> {
     List<Map<String, dynamic>> chartData,
     List<double> yLabels,
     BoxConstraints constraints,
-    bool omitOutOfRangeWeights,
-  ) {
+    bool omitOutOfRangeWeights, {
+    bool forExpandedChart = false,
+  }) {
     return GestureDetector(
       onTapDown: (details) {
         _handleChartTap(
@@ -1577,7 +1604,11 @@ class _WeightListScreenState extends State<WeightListScreen> {
       onPanUpdate: (details) {
         if (selectedPeriod == '일' || selectedPeriod == '월') {
           final deltaX = details.localPosition.dx - (_dragStartX ?? 0);
-          _handleDragUpdate(deltaX, constraints.maxWidth);
+          _handleDragUpdate(
+            deltaX,
+            constraints.maxWidth,
+            forExpandedChart: forExpandedChart,
+          );
           _dragStartX = details.localPosition.dx;
         }
       },
@@ -1604,6 +1635,7 @@ class _WeightListScreenState extends State<WeightListScreen> {
                 scale: healthTextScaleByWidth(
                   MediaQuery.sizeOf(context).width,
                 ),
+                forExpandedChart: forExpandedChart,
               ),
               size: Size(
                 constraints.maxWidth,
@@ -2470,6 +2502,7 @@ class WeightChartPainter extends CustomPainter {
   final double bottomPadding;
   final double barWidth;
   final double scale;
+  final bool forExpandedChart;
 
   WeightChartPainter({
     required this.chartData,
@@ -2482,6 +2515,7 @@ class WeightChartPainter extends CustomPainter {
     this.bottomPadding = 10,
     this.barWidth = 5,
     this.scale = 1.0,
+    this.forExpandedChart = false,
   });
 
   @override
@@ -2501,10 +2535,11 @@ class WeightChartPainter extends CustomPainter {
     // 데이터: 같은 시(hour)에 2건 이상이면 막대, 그 외는 점
     List<Offset> points = [];
     List<int> validIndices = [];
-    const maxStartHour = 18;
+    final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+    final slots = healthDailyHourSlotCount(forExpandedChart);
     final startHour =
         (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
-    final endHour = startHour + 6;
+    final endHour = startHour + slots - 1;
 
     final barFill = Paint()
       ..color = const Color(0xFFFF5A8D)
@@ -2661,6 +2696,7 @@ class WeightChartPainter extends CustomPainter {
         oldDelegate.topPadding != topPadding ||
         oldDelegate.bottomPadding != bottomPadding ||
         oldDelegate.barWidth != barWidth ||
-        oldDelegate.scale != scale;
+        oldDelegate.scale != scale ||
+        oldDelegate.forExpandedChart != forExpandedChart;
   }
 }

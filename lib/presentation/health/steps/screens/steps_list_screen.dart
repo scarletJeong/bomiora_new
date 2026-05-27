@@ -124,25 +124,42 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     });
   }
 
-  double _defaultDailyTimeOffset() {
-    const maxStartSlot = 36;
+  static const int _dailyVisibleSlotsCard = 12;
+  static const int _dailyVisibleSlotsExpanded = 24;
+  static const int _dailyHalfHoursPerDay = 48;
+
+  int _dailyVisibleSlots({bool forExpandedChart = false}) =>
+      forExpandedChart ? _dailyVisibleSlotsExpanded : _dailyVisibleSlotsCard;
+
+  int _dailyMaxStartSlot({bool forExpandedChart = false}) =>
+      _dailyHalfHoursPerDay - _dailyVisibleSlots(forExpandedChart: forExpandedChart);
+
+  int _dailyLeadSlots({bool forExpandedChart = false}) =>
+      forExpandedChart ? 20 : 10;
+
+  double _defaultDailyTimeOffset({bool forExpandedChart = false}) {
+    final maxStartSlot = _dailyMaxStartSlot(forExpandedChart: forExpandedChart);
     final now = DateTime.now();
     final currentSlot = now.hour * 2 + (now.minute >= 30 ? 1 : 0);
-    final startSlot = (currentSlot - 10).clamp(0, maxStartSlot);
+    final startSlot = (currentSlot - _dailyLeadSlots(forExpandedChart: forExpandedChart))
+        .clamp(0, maxStartSlot);
     return startSlot / maxStartSlot;
   }
 
-  double _clampTimeOffset(double next) {
+  double _clampTimeOffset(double next, {bool forExpandedChart = false}) {
     if (selectedPeriod == '월') {
       return next.clamp(0.0, 1.0);
     }
     if (selectedPeriod == '일') {
       if (_isToday()) {
-        const maxStartSlot = 36;
+        final maxStartSlot =
+            _dailyMaxStartSlot(forExpandedChart: forExpandedChart);
         final now = DateTime.now();
         final currentSlot = now.hour * 2 + (now.minute >= 30 ? 1 : 0);
-        final maxOffset =
-            ((currentSlot - 10).clamp(0, maxStartSlot)) / maxStartSlot;
+        final maxOffset = ((currentSlot -
+                    _dailyLeadSlots(forExpandedChart: forExpandedChart))
+                .clamp(0, maxStartSlot)) /
+            maxStartSlot;
         return next.clamp(0.0, maxOffset);
       }
       return next.clamp(0.0, 1.0);
@@ -620,7 +637,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                   ),
                   child: _buildXAxisLabelRow(
                     context,
-                    _buildXAxisLabels(),
+                    _buildXAxisLabels(
+                      forExpandedChart: forExpandedChart,
+                    ),
+                    forExpandedChart: forExpandedChart,
                   ),
                 ),
               ),
@@ -664,7 +684,8 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       healthDp(context, 10),
     );
 
-    final visibleData = _buildVisibleChartData(data);
+    final visibleData =
+        _buildVisibleChartData(data, forExpandedChart: forExpandedChart);
     final forceWhiteBg = selectedPeriod == '일' || selectedPeriod == '월';
 
     return Row(
@@ -674,7 +695,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           yLabels: yTickDoubles,
           showYAxisHeader: showYHeader,
           unitLabel: _yAxisUnitLabel(),
-          tickFontSize: selectedPeriod == '일' ? 12 : 10,
+          tickFontSize: selectedPeriod == '일' ||
+                  (forExpandedChart &&
+                      (selectedPeriod == '주' || selectedPeriod == '월'))
+              ? 12
+              : 10,
         ),
         SizedBox(width: ySpacing),
         Expanded(
@@ -705,6 +730,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                               plotW,
                               chartScale,
                               xUnitReserved,
+                              forExpandedChart: forExpandedChart,
                             );
                             if (visibleData[idx].value <= 0) {
                               setState(() {
@@ -722,6 +748,7 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   plotW,
                                   chartScale,
                                   xUnitReserved,
+                                  forExpandedChart: forExpandedChart,
                                 ),
                                 healthDp(context, 30),
                               );
@@ -735,7 +762,10 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                               math.max(plotW, 1)) *
                                           (selectedPeriod == '일' ? 2.4 : 1.8);
                                   setState(() {
-                                    timeOffset = _clampTimeOffset(next);
+                                    timeOffset = _clampTimeOffset(
+                                      next,
+                                      forExpandedChart: forExpandedChart,
+                                    );
                                   });
                                   _notifyExpandedChart();
                                 }
@@ -753,7 +783,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
                                   topPadding: chartPadTop,
                                   bottomPadding: chartPadBottom,
                                   dailyStartSlot: selectedPeriod == '일'
-                                      ? _dailyStartSlot()
+                                      ? _dailyStartSlot(
+                                          forExpandedChart: forExpandedChart,
+                                        )
                                       : 0,
                                   barCornerRadius: barCornerR,
                                   gridStrokeWidth: chartMetrics.gridStroke,
@@ -833,11 +865,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     int visibleLength,
     double plotWidth,
     double scale,
-    double xUnitReservedWidth,
-  ) {
+    double xUnitReservedWidth, {
+    bool forExpandedChart = false,
+  }) {
     if (visibleLength <= 1) return 0;
     if (selectedPeriod == '일') {
-      final startParity = _dailyStartSlot().isOdd ? 1 : 0;
+      final startParity =
+          _dailyStartSlot(forExpandedChart: forExpandedChart).isOdd ? 1 : 0;
       final relHalf = _stepsDailyRelHalfFromLocalX(
         localX,
         plotWidth,
@@ -877,8 +911,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     int visibleLength,
     double plotWidth,
     double scale,
-    double xUnitReservedWidth,
-  ) {
+    double xUnitReservedWidth, {
+    bool forExpandedChart = false,
+  }) {
     return _stepsBarSlotCenterX(
       index: index,
       slotCount: visibleLength,
@@ -886,7 +921,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
       scale: scale,
       xUnitReservedWidth: xUnitReservedWidth,
       isDailyHalfHour: selectedPeriod == '일',
-      dailyStartSlot: _dailyStartSlot(),
+      dailyStartSlot: _dailyStartSlot(
+        forExpandedChart: forExpandedChart,
+      ),
     );
   }
 
@@ -943,10 +980,11 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
   String _yAxisUnitLabel() => '(보)';
 
-  List<String> _buildXAxisLabels() {
+  List<String> _buildXAxisLabels({bool forExpandedChart = false}) {
     if (selectedPeriod == '일') {
-      final startIndex = _dailyStartSlot();
-      return List<String>.generate(7, (i) {
+      final startIndex = _dailyStartSlot(forExpandedChart: forExpandedChart);
+      final labelCount = forExpandedChart ? 12 : 7;
+      return List<String>.generate(labelCount, (i) {
         final hour = ((startIndex + (i * 2)) ~/ 2).toString().padLeft(2, '0');
         return hour;
       });
@@ -962,10 +1000,13 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     return _buildPeriodChartData().map((item) => item.label).toList();
   }
 
-  List<_StepsBarData> _buildVisibleChartData(List<_StepsBarData> data) {
+  List<_StepsBarData> _buildVisibleChartData(
+    List<_StepsBarData> data, {
+    bool forExpandedChart = false,
+  }) {
     if (selectedPeriod == '일') {
-      const visibleSlots = 12;
-      final startIndex = _dailyStartSlot();
+      final visibleSlots = _dailyVisibleSlots(forExpandedChart: forExpandedChart);
+      final startIndex = _dailyStartSlot(forExpandedChart: forExpandedChart);
       return data.sublist(startIndex, startIndex + visibleSlots);
     }
     if (selectedPeriod == '월') {
@@ -977,13 +1018,16 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
     return data;
   }
 
-  int _dailyStartSlot() {
-    const visibleSlots = 12;
-    const maxStart = 48 - visibleSlots;
+  int _dailyStartSlot({bool forExpandedChart = false}) {
+    final maxStart = _dailyMaxStartSlot(forExpandedChart: forExpandedChart);
     return (timeOffset * maxStart).round().clamp(0, maxStart);
   }
 
-  Widget _buildXAxisLabelRow(BuildContext context, List<String> labels) {
+  Widget _buildXAxisLabelRow(
+    BuildContext context,
+    List<String> labels, {
+    bool forExpandedChart = false,
+  }) {
     final unit = selectedPeriod == '일'
         ? '(시)'
         : selectedPeriod == '주'
@@ -999,8 +1043,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
 
     late final List<Widget> rowChildren;
     if (selectedPeriod == '일') {
-      final startIndex = _dailyStartSlot();
-      rowChildren = List.generate(7, (i) {
+      final startIndex = _dailyStartSlot(forExpandedChart: forExpandedChart);
+      final labelCount = forExpandedChart ? 12 : 7;
+      rowChildren = List.generate(labelCount, (i) {
         final hour = (startIndex + (i * 2)) ~/ 2;
         final hourLabel = hour.toString().padLeft(2, '0');
         final isCurrent = isTodaySel && hour == currentHour;
@@ -1068,7 +1113,9 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           setState(() {
             selectedPeriod = period;
             if (period == '일') {
-              timeOffset = _isToday() ? _defaultDailyTimeOffset() : 0.0;
+              timeOffset = _isToday()
+                  ? _defaultDailyTimeOffset(forExpandedChart: true)
+                  : 0.0;
             } else if (period == '월') {
               timeOffset = 0.0;
             } else {
@@ -1078,25 +1125,43 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
           _notifyExpandedChart();
         },
       ),
-      chartBuilder: (_) => LayoutBuilder(
-        builder: (context, constraints) {
-          final scaledChartCap = healthExpandedMetrics(context)
-              .d(HealthExpandedChartMetrics.chartHeightWithoutLegend);
-          final scaledChartMin = healthDp(context, 160);
-          final h = ChartConstants.healthExpandedChartHeight(
-            constraints.maxHeight,
-            bottomLegendReserve: 0,
-            maxChartHeight: scaledChartCap,
-            minChartHeight: scaledChartMin,
-          );
-          return _buildChartCard(
-            showExpandButton: false,
-            chartPeriodTabsInCard: false,
-            forExpandedChart: true,
-            chartHeight: h,
-          );
-        },
-      ),
+      chartBuilder: (_) {
+        final base = Theme.of(context);
+        final gmarket = base.copyWith(
+          textTheme: base.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+          primaryTextTheme:
+              base.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+        );
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final scaledChartCap = healthExpandedMetrics(context)
+                .d(HealthExpandedChartMetrics.chartHeightWithoutLegend);
+            final scaledChartMin = healthDp(context, 160);
+            final h = ChartConstants.healthExpandedChartHeight(
+              constraints.maxHeight,
+              bottomLegendReserve: 0,
+              maxChartHeight: scaledChartCap,
+              minChartHeight: scaledChartMin,
+            );
+            final expandScale =
+                healthTextScaleByWidth(MediaQuery.of(context).size.width);
+            return Theme(
+              data: gmarket,
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(expandScale),
+                ),
+                child: _buildChartCard(
+                  showExpandButton: false,
+                  chartPeriodTabsInCard: false,
+                  forExpandedChart: true,
+                  chartHeight: h,
+                ),
+              ),
+            );
+          },
+        );
+      },
       onRegisterRefresh: (refresh) {
         _refreshExpandedChart = refresh;
       },

@@ -28,3 +28,33 @@ TextStyle healthChartAxisTickTextStyle(
       color: color ?? healthChartAxisLabelColor,
       fontWeight: FontWeight.w400,
     );
+
+/// 시간대별(일) X축: 카드 7시간 / 확대 12시간 (+ `(시)` 단위 = 13)
+const int healthDailyHourSlotsCard = 7;
+const int healthDailyHourSlotsExpanded = 12;
+
+int healthDailyHourSlotCount(bool forExpandedChart) =>
+    forExpandedChart ? healthDailyHourSlotsExpanded : healthDailyHourSlotsCard;
+
+int healthDailyMaxStartHour(bool forExpandedChart) =>
+    24 - healthDailyHourSlotCount(forExpandedChart);
+
+/// 오늘 차트에서 현재 시각이 창 안쪽에 오도록 하는 시작 시
+int healthDailyTargetStartHour(
+  int currentHour, {
+  bool forExpandedChart = false,
+}) {
+  final maxStart = healthDailyMaxStartHour(forExpandedChart);
+  final slots = healthDailyHourSlotCount(forExpandedChart);
+  return (currentHour - (slots - 2)).clamp(0, maxStart);
+}
+
+double healthDailyTimeOffsetForToday({bool forExpandedChart = false}) {
+  final maxStart = healthDailyMaxStartHour(forExpandedChart);
+  if (maxStart <= 0) return 0.0;
+  return healthDailyTargetStartHour(
+        DateTime.now().hour,
+        forExpandedChart: forExpandedChart,
+      ) /
+      maxStart;
+}

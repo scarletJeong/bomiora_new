@@ -71,10 +71,13 @@ Widget buildHeartRateXAxisLabels({
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
+  bool forExpandedChart = false,
 }) {
   if (selectedPeriod == '일') {
-    const maxStartHour = 18;
-    final startHour = (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
+    final slotCount = healthDailyHourSlotCount(forExpandedChart);
+    final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+    final startHour =
+        (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble()).round();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selDay =
@@ -85,7 +88,7 @@ Widget buildHeartRateXAxisLabels({
     return _buildHeartRateXAxisWithUnit(
       context: context,
       labelRow: Row(
-        children: List.generate(7, (i) {
+        children: List.generate(slotCount, (i) {
           final hour = (startHour + i).clamp(0, 24);
           final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
           final isCurrentHour = isToday && hour == currentHour;
@@ -309,6 +312,7 @@ class _HeartRateChartWidgetState extends State<HeartRateChartWidget> {
                 selectedPeriod: widget.selectedPeriod,
                 selectedDate: widget.selectedDate,
                 timeOffset: widget.timeOffset,
+                forExpandedChart: widget.forExpandedChart,
               ),
             ),
           ),

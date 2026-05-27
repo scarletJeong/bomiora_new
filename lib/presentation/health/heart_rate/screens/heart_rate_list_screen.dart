@@ -12,6 +12,7 @@ import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/heart_rate_period_chart.dart';
 import '../widgets/heart_rate_tooltip.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_chart_expand_control.dart';
@@ -66,7 +67,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           )
         : DateTime(now.year, now.month, now.day);
     if (_isToday()) {
-      timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
+      timeOffset = _dailyOffsetForToday();
     }
     _loadData();
   }
@@ -245,19 +246,23 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     return out;
   }
 
-  Map<String, double> _calculateTimeRange() {
-    const maxStartHour = 18;
+  Map<String, double> _calculateTimeRange({bool forExpandedChart = false}) {
+    final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+    final slots = healthDailyHourSlotCount(forExpandedChart);
     final startHour =
         (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble());
-    final endHour = (startHour + 6.0).clamp(6.0, 24.0);
+    final endHour =
+        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
     return {'min': startHour, 'max': endHour};
   }
 
-  double _clampDragOffset(double newOffset) {
+  double _clampDragOffset(double newOffset, {bool forExpandedChart = false}) {
     if (_isToday()) {
       final now = DateTime.now();
-      final maxStartHour = (now.hour - 5).clamp(0, 18);
-      return newOffset.clamp(0.0, maxStartHour / 18.0);
+      final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+      final slots = healthDailyHourSlotCount(forExpandedChart);
+      final targetStart = (now.hour - (slots - 2)).clamp(0, maxStartHour);
+      return newOffset.clamp(0.0, targetStart / maxStartHour);
     }
     if (selectedPeriod == '월') {
       return newOffset.clamp(0.0, 1.0);
@@ -265,27 +270,37 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     return newOffset.clamp(0.0, 1.0);
   }
 
-  void _handleDragUpdate(double deltaX, double chartWidth) {
+  void _handleDragUpdate(
+    double deltaX,
+    double chartWidth, {
+    bool forExpandedChart = false,
+  }) {
     final sensitivity = selectedPeriod == '월' ? 3.0 : 0.5;
     final dataDelta = -(deltaX / chartWidth) * sensitivity;
     _setChartState(() {
-      timeOffset = _clampDragOffset(timeOffset + dataDelta);
+      timeOffset = _clampDragOffset(
+        timeOffset + dataDelta,
+        forExpandedChart: forExpandedChart,
+      );
     });
   }
 
   void _handleDailyChartTap(
     Offset local,
     Size chartSize,
-    List<_HeartDailyVisual> visuals,
-  ) {
+    List<_HeartDailyVisual> visuals, {
+    bool forExpandedChart = false,
+  }) {
     final topPad = healthWeightChartVertPad(context);
     final botPad = healthWeightChartBottomPlotPad(context);
+    final chartMinBpm = forExpandedChart ? 20.0 : 50.0;
+    final chartMaxBpm = forExpandedChart ? 200.0 : 250.0;
     final idx = _HeartRateChartPainter.hitTestVisual(
       local,
       chartSize,
       visuals,
-      minValue: 50,
-      maxValue: 250,
+      minValue: chartMinBpm,
+      maxValue: chartMaxBpm,
       topPlotPad: topPad,
       bottomPlotPad: botPad,
       scale: healthTextScaleByWidth(MediaQuery.of(context).size.width),
@@ -297,10 +312,11 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       nextTooltip = null;
     } else {
       final v = visuals[idx];
-      const maxStartHour = 18;
+      final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+      final slots = healthDailyHourSlotCount(forExpandedChart);
       final startHour =
           (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
-      final endHour = startHour + 6;
+      final endHour = startHour + slots - 1;
       final hour = v.isBar ? v.bucketHour : v.record?.measuredAt.hour;
       if (hour == null || hour < startHour || hour > endHour) {
         nextTooltip = null;
@@ -433,11 +449,14 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
 
   /// 같은 시(hour)·같은 status(운동/일상) 그룹: 2건 이상이면 min–max 막대, 1건이면 점.
   /// 해당 **시(hour) 전체**에 기록이 2건 이상이면 분 단위 x 대신 그 시 정각 x축에만 표시.
-  List<_HeartDailyVisual> _buildDailyHeartVisuals() {
-    const maxStartHour = 18;
+  List<_HeartDailyVisual> _buildDailyHeartVisuals({
+    bool forExpandedChart = false,
+  }) {
+    final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+    final slots = healthDailyHourSlotCount(forExpandedChart);
     final startHour =
         (timeOffset * maxStartHour).clamp(0, maxStartHour).round();
-    final endHour = startHour + 6;
+    final endHour = startHour + slots - 1;
 
     final records = _recordsForSelectedDate();
     final groups = <String, List<HeartRateRecord>>{};
@@ -459,10 +478,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
         ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
       final color = _heartRateColorForStatus(isEx ? '운동' : '일상');
 
-      /// X축 7칸 라벨 중앙과 동일: (slot + 0.5) / 7
+      /// X축 슬롯 중앙과 동일: (slot + 0.5) / slots
       final slot = bucketHour - startHour;
-      if (slot < 0 || slot >= 7) continue;
-      final hourTickX = (slot + 0.5) / 7.0;
+      if (slot < 0 || slot >= slots) continue;
+      final hourTickX = (slot + 0.5) / slots;
       if (list.length >= 2) {
         final bpms = list.map((r) => r.heartRate).toList();
         final minB = bpms.reduce(math.min);
@@ -490,7 +509,15 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     return out;
   }
 
-  List<double> getYAxisLabels() => [250, 200, 150, 100, 50];
+  List<double> getYAxisLabels({bool forExpandedChart = false}) {
+    if (forExpandedChart) {
+      return const [200, 180, 160, 140, 120, 100, 80, 60, 40, 20];
+    }
+    return [250, 200, 150, 100, 50];
+  }
+
+  double _dailyOffsetForToday({bool forExpandedChart = false}) =>
+      healthDailyTimeOffsetForToday(forExpandedChart: forExpandedChart);
 
   @override
   Widget build(BuildContext context) {
@@ -542,8 +569,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                               tooltipPosition = null;
                               _dailyChartTooltip = null;
                               if (_isToday()) {
-                                final now = DateTime.now();
-                                timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
+                                timeOffset = _dailyOffsetForToday();
                               } else {
                                 timeOffset = 0.0;
                               }
@@ -778,8 +804,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
       } else if (period == '주') {
         timeOffset = 0.0;
       } else if (_isToday()) {
-        final now = DateTime.now();
-        timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
+        timeOffset = _dailyOffsetForToday();
       } else {
         timeOffset = 0.0;
       }
@@ -791,7 +816,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     bool chartPeriodTabsInCard = true,
     double chartHeight = ChartConstants.weightChartHeight,
   }) {
-    final yLabels = getYAxisLabels();
+    final forExpandedChart = !chartPeriodTabsInCard && !showExpandButton;
+    final yLabels = getYAxisLabels(forExpandedChart: forExpandedChart);
 
     Widget chartBody;
     if (selectedPeriod != '일') {
@@ -880,7 +906,10 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
     double chartHeight = ChartConstants.weightChartHeight,
     bool forExpandedChart = false,
   }) {
-    final dailyVisuals = _buildDailyHeartVisuals();
+    final dailyVisuals =
+        _buildDailyHeartVisuals(forExpandedChart: forExpandedChart);
+    final chartMinBpm = forExpandedChart ? 20.0 : 50.0;
+    final chartMaxBpm = forExpandedChart ? 200.0 : 250.0;
     final topPad = healthWeightChartVertPad(context);
     final botPad = healthWeightChartBottomPlotPad(context);
     final xAxisLabelHeight =
@@ -1011,6 +1040,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                             details.localPosition,
                                             Size(w, h),
                                             dailyVisuals,
+                                            forExpandedChart:
+                                                forExpandedChart,
                                           );
                                         },
                                         onPanStart: (selectedPeriod == '일' ||
@@ -1031,7 +1062,12 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                                   final deltaX =
                                                       details.localPosition.dx -
                                                           _dragStartX!;
-                                                  _handleDragUpdate(deltaX, w);
+                                                  _handleDragUpdate(
+                                                    deltaX,
+                                                    w,
+                                                    forExpandedChart:
+                                                        forExpandedChart,
+                                                  );
                                                   _dragStartX =
                                                       details.localPosition.dx;
                                                 }
@@ -1045,8 +1081,8 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                                           size: Size(w, h),
                                           painter: _HeartRateChartPainter(
                                             visuals: dailyVisuals,
-                                            minValue: 50,
-                                            maxValue: 250,
+                                            minValue: chartMinBpm,
+                                            maxValue: chartMaxBpm,
                                             topPlotPad: topPad,
                                             bottomPlotPad: botPad,
                                             scale: healthTextScaleByWidth(
@@ -1091,6 +1127,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                 selectedPeriod: '일',
                 selectedDate: selectedDate,
                 timeOffset: timeOffset,
+                forExpandedChart: forExpandedChart,
               ),
             ),
           ),
@@ -1113,8 +1150,7 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           if (period == '월' || period == '주') {
             timeOffset = 0.0;
           } else if (_isToday()) {
-            final now = DateTime.now();
-            timeOffset = (now.hour - 5).clamp(0, 18) / 18.0;
+            timeOffset = _dailyOffsetForToday(forExpandedChart: true);
           } else {
             timeOffset = 0.0;
           }

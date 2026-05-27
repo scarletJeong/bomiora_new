@@ -205,6 +205,7 @@ Widget buildWeightXAxisLabels({
   required String selectedPeriod,
   required DateTime selectedDate,
   required double timeOffset,
+  bool forExpandedChart = false,
 }) {
   if (selectedPeriod != '일') {
     return _buildWeightPeriodXAxisLabels(
@@ -215,8 +216,10 @@ Widget buildWeightXAxisLabels({
     );
   }
 
-  const maxStartHour = 18;
-  final startHour = (timeOffset * maxStartHour).clamp(0.0, 18.0).round();
+  final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+  final slots = healthDailyHourSlotCount(forExpandedChart);
+  final startHour =
+      (timeOffset * maxStartHour).clamp(0.0, maxStartHour.toDouble()).round();
 
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -226,7 +229,7 @@ Widget buildWeightXAxisLabels({
   final currentHour = now.hour;
 
   final hourWidgets = <Widget>[];
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < slots; i++) {
     final hour = (startHour + i).clamp(0, 24);
     final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
     final isCurrentHour = isToday && hour == currentHour;
@@ -627,6 +630,7 @@ class WeightDataChart extends StatelessWidget {
               selectedPeriod: selectedPeriod,
               selectedDate: selectedDate,
               timeOffset: timeOffset,
+              forExpandedChart: forExpandedChart,
             ),
           ),
         ],

@@ -5,6 +5,7 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../common/chart_layout.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/btn_record.dart';
+import '../../health_common/health_chart_axis_style.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_edit_bottom_sheet.dart';
@@ -86,13 +87,18 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   // 시간 범위 계산 (통합 로직)
-  Map<String, double> _calculateTimeRange({double? offset}) {
-    const maxStartHour = 18; // 24시 - 6시간 = 18시 (7개 라벨)
+  Map<String, double> _calculateTimeRange({
+    double? offset,
+    bool forExpandedChart = false,
+  }) {
+    final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+    final slots = healthDailyHourSlotCount(forExpandedChart);
     // X축 라벨(startHour round)과 동일한 기준을 사용해 점 위치 오차를 제거한다.
     final startHour = ((offset ?? timeOffset) * maxStartHour)
         .clamp(0.0, maxStartHour.toDouble())
         .roundToDouble();
-    final endHour = (startHour + 6.0).clamp(6.0, 24.0);
+    final endHour =
+        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
 
     return {'min': startHour, 'max': endHour};
   }
@@ -103,9 +109,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     if (selectedPeriod != '일') return;
 
     if (_isToday()) {
-      final now = DateTime.now();
-      final startHourTarget = (now.hour - 5).clamp(0, 18);
-      timeOffset = startHourTarget / 18.0;
+      timeOffset = healthDailyTimeOffsetForToday();
       return;
     }
 
@@ -118,21 +122,27 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       final h = r.measuredAt.hour;
       if (h > maxH) maxH = h;
     }
-    final start = (maxH - 6).clamp(0, 18);
-    timeOffset = start / 18.0;
+    final maxStart = healthDailyMaxStartHour(false);
+    final slots = healthDailyHourSlotCount(false);
+    final start = (maxH - (slots - 1)).clamp(0, maxStart);
+    timeOffset = start / maxStart;
   }
 
   // 드래그 범위 제한
-  double _clampDragOffset(double newOffset, {String? period}) {
+  double _clampDragOffset(
+    double newOffset, {
+    String? period,
+    bool forExpandedChart = false,
+  }) {
     final targetPeriod = period ?? selectedPeriod;
     if (targetPeriod == '월') {
       // 체중·혈압과 동일: 12개월 중 7개월 창 (timeOffset 0~1)
       return newOffset.clamp(0.0, 1.0);
     }
     if (targetPeriod == '일' && _isToday()) {
-      final now = DateTime.now();
-      final maxStartHour = (now.hour - 5).clamp(0, 18);
-      final maxOffset = maxStartHour / 18.0;
+      final maxOffset = healthDailyTimeOffsetForToday(
+        forExpandedChart: forExpandedChart,
+      );
       return newOffset.clamp(0.0, maxOffset);
     }
     return newOffset.clamp(0.0, 1.0);
@@ -176,6 +186,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   List<Map<String, dynamic>> getChartData({
     String? period,
     double? offset,
+    bool forExpandedChart = false,
   }) {
     final targetPeriod = period ?? selectedPeriod;
     final targetOffset = offset ?? timeOffset;
@@ -193,7 +204,10 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
 
     dayRecords.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
 
-    final timeRange = _calculateTimeRange(offset: targetOffset);
+    final timeRange = _calculateTimeRange(
+      offset: targetOffset,
+      forExpandedChart: forExpandedChart,
+    );
     final minHourDiff = timeRange['min']!;
     final maxHourDiff = timeRange['max']!;
     final range = maxHourDiff - minHourDiff;
@@ -231,8 +245,13 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
           (a, b) => a.bloodSugar >= b.bloodSugar ? a : b,
         );
         final recordHour = record.measuredAt.hour;
-        final chartPoint =
-            _createChartPoint(record, recordHour, minHourDiff, maxHourDiff);
+        final chartPoint = _createChartPoint(
+          record,
+          recordHour,
+          minHourDiff,
+          maxHourDiff,
+          forExpandedChart: forExpandedChart,
+        );
         if (chartPoint != null) {
           chartData.add(chartPoint);
         }
@@ -243,14 +262,19 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   }
 
   // 차트 포인트 생성 (통합)
-  Map<String, dynamic>? _createChartPoint(BloodSugarRecord record,
-      int recordHour, double minHourDiff, double maxHourDiff) {
+  Map<String, dynamic>? _createChartPoint(
+    BloodSugarRecord record,
+    int recordHour,
+    double minHourDiff,
+    double maxHourDiff, {
+    bool forExpandedChart = false,
+  }) {
     const normalizedMinute = 0;
-    const slotCount = 7;
+    final slotCount = healthDailyHourSlotCount(forExpandedChart);
     final windowStartHour = minHourDiff.round();
     final slot = recordHour - windowStartHour;
 
-    // X축 7칸 균등 분할 중앙 — 라벨(Expanded·center)과 동일
+    // X축 N칸 균등 분할 중앙 — 라벨(Expanded·center)과 동일
     if (slot < 0 || slot >= slotCount) {
       return null;
     }
@@ -432,8 +456,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
       _syncMonthlyTimeOffsetForSelectedDate();
     } else if (_isToday()) {
       final currentHour = now.hour;
-      final startHourTarget = (currentHour - 5).clamp(0, 18);
-      timeOffset = startHourTarget / 18.0;
+      timeOffset = healthDailyTimeOffsetForToday();
     }
 
     _loadData();
@@ -593,10 +616,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                                               newDate.month == today.month &&
                                               newDate.day == today.day;
                                       if (isSelectingToday) {
-                                        final currentHour = now.hour;
-                                        final startHourTarget =
-                                            (currentHour - 5).clamp(0, 18);
-                                        timeOffset = startHourTarget / 18.0;
+                                        timeOffset =
+                                            healthDailyTimeOffsetForToday();
                                       } else {
                                         timeOffset = 0.0;
                                       }
@@ -644,11 +665,8 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                                       timeOffset = 0.0;
                                     } else if (period == '일') {
                                       if (_isToday()) {
-                                        final now = DateTime.now();
-                                        final currentHour = now.hour;
-                                        final startHourTarget =
-                                            (currentHour - 5).clamp(0, 18);
-                                        timeOffset = startHourTarget / 18.0;
+                                        timeOffset =
+                                            healthDailyTimeOffsetForToday();
                                       } else {
                                         timeOffset = 0.0;
                                       }
@@ -998,9 +1016,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
 
     double dailyInitialOffset() {
       if (!_isToday()) return 0.0;
-      final now = DateTime.now();
-      final startHourTarget = (now.hour - 5).clamp(0, 18);
-      return startHourTarget / 18.0;
+      return healthDailyTimeOffsetForToday(forExpandedChart: true);
     }
 
     void refreshExpanded() => _refreshExpandedChart?.call();
@@ -1083,6 +1099,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                   chartData: getChartData(
                     period: expandedPeriod,
                     offset: expandedTimeOffset,
+                    forExpandedChart: true,
                   ),
                   yLabels: getYAxisLabelsExpanded(),
                   hasActualDailyData: (dailyRecordsCache[
@@ -1108,6 +1125,7 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
                     expandedTimeOffset = _clampDragOffset(
                       expandedTimeOffset + dataDelta,
                       period: expandedPeriod,
+                      forExpandedChart: true,
                     );
                     expandedSelectedChartPointIndex = null;
                     expandedTooltipPosition = null;

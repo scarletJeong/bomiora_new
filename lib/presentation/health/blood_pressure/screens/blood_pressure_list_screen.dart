@@ -85,19 +85,24 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   // 시간 범위 계산 (통합 로직)
-  Map<String, double> _calculateTimeRange() {
-    const maxStartHour = 18; // 24시 - 6시간 = 18시 (7개 라벨)
+  Map<String, double> _calculateTimeRange({bool forExpandedChart = false}) {
+    final maxStartHour = healthDailyMaxStartHour(forExpandedChart);
+    final slots = healthDailyHourSlotCount(forExpandedChart);
     // X축 라벨과 데이터 슬롯이 같은 시작 시간을 쓰도록 round 기준으로 통일한다.
     final startHour = (timeOffset * maxStartHour)
         .clamp(0.0, maxStartHour.toDouble())
         .roundToDouble();
-    final endHour = (startHour + 6.0).clamp(6.0, 24.0);
+    final endHour =
+        (startHour + slots - 1.0).clamp(slots - 1.0, 24.0);
 
     return {'min': startHour, 'max': endHour};
   }
 
   // 드래그 범위 제한
-  double _clampDragOffset(double newOffset) {
+  double _clampDragOffset(
+    double newOffset, {
+    bool forExpandedChart = false,
+  }) {
     if (selectedPeriod == '월') {
       // 월별: 12개월 중 7개월 창 이동
       final totalMonths = 12;
@@ -108,11 +113,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     }
 
     if (_isToday()) {
-      // 오늘: 현재 시간 - 4시간까지만
-      final now = DateTime.now();
-      final currentHour = now.hour;
-      final maxStartHour = (currentHour - 5).clamp(0, 18);
-      final maxOffset = maxStartHour / 18.0;
+      final maxOffset = healthDailyTimeOffsetForToday(
+        forExpandedChart: forExpandedChart,
+      );
       return newOffset.clamp(0.0, maxOffset);
     } else {
       // 과거 일별: 00시~24시 전체 범위
@@ -129,7 +132,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   // 공통 드래그 핸들러 (프레임당 1회 setState — onPanUpdate 중 mouse_tracker 재진입 방지)
-  void _handleDragUpdate(double deltaX, double chartWidth) {
+  void _handleDragUpdate(
+    double deltaX,
+    double chartWidth, {
+    bool forExpandedChart = false,
+  }) {
     _bpLastPlotWidth = chartWidth;
     _bpDragAccumDX += deltaX;
     if (_bpDragFrameScheduled) return;
@@ -145,7 +152,10 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       final sensitivity = _getDragSensitivity();
       final dataDelta = -(dx / w) * sensitivity;
       _setChartState(() {
-        timeOffset = _clampDragOffset(timeOffset + dataDelta);
+        timeOffset = _clampDragOffset(
+          timeOffset + dataDelta,
+          forExpandedChart: forExpandedChart,
+        );
       });
     });
   }
@@ -153,9 +163,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   // 차트 데이터 생성
   // - 슬롯 내 기록 1건: 점
   // - 슬롯 내 기록 2건 이상: 최저~최고 막대
-  List<Map<String, dynamic>> getChartData() {
+  List<Map<String, dynamic>> getChartData({bool forExpandedChart = false}) {
     if (selectedPeriod == '일') {
-      return _buildHourlyChartData();
+      return _buildHourlyChartData(forExpandedChart: forExpandedChart);
     }
     if (selectedPeriod == '주') {
       return _buildDailyRangeChartData();
@@ -163,17 +173,20 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     return _buildMonthlyRangeChartData();
   }
 
-  /// 시간대별 차트는 7시간 창만 보여 줌. 창 밖에만 기록이 있으면 빈 그래프로 보이므로
+  /// 시간대별 차트는 N시간 창만 보여 줌. 창 밖에만 기록이 있으면 빈 그래프로 보이므로
   /// 해당 날 기록이 보이도록 timeOffset을 맞춤.
-  void _ensureHourlyWindowShowsData() {
+  void _ensureHourlyWindowShowsData({bool forExpandedChart = false}) {
     if (selectedPeriod != '일') return;
     final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
     final dayRecords = dailyRecordsCache[selectedDateStr] ?? [];
     if (dayRecords.isEmpty) return;
 
-    final startHour = _calculateTimeRange()['min']!.floor();
+    final slots = healthDailyHourSlotCount(forExpandedChart);
+    final maxStart = healthDailyMaxStartHour(forExpandedChart);
+    final startHour =
+        _calculateTimeRange(forExpandedChart: forExpandedChart)['min']!.floor();
     var visibleHasData = false;
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < slots; i++) {
       final slotHour = (startHour + i).clamp(0, 23);
       if (dayRecords.any((r) => r.measuredAt.hour == slotHour)) {
         visibleHasData = true;
@@ -185,26 +198,32 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     final hours = dayRecords.map((r) => r.measuredAt.hour).toList();
     final minH = hours.reduce(math.min);
     final maxH = hours.reduce(math.max);
-    // 7슬롯(start..start+6)에 [minH,maxH]가 들어가도록 start 선택 (가능할 때)
-    final low = (maxH - 6).clamp(0, 18);
-    final high = minH.clamp(0, 18);
-    final startTarget = low <= high ? low : (maxH - 6).clamp(0, 18);
-    timeOffset = _clampDragOffset(startTarget / 18.0);
+    final low = (maxH - (slots - 1)).clamp(0, maxStart);
+    final high = minH.clamp(0, maxStart);
+    final startTarget = low <= high ? low : (maxH - (slots - 1)).clamp(0, maxStart);
+    timeOffset = _clampDragOffset(
+      startTarget / maxStart,
+      forExpandedChart: forExpandedChart,
+    );
   }
 
-  List<Map<String, dynamic>> _buildHourlyChartData() {
+  List<Map<String, dynamic>> _buildHourlyChartData({
+    bool forExpandedChart = false,
+  }) {
     final selectedDateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
     final dayRecords = (dailyRecordsCache[selectedDateStr] ?? [])
       ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
 
-    final startHour = _calculateTimeRange()['min']!.floor();
+    final slots = healthDailyHourSlotCount(forExpandedChart);
+    final startHour =
+        _calculateTimeRange(forExpandedChart: forExpandedChart)['min']!.floor();
     final labels = List.generate(
-      7,
+      slots,
       (i) => (startHour + i).clamp(0, 23).toString().padLeft(2, '0'),
     );
 
     final result = <Map<String, dynamic>>[];
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < slots; i++) {
       final slotHour = (startHour + i).clamp(0, 23);
       final records = dayRecords
           .where((r) => r.measuredAt.hour == slotHour)
@@ -337,10 +356,12 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     );
   }
 
-  Widget _buildBloodPressureXAxisLabels() {
+  Widget _buildBloodPressureXAxisLabels({bool forExpandedChart = false}) {
     if (selectedPeriod == '일') {
-      const maxStartHour = 18;
-      final startHour = _calculateTimeRange()['min']!.round();
+      final slots = healthDailyHourSlotCount(forExpandedChart);
+      final startHour =
+          _calculateTimeRange(forExpandedChart: forExpandedChart)['min']!
+              .round();
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -350,7 +371,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       final currentHour = now.hour;
 
       final hourLabels = <Widget>[];
-      for (int i = 0; i < 7; i++) {
+      for (int i = 0; i < slots; i++) {
         final hour = (startHour + i).clamp(0, 24);
         final hourLabel = hour == 24 ? '24' : hour.toString().padLeft(2, '0');
         final isCurrentHour = isToday && hour == currentHour;
@@ -463,8 +484,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     // 오늘 날짜일 경우: 현재 시간 - 4시간을 시작점으로 초기 timeOffset 설정
     if (_isToday()) {
       final currentHour = now.hour;
-      final startHourTarget = (currentHour - 5).clamp(0, 18);
-      timeOffset = startHourTarget / 18.0;
+      timeOffset = healthDailyTimeOffsetForToday();
     }
 
     // 월별: 체중과 동일 1~7월부터 시작, 드래그로 6~12월까지
@@ -627,9 +647,8 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
 
                                     if (isSelectingToday) {
                                       final currentHour = now.hour;
-                                      final startHourTarget =
-                                          (currentHour - 5).clamp(0, 18);
-                                      timeOffset = startHourTarget / 18.0;
+                                      timeOffset =
+                                          healthDailyTimeOffsetForToday();
                                     } else {
                                       timeOffset = 0.0;
                                     }
@@ -1062,10 +1081,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
             timeOffset = 0.0;
           } else if (period == '일') {
             if (_isToday()) {
-              final now = DateTime.now();
-              final currentHour = now.hour;
-              final startHourTarget = (currentHour - 5).clamp(0, 18);
-              timeOffset = startHourTarget / 18.0;
+              timeOffset = healthDailyTimeOffsetForToday();
             } else {
               timeOffset = 0.0;
             }
@@ -1087,7 +1103,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
       {bool showExpandButton = true,
       bool forExpandedChart = false,
       double chartHeight = ChartConstants.weightChartHeight}) {
-    final chartData = getChartData();
+    final chartData = getChartData(forExpandedChart: forExpandedChart);
     final yLabels = getYAxisLabels(forExpandedChart: forExpandedChart);
 
     Widget chartBody;
@@ -1223,6 +1239,7 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                                 plotConstraints,
                                 isEmpty,
                                 yLabels,
+                                forExpandedChart: forExpandedChart,
                               );
                             },
                           ),
@@ -1243,7 +1260,9 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                   ChartConstants.weightChartYAxisStripWidth,
                 ),
               ),
-              child: _buildBloodPressureXAxisLabels(),
+              child: _buildBloodPressureXAxisLabels(
+                forExpandedChart: forExpandedChart,
+              ),
             ),
           ),
         ],
@@ -1252,8 +1271,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   }
 
   // 차트 영역 빌드
-  Widget _buildChartArea(List<Map<String, dynamic>> chartData,
-      BoxConstraints constraints, bool isEmpty, List<double> yLabels) {
+  Widget _buildChartArea(
+    List<Map<String, dynamic>> chartData,
+    BoxConstraints constraints,
+    bool isEmpty,
+    List<double> yLabels, {
+    bool forExpandedChart = false,
+  }) {
     _bpLastPlotWidth = constraints.maxWidth;
     final chartW = constraints.maxWidth;
     final chartH = constraints.maxHeight;
@@ -1274,7 +1298,11 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
           ? (details) {
               if (_dragStartX != null) {
                 final deltaX = details.localPosition.dx - _dragStartX!;
-                _handleDragUpdate(deltaX, constraints.maxWidth);
+                _handleDragUpdate(
+                  deltaX,
+                  constraints.maxWidth,
+                  forExpandedChart: forExpandedChart,
+                );
                 _dragStartX = details.localPosition.dx;
               }
             }
@@ -1402,14 +1430,13 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
               timeOffset = 0.0;
             } else if (period == '일') {
               if (_isToday()) {
-                final now = DateTime.now();
-                final currentHour = now.hour;
-                final startHourTarget = (currentHour - 5).clamp(0, 18);
-                timeOffset = startHourTarget / 18.0;
+                timeOffset = healthDailyTimeOffsetForToday(
+                  forExpandedChart: true,
+                );
               } else {
                 timeOffset = 0.0;
               }
-              _ensureHourlyWindowShowsData();
+              _ensureHourlyWindowShowsData(forExpandedChart: true);
             } else {
               timeOffset = 0.0;
             }
