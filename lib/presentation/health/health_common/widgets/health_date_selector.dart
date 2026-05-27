@@ -641,7 +641,7 @@ class _HealthTimePickerDialogState extends State<_HealthTimePickerDialog> {
                         IgnorePointer(
                           child: Center(
                             child: Container(
-                              height: itemExtent,
+                              height: itemExtent + healthDp(context, 10),
                               width: wheelsStripW,
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -962,7 +962,7 @@ class HealthDateSelector extends StatelessWidget {
     final appBarToMonthGap = healthDp(context, topGapBase);
     final monthFontSize = healthSp(context, 12);
     final monthIconGap = healthDp(context, 3);
-    final monthToDateGap = healthDp(context, 5);
+    final monthToDateGap = healthDp(context, 0);
     final dateRowH = healthDp(context, 36);
     final dateChipGap = healthDp(context, 8);
     final dateChipFontSize = healthSp(context, 16);
