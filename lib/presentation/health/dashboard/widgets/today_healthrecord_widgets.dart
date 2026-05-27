@@ -92,6 +92,7 @@ class TodayHealthRecordSection extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w300,
+                        letterSpacing: -0.9,
                       ),
                     ),
                     TextSpan(
@@ -427,6 +428,7 @@ Widget _buildRecordCard(
                     fontSize: healthSp(context, 14),
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
+                    letterSpacing: -1.08,
                   ),
                 ),
               ],
@@ -692,6 +694,7 @@ Widget _buildStepsCard(
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w700,
                 color: Colors.black,
+                letterSpacing: -0.9,
               ),
             ),
           ),
@@ -780,7 +783,8 @@ Widget _buildBottomRecordCard(
         width: double.infinity,
         padding: EdgeInsets.symmetric(
           horizontal: healthDp(context, 10),
-          vertical: healthDp(context, 5),
+          // 375~396 구간에서 미세 오버플로우 방지
+          vertical: healthDp(context, 4),
         ),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -792,24 +796,31 @@ Widget _buildBottomRecordCard(
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
                 _buildMainCardIcon(context, titleIconAsset),
                 SizedBox(width: healthDp(context, 5)),
-                Text(
-                  title,
-                  textScaler: TextScaler.noScaling,
-                  style: TextStyle(
-                    fontSize: healthSp(context, 14),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
+                Expanded(
+                  child: Text(
+                    title,
+                    textScaler: TextScaler.noScaling,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                      letterSpacing: -0.9,
+                      height: 1.0,
+                    ),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: healthDp(context, 8.53)),
+            SizedBox(height: healthDp(context, 5)),
             Align(
               alignment: Alignment.centerLeft,
               child: valueWidget ??
@@ -824,6 +835,7 @@ Widget _buildBottomRecordCard(
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
                       letterSpacing: -1.08,
+                      height: 1.0,
                     ),
                   ),
             ),

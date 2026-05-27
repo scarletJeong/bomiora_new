@@ -487,9 +487,6 @@ class FoodRepository {
     try {
       final trimmedMbId = mbId.trim();
       if (trimmedMbId.isEmpty) {
-        if (kDebugMode) {
-          debugPrint('[FoodRepository.getRecordsForDate] mb_id is empty');
-        }
         return [];
       }
       final dateStr = _localDateYmd(date);
@@ -501,12 +498,6 @@ class FoodRepository {
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode != 200) {
-        if (kDebugMode) {
-          debugPrint(
-            '[FoodRepository.getRecordsForDate] HTTP ${response.statusCode} '
-            'mb_id=$trimmedMbId date=$dateStr: ${response.body}',
-          );
-        }
         return [];
       }
       final body = _decodeResponseBody(response.body);
@@ -523,24 +514,11 @@ class FoodRepository {
           if (map == null) continue;
           records.add(FoodRecordSummary.fromJson(map));
         } catch (err, st) {
-          if (kDebugMode) {
-            debugPrint('[FoodRepository.getRecordsForDate] parse skip: $err');
-            debugPrint('$st');
-          }
+          // skip invalid record
         }
-      }
-      if (kDebugMode) {
-        debugPrint(
-          '[FoodRepository.getRecordsForDate] ok mb_id=$trimmedMbId date=$dateStr '
-          'count=${records.length}',
-        );
       }
       return records;
     } catch (e, st) {
-      if (kDebugMode) {
-        debugPrint('[FoodRepository.getRecordsForDate] failed: $e');
-        debugPrint('$st');
-      }
       return [];
     }
   }

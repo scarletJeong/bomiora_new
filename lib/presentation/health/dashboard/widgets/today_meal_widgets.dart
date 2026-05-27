@@ -93,6 +93,7 @@ class TodayMealSection extends StatelessWidget {
                             style: TextStyle(
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,
+                              letterSpacing: -0.9,
                             ),
                           ),
                           TextSpan(

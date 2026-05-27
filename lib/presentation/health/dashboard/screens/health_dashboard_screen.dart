@@ -481,6 +481,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         fontFamily: 'Gmarket Sans TTF',
                         fontSize: 15,
                         fontWeight: FontWeight.w300,
+                        letterSpacing: -0.9,
                       ),
                     ),
                     Text(
