@@ -8,6 +8,7 @@ import '../../../common/widgets/login_required_dialog.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_app_bar.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../widgets/health_year_month_picker_dialog.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/services/auth_service.dart';
@@ -747,11 +748,12 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   }
 
   Future<void> _openMonthFromHealthPicker() async {
-    final picked = await showHealthDateOnlyPicker(
+    final now = DateTime.now();
+    final picked = await showHealthYearMonthPickerDialog(
       context,
-      initialDate: DateTime(_focusedDay.year, _focusedDay.month, 15),
+      initialDate: DateTime(_focusedDay.year, _focusedDay.month, 1),
       firstDate: _calendarFirstDay,
-      lastDate: _calendarLastDay,
+      lastDate: DateTime(now.year, now.month, 1),
     );
     if (picked == null || !mounted) return;
     _moveToYearMonth(picked.year, picked.month);
@@ -860,36 +862,33 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
               ),
               alignment: Alignment.center,
               child: Center(
-                child: Transform.translate(
-                  offset: Offset(0, -healthDp(context, 2)),
-                  child: TextField(
-                    controller: _cycleLengthController,
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(3),
-                    ],
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 10,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                    ),
-                    decoration: const InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    onChanged: (value) {
-                      final parsed = int.tryParse(value);
-                      if (parsed != null && parsed > 0) {
-                        _cycleLength = parsed;
-                      }
-                    },
+                child: TextField(
+                  controller: _cycleLengthController,
+                  textAlign: TextAlign.center,
+                  textAlignVertical: TextAlignVertical.center,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(3),
+                  ],
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 10,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1,
                   ),
+                  decoration: const InputDecoration(
+                    isCollapsed: true,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onChanged: (value) {
+                    final parsed = int.tryParse(value);
+                    if (parsed != null && parsed > 0) {
+                      _cycleLength = parsed;
+                    }
+                  },
                 ),
               ),
             ),
@@ -916,13 +915,11 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
         width: healthDp(context, 113),
         height: healthDp(context, 30),
         child: ElevatedButton(
-        onPressed: _isLoading ? null : _saveMenstrualCycleRecord,
+        onPressed: _isLoading ? null : _onSavePressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: _kAccentPink,
           foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(
-            vertical: healthDp(context, 6),
-          ),
+          padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
@@ -938,18 +935,169 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
                       const AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : Text(
-                '저장',
-                textScaler: TextScaler.noScaling,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
+            : Center(
+                child: Text(
+                  '저장',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.0,
+                  ),
                 ),
               ),
       ),
       ),
+    );
+  }
+
+  Future<void> _onSavePressed() async {
+    // “수정하기” 진입(기존 기록 기반)인 경우만 확인 팝업 노출
+    final isEditFlow = widget.existingRecord != null;
+    if (isEditFlow) {
+      final ok = await _showEditConfirmDialog();
+      if (ok != true) return;
+    }
+    await _saveMenstrualCycleRecord();
+  }
+
+  Future<bool?> _showEditConfirmDialog() {
+    final w = healthDp(context, 272);
+    final padTop = healthDp(context, 20);
+    final padH = healthDp(context, 20);
+    final radius = healthDp(context, 20);
+    final gap = healthDp(context, 20);
+    final btnH = healthDp(context, 50);
+    final shadowBlur = healthDp(context, 8.14);
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.25),
+      builder: (ctx) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: w,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(radius),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0x19000000),
+                    blurRadius: shadowBlur,
+                    offset: const Offset(0, 0),
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Padding(
+                    // 상단 컨텐츠만 좌우 패딩 적용 (버튼은 전체 폭 사용)
+                    padding:
+                        EdgeInsets.only(top: padTop, left: padH, right: padH),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '생리 기록 수정',
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(ctx, 20),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w700,
+                            height: 1.0,
+                          ),
+                        ),
+                        SizedBox(height: gap),
+                        Text(
+                          // Figma 문자열의 들여쓰기는 실제 렌더링에 불리해 2줄 중앙 정렬로 통일
+                          '해당 기록을\n수정하시겠습니까?',
+                          textAlign: TextAlign.center,
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(ctx, 14),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                            height: 1.57,
+                          ),
+                        ),
+                        SizedBox(height: gap),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: btnH,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: w / 2,
+                          child: InkWell(
+                            onTap: () => Navigator.pop(ctx, false),
+                            child: Container(
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF7F7F7),
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(radius),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '취소',
+                                textScaler: TextScaler.noScaling,
+                                style: TextStyle(
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(ctx, 16),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: w / 2,
+                          child: InkWell(
+                            onTap: () => Navigator.pop(ctx, true),
+                            child: Container(
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF5A8D),
+                                borderRadius: BorderRadius.only(
+                                  bottomRight: Radius.circular(radius),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '수정',
+                                textScaler: TextScaler.noScaling,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: healthSp(ctx, 16),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
