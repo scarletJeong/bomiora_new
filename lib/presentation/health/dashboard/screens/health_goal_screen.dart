@@ -395,9 +395,9 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
         Text(
           title,
           textScaler: TextScaler.noScaling,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 16,
+            fontSize: healthSp(context, 16),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w700,
           ),
@@ -449,18 +449,18 @@ class _GoalTextField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboardType,
           textAlignVertical: TextAlignVertical.center,
-          style: const TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: 16,
+          style: TextStyle(
+            color: const Color(0xFF1A1A1A),
+            fontSize: healthSp(context, 16),
             height: 1.0,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w400,
           ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(
-              color: Color(0xFF898383),
-              fontSize: 16,
+            hintStyle: TextStyle(
+              color: const Color(0xFF898383),
+              fontSize: healthSp(context, 16),
               height: 1.0,
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w300,
