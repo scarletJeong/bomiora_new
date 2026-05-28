@@ -73,6 +73,12 @@ void main() async {
   // }
 
   print('⚠️ Firebase/FCM은 현재 비활성화되어 있습니다. (웹 개발 중)');
+  // 실행 환경 판별
+  if (kIsWeb) {
+    print('🌐 [플랫폼] 웹(Web) 환경으로 실행 중');
+  } else {
+    print('📱 [플랫폼] 앱(Native) 환경으로 실행 중');
+  }
 
   // 카카오 SDK 초기화
   await KakaoAuthService.initialize();
@@ -441,7 +447,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    return _isLoggedIn ? const MobileLayoutWrapper() : const LoginScreen();
+    return const MobileLayoutWrapper(initialIndex: 0);
   }
 }
 
