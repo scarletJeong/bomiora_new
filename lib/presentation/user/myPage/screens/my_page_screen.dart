@@ -15,6 +15,7 @@ import 'cancel_member_screen.dart';
 import '../../healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/my_page_common.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../settings/settings_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -567,11 +568,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ],
           ),
         ),
-        SvgPicture.asset(
-          AppAssets.mypageSettingsIcon,
-          width: healthDp(context, 30),
-          height: healthDp(context, 30),
-          fit: BoxFit.contain,
+        InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(healthDp(context, 8)),
+          child: SvgPicture.asset(
+            AppAssets.mypageSettingsIcon,
+            width: healthDp(context, 30),
+            height: healthDp(context, 30),
+            fit: BoxFit.contain,
+          ),
         ),
       ],
     );
@@ -763,11 +773,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
     Widget statCard({
       required String icon,
+      required double iconWidth375,
+      required double iconHeight375,
       required String value,
       required String unit,
       required String label,
       required VoidCallback onTap,
     }) {
+      final iconW = healthDp(context, iconWidth375);
+      final iconH = healthDp(context, iconHeight375);
+
       return Expanded(
         child: InkWell(
           onTap: onTap,
@@ -776,12 +791,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
             aspectRatio: 1.1,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // 카드 너비에 맞춰 아이콘/높이를 함께 유동 스케일
-                final iconSize =
-                    (constraints.maxWidth * 0.27).clamp(20.0, 34.0);
                 final cardHeight = constraints.maxHeight;
                 final iconTop = (cardHeight * -0.10).clamp(-12.0, -6.0);
-                final contentTop = (iconSize * 0.95).clamp(18.0, 30.0);
+                final contentTop = (iconTop + iconH + healthDp(context, 4))
+                    .clamp(12.0, 28.0);
                 final contentBottom = (cardHeight * 0.10).clamp(6.0, 14.0);
                 return Stack(
                   fit: StackFit.expand,
@@ -798,8 +811,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       child: Center(
                         child: SvgPicture.asset(
                           icon,
-                          width: iconSize,
-                          height: iconSize,
+                          width: iconW,
+                          height: iconH,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -871,6 +885,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
       children: [
         statCard(
           icon: AppAssets.deliveryMain,
+          iconWidth375: 35.85,
+          iconHeight375: 23.33,
           value: orderVal,
           unit: '건',
           label: '주문/배송내역',
@@ -879,6 +895,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
         SizedBox(width: healthDp(context, 14)),
         statCard(
           icon: AppAssets.couponMain,
+          iconWidth375: 34.59,
+          iconHeight375: 21.84,
           value: couponVal,
           unit: '장',
           label: '내쿠폰',
@@ -887,6 +905,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
         SizedBox(width: healthDp(context, 14)),
         statCard(
           icon: AppAssets.pointMain,
+          iconWidth375: 22.5,
+          iconHeight375: 22.5,
           value: pointVal,
           unit: 'P',
           label: '포인트',
