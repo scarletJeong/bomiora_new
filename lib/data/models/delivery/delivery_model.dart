@@ -47,7 +47,14 @@ class OrderItem {
       ioPrice: NodeValueParser.asInt(normalized['ioPrice'] ?? normalized['io_price']) ?? 0,
       totalPrice: NodeValueParser.asInt(normalized['totalPrice'] ?? normalized['total_price']) ?? 0,
       ctStatus: NodeValueParser.asString(normalized['ctStatus'] ?? normalized['ct_status']),
-      imageUrl: NodeValueParser.asString(normalized['imageUrl'] ?? normalized['image_url']),
+      imageUrl: NodeValueParser.asString(
+            normalized['imageUrl'] ??
+                normalized['image_url'] ??
+                normalized['itImg1'] ??
+                normalized['it_img1'] ??
+                normalized['productImage'] ??
+                normalized['product_image'],
+          ),
     );
   }
 

@@ -108,6 +108,7 @@ class ApiEndpoints {
   static String foodRecordItemDelete(String foodRecordId, String itemId) =>
       '/api/health/food/records/$foodRecordId/items/$itemId';
   static const String foodUploadImage = '/api/health/food/upload-image';
+  static const String reviewUploadImage = '/api/user/reviews/upload-image';
   static String foodRecordUpdate(String foodRecordId) =>
       '/api/health/food/records/$foodRecordId';
 

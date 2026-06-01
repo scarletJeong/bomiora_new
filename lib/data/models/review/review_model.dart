@@ -12,12 +12,12 @@ class ReviewModel {
   final DateTime? isTime;
   final int? isConfirm;
   
-  // 평점 (각 5점 만점)
+  // 평점 (각 5점 만점, 정수 1~5 — DB `is_score1~4` INT)
   final int isScore1; // 효과
   final int isScore2; // 가성비
   final int isScore3; // 맛/향
   final int isScore4; // 편리함
-  /// 처방·일반 공통 상품 만족도 0.5~5, 0.5 단위 (API `totalIsScore` / DB `total_is_score`)
+  /// 처방·일반 공통 상품 만족도 0.1~5, 0.1 단위 (API `totalIsScore` / DB `total_is_score`)
   final double? totalIsScore;
   final double? averageScore; // 평균 평점
   

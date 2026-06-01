@@ -14,6 +14,25 @@ import '../network/api_client.dart';
 /// 
 /// 2. 또는 Flutter 앱을 XAMPP를 통해 서빙 (포트 80)
 class ImageUrlHelper {
+  /// placehold.co 개발용 플레이스홀더 (기본 응답은 SVG → [Image.network] 디코드 실패).
+  static String placeholdCo(int width, int height) {
+    return placeholdCoAsPng('https://placehold.co/${width}x$height');
+  }
+
+  /// placehold.co URL에 `/png` 경로를 붙여 래스터 이미지로 요청합니다.
+  static String placeholdCoAsPng(String url) {
+    final u = url.trim();
+    if (!u.contains('placehold.co')) return u;
+    final lower = u.toLowerCase();
+    if (lower.contains('/png') || lower.endsWith('.png') || lower.endsWith('.jpg')) {
+      return u;
+    }
+    final uri = Uri.tryParse(u);
+    if (uri == null) return '$u/png';
+    final path = uri.path.endsWith('/png') ? uri.path : '${uri.path}/png';
+    return uri.replace(path: path).toString();
+  }
+
   /// `/api/proxy/image?url=` 로 감싼 URL을 최대 여러 겹 벗겨 실제 이미지 주소만 남김.
   static String unwrapProxyImageUrlIfAny(String url) {
     var current = url.trim();
@@ -108,6 +127,9 @@ class ImageUrlHelper {
     // 건강 API 업로드 경로는 data/item 접두사 없음
     if (isHealthApiImagePath(normalizedPath)) {
       return _resolveHealthApiImageUrl(normalizedPath);
+    }
+    if (isReviewApiImagePath(normalizedPath)) {
+      return _resolveReviewApiImageUrl(normalizedPath);
     }
 
     // data/item/이 없으면 추가
@@ -278,6 +300,11 @@ class ImageUrlHelper {
     return p.contains('/api/health/');
   }
 
+  static bool isReviewApiImagePath(String path) {
+    final p = path.toLowerCase();
+    return p.contains('/api/user/reviews/images/');
+  }
+
   /// 과거 `normalizeImageUrl`이 붙인 `/data/item/api/health/...` 접두사 제거
   static String fixHealthApiImagePath(String path) {
     var p = path.trim();
@@ -342,6 +369,32 @@ class ImageUrlHelper {
     return convertToLocalUrl(fullUrl);
   }
 
+  static String _resolveReviewApiImageUrl(String imageUrl) {
+    final fixed = fixHealthApiImagePath(imageUrl);
+    late final String fullUrl;
+    if (fixed.startsWith('http://') || fixed.startsWith('https://')) {
+      fullUrl = fixed;
+    } else {
+      var path = fixed;
+      if (!path.startsWith('/')) path = '/$path';
+      fullUrl = '${_healthApiImageOrigin()}$path';
+    }
+
+    final uri = Uri.tryParse(fullUrl);
+    if (uri == null) return fullUrl;
+
+    if (kIsWeb) {
+      final webHost = Uri.base.host;
+      final isLocalWeb =
+          webHost == 'localhost' || webHost == '127.0.0.1' || webHost.isEmpty;
+      if (isLocalWeb && isReviewApiImagePath(uri.path)) {
+        return '${ApiClient.baseUrl}${uri.path}';
+      }
+    }
+
+    return convertToLocalUrl(fullUrl);
+  }
+
   static String getImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
@@ -399,6 +452,9 @@ class ImageUrlHelper {
     final trimmed = (extractedSrc ?? imageUrl).trim();
     if (isBrowserBlobOrInvalidImageUrl(trimmed)) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
+    }
+    if (isReviewApiImagePath(trimmed)) {
+      return _resolveReviewApiImageUrl(trimmed);
     }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       return convertToLocalUrl(trimmed);

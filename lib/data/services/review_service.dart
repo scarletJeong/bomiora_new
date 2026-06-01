@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import '../models/review/review_model.dart';
 import '../models/review/main_home_review_model.dart';
 import '../../core/network/api_client.dart';
@@ -9,6 +10,29 @@ void print(Object? object) {}
 
 /// 리뷰 서비스
 class ReviewService {
+  static const int maxReviewImages = 3;
+
+  /// 리뷰 첨부 사진 업로드 (웹·모바일 공통)
+  static Future<String?> uploadReviewImage(dynamic imageFile) async {
+    try {
+      final response = await ApiClient.uploadFile(
+        ApiEndpoints.reviewUploadImage,
+        imageFile,
+      );
+      if (response.statusCode != 200) return null;
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      if (data['success'] != true || data['url'] == null) return null;
+      final relativeUrl = data['url'].toString().trim();
+      if (relativeUrl.isEmpty) return null;
+      if (relativeUrl.startsWith('http')) return relativeUrl;
+      return relativeUrl.startsWith('/')
+          ? relativeUrl
+          : '/$relativeUrl';
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// 리뷰 작성
   /// 
   /// [reviewData] 리뷰 데이터

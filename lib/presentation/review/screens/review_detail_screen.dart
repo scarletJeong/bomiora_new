@@ -293,6 +293,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
   }
 
   Widget _buildDetailRating(String label, int score) {
+    final s = score.clamp(0, 5);
     return Row(
       children: [
         SizedBox(
@@ -309,7 +310,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
           child: Row(
             children: List.generate(5, (index) {
               return Icon(
-                index < score ? Icons.star : Icons.star_border,
+                index < s ? Icons.star : Icons.star_border,
                 size: 16,
                 color: const Color(0xFFFF4081),
               );
@@ -317,7 +318,7 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
           ),
         ),
         Text(
-          '$score.0',
+          '$s.0',
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
