@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/image_url_helper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import 'btn_more.dart';
@@ -19,7 +20,7 @@ class ProductSection extends StatelessWidget {
     final m = HomeBigCardLayout.fromWidth(w);
     final iw = m.cardW.round();
     final ih = m.imageH.round();
-    final placeholderUrl = 'https://placehold.co/${iw}x$ih';
+    final placeholderUrl = ImageUrlHelper.placeholdCo(iw, ih);
 
     return Container(
       width: double.infinity,

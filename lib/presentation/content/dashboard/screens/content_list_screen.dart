@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../../data/services/category_service.dart';
 import '../../../common/widgets/app_bar_menu.dart';
@@ -440,7 +441,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
     return ContentService.resolveDisplayImageUrl(
       thumbnail: rawThumbnail,
       contentHtml: contentHtml?.toString(),
-      fallback: 'https://placehold.co/321x200',
+      fallback: ImageUrlHelper.placeholdCo(321, 200),
     );
   }
 }

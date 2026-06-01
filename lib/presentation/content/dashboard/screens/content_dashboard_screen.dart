@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/app_bar_menu.dart';
 import '../../../common/widgets/appbar_menutap.dart';
@@ -158,7 +159,7 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
                   imageUrl: _resolveContentImageUrl(
                     thumbnail: post['thumbnail_url'],
                     contentHtml: post['content_html'],
-                    fallback: 'https://placehold.co/321x172',
+                    fallback: ImageUrlHelper.placeholdCo(321, 172),
                   ),
                   title: _safeText(post['title']) ?? '',
                   subtitle: _safeText(post['summary']) ?? '',
@@ -276,7 +277,7 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
                   imageUrl: _resolveContentImageUrl(
                     thumbnail: rowItems[0]['thumbnail_url'],
                     contentHtml: rowItems[0]['content_html'],
-                    fallback: 'https://placehold.co/150x150',
+                    fallback: ImageUrlHelper.placeholdCo(150, 150),
                   ),
                   label: _safeText(rowItems[0]['title']) ?? '',
                   onTap: () => _openDetail(context, rowItems[0]),
@@ -289,7 +290,7 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
                         imageUrl: _resolveContentImageUrl(
                           thumbnail: rowItems[1]['thumbnail_url'],
                           contentHtml: rowItems[1]['content_html'],
-                          fallback: 'https://placehold.co/150x150',
+                          fallback: ImageUrlHelper.placeholdCo(150, 150),
                         ),
                         label: _safeText(rowItems[1]['title']) ?? '',
                         onTap: () => _openDetail(context, rowItems[1]),

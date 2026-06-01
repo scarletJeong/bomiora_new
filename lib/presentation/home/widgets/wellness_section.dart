@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/image_url_helper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import 'home_section_widgets.dart';
@@ -54,7 +55,7 @@ class WellnessSection extends StatelessWidget {
                     originalPrice: '8,888,000원',
                     discountLabel: '26%',
                     salePrice: '8,888,000원',
-                    imageUrl: 'https://placehold.co/${iw}x$ih',
+                    imageUrl: ImageUrlHelper.placeholdCo(iw, ih),
                   );
                 },
               ),
