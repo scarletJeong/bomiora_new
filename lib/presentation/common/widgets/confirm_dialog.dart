@@ -53,10 +53,10 @@ class ConfirmDialog extends StatelessWidget {
     final margin = healthDp(context, 24);
     final maxByScreen = math.max(0.0, screenW - margin * 2);
     final designScaled = healthDp(context, width);
-    // 가용 폭의 대부분 사용 (Material Dialog 기본 maxWidth 560 제한을 Theme으로 완화)
+    // 화면 비율 상한(88%) — 디자인 스케일 폭을 넘지 않도록 min 적용
     final byFraction = screenW * 0.88;
     final dialogW =
-        math.min(math.max(designScaled, byFraction), maxByScreen);
+        math.min(designScaled, math.min(byFraction, maxByScreen));
     final r = healthDp(context, 20);
     final theme = Theme.of(context);
     // Flutter 기본 Dialog 가로 상한(보통 560)보다 넓게 허용

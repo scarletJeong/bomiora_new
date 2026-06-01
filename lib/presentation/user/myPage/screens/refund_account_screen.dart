@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../utils/bank_icon_resolver.dart';
 
 class RefundAccountScreen extends StatefulWidget {
   const RefundAccountScreen({super.key});
@@ -26,7 +28,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
     'KB 국민은행',
     'SH 신한은행',
     'WOORI 우리은행',
-    '하나은행',
+    'HANA 하나은행',
     'NH 농협은행',
     'IBK 기업은행',
     'KAKAO 카카오뱅크',
@@ -147,9 +149,6 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
-
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
@@ -158,13 +157,9 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
           titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
-        child: MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-          ),
-          child: DefaultTextStyle.merge(
-            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-            child: _isLoggedIn
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+          child: _isLoggedIn
                 ? _loadingRefund
                     ? Center(
                         child: SizedBox(
@@ -192,6 +187,13 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                               emptyText: _bankEmptyHint,
                               buttonHeight: healthDp(context, 40),
                               panelMaxHeight: healthDp(context, 320),
+                              itemFontSizeBase: 12,
+                              itemTextAlign: TextAlign.start,
+                              itemLeadingGapBase: 8,
+                              leadingBuilder: (name) => _BankIconLeading(
+                                bankName: name,
+                                size: healthDp(context, 22),
+                              ),
                               onChanged: (v) =>
                                   setState(() => _selectedBank = v),
                             ),
@@ -209,7 +211,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                   ? '계좌번호를 입력해주세요'
                                   : null,
                             ),
-                            const SizedBox(height: 0),
+                            const SizedBox(height: 20),
                             const _FieldLabel('예금주명'),
                             SizedBox(height: healthDp(context, 5)),
                             _BoxField(
@@ -220,30 +222,45 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                       ? '예금주명을 입력해주세요'
                                       : null,
                             ),
-                            SizedBox(height: healthDp(context, 30)),
-                            SizedBox(
-                              width: double.infinity,
-                              height: healthDp(context, 40),
-                              child: ElevatedButton(
-                                onPressed: _submit,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF5A8D),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        healthDp(context, 10)),
-                                  ),
-                                ),
-                                child: Text(
-                                  '저장',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: healthSp(context, 16),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                            SizedBox(height: healthDp(context, 20)),
+                            Text(
+                              '*환불 처리를 위해 정확한 계좌정보를 입력해 주세요.',
+                              style: TextStyle(
+                                color: const Color(0xFF898686),
+                                fontSize: healthSp(context, 10),
+                                fontWeight: FontWeight.w300,
+                                height: 1.4,
                               ),
+                            ),
+                            SizedBox(height: healthDp(context, 10)),
+                            Text(
+                              '입력하신 정보가 부정확할 경우 환불이 지연되거나 처리되지 않을 수 있으며, 이에 대한 책임은 입력자 본인에게 있습니다.',
+                              style: TextStyle(
+                                color: const Color(0xFF898686),
+                                fontSize: healthSp(context, 10),
+                                fontWeight: FontWeight.w300,
+                                height: 1.4,
+                              ),
+                            ),
+                            SizedBox(height: healthDp(context, 48)),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _RefundFormButton(
+                                    label: '취소',
+                                    filled: false,
+                                    onTap: () => Navigator.pop(context),
+                                  ),
+                                ),
+                                SizedBox(width: healthDp(context, 20)),
+                                Expanded(
+                                  child: _RefundFormButton(
+                                    label: '확인',
+                                    filled: true,
+                                    onTap: _submit,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -269,6 +286,91 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                       ],
                     ),
                   ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BankIconLeading extends StatelessWidget {
+  const _BankIconLeading({
+    required this.bankName,
+    required this.size,
+  });
+
+  final String bankName;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = bankIconAssetForName(bankName);
+    if (asset == null) {
+      return SizedBox(width: size, height: size);
+    }
+    return SizedBox(
+      width: size,
+      height: size,
+      child: SvgPicture.asset(
+        asset,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+}
+
+class _RefundFormButton extends StatelessWidget {
+  const _RefundFormButton({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = healthDp(context, 40);
+    final radius = healthDp(context, 10);
+    final borderW = healthDp(context, 0.5);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(radius),
+        child: Ink(
+          height: height,
+          decoration: ShapeDecoration(
+            color: filled ? const Color(0xFFFF5A8D) : Colors.white,
+            shape: RoundedRectangleBorder(
+              side: filled
+                  ? BorderSide.none
+                  : BorderSide(
+                      width: borderW,
+                      color: const Color(0xFFD2D2D2),
+                    ),
+              borderRadius: BorderRadius.circular(radius),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              textHeightBehavior: const TextHeightBehavior(
+                applyHeightToFirstAscent: false,
+                applyHeightToLastDescent: false,
+              ),
+              style: TextStyle(
+                color: filled ? Colors.white : const Color(0xFF898686),
+                fontSize: healthSp(context, 16),
+                fontWeight: FontWeight.w500,
+                height: 1.0,
+              ),
+            ),
           ),
         ),
       ),
@@ -294,7 +396,7 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _BoxField extends StatelessWidget {
+class _BoxField extends StatefulWidget {
   const _BoxField({
     required this.controller,
     required this.hintText,
@@ -310,75 +412,98 @@ class _BoxField extends StatelessWidget {
   final String? Function(String?)? validator;
 
   @override
+  State<_BoxField> createState() => _BoxFieldState();
+}
+
+class _BoxFieldState extends State<_BoxField> {
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final errorColor = Theme.of(context).colorScheme.error;
     final fieldH = healthDp(context, 40);
-    final errorReserveH = healthDp(context, 22);
-    final pad = healthDp(context, 10);
+    final padH = healthDp(context, 12);
     final radius = healthDp(context, 10);
     final borderW = healthDp(context, 1);
 
     return FormField<String>(
-      initialValue: controller.text,
-      validator: (v) => validator?.call(controller.text),
+      initialValue: widget.controller.text,
+      validator: (v) => widget.validator?.call(widget.controller.text),
       builder: (state) {
+        Color borderColor = const Color(0xFFD2D2D2);
+        if (state.hasError) {
+          borderColor = errorColor;
+        } else if (_focusNode.hasFocus) {
+          borderColor = const Color(0xFFFF5A8D);
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               height: fieldH,
-              child: TextField(
-                controller: controller,
-                keyboardType: keyboardType,
-                inputFormatters: inputFormatters,
-                onChanged: (_) {
-                  state.didChange(controller.text);
-                  if (state.hasError) state.validate();
-                },
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.all(pad),
-                  hintText: hintText,
-                  hintStyle: TextStyle(
-                    color: const Color(0xFF898686),
-                    fontSize: healthSp(context, 12),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(radius),
-                    borderSide: BorderSide(
-                      width: borderW,
-                      color: state.hasError
-                          ? errorColor
-                          : const Color(0xFFD2D2D2),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(radius),
-                    borderSide: BorderSide(
-                      width: borderW,
-                      color: state.hasError
-                          ? errorColor
-                          : const Color(0xFFD2D2D2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(radius),
-                    borderSide: BorderSide(
-                        width: borderW, color: const Color(0xFFFF5A8D)),
-                  ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(radius),
+                  border: Border.all(width: borderW, color: borderColor),
                 ),
-                style: TextStyle(
-                  color: const Color(0xFF1A1A1A),
-                  fontSize: healthSp(context, 12),
-                  fontWeight: FontWeight.w500,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: padH),
+                  child: TextField(
+                    controller: widget.controller,
+                    focusNode: _focusNode,
+                    keyboardType: widget.keyboardType,
+                    inputFormatters: widget.inputFormatters,
+                    expands: true,
+                    maxLines: null,
+                    textAlignVertical: TextAlignVertical.center,
+                    onChanged: (_) {
+                      state.didChange(widget.controller.text);
+                      if (state.hasError) state.validate();
+                    },
+                    decoration: InputDecoration(
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.zero,
+                      hintText: widget.hintText,
+                      hintStyle: TextStyle(
+                        color: const Color(0xFF898686),
+                        fontSize: healthSp(context, 12),
+                        fontWeight: FontWeight.w500,
+                        height: 1.0,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                    ),
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 12),
+                      fontWeight: FontWeight.w500,
+                      height: 1.0,
+                    ),
+                  ),
                 ),
               ),
             ),
-            SizedBox(
-              height: errorReserveH,
-              child: Align(
-                alignment: Alignment.centerLeft,
+            if (state.hasError)
+              Padding(
+                padding: EdgeInsets.only(top: healthDp(context, 4)),
                 child: Text(
                   state.errorText ?? '',
                   maxLines: 2,
@@ -391,7 +516,6 @@ class _BoxField extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
           ],
         );
       },

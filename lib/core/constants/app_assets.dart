@@ -139,6 +139,15 @@ abstract final class AppAssets {
   // 쿠폰 화면 등에서 사용하는 쿠폰 아이콘 (SVG)
   static const String couponIcon = '${_img}coupon_icon.svg';
 
+  // 마이페이지 - 내 리뷰 도움쿠폰 카드
+  static const String myReviewCouponIcon = '${_img}myReview_couponCard_icon.svg';
+  static const String myReviewCouponCardDownload = '${_img}myReview_couponCard_download.svg';
+
+  // 마이페이지 - 리뷰 별점 아이콘
+  static const String reviewStar = '${_img}review_star.svg';
+
+  // 마이페이지 - 리뷰 사진 추가 아이콘
+  static const String reviewAddPhotoIcon = '${_img}review_add_photo_icon.svg';
 
   /* 7. 건강프로필 */
   // 건강프로필 문진표 단계 아이콘 (SVG)
@@ -158,5 +167,25 @@ abstract final class AppAssets {
   static const String payCash = '${_img}pay_cash.svg';
   static const String escrow = '${_img}escrow.png';
 
+
+  /*9. 은행 아이콘 */
+  static const String IBKIcon = '${_img}bankIcon_IBK.svg';
+  static const String KBIcon = '${_img}bankIcon_KB.svg';
+  static const String KEBIcon = '${_img}bankIcon_KEB.svg';
+  static const String NHIcon = '${_img}bankIcon_NH.svg';
+  static const String SCIcon = '${_img}bankIcon_SC.svg';
+  static const String BNKIcon = '${_img}bankIcon_BNK.svg';
+  /// 대구·부산·경남 공통
+  static const String DGIcon = '${_img}bankIcon_DG.svg';
+  static const String SHIcon = '${_img}bankIcon_SH.svg';
+  static const String JJIcon = '${_img}bankIcon_JJ.svg';
+  /// 전북·광주 공통 (광주는 JBIcon 사용)
+  static const String JBIcon = '${_img}bankIcon_JB.svg';
+  static const String CITIIcon = '${_img}bankIcon_CITI.svg';
+  static const String WOORIIcon = '${_img}bankIcon_WOORI.svg';
+  static const String POSTIcon = '${_img}bankIcon_POST.svg';
+  static const String KAKAOIcon = '${_img}bankIcon_KAKAO.svg';
+  static const String KIcon = '${_img}bankIcon_K.svg';
+  static const String TOSSIcon = '${_img}bankIcon_TOSS.svg';
 
 }
