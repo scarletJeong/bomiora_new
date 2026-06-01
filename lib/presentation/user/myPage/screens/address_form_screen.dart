@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
-
-const double _kAddressFormFieldHeight = 40;
 
 /// 배송지 추가/수정 화면
 class AddressFormScreen extends StatefulWidget {
@@ -26,8 +25,6 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   final GlobalKey<FormFieldState<String>> _zipFormFieldKey =
       GlobalKey<FormFieldState<String>>();
 
-  static const double _addressSearchRowHeight = _kAddressFormFieldHeight;
-
   // 입력 컨트롤러
   final TextEditingController _subjectController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
@@ -35,6 +32,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   final TextEditingController _zipController = TextEditingController();
   final TextEditingController _address1Controller = TextEditingController();
   final TextEditingController _address2Controller = TextEditingController();
+  final TextEditingController _memoController = TextEditingController();
 
   bool _isLoading = false;
 
@@ -56,6 +54,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     _zipController.dispose();
     _address1Controller.dispose();
     _address2Controller.dispose();
+    _memoController.dispose();
     super.dispose();
   }
 
@@ -114,6 +113,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     final a2 = _str(m, ['adAddr2', 'ad_addr2']);
     final a3 = _str(m, ['adAddr3', 'ad_addr3']);
     _address2Controller.text = '$a2 $a3'.trim();
+    _memoController.text = _str(m, ['adMemo', 'ad_memo']);
   }
 
   Future<void> _openAddressSearch() async {
@@ -152,10 +152,20 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       }
 
       final zipParts = _splitZipForApi(_zipController.text.trim());
+      int defaultFlag = 0;
+      if (widget.address != null) {
+        defaultFlag = widget.address!['adDefault'] == 1 ? 1 : 0;
+      } else {
+        final existing = await AddressService.getAddressList(user.id);
+        if (existing.isEmpty) {
+          defaultFlag = 1;
+        }
+      }
       final addressData = {
         'mbId': user.id,
         'adSubject': _subjectController.text.trim(),
-        'adDefault': widget.address?['adDefault'] ?? 0,
+        'adDefault': defaultFlag,
+        'ad_default': defaultFlag,
         'adName': _nameController.text.trim(),
         'adTel': _phoneController.text.trim(),
         'adHp': _phoneController.text.trim(),
@@ -165,6 +175,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
         'adAddr2': _address2Controller.text.trim(),
         'adAddr3': '',
         'adJibeon': '',
+        'adMemo': _memoController.text.trim(),
       };
 
       Map<String, dynamic> result;
@@ -196,78 +207,64 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.address != null;
+    final fieldHeight = healthDp(context, 40);
+
     return MobileAppLayoutWrapper(
-      appBar: HealthAppBar(title: isEdit ? '배송지 수정' : '배송지 등록'),
+      appBar: HealthAppBar(
+        title: isEdit ? '배송지 수정' : '배송지 등록',
+        titleFontSize: healthSp(context, 18),
+        leadingIconSize: healthDp(context, 24),
+      ),
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: Form(
           key: _formKey,
           child: ListView(
-            padding:
-                const EdgeInsets.only(left: 27, right: 27, bottom: 20, top: 20),
+            padding: EdgeInsets.only(
+              left: healthDp(context, 27),
+              right: healthDp(context, 27),
+              bottom: healthDp(context, 20),
+              top: healthDp(context, 20),
+            ),
             children: [
-              const Text(
-                '배송지 이름',
-                style: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.57,
-                ),
-              ),
-              const SizedBox(height: 5),
+              const _FieldLabel('배송지 이름'),
+              SizedBox(height: healthDp(context, 5)),
               _BoxField(
                 controller: _subjectController,
+                hintText: '배송지 이름을 입력해주세요.',
                 validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '배송지 이름을 입력해주세요' : null,
+                    (v == null || v.trim().isEmpty) ? '배송지 이름을 입력해주세요.' : null,
               ),
-              const SizedBox(height: 10),
-              const Text(
-                '받으시는 분',
-                style: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.57,
-                ),
-              ),
-              const SizedBox(height: 5),
+              SizedBox(height: healthDp(context, 10)),
+              const _FieldLabel('받으시는 분'),
+              SizedBox(height: healthDp(context, 5)),
               _BoxField(
                 controller: _nameController,
+                hintText: '수령인의 이름을 입력해주세요.',
                 validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '받으시는 분을 입력해주세요' : null,
+                    (v == null || v.trim().isEmpty) ? '받으시는 분을 입력해주세요.' : null,
               ),
-              const SizedBox(height: 10),
-              const Text(
-                '연락처',
-                style: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.57,
-                ),
-              ),
-              const SizedBox(height: 5),
+              SizedBox(height: healthDp(context, 10)),
+              const _FieldLabel('연락처'),
+              SizedBox(height: healthDp(context, 5)),
               _BoxField(
                 controller: _phoneController,
+                hintText: "'-' 없이 기입해주세요.",
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(11),
                 ],
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '연락처를 입력해주세요' : null,
+                validator: (v) {
+                  final t = v?.trim() ?? '';
+                  if (t.isEmpty) return '연락처를 입력해주세요.';
+                  if (t.length > 11) return '연락처는 11자리까지 입력해주세요.';
+                  return null;
+                },
               ),
-              const SizedBox(height: 10),
-              const Text(
-                '배송지 주소',
-                style: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.57,
-                ),
-              ),
-              const SizedBox(height: 5),
+              SizedBox(height: healthDp(context, 10)),
+              const _FieldLabel('배송지 주소'),
+              SizedBox(height: healthDp(context, 5)),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -277,7 +274,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                       key: _zipFormFieldKey,
                       validator: (_) {
                         final t = _zipController.text.trim();
-                        return t.isEmpty ? '우편번호를 입력해주세요' : null;
+                        return t.isEmpty ? '우편번호를 입력해주세요.' : null;
                       },
                       builder: (state) {
                         final hasErr = state.hasError;
@@ -289,48 +286,60 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             SizedBox(
-                              height: _addressSearchRowHeight,
+                              height: fieldHeight,
                               child: TextField(
                                 controller: _zipController,
                                 enabled: false,
                                 textAlignVertical: TextAlignVertical.center,
                                 onChanged: (_) =>
                                     state.didChange(_zipController.text),
-                                style: const TextStyle(
-                                  color: Color(0xFF1A1A1A),
-                                  fontSize: 12,
+                                style: TextStyle(
+                                  color: const Color(0xFF1A1A1A),
+                                  fontSize: healthSp(context, 12),
                                   fontWeight: FontWeight.w500,
                                 ),
                                 decoration: InputDecoration(
                                   isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 12),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: healthDp(context, 12),
+                                    vertical: healthDp(context, 12),
+                                  ),
                                   hintText: '우편번호',
-                                  hintStyle: const TextStyle(
-                                    color: Color(0xFF898686),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                                  hintStyle: TextStyle(
+                                    color: const Color(0xFF898686),
+                                    fontSize: healthSp(context, 12),
+                                    fontWeight: FontWeight.w300,
                                     height: 1.83,
                                   ),
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(
+                                        healthDp(context, 10)),
                                     borderSide: BorderSide(
-                                        width: 1, color: borderColor),
+                                      width: healthDp(context, 1),
+                                      color: borderColor,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(
+                                        healthDp(context, 10)),
                                     borderSide: BorderSide(
-                                        width: 1, color: borderColor),
+                                      width: healthDp(context, 1),
+                                      color: borderColor,
+                                    ),
                                   ),
                                   disabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(
+                                        healthDp(context, 10)),
                                     borderSide: BorderSide(
-                                        width: 1, color: borderColor),
+                                      width: healthDp(context, 1),
+                                      color: borderColor,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(
+                                        healthDp(context, 10)),
                                     borderSide: BorderSide(
-                                      width: 1,
+                                      width: healthDp(context, 1),
                                       color: hasErr
                                           ? errColor
                                           : const Color(0xFFFF5A8D),
@@ -341,12 +350,15 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                             ),
                             if (state.hasError)
                               Padding(
-                                padding: const EdgeInsets.only(top: 4, left: 4),
+                                padding: EdgeInsets.only(
+                                  top: healthDp(context, 4),
+                                  left: healthDp(context, 4),
+                                ),
                                 child: Text(
                                   state.errorText!,
                                   style: TextStyle(
                                     color: errColor,
-                                    fontSize: 12,
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                   ),
                                 ),
@@ -356,11 +368,11 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: healthDp(context, 8)),
                   Expanded(
                     flex: 1,
                     child: SizedBox(
-                      height: _addressSearchRowHeight,
+                      height: fieldHeight,
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _openAddressSearch,
@@ -368,19 +380,20 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                           backgroundColor: const Color(0xFFFF5A8D),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 10)),
+                          ),
                           padding: EdgeInsets.zero,
-                          minimumSize:
-                              const Size.fromHeight(_addressSearchRowHeight),
-                          fixedSize: const Size.fromHeight(_addressSearchRowHeight),
+                          minimumSize: Size(0, fieldHeight),
+                          fixedSize: Size(double.infinity, fieldHeight),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           alignment: Alignment.center,
                         ),
-                        child: const Text(
+                        child: Text(
                           '주소 검색',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: healthSp(context, 12),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -389,20 +402,29 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 5),
+              SizedBox(height: healthDp(context, 5)),
               _BoxField(
                 controller: _address1Controller,
+                hintText: "'주소 검색'을 통해 입력됩니다.",
                 validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '주소를 입력해주세요' : null,
+                    (v == null || v.trim().isEmpty) ? '주소를 입력해주세요.' : null,
               ),
-              const SizedBox(height: 5),
+              SizedBox(height: healthDp(context, 5)),
               _BoxField(
                 controller: _address2Controller,
+                hintText: '상세 주소를 입력해 주세요.',
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: healthDp(context, 10)),
+              const _FieldLabel('배송 요청사항'),
+              SizedBox(height: healthDp(context, 5)),
+              _BoxField(
+                controller: _memoController,
+                hintText: '요청사항이 있으시면 입력해주세요.',
+              ),
+              SizedBox(height: healthDp(context, 20)),
               SizedBox(
                 width: double.infinity,
-                height: 40,
+                height: healthDp(context, 40),
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveAddress,
                   style: ElevatedButton.styleFrom(
@@ -410,24 +432,26 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                     disabledBackgroundColor: const Color(0x7FD2D2D2),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 10)),
+                    ),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
+                      ? SizedBox(
+                          width: healthDp(context, 18),
+                          height: healthDp(context, 18),
+                          child: const CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor:
                                 AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
+                      : Text(
                           '저장',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: healthSp(context, 16),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -441,23 +465,67 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   }
 }
 
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: const Color(0xFF898686),
+        fontSize: healthSp(context, 14),
+        fontWeight: FontWeight.w500,
+        height: 1.57,
+      ),
+    );
+  }
+}
+
+class _FieldHelperText extends StatelessWidget {
+  const _FieldHelperText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: const Color(0xFF898686),
+        fontSize: healthSp(context, 12),
+        fontWeight: FontWeight.w500,
+        height: 1.4,
+      ),
+    );
+  }
+}
+
 class _BoxField extends StatelessWidget {
   const _BoxField({
     required this.controller,
+    this.hintText,
     this.keyboardType,
     this.inputFormatters,
     this.validator,
   });
 
   final TextEditingController controller;
+  final String? hintText;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {
+    final fieldHeight = healthDp(context, 40);
+    final radius = healthDp(context, 10);
+    final borderWidth = healthDp(context, 1);
+
     return SizedBox(
-      height: _kAddressFormFieldHeight,
+      height: fieldHeight,
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
@@ -467,34 +535,49 @@ class _BoxField extends StatelessWidget {
         textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
           isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          hintStyle: const TextStyle(
-            color: Color(0xFF898686),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 10),
+          ),
+          hintText: hintText,
+          hintStyle: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 12),
+            fontWeight: FontWeight.w300,
             height: 1.83,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: BorderSide(
+              width: borderWidth,
+              color: const Color(0xFFD2D2D2),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: BorderSide(
+              width: borderWidth,
+              color: const Color(0xFFD2D2D2),
+            ),
           ),
           disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: BorderSide(
+              width: borderWidth,
+              color: const Color(0xFFD2D2D2),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(width: 1, color: Color(0xFFFF5A8D)),
+            borderRadius: BorderRadius.circular(radius),
+            borderSide: BorderSide(
+              width: borderWidth,
+              color: const Color(0xFFFF5A8D),
+            ),
           ),
         ),
-        style: const TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: 12,
+        style: TextStyle(
+          color: const Color(0xFF1A1A1A),
+          fontSize: healthSp(context, 12),
           fontWeight: FontWeight.w500,
         ),
         validator: validator,

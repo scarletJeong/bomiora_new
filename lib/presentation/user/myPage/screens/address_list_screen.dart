@@ -16,6 +16,9 @@ class AddressManagementScreen extends StatefulWidget {
 }
 
 class _AddressManagementScreenState extends State<AddressManagementScreen> {
+  /// 확인 팝업 너비 (375 기준 272 → 650에서 약 471)
+  static const double _confirmDialogWidth = 272;
+
   UserModel? _currentUser;
   
   // 배송지 목록
@@ -139,6 +142,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       context,
       title: '배송지 삭제',
       message: '선택한 주소를 삭제하시겠습니까?',
+      width: _confirmDialogWidth,
     );
     if (!confirmed) return;
 
@@ -163,7 +167,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       context,
       title: '기본 주소 설정',
       message: '해당 주소로 기본 주소가 변경됩니다.',
-      width: healthDp(context, 272),
+      width: _confirmDialogWidth,
       showDivider: false,
     );
     if (!confirmed || !mounted) return;
@@ -201,9 +205,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
-
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
@@ -212,13 +213,9 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
-        child: MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-          ),
-          child: DefaultTextStyle.merge(
-            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-            child: _isLoadingAddresses
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+          child: _isLoadingAddresses
                 ? Center(
                     child: SizedBox(
                       width: healthDp(context, 36),
@@ -262,24 +259,27 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                           children: [
                             if (_addresses.isNotEmpty) ...[
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Text(
                                     '|',
                                     style: TextStyle(
                                       color: const Color(0xFF1A1A1A),
-                                      fontSize: healthSp(context, 16),
-                                      fontWeight: FontWeight.w500,
+                                      fontSize: healthSp(context, 18),
+                                      fontWeight: FontWeight.w300,
                                       letterSpacing: -1.44,
+                                      height: 1.0,
                                     ),
                                   ),
-                                  SizedBox(width: healthDp(context, 8)),
+                                  SizedBox(width: healthDp(context, 10)),
                                   Text(
                                     '나의 배송지',
                                     style: TextStyle(
                                       color: const Color(0xFF1A1A1A),
                                       fontSize: healthSp(context, 16),
-                                      fontWeight: FontWeight.w300,
+                                      fontWeight: FontWeight.w500,
                                       letterSpacing: -1.44,
+                                      height: 1.0,
                                     ),
                                   ),
                                 ],
@@ -291,9 +291,10 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                                   color: const Color(0xFF898686),
                                   fontSize: healthSp(context, 12),
                                   fontWeight: FontWeight.w500,
+                                  height: 1.0,
                                 ),
                               ),
-                              SizedBox(height: healthDp(context, 14)),
+                              SizedBox(height: healthDp(context, 10)),
                             ],
 
                             if (_addresses.isEmpty)
@@ -323,15 +324,23 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                                 ),
                               )
                             else
-                              ..._addresses.map(
-                                (address) => Padding(
-                                  padding: EdgeInsets.only(
-                                      bottom: healthDp(context, 10)),
-                                  child: _buildAddressCard(address),
-                                ),
+                              ..._addresses.asMap().entries.map(
+                                (entry) {
+                                  final isLast =
+                                      entry.key == _addresses.length - 1;
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: isLast
+                                          ? 0
+                                          : healthDp(context, 10),
+                                    ),
+                                    child: _buildAddressCard(entry.value),
+                                  );
+                                },
                               ),
 
-                            SizedBox(height: healthDp(context, 14)),
+                            if (_addresses.isNotEmpty)
+                              SizedBox(height: healthDp(context, 48)),
                             if (_addresses.isNotEmpty)
                               Row(
                                 mainAxisAlignment:
@@ -380,7 +389,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                           ],
                         ),
                       ),
-          ),
         ),
       ),
     );
@@ -408,6 +416,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       borderRadius: BorderRadius.circular(healthDp(context, 12)),
       child: Container(
         width: double.infinity,
+        height: healthDp(context, 87),
         padding: EdgeInsets.symmetric(
           horizontal: healthDp(context, 10),
           vertical: healthDp(context, 14),
@@ -426,36 +435,48 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             _SelectDot(selected: isSelected),
             SizedBox(width: healthDp(context, 10)),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name.isEmpty ? '배송지' : name,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: healthSp(context, 16),
-                      fontWeight: FontWeight.w500,
+              child: SizedBox(
+                height: healthDp(context, 59),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.isEmpty ? '배송지' : name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: healthSp(context, 14),
+                        fontWeight: FontWeight.w500,
+                        height: 1.0,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: healthDp(context, 10)),
-                  Text(
-                    '$recipient $phone'.trim(),
-                    style: TextStyle(
-                      color: const Color(0xFF898383),
-                      fontSize: healthSp(context, 12),
-                      fontWeight: FontWeight.w500,
+                    SizedBox(height: healthDp(context, 10)),
+                    Text(
+                      '$recipient $phone'.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: const Color(0xFF898383),
+                        fontSize: healthSp(context, 12),
+                        fontWeight: FontWeight.w500,
+                        height: 1.0,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: healthDp(context, 5)),
-                  Text(
-                    detail.isEmpty ? address1 : '$address1 $detail',
-                    style: TextStyle(
-                      color: const Color(0xFF898383),
-                      fontSize: healthSp(context, 12),
-                      fontWeight: FontWeight.w500,
+                    SizedBox(height: healthDp(context, 5)),
+                    Text(
+                      detail.isEmpty ? address1 : '$address1 $detail',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: const Color(0xFF898383),
+                        fontSize: healthSp(context, 12),
+                        fontWeight: FontWeight.w500,
+                        height: 1.0,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             SizedBox(width: healthDp(context, 10)),
@@ -582,7 +603,7 @@ class _SmallActionButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
         width: healthDp(context, 80),
-        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+        height: healthDp(context, 36),
         decoration: ShapeDecoration(
           color: bg,
           shape: RoundedRectangleBorder(
@@ -600,9 +621,10 @@ class _SmallActionButton extends StatelessWidget {
           label,
           style: TextStyle(
             color: fg,
-            fontSize: healthSp(context, 12),
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
+            height: 1.0,
           ),
         ),
       ),
