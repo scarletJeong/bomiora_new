@@ -122,6 +122,11 @@ abstract final class AppAssets {
 
   
   /* 6. 마이페이지 */
+  // 마이페이지 - 설정 아이콘 및 포토프로필 아이콘
+  static const String mypageSettingsIcon = '${_img}mypage_settings_icon.svg';
+  static const String mypagePersonalInfoSettingsIcon = '${_img}mypage_personal_info_settings_icon.svg';
+  static const String mypagePhotoProfileIcon = '${_img}mypage_photo_profile_icon.svg';
+
   // 마이페이지 주문내역~내쿠폰까지 통계 카드 아이콘/테두리 (SVG)
   static const String deliveryMain = '${_img}deliveryMain.svg';
   static const String couponMain = '${_img}couponMain.svg';
@@ -134,6 +139,8 @@ abstract final class AppAssets {
   // 쿠폰 화면 등에서 사용하는 쿠폰 아이콘 (SVG)
   static const String couponIcon = '${_img}coupon_icon.svg';
 
+
+  /* 7. 건강프로필 */
   // 건강프로필 문진표 단계 아이콘 (SVG)
   static const String profile1 = '${_img}profile_1.svg';
   static const String profile2 = '${_img}profile_2.svg';
@@ -145,7 +152,7 @@ abstract final class AppAssets {
   static const String cancelMemberIcon = '${_img}cancel_member_icon.svg';
   
   
-  /* 7. 결제 */
+  /* 8. 결제 */
   // 결제 화면 - 결제수단 아이콘
   static const String payCredit = '${_img}pay_credit.svg';
   static const String payCash = '${_img}pay_cash.svg';

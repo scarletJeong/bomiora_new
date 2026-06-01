@@ -14,20 +14,20 @@ class MyPageAvatarFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(3),
+      padding: EdgeInsets.all(healthDp(context, 3)),
       decoration: ShapeDecoration(
         color: const Color(0xFFFF5A8D),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(45),
+          borderRadius: BorderRadius.circular(healthDp(context, 45)),
         ),
       ),
       child: Container(
-        width: 77,
-        height: 77,
+        width: healthDp(context, 77),
+        height: healthDp(context, 77),
         decoration: ShapeDecoration(
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(45),
+            borderRadius: BorderRadius.circular(healthDp(context, 45)),
           ),
         ),
         alignment: Alignment.center,
@@ -82,11 +82,11 @@ class MyPageLineMenuItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: healthDp(context, 6)),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 8)),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              width: healthDp(context, isLast ? 1 : 0.5),
+              width: healthDp(context, 0.5),
               color: const Color(0xFF1A1A1A),
             ),
           ),
@@ -101,7 +101,7 @@ class MyPageLineMenuItem extends StatelessWidget {
                   height: healthDp(context, 16),
                   color: const Color(0xFF1A1A1A),
                 ),
-                SizedBox(width: healthDp(context, 8)),
+                SizedBox(width: healthDp(context, 10)),
                 Text(
                   title,
                   style: TextStyle(
@@ -115,7 +115,7 @@ class MyPageLineMenuItem extends StatelessWidget {
             ),
             Icon(
               Icons.chevron_right,
-              size: healthDp(context, 16),
+              size: healthDp(context, 20),
               color: const Color(0xFF1A1A1A),
             ),
           ],
