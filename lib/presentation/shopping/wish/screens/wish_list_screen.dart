@@ -664,7 +664,7 @@ class _WishListScreenState extends State<WishListScreen> {
         ?.toString();
     final imageUrl = ContentService.resolveThumbnailUrl(
       thumbRaw,
-      fallback: 'https://placehold.co/321x200',
+      fallback: ImageUrlHelper.placeholdCo(321, 200),
     );
 
     return SizedBox(
