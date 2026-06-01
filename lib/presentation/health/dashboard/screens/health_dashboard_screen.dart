@@ -1,5 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/utils/image_url_helper.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/appbar_menutap.dart';
 import '../../../../data/services/auth_service.dart';
@@ -415,6 +418,33 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return gapAtNarrow + (gapAtWide - gapAtNarrow) * t;
   }
 
+  Widget _buildProfileAvatar(BuildContext context) {
+    final size = healthDp(context, 62);
+    final profile = currentUser?.profileImage?.trim();
+    if (profile != null && profile.isNotEmpty) {
+      final url = ImageUrlHelper.getImageUrl(profile);
+      if (url.isNotEmpty) {
+        return Image.network(
+          url,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildProfileAvatarPlaceholder(context),
+        );
+      }
+    }
+    return _buildProfileAvatarPlaceholder(context);
+  }
+
+  Widget _buildProfileAvatarPlaceholder(BuildContext context) {
+    return SvgPicture.asset(
+      AppAssets.mypagePhotoProfileIcon,
+      width: healthDp(context, 62),
+      height: healthDp(context, 62),
+      fit: BoxFit.cover,
+    );
+  }
+
   Widget _buildHeaderSection() {
     return Container(
       width: double.infinity,
@@ -444,11 +474,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                         width: healthDp(context, 2),
                       ),
                     ),
-                    child: Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: healthDp(context, 38),
-                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _buildProfileAvatar(context),
                   ),
                   Positioned(
                     right: -2,
