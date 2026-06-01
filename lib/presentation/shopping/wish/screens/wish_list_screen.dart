@@ -27,7 +27,7 @@ class _WishListScreenState extends State<WishListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _requiresLogin = false;
-  int _visibleCount = 5;
+  int _visibleCount = 10;
   /// 0: 비대면 진료, 1: 스토어, 2: 콘텐츠
   int _selectedTabIndex = 0;
 
@@ -101,7 +101,7 @@ class _WishListScreenState extends State<WishListScreen> {
 
   void _syncVisibleCount() {
     final n = _currentTabList.length;
-    _visibleCount = n < 5 ? n : 5;
+    _visibleCount = n < 10 ? n : 10;
   }
 
   Future<void> _loadWishList() async {
@@ -140,7 +140,7 @@ class _WishListScreenState extends State<WishListScreen> {
 
   void _loadMore() {
     setState(() {
-      _visibleCount += 5;
+      _visibleCount += 10;
       final len = _currentTabList.length;
       if (_visibleCount > len) {
         _visibleCount = len;
@@ -185,9 +185,6 @@ class _WishListScreenState extends State<WishListScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
-
     return Theme(
       data: gmarketTheme,
       child: MobileAppLayoutWrapper(
@@ -196,28 +193,23 @@ class _WishListScreenState extends State<WishListScreen> {
           titleFontSize: healthSp(context, 18),
           leadingIconSize: healthDp(context, 24),
         ),
-        child: MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-          ),
-          child: DefaultTextStyle.merge(
-            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-            child: ColoredBox(
-              color: Colors.white,
-              child: _isLoading
-                  ? Center(
-                      child: SizedBox(
-                        width: healthDp(context, 36),
-                        height: healthDp(context, 36),
-                        child: const CircularProgressIndicator(color: _pink),
-                      ),
-                    )
-                  : _requiresLogin
-                      ? _buildLoginMessage()
-                      : _errorMessage != null
-                          ? _buildError()
-                          : _buildContent(),
-            ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+          child: ColoredBox(
+            color: Colors.white,
+            child: _isLoading
+                ? Center(
+                    child: SizedBox(
+                      width: healthDp(context, 36),
+                      height: healthDp(context, 36),
+                      child: const CircularProgressIndicator(color: _pink),
+                    ),
+                  )
+                : _requiresLogin
+                    ? _buildLoginMessage()
+                    : _errorMessage != null
+                        ? _buildError()
+                        : _buildContent(),
           ),
         ),
       ),
@@ -298,11 +290,10 @@ class _WishListScreenState extends State<WishListScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(height: healthDp(context, 20)),
+          SizedBox(height: healthDp(context, 15)),
           _buildTabs(),
-          SizedBox(height: healthDp(context, 20)),
+          SizedBox(height: healthDp(context, 10)),
           _buildHeader(),
-          SizedBox(height: healthDp(context, 20)),
           if (list.isEmpty) ...[
             SizedBox(height: healthDp(context, 40)),
             Icon(
@@ -321,8 +312,12 @@ class _WishListScreenState extends State<WishListScreen> {
             ),
             SizedBox(height: healthDp(context, 40)),
           ] else ...[
-            ..._visibleItems.map(_buildWishCard),
-            if (hasMore) ...[
+            SizedBox(height: healthDp(context, 10)),
+            for (var i = 0; i < _visibleItems.length; i++) ...[
+              if (i > 0) SizedBox(height: healthDp(context, 20)),
+              _buildWishCard(_visibleItems[i]),
+            ],
+            if (hasMore && list.length >= 10) ...[
               SizedBox(height: healthDp(context, 20)),
               _buildLoadMoreButton(),
             ],
@@ -355,8 +350,8 @@ class _WishListScreenState extends State<WishListScreen> {
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.only(
-            top: healthDp(context, 4),
-            bottom: healthDp(context, 10),
+            top: healthDp(context, 0),
+            bottom: healthDp(context, 0),
           ),
           alignment: Alignment.center,
           child: Center(
@@ -405,35 +400,47 @@ class _WishListScreenState extends State<WishListScreen> {
 
   Widget _buildHeader() {
     final count = _currentTabList.length;
-    final title = switch (_selectedTabIndex) {
-      0 => '찜한 상품 $count개',
-      1 => '찜한 상품 $count개',
-      2 => '찜한 목록 $count개',
-      _ => '찜한 항목 $count개',
+    final prefix = switch (_selectedTabIndex) {
+      0 => '찜한 상품 ',
+      1 => '찜한 상품 ',
+      2 => '찜한 목록 ',
+      _ => '찜한 항목 ',
     };
-    return SizedBox(
-      width: double.infinity,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: _textMuted,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+    final lineH = healthDp(context, 1);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(height: lineH, color: _divider),
+        SizedBox(height: healthDp(context, 8)),
+        RichText(
+          text: TextSpan(
+            style: TextStyle(
+              color: _textMuted,
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              height: 1,
             ),
+            children: [
+              TextSpan(text: prefix),
+              TextSpan(
+                text: '$count',
+                style: TextStyle(
+                  color: const Color(0xFFFF5A8D),
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontSize: healthSp(context, 12),
+                  height: 1,
+                ),
+              ),
+              const TextSpan(text: '개'),
+            ],
           ),
-        ],
-      ),
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        Container(height: lineH, color: _divider),
+      ],
     );
   }
 
@@ -451,11 +458,9 @@ class _WishListScreenState extends State<WishListScreen> {
     final productImage =
         item['image_url']?.toString() ?? item['it_img1']?.toString() ?? item['it_img']?.toString() ?? '';
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 20)),
-      child: SizedBox(
-        width: double.infinity,
-        child: Container(
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
           decoration: BoxDecoration(
             border: Border.all(
                 width: healthDp(context, 1), color: _border),
@@ -474,7 +479,7 @@ class _WishListScreenState extends State<WishListScreen> {
                       },
                 behavior: HitTestBehavior.opaque,
                 child: AspectRatio(
-                  aspectRatio: 1.4,
+                  aspectRatio: 1.45,
                   child: Image.network(
                     ImageUrlHelper.getImageUrl(productImage),
                     fit: BoxFit.cover,
@@ -511,7 +516,7 @@ class _WishListScreenState extends State<WishListScreen> {
                   top: healthDp(context, 10),
                   left: healthDp(context, 10),
                   right: healthDp(context, 10),
-                  bottom: healthDp(context, 20),
+                  bottom: healthDp(context, 10),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,14 +538,18 @@ class _WishListScreenState extends State<WishListScreen> {
                               fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
+                              height: 1.5,
                             ),
                           ),
-                          SizedBox(height: healthDp(context, 2)),
                           Text(
                             productName.isNotEmpty ? productName : '상품',
+                            textHeightBehavior: const TextHeightBehavior(
+                              applyHeightToFirstAscent: false,
+                              applyHeightToLastDescent: true,
+                            ),
                             style: TextStyle(
                               color: _textMain,
-                              fontSize: healthSp(context, 16),
+                              fontSize: healthSp(context, 14),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w700,
                               letterSpacing: -1.44,
@@ -548,23 +557,24 @@ class _WishListScreenState extends State<WishListScreen> {
                             ),
                           ),
                           if (descriptionLine.isNotEmpty) ...[
-                            SizedBox(height: healthDp(context, 6)),
+                            SizedBox(height: healthDp(context, 10)),
                             Text(
                               descriptionLine,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: _textSub,
                                 fontSize: healthSp(context, 12),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w500,
+                                height: 1.2,
                               ),
                             ),
                           ],
                         ],
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 10)),
+                    SizedBox(height: healthDp(context, 20)),
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -589,7 +599,7 @@ class _WishListScreenState extends State<WishListScreen> {
                             children: [
                               Icon(
                                 Icons.favorite,
-                                size: healthDp(context, 24),
+                                size: healthDp(context, 20),
                                 color: _pink.withValues(alpha: 0.9),
                               ),
                               SizedBox(width: healthDp(context, 5)),
@@ -613,7 +623,6 @@ class _WishListScreenState extends State<WishListScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -658,11 +667,9 @@ class _WishListScreenState extends State<WishListScreen> {
       fallback: 'https://placehold.co/321x200',
     );
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 20)),
-      child: SizedBox(
-        width: double.infinity,
-        child: Container(
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
           decoration: BoxDecoration(
             border: Border.all(
                 width: healthDp(context, 1), color: _border),
@@ -685,7 +692,7 @@ class _WishListScreenState extends State<WishListScreen> {
                       },
                 behavior: HitTestBehavior.opaque,
                 child: AspectRatio(
-                  aspectRatio: 1.4,
+                  aspectRatio: 1.45,
                   child: Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
@@ -722,7 +729,7 @@ class _WishListScreenState extends State<WishListScreen> {
                   top: healthDp(context, 10),
                   left: healthDp(context, 10),
                   right: healthDp(context, 10),
-                  bottom: healthDp(context, 20),
+                  bottom: healthDp(context, 10),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,14 +755,18 @@ class _WishListScreenState extends State<WishListScreen> {
                               fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
+                              height: 1.5,
                             ),
                           ),
-                          SizedBox(height: healthDp(context, 2)),
                           Text(
                             title.isNotEmpty ? title : '제목 없음',
+                            textHeightBehavior: const TextHeightBehavior(
+                              applyHeightToFirstAscent: false,
+                              applyHeightToLastDescent: true,
+                            ),
                             style: TextStyle(
                               color: _textMain,
-                              fontSize: healthSp(context, 16),
+                              fontSize: healthSp(context, 14),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w700,
                               letterSpacing: -1.44,
@@ -767,7 +778,7 @@ class _WishListScreenState extends State<WishListScreen> {
                         ],
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 10)),
+                    SizedBox(height: healthDp(context, 20)),
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -798,7 +809,7 @@ class _WishListScreenState extends State<WishListScreen> {
                                 child: Center(
                                   child: Icon(
                                     Icons.favorite,
-                                    size: healthDp(context, 20),
+                                    size: healthDp(context, 18),
                                     color: const Color(0xFFFF5A8D),
                                   ),
                                 ),
@@ -824,34 +835,46 @@ class _WishListScreenState extends State<WishListScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 
   Widget _buildLoadMoreButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: healthDp(context, 40),
-      child: OutlinedButton(
-        onPressed: _loadMore,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(
-            width: healthDp(context, 0.5),
-            color: const Color(0xFFD2D2D2),
-          ),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(healthDp(context, 10))),
-          backgroundColor: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _loadMore,
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        child: Container(
+          width: double.infinity,
+          height: healthDp(context, 40),
           padding: EdgeInsets.all(healthDp(context, 10)),
-        ),
-        child: Text(
-          '더보기',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _textMuted,
-            fontSize: healthSp(context, 16),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
+          clipBehavior: Clip.antiAlias,
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: healthDp(context, 0.5),
+                color: const Color(0xFFD2D2D2),
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '더보기',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),
