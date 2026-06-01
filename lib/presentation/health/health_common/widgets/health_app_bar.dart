@@ -8,7 +8,7 @@ import '../health_responsive_scale.dart';
 
 /// 건강 화면 공통 AppBar (뒤로가기, 제목, 선택적 액션).
 
-/// 375 기준: AppBar 위 여백 10 + 툴바 28, 제목 세로 패딩 5.
+/// 375 기준: AppBar 위 여백 20 + 툴바 28, 제목 세로 패딩 5.
 
 class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
 
