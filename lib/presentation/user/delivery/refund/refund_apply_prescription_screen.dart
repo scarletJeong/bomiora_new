@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../core/utils/image_url_helper.dart';
-import 'widgets/refund_confirm_popup.dart';
+import '../widgets/consult_confirm_popup.dart';
 import '../widgets/reservation_time_change_popup.dart';
 import 'widgets/refund_apply_photo_utils.dart';
 import '../../../../core/utils/price_formatter.dart';
@@ -196,7 +196,7 @@ class _RefundApplyPrescriptionScreenState extends State<RefundApplyPrescriptionS
 
     if (pick == null || !mounted) return;
 
-    final confirmed = await RefundConfirmPopup.show(
+    final confirmed = await ConsultConfirmPopup.show(
       context,
       reservationDate: pick.date,
       reservationTime: pick.time,
