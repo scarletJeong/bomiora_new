@@ -180,6 +180,52 @@ class DateDisplayFormatter {
     }
   }
 
+  /// 주문 상세 결제일 등 — `2026.04.20 18:14` → `2026.04.20 18:14:00`
+  static String formatDotDateTimeFull(String? raw) {
+    if (raw == null || raw.isEmpty || raw == '-') return '-';
+    final t = raw.trim();
+
+    final withSeconds = RegExp(
+      r'^(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})$',
+    ).firstMatch(t);
+    if (withSeconds != null) {
+      final y = withSeconds.group(1)!;
+      final mo = withSeconds.group(2)!.padLeft(2, '0');
+      final d = withSeconds.group(3)!.padLeft(2, '0');
+      final h = withSeconds.group(4)!.padLeft(2, '0');
+      final mi = withSeconds.group(5)!;
+      final s = withSeconds.group(6)!;
+      return '$y.$mo.$d $h:$mi:$s';
+    }
+
+    final short = RegExp(
+      r'^(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{2})$',
+    ).firstMatch(t);
+    if (short != null) {
+      final y = short.group(1)!;
+      final mo = short.group(2)!.padLeft(2, '0');
+      final d = short.group(3)!.padLeft(2, '0');
+      final h = short.group(4)!.padLeft(2, '0');
+      final mi = short.group(5)!;
+      return '$y.$mo.$d $h:$mi:00';
+    }
+
+    try {
+      final normalized = t.contains('T')
+          ? t
+          : t.replaceFirst(RegExp(r'^(\d{4})\.(\d{1,2})\.(\d{1,2})'), r'$1-$2-$3');
+      final dt = DateTime.parse(normalized);
+      return '${dt.year}.'
+          '${dt.month.toString().padLeft(2, '0')}.'
+          '${dt.day.toString().padLeft(2, '0')} '
+          '${dt.hour.toString().padLeft(2, '0')}:'
+          '${dt.minute.toString().padLeft(2, '0')}:'
+          '${dt.second.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return t;
+    }
+  }
+
   /// 주문 상세 등 `2026.04.20 18:14` 형태 → `2026년 04월 20일 18시 14분`
   static String formatDotDateTimeToKoreanLong(String? raw) {
     if (raw == null || raw.isEmpty || raw == '-') return '-';
