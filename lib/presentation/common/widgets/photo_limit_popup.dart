@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../health/health_common/health_responsive_scale.dart';
 
-/// 리뷰 사진 3장 초과 시 표시하는 안내 다이얼로그
-class ReviewPhotoLimitDialog extends StatelessWidget {
-  const ReviewPhotoLimitDialog({super.key});
+/// 사진 최대 장수 초과 시 표시하는 안내 팝업
+class PhotoLimitPopup extends StatelessWidget {
+  const PhotoLimitPopup({super.key});
 
   static Future<void> show(BuildContext context) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const ReviewPhotoLimitDialog(),
+      builder: (context) => const PhotoLimitPopup(),
     );
   }
 

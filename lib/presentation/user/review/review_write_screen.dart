@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/utils/image_picker_utils.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/models/review/review_model.dart';
@@ -13,7 +14,7 @@ import '../../../data/services/review_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
-import 'review_photo_limit_dialog.dart';
+import '../../common/widgets/photo_limit_popup.dart';
 
 /// 리뷰 첨부 사진 슬롯 (기존 URL 또는 새로 고른 파일)
 class _ReviewDraftImage {
@@ -72,8 +73,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   static const int _maxImageBytes = 5 * 1024 * 1024;
 
   final List<_ReviewDraftImage> _draftImages = [];
-  final ImagePicker _picker = ImagePicker();
-
   bool _isLoading = false;
   bool get _isEditMode => widget.initialReview != null;
 
@@ -162,27 +161,32 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
-  Future<void> _pickImage() async {
+  void _openPhotoSourceDropdown(BuildContext anchorContext) {
     if (_draftImages.length >= _maxImages) {
-      await ReviewPhotoLimitDialog.show(context);
+      PhotoLimitPopup.show(context);
       return;
     }
+    ImagePickerUtils.showPhotoSourceDropdown(
+      context: context,
+      anchorContext: anchorContext,
+      onImageSelected: _applyPickedImage,
+    );
+  }
 
+  Future<void> _applyPickedImage(XFile? image) async {
+    if (image == null || !mounted) return;
+    if (_draftImages.length >= _maxImages) {
+      await PhotoLimitPopup.show(context);
+      return;
+    }
     try {
-      final image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
-      if (image == null || !mounted) return;
-
       final bytes = await image.readAsBytes();
       if (bytes.length > _maxImageBytes) {
         return;
       }
-
       setState(() => _draftImages.add(_ReviewDraftImage(file: image)));
     } catch (e) {
-      print('이미지 선택 오류: $e');
+      debugPrint('이미지 선택 오류: $e');
     }
   }
 
@@ -1018,39 +1022,43 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    InkWell(
-                      onTap: _pickImage,
-                      child: Container(
-                        width: thumb,
-                        height: thumb,
-                        decoration: ShapeDecoration(
-                          color: const Color(0x99D2D2D2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(healthDp(context, 10)),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SvgPicture.asset(
-                              AppAssets.reviewAddPhotoIcon,
-                              width: healthDp(context, 34),
-                              height: healthDp(context, 31),
-                            ),
-                            SizedBox(height: healthDp(context, 4)),
-                            Text(
-                              '사진추가하기',
-                              style: TextStyle(
-                                fontFamily: _kFont,
-                                color: Colors.white,
-                                fontSize: healthSp(context, 10),
-                                fontWeight: FontWeight.w500,
+                    Builder(
+                      builder: (anchorContext) {
+                        return InkWell(
+                          onTap: () => _openPhotoSourceDropdown(anchorContext),
+                          child: Container(
+                            width: thumb,
+                            height: thumb,
+                            decoration: ShapeDecoration(
+                              color: const Color(0x99D2D2D2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(healthDp(context, 10)),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SvgPicture.asset(
+                                  AppAssets.addPhotoIcon,
+                                  width: healthDp(context, 34),
+                                  height: healthDp(context, 31),
+                                ),
+                                SizedBox(height: healthDp(context, 4)),
+                                Text(
+                                  '사진추가하기',
+                                  style: TextStyle(
+                                    fontFamily: _kFont,
+                                    color: Colors.white,
+                                    fontSize: healthSp(context, 10),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     if (_draftImages.isNotEmpty)
                       SizedBox(width: healthDp(context, 5)),
@@ -1233,9 +1241,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         isNegativeReviewText: _negativeController.text.isNotEmpty 
             ? _negativeController.text 
             : null,
-        isMoreReviewText: _moreController.text.isNotEmpty 
-            ? _moreController.text 
-            : null,
+        // 선택 항목 — 빈 문자열로 보내야 수정 시 DB 값을 지울 수 있음
+        isMoreReviewText: _moreController.text.trim(),
         images: imagePaths,
         isPayMthod: 'solo', // 내돈내산
         isOutageNum: _weightLossKg,
