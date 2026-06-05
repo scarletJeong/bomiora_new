@@ -228,57 +228,58 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         appBar: const HealthAppBar(title: '주문 내역'),
         child: Scaffold(
           backgroundColor: Colors.white,
-          body: Column(
-            children: [
-              DeliveryStatusFilterBar(
-                selectedKey: _selectedStatus,
-                onSelected: _selectStatus,
-              ),
-              Expanded(child: _buildOrderList()),
-            ],
-          ),
+          body: _buildBody(),
         ),
       ),
     );
   }
 
-  /// 주문 목록 위젯
-  Widget _buildOrderList() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: _kPink),
-      );
-    }
-
-    if (_displayedOrders.isEmpty) {
-      return _buildEmptyState();
-    }
-
+  Widget _buildBody() {
     return RefreshIndicator(
       onRefresh: _loadOrders,
       color: _kPink,
       child: CustomScrollView(
         controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // 주문 리스트 (padding 적용)
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              healthDp(context, 27),
-              healthDp(context, 10),
-              healthDp(context, 27),
-              healthDp(context, 10),
-            ),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final order = _displayedOrders[index];
-                  return _buildOrderCard(order);
-                },
-                childCount: _displayedOrders.length,
-              ),
+          SliverToBoxAdapter(
+            child: DeliveryStatusFilterBar(
+              selectedKey: _selectedStatus,
+              onSelected: _selectStatus,
             ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 48))),
+          if (_isLoading)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: CircularProgressIndicator(color: _kPink),
+              ),
+            )
+          else if (_displayedOrders.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _buildEmptyStateContent(),
+            )
+          else
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 27),
+                healthDp(context, 10),
+                healthDp(context, 27),
+                healthDp(context, 10),
+              ),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final order = _displayedOrders[index];
+                    return _buildOrderCard(order);
+                  },
+                  childCount: _displayedOrders.length,
+                ),
+              ),
+            ),
+          if (!_isLoading)
+            SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 48))),
         ],
       ),
     );
@@ -758,42 +759,31 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     );
   }
 
-  /// 빈 상태 위젯
-  Widget _buildEmptyState() {
+  Widget _buildEmptyStateContent() {
     final statusText = _selectedStatus == 'all'
         ? '주문'
         : _getStatusText(_selectedStatus);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inbox_outlined,
-                    size: healthDp(context, 64),
-                    color: Colors.grey[400],
-                  ),
-                  SizedBox(height: healthDp(context, 16)),
-                  Text(
-                    '$statusText 내역이 없습니다',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: healthSp(context, 16),
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: healthDp(context, 64),
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          Text(
+            '$statusText 내역이 없습니다',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: healthSp(context, 16),
+              color: Colors.grey[600],
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
