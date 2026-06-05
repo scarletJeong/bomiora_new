@@ -5,8 +5,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../presentation/common/widgets/dropdown_btn.dart';
+import '../../presentation/health/health_common/health_responsive_scale.dart';
+
 class ImagePickerUtils {
   static final ImagePicker _picker = ImagePicker();
+
+  /// 식사·교환/환불 등 사진추가 드롭다운 라벨
+  static const List<String> photoSourceLabels = [
+    '라이브러리에서 선택',
+    '사진찍기',
+    '파일가져오기',
+  ];
 
   /// 이미지 선택 옵션을 보여주는 다이얼로그 (콜백 방식)
   static Future<void> showImageSourceDialog(
@@ -65,7 +75,43 @@ class ImagePickerUtils {
     }
   }
 
-  /// 식사 사진: 라이브러리 / 촬영 / 파일 선택
+  /// [food_input_widgets] 과 동일 — 흰색 반투명 블러 배경 + 앵커 아래 드롭다운
+  static void showPhotoSourceDropdown({
+    required BuildContext context,
+    required BuildContext anchorContext,
+    required void Function(XFile?) onImageSelected,
+    double? menuWidth,
+  }) {
+    DropdownBtn.showMenu(
+      context: context,
+      anchorContext: anchorContext,
+      items: photoSourceLabels,
+      menuWidth: menuWidth ?? healthDp(context, 110),
+      itemFontSizeBase: 10,
+      itemFontFamily: 'Gmarket Sans TTF',
+      itemFontWeight: FontWeight.w300,
+      blurBackdrop: true,
+      blurSigma: 2,
+      backdropOpacity: 0.35,
+      onSelected: (label) async {
+        XFile? image;
+        switch (label) {
+          case '라이브러리에서 선택':
+            image = await pickImageFromGallery();
+            break;
+          case '사진찍기':
+            image = await pickImageFromCamera();
+            break;
+          case '파일가져오기':
+            image = await pickImageFromFile();
+            break;
+        }
+        onImageSelected(image);
+      },
+    );
+  }
+
+  /// 식사 사진: 라이브러리 / 촬영 / 파일 선택 (하단 시트)
   static Future<void> showMealPhotoSourceBottomSheet(
     BuildContext context,
     void Function(XFile?) onImageSelected,
