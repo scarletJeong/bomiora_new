@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/models/delivery/delivery_model.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
@@ -21,14 +25,19 @@ class DeliveryAddressChangePopup extends StatefulWidget {
 class _DeliveryAddressChangePopupState
     extends State<DeliveryAddressChangePopup> {
   static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kInk = Color(0xFF1A1A1A);
+  static const Color _kInk = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kBorder = Color(0xFFD2D2D2);
 
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  final _zip = TextEditingController();
+  final _addr1 = TextEditingController();
+  final _memo = TextEditingController();
+
   bool _isLoading = true;
   bool _isSubmitting = false;
-  List<Map<String, dynamic>> _addresses = [];
-  int? _selectedAddressId;
   String _orderDateText = '-';
   String _orderNumberText = '-';
 
@@ -36,6 +45,24 @@ class _DeliveryAddressChangePopupState
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _zip.dispose();
+    _addr1.dispose();
+    _memo.dispose();
+    super.dispose();
+  }
+
+  static String _formatPostalCodeDisplay(String postalCode) {
+    final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
+    if (t.length == 5) {
+      return '${t.substring(0, 3)}-${t.substring(3)}';
+    }
+    return postalCode.trim();
   }
 
   Future<void> _loadData() async {
@@ -50,318 +77,23 @@ class _DeliveryAddressChangePopupState
       odId: widget.orderId,
       mbId: user.id,
     );
-    final addresses = await AddressService.getAddressList(user.id);
 
     if (!mounted) return;
     if (detailResult['success'] == true) {
       final order = detailResult['order'] as OrderDetailModel;
       _orderDateText = order.orderDate;
       _orderNumberText = order.odId;
+      _name.text = order.recipientName;
+      _phone.text = order.recipientPhone;
+      _addr1.text = order.recipientAddress;
+      if (order.recipientAddressDetail.isNotEmpty) {
+        _addr1.text = '${order.recipientAddress} ${order.recipientAddressDetail}'
+            .trim();
+      }
+      _memo.text = order.deliveryMessage ?? '';
     }
 
-    _addresses = addresses;
-    if (_addresses.isNotEmpty) {
-      final defaultAddress = _addresses.firstWhere(
-        (a) => a['adDefault'] == 1,
-        orElse: () => _addresses.first,
-      );
-      _selectedAddressId = defaultAddress['adId'] as int?;
-    }
     setState(() => _isLoading = false);
-  }
-
-  Future<void> _submit() async {
-    if (_selectedAddressId == null || _isSubmitting) return;
-    setState(() => _isSubmitting = true);
-
-    final user = await AuthService.getUser();
-    if (user == null) {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
-      return;
-    }
-
-    final result = await order_service.OrderService.changeDeliveryAddress(
-      odId: widget.orderId,
-      mbId: user.id,
-      addressId: _selectedAddressId!,
-    );
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
-    Navigator.pop(context, result['success'] == true);
-  }
-
-  Future<void> _openAddressRegister() async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _AddressRegisterDialog(orderId: widget.orderId),
-    );
-    if (result == true && mounted) {
-      setState(() => _isLoading = true);
-      await _loadData();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      type: MaterialType.transparency,
-      child: Center(
-        child: SizedBox(
-          width: 300,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        '배송지 변경',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _kInk,
-                          fontSize: 20,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: InkWell(
-                          onTap: _openAddressRegister,
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 2, vertical: 2),
-                            child: Text(
-                              '+ 새 배송지 등록',
-                              style: TextStyle(
-                                color: _kPink,
-                                fontSize: 12,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: ShapeDecoration(
-                          color: const Color(0x33D2D2D2),
-                          shape: RoundedRectangleBorder(
-                            side: const BorderSide(width: 1, color: _kBorder),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '주문정보',
-                              style: TextStyle(
-                                color: _kInk,
-                                fontSize: 14,
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text('주문일자: $_orderDateText',
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    fontFamily: 'Gmarket Sans TTF')),
-                            const SizedBox(height: 4),
-                            Text('주문번호: $_orderNumberText',
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    fontFamily: 'Gmarket Sans TTF')),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        '배송지 선택',
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: 14,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      if (_isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      else
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 280),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: _addresses.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 6),
-                            itemBuilder: (context, index) {
-                              final a = _addresses[index];
-                              final adId = a['adId'] as int?;
-                              final selected = _selectedAddressId == adId;
-                              final line =
-                                  '${a['adAddr1'] ?? ''} ${a['adAddr2'] ?? ''} ${a['adAddr3'] ?? ''}'
-                                      .trim();
-                              return InkWell(
-                                onTap: adId == null
-                                    ? null
-                                    : () => setState(
-                                        () => _selectedAddressId = adId),
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: selected ? _kPink : _kBorder,
-                                      width: selected ? 1.5 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        a['adSubject']?.toString() ?? '',
-                                        style: const TextStyle(
-                                            fontSize: 13,
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            fontWeight: FontWeight.w700),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${a['adName'] ?? ''} ${a['adHp'] ?? ''}',
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            color: _kMuted),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        line,
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            color: _kInk),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 50,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Material(
-                          color: const Color(0xFFF7F7F7),
-                          child: InkWell(
-                            onTap: () => Navigator.pop(context, false),
-                            child: const Center(
-                              child: Text(
-                                '취소',
-                                style: TextStyle(
-                                  color: _kMuted,
-                                  fontSize: 16,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Material(
-                          color: _kPink,
-                          child: InkWell(
-                            onTap: _isSubmitting ? null : _submit,
-                            child: Center(
-                              child: _isSubmitting
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white),
-                                    )
-                                  : const Text(
-                                      '확인',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AddressRegisterDialog extends StatefulWidget {
-  const _AddressRegisterDialog({required this.orderId});
-  final String orderId;
-
-  @override
-  State<_AddressRegisterDialog> createState() => _AddressRegisterDialogState();
-}
-
-class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
-  static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kInk = Color(0xFF1A1A1A);
-  static const Color _kMuted = Color(0xFF898686);
-  static const Color _kBorder = Color(0xFFD2D2D2);
-
-  final _formKey = GlobalKey<FormState>();
-  final _subject = TextEditingController();
-  final _name = TextEditingController();
-  final _phone = TextEditingController();
-  final _zip = TextEditingController();
-  final _addr1 = TextEditingController();
-  final _addr2 = TextEditingController();
-  final _memo = TextEditingController();
-  bool _saving = false;
-
-  static String _formatPostalCodeDisplay(String postalCode) {
-    final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
-    if (t.length == 5) {
-      return '${t.substring(0, 3)}-${t.substring(3)}';
-    }
-    return postalCode.trim();
   }
 
   Future<void> _openAddressSearch() async {
@@ -371,44 +103,25 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
     final postalCode = (selected['postalCode'] ?? '').toString().trim();
     final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
     final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
-    final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
-
     final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
 
     setState(() {
       _zip.text = _formatPostalCodeDisplay(postalCode);
       _addr1.text = baseAddress;
-      if (_addr2.text.trim().isEmpty && extraAddress.isNotEmpty) {
-        _addr2.text = extraAddress;
-      }
     });
   }
 
-  @override
-  void dispose() {
-    _subject.dispose();
-    _name.dispose();
-    _phone.dispose();
-    _zip.dispose();
-    _addr1.dispose();
-    _addr2.dispose();
-    _memo.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _saving) return;
-    setState(() => _saving = true);
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate() || _isSubmitting) return;
+    setState(() => _isSubmitting = true);
 
     try {
       final user = await AuthService.getUser();
-      if (user == null) {
-        return;
-      }
+      if (user == null) return;
 
-      final payload = {
+      final addResult = await AddressService.addAddress({
         'mbId': user.id,
-        'adSubject': _subject.text.trim(),
+        'adSubject': '배송지변경',
         'adDefault': 0,
         'adName': _name.text.trim(),
         'adTel': _phone.text.trim(),
@@ -416,231 +129,437 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
         'adZip1': _zip.text.trim(),
         'adZip2': '',
         'adAddr1': _addr1.text.trim(),
-        'adAddr2': _addr2.text.trim(),
+        'adAddr2': '',
         'adAddr3': '',
         'adJibeon': '',
         'adMemo': _memo.text.trim(),
-      };
+      });
 
-      final result = await AddressService.addAddress(payload);
+      if (!mounted) return;
+      if (addResult['success'] != true) return;
+
+      final rawData = addResult['data'];
+      int? addressId;
+      if (rawData is Map) {
+        addressId = NodeValueParser.asInt(
+          rawData['adId'] ?? rawData['ad_id'],
+        );
+      }
+      if (addressId == null) return;
+
+      final result = await order_service.OrderService.changeDeliveryAddress(
+        odId: widget.orderId,
+        mbId: user.id,
+        addressId: addressId,
+      );
       if (!mounted) return;
       if (result['success'] == true) {
         Navigator.pop(context, true);
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: Container(
-        width: 300,
-        decoration: const ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-          ),
-          shadows: [
-            BoxShadow(
-              color: Color(0x19000000),
-              blurRadius: 8.14,
-              offset: Offset(0, 0),
-              spreadRadius: 0,
-            ),
-          ],
+  Widget _sectionLabel(BuildContext context, String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: _kMuted,
+        fontSize: healthSp(context, 14),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        height: 1,
+      ),
+    );
+  }
+
+  Widget _inputField(
+    BuildContext context, {
+    required TextEditingController controller,
+    required String hint,
+    bool readOnly = false,
+    String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    final fieldH = healthDp(context, 40);
+    final radius = healthDp(context, 10);
+    final pad = healthDp(context, 10);
+
+    return Container(
+      width: double.infinity,
+      height: fieldH,
+      padding: EdgeInsets.symmetric(horizontal: pad),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+          borderRadius: BorderRadius.circular(radius),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Center(
-                        child: Text(
-                          '새 배송지 등록',
-                          style: TextStyle(
-                            color: _kInk,
-                            fontSize: 20,
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      _field('배송지 이름', _subject, '집'),
-                      const SizedBox(height: 8),
-                      _field('받으시는 분', _name, '홍길동'),
-                      const SizedBox(height: 8),
-                      _field('연락처', _phone, '010-0000-0000'),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 40,
-                        child: ElevatedButton(
-                          onPressed: _openAddressSearch,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _kPink,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text(
-                            '주소 검색',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _field('우편번호', _zip, '우편번호'),
-                      const SizedBox(height: 8),
-                      _field('주소', _addr1, '기본 주소'),
-                      const SizedBox(height: 8),
-                      _field('상세 주소', _addr2, '상세 주소'),
-                      const SizedBox(height: 8),
-                      _field('배송 요청사항', _memo, '요청사항이 있으면 입력', required: false),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 50,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: _saving
-                              ? null
-                              : () => Navigator.pop(context, false),
-                          child: const ColoredBox(
-                            color: Color(0xFFF7F7F7),
-                            child: Center(
-                              child: Text(
-                                '취소',
-                                style: TextStyle(
-                                  color: _kMuted,
-                                  fontSize: 16,
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: _saving ? null : _save,
-                          child: ColoredBox(
-                            color: _kPink,
-                            child: Center(
-                              child: _saving
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
-                                      ),
-                                    )
-                                  : const Text(
-                                      '변경',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+      ),
+      alignment: Alignment.centerLeft,
+      child: TextFormField(
+        controller: controller,
+        readOnly: readOnly,
+        validator: validator,
+        inputFormatters: inputFormatters,
+        style: TextStyle(
+          color: _kInk,
+          fontSize: healthSp(context, 12),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+          height: 1,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: _kMuted,
+            fontSize: healthSp(context, 12),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1,
           ),
+          contentPadding: EdgeInsets.zero,
         ),
       ),
     );
   }
 
-  Widget _field(
-    String label,
-    TextEditingController controller,
-    String hint, {
-    bool required = true,
+  Widget _labeledField(
+    BuildContext context, {
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    bool readOnly = false,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: _kMuted,
-            fontSize: 12,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
+        _sectionLabel(context, label),
+        SizedBox(height: healthDp(context, 5)),
+        _inputField(
+          context,
           controller: controller,
-          validator: (v) {
-            if (!required) return null;
-            if (v == null || v.trim().isEmpty) return '$label 입력해 주세요.';
-            return null;
-          },
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            hintText: hint,
-            hintStyle: const TextStyle(
-              color: _kMuted,
-              fontSize: 12,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _kBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _kBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: _kPink),
-            ),
-          ),
-          style: const TextStyle(
-            color: _kInk,
-            fontSize: 12,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
+          hint: hint,
+          readOnly: readOnly,
+          validator: validator,
         ),
       ],
+    );
+  }
+
+  Widget _orderInfoBox(BuildContext context) {
+    final pad = healthDp(context, 10);
+    final gap5 = healthDp(context, 5);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(pad),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: const Color(0x33D2D2D2),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '주문정보',
+            style: TextStyle(
+              color: _kInk,
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              height: 1,
+            ),
+          ),
+          SizedBox(height: pad),
+          Text(
+            '주문일자: $_orderDateText',
+            style: TextStyle(
+              color: _kInk,
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              height: 1,
+            ),
+          ),
+          SizedBox(height: gap5),
+          Text(
+            '주문번호: $_orderNumberText',
+            style: TextStyle(
+              color: _kInk,
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _addressSection(BuildContext context) {
+    final fieldH = healthDp(context, 40);
+    final gap5 = healthDp(context, 5);
+    final radius = healthDp(context, 10);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel(context, '배송지 주소'),
+        SizedBox(height: gap5),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: _inputField(
+                context,
+                controller: _zip,
+                hint: '우편번호',
+                readOnly: true,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return '주소 검색을 통해 우편번호를 입력해 주세요.';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            SizedBox(width: gap5),
+            InkWell(
+              onTap: _openAddressSearch,
+              borderRadius: BorderRadius.circular(radius),
+              child: Container(
+                height: fieldH,
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 10),
+                  vertical: healthDp(context, 5),
+                ),
+                decoration: ShapeDecoration(
+                  color: _kPink,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '주소 검색',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: gap5),
+        _inputField(
+          context,
+          controller: _addr1,
+          hint: '\'주소 검색\'을 통해 입력됩니다.',
+          readOnly: true,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return '주소 검색을 통해 주소를 입력해 주세요.';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final popupW = healthDp(context, 321);
+    final popupRadius = healthDp(context, 20);
+    final pad20 = healthDp(context, 20);
+    final gap20 = healthDp(context, 20);
+    final btnH = healthDp(context, 50);
+    final maxPopupH = MediaQuery.sizeOf(context).height - healthDp(context, 48);
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: popupW,
+            maxHeight: maxPopupH,
+          ),
+          child: SizedBox(
+            width: popupW,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(popupRadius),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x19000000),
+                      blurRadius: 8.14,
+                      offset: Offset.zero,
+                    ),
+                  ],
+                ),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.only(
+                            top: pad20,
+                            left: pad20,
+                            right: pad20,
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  '배송지 변경',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: _kInk,
+                                    fontSize: healthSp(context, 20),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w700,
+                                    height: 1,
+                                  ),
+                                ),
+                                SizedBox(height: gap20),
+                                if (_isLoading)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: healthDp(context, 24),
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                else ...[
+                                  _orderInfoBox(context),
+                                  SizedBox(height: gap20),
+                                  _labeledField(
+                                    context,
+                                    label: '받으시는 분',
+                                    controller: _name,
+                                    hint: '받으시는 분',
+                                    validator: (v) {
+                                      if (v == null || v.trim().isEmpty) {
+                                        return '받으시는 분을 입력해 주세요.';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  SizedBox(height: gap20),
+                                  _labeledField(
+                                    context,
+                                    label: '연락처',
+                                    controller: _phone,
+                                    hint: '010-0000-0000',
+                                    validator: (v) {
+                                      if (v == null || v.trim().isEmpty) {
+                                        return '연락처를 입력해 주세요.';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  SizedBox(height: gap20),
+                                  _addressSection(context),
+                                  SizedBox(height: gap20),
+                                  _labeledField(
+                                    context,
+                                    label: '배송 요청사항',
+                                    controller: _memo,
+                                    hint: '요청사항이 있으시면 입력해주세요.',
+                                  ),
+                                ],
+                                SizedBox(height: pad20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: btnH,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Material(
+                                color: const Color(0xFFF7F7F7),
+                                child: InkWell(
+                                  onTap: _isSubmitting
+                                      ? null
+                                      : () => Navigator.pop(context, false),
+                                  child: Center(
+                                    child: Text(
+                                      '취소',
+                                      style: TextStyle(
+                                        color: _kMuted,
+                                        fontSize: healthSp(context, 16),
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w500,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Material(
+                                color: _kPink,
+                                child: InkWell(
+                                  onTap: _isSubmitting ? null : _submit,
+                                  child: Center(
+                                    child: _isSubmitting
+                                        ? SizedBox(
+                                            width: healthDp(context, 20),
+                                            height: healthDp(context, 20),
+                                            child: const CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
+                                            '변경',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: healthSp(context, 16),
+                                              fontFamily: 'Gmarket Sans TTF',
+                                              fontWeight: FontWeight.w500,
+                                              height: 1,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
     );
   }
 }

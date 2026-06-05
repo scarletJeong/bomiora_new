@@ -1,20 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/shop_default/reservation_settings_model.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart' as order_service;
 import '../../../../data/services/shop_default_service.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+
+/// [ReservationTimeChangePopup.pickOnly] true 시 API 없이 선택만 반환
+class ReservationPickResult {
+  final DateTime date;
+  final String time;
+
+  const ReservationPickResult({required this.date, required this.time});
+}
 
 class ReservationTimeChangePopup extends StatefulWidget {
   final String orderId;
   final String currentDate;
   final String currentTime;
 
+  /// true: 예약 변경 API 호출 없이 날짜·시간만 반환 (교환/환불 상담 예약 등)
+  final bool pickOnly;
+  final String title;
+  final String confirmLabel;
+
   const ReservationTimeChangePopup({
     super.key,
     required this.orderId,
     required this.currentDate,
     required this.currentTime,
+    this.pickOnly = false,
+    this.title = '예약시간 변경',
+    this.confirmLabel = '변경',
   });
 
   @override
@@ -76,52 +96,148 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
     return '$label $h12:$minute';
   }
 
-  Widget _buildSelectedReservationPreviewCard() {
-    if (_selectedDate == null || _selectedTime == null) return const SizedBox.shrink();
+  static const List<String> _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
+
+  bool _isSameCalendarDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  TextStyle _dayChipTextStyle(
+    BuildContext context, {
+    required Color color,
+    required double fontSize,
+    required FontWeight fontWeight,
+  }) {
+    return TextStyle(
+      color: color,
+      fontSize: healthSp(context, fontSize),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: fontWeight,
+      height: 1,
+    );
+  }
+
+  Widget _buildDayChip(BuildContext context, DateTime d, DateTime todayBase, bool selected) {
+    final isToday = _isSameCalendarDay(d, todayBase);
+    final ink = selected ? _kPink : _kInk;
+    final chipH = healthDp(context, 54);
+    final chipRadius = healthDp(context, 18.33);
+    final dayWeekdayGap = healthDp(context, 5);
+    final decoration = BoxDecoration(
+      color: selected ? const Color(0x0CFF5A8D) : Colors.white,
+      border: Border.all(
+        width: healthDp(context, 1),
+        color: selected ? _kPink : _kBorder,
+      ),
+      borderRadius: BorderRadius.circular(chipRadius),
+    );
+
+    if (isToday) {
+      return Container(
+        width: healthDp(context, 32),
+        height: chipH,
+        clipBehavior: Clip.antiAlias,
+        decoration: decoration,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '오늘',
+              style: _dayChipTextStyle(context, color: ink, fontSize: 10, fontWeight: FontWeight.w300),
+            ),
+            SizedBox(height: healthDp(context, 2)),
+            Text(
+              '${d.day}',
+              style: _dayChipTextStyle(context, color: ink, fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+            SizedBox(height: healthDp(context, 2)),
+            Text(
+              _weekdayLabels[d.weekday - 1],
+              style: _dayChipTextStyle(context, color: ink, fontSize: 10, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: healthDp(context, 32),
+      height: chipH,
+      clipBehavior: Clip.antiAlias,
+      decoration: decoration,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '${d.day}',
+            style: _dayChipTextStyle(context, color: ink, fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: dayWeekdayGap),
+          Text(
+            _weekdayLabels[d.weekday - 1],
+            style: _dayChipTextStyle(context, color: ink, fontSize: 10, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedReservationPreviewCard(BuildContext context) {
+    if (_selectedDate == null) return const SizedBox.shrink();
     final d = _selectedDate!;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
+          SvgPicture.asset(
+            AppAssets.reservationCalendarIcon,
+            width: healthDp(context, 18),
+            height: healthDp(context, 20),
+          ),
+          SizedBox(height: healthDp(context, 5)),
+          Text(
             '진료 예약일자',
             style: TextStyle(
               color: _kInk,
-              fontSize: 12,
+              fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           Text(
             _formatYmdWeekdayParen(d),
-            style: const TextStyle(
+            style: TextStyle(
               color: _kPink,
-              fontSize: 14,
+              fontSize: healthSp(context, 14),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w700,
+              height: 1,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            _formatMeridiemTime(_selectedTime!),
-            style: const TextStyle(
-              color: _kInk,
-              fontSize: 14,
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+          if (_selectedTime != null) ...[
+            SizedBox(height: healthDp(context, 5)),
+            Text(
+              _formatMeridiemTime(_selectedTime!),
+              style: TextStyle(
+                color: _kInk,
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                height: 1,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -180,6 +296,15 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
 
   Future<void> _submit() async {
     if (_selectedDate == null || _selectedTime == null || _isSubmitting) return;
+
+    if (widget.pickOnly) {
+      Navigator.pop(
+        context,
+        ReservationPickResult(date: _selectedDate!, time: _selectedTime!),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final user = await AuthService.getUser();
@@ -209,183 +334,230 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
     final days = List.generate(7, (i) => base.add(Duration(days: i)));
     final times = _selectedDate == null ? <String>[] : _timesFor(_selectedDate!);
 
+    final popupW = healthDp(context, 332);
+    final popupRadius = healthDp(context, 20);
+    final pad20 = healthDp(context, 20);
+    final pad10 = healthDp(context, 10);
+    final gap5 = healthDp(context, 5);
+    final chipListH = healthDp(context, 54);
+    final btnH = healthDp(context, 50);
+    final maxPopupH = MediaQuery.sizeOf(context).height - healthDp(context, 48);
+
     return Material(
       type: MaterialType.transparency,
       child: Center(
-        child: SizedBox(
-          width: 332,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        '예약시간 변경',
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: popupW,
+            maxHeight: maxPopupH,
+          ),
+          child: SizedBox(
+            width: popupW,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(popupRadius),
+              child: Material(
+                color: Colors.white,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.only(top: pad20, left: pad20, right: pad20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                      Text(
+                        widget.title,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: _kInk,
-                          fontSize: 20,
+                          fontSize: healthSp(context, 20),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: pad20),
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: EdgeInsets.all(pad10),
                         decoration: ShapeDecoration(
                           color: const Color(0x33D2D2D2),
                           shape: RoundedRectangleBorder(
-                            side: const BorderSide(width: 1, color: _kBorder),
-                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+                            borderRadius: BorderRadius.circular(healthDp(context, 10)),
                           ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('예약정보', style: TextStyle(fontSize: 14, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w500)),
-                            const SizedBox(height: 8),
-                            Text('예약번호: ${widget.orderId}', style: const TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF')),
-                            const SizedBox(height: 4),
+                            Text(
+                              '예약정보',
+                              style: TextStyle(
+                                fontSize: healthSp(context, 14),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: pad10),
+                            Text(
+                              '예약번호: ${widget.orderId}',
+                              style: TextStyle(
+                                fontSize: healthSp(context, 10),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                                color: _kInk,
+                              ),
+                            ),
+                            SizedBox(height: gap5),
                             Text(
                               '예약일자: ${DateDisplayFormatter.formatKoreanDateFromString(widget.currentDate)}',
-                              style: const TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF'),
+                              style: TextStyle(
+                                fontSize: healthSp(context, 10),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w300,
+                                color: _kInk,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildSelectedReservationPreviewCard(),
-                      const SizedBox(height: 12),
-                      const Text(
-                        '변경할 예약 날짜 선택',
-                        style: TextStyle(color: _kMuted, fontSize: 14, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w500),
+                      SizedBox(height: pad20),
+                      _buildSelectedReservationPreviewCard(context),
+                      SizedBox(height: pad20),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            '새 예약일자 선택',
+                            style: TextStyle(
+                              color: _kMuted,
+                              fontSize: healthSp(context, 14),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '*최대 7일 이내 선택 가능',
+                            style: TextStyle(
+                              color: _kMuted,
+                              fontSize: healthSp(context, 10),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                              height: 2.20,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: gap5),
                       SizedBox(
-                        height: 54,
+                        height: chipListH,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: days.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 6),
-                          itemBuilder: (context, i) {
+                          separatorBuilder: (_, __) => SizedBox(width: pad10),
+                          itemBuilder: (ctx, i) {
                             final d = days[i];
-                            final selected = _selectedDate != null &&
-                                d.year == _selectedDate!.year &&
-                                d.month == _selectedDate!.month &&
-                                d.day == _selectedDate!.day;
-                            const w = ['월', '화', '수', '목', '금', '토', '일'];
+                            final selected = _selectedDate != null && _isSameCalendarDay(d, _selectedDate!);
                             return InkWell(
                               onTap: () => setState(() {
                                 _selectedDate = d;
                                 _selectedTime = null;
                               }),
-                              child: Container(
-                                width: 40,
-                                decoration: BoxDecoration(
-                                  color: selected ? const Color(0x0CFF5A8D) : Colors.white,
-                                  border: Border.all(color: selected ? _kPink : _kBorder),
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text('${d.day}', style: TextStyle(fontSize: 12, fontFamily: 'Gmarket Sans TTF', color: selected ? _kPink : _kInk, fontWeight: FontWeight.w700)),
-                                    Text(w[d.weekday - 1], style: TextStyle(fontSize: 10, fontFamily: 'Gmarket Sans TTF', color: selected ? _kPink : _kInk, fontWeight: FontWeight.w500)),
-                                  ],
-                                ),
-                              ),
+                              child: _buildDayChip(context, d, base, selected),
                             );
                           },
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      const Text(
+                      SizedBox(height: pad20),
+                      Text(
                         '시간 선택',
-                        style: TextStyle(color: _kMuted, fontSize: 14, fontFamily: 'Gmarket Sans TTF', fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: _kMuted,
+                          fontSize: healthSp(context, 14),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 10),
                       if (_selectedDate == null)
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 8),
+                        Padding(
+                          padding: EdgeInsets.only(bottom: healthDp(context, 10)),
                           child: Text(
                             '먼저 날짜를 선택해주세요.',
                             style: TextStyle(
                               color: _kMuted,
-                              fontSize: 11,
+                              fontSize: healthSp(context, 11),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w400,
                             ),
                           ),
                         ),
                       if (_isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(child: CircularProgressIndicator()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: healthDp(context, 16)),
+                          child: const Center(child: CircularProgressIndicator()),
                         )
                       else
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 210),
-                          child: GridView.builder(
-                            shrinkWrap: true,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              mainAxisSpacing: 5,
-                              crossAxisSpacing: 5,
-                              childAspectRatio: 2.2,
-                            ),
-                            itemCount: times.length,
-                            itemBuilder: (context, i) {
-                              final t = times[i];
-                              final selected = t == _selectedTime;
-                              return InkWell(
-                                onTap: () => setState(() => _selectedTime = t),
-                                child: Container(
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: selected ? const Color(0x0CFF5A8D) : Colors.white,
-                                    border: Border.all(color: selected ? _kPink : _kBorder),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    t,
-                                    style: TextStyle(
-                                      color: selected ? _kPink : _kInk,
-                                      fontSize: 12,
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
+                          constraints: BoxConstraints(maxHeight: healthDp(context, 210)),
+                          child: SingleChildScrollView(
+                            child: Wrap(
+                              spacing: pad10,
+                              runSpacing: pad10,
+                              children: times.map((t) {
+                                final selected = t == _selectedTime;
+                                return SizedBox(
+                                  width: healthDp(context, 62.8),
+                                  height: healthDp(context, 34),
+                                  child: InkWell(
+                                    onTap: () => setState(() => _selectedTime = t),
+                                    child: Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: selected ? const Color(0x0CFF5A8D) : Colors.white,
+                                        border: Border.all(
+                                          width: healthDp(context, 1),
+                                          color: selected ? _kPink : _kBorder,
+                                        ),
+                                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                                      ),
+                                      child: Text(
+                                        t,
+                                        style: TextStyle(
+                                          color: selected ? _kPink : _kInk,
+                                          fontSize: healthSp(context, 12),
+                                          fontFamily: 'Gmarket Sans TTF',
+                                          fontWeight: FontWeight.w500,
+                                          height: 1,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 50,
-                  child: Row(
+                      SizedBox(height: pad20),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: btnH,
+                      child: Row(
                     children: [
                       Expanded(
                         child: Material(
                           color: const Color(0xFFF7F7F7),
                           child: InkWell(
                             onTap: () => Navigator.pop(context, false),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 '취소',
                                 style: TextStyle(
                                   color: _kMuted,
-                                  fontSize: 16,
+                                  fontSize: healthSp(context, 16),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -401,16 +573,16 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
                             onTap: (_selectedDate != null && _selectedTime != null && !_isSubmitting) ? _submit : null,
                             child: Center(
                               child: _isSubmitting
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  ? SizedBox(
+                                      width: healthDp(context, 20),
+                                      height: healthDp(context, 20),
+                                      child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                     )
-                                  : const Text(
-                                      '변경',
+                                  : Text(
+                                      widget.confirmLabel,
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 16,
+                                        fontSize: healthSp(context, 16),
                                         fontFamily: 'Gmarket Sans TTF',
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -419,14 +591,16 @@ class _ReservationTimeChangePopupState extends State<ReservationTimeChangePopup>
                           ),
                         ),
                       ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    ),
     );
   }
 }

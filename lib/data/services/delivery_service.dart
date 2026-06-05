@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import '../models/delivery/delivery_model.dart';
 import '../../core/network/api_client.dart';
@@ -126,11 +127,20 @@ class OrderService {
   static Future<Map<String, dynamic>> cancelOrder({
     required String odId,
     required String mbId,
+    String? refundBank,
+    String? refundAccount,
+    String? refundHolder,
   }) async {
     try {
+      final body = <String, dynamic>{'mbId': mbId};
+      if (refundBank != null && refundBank.trim().isNotEmpty) {
+        body['refundBank'] = refundBank.trim();
+        body['refundAccount'] = refundAccount?.trim();
+        body['refundHolder'] = refundHolder?.trim();
+      }
       final response = await ApiClient.post(
         '/api/orders/$odId/cancel',
-        {'mbId': mbId},
+        body,
       );
 
       if (response.statusCode == 200) {

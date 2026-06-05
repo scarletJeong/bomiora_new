@@ -1,11 +1,86 @@
 import 'package:flutter/material.dart';
+
+import '../../../../data/models/delivery/delivery_model.dart';
+import '../../../../data/services/delivery_service.dart';
+import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/confirm_dialog.dart';
+import 'refund_account_popup.dart';
 
 /// 주문 취소 / 수령 확인 등 주문 플로우용 다이얼로그.
 class OrderFlowDialogs {
   OrderFlowDialogs._();
 
   static const Color _kPink = Color(0xFFFF5A8D);
+
+  static bool _isVirtualAccountPayment(String paymentMethod) {
+    return paymentMethod.contains('가상');
+  }
+
+  static Future<String> _resolvePaymentMethod({
+    required String odId,
+    required String mbId,
+    OrderDetailModel? orderDetail,
+  }) async {
+    final fromDetail = orderDetail?.paymentMethod ?? '';
+    if (fromDetail.isNotEmpty) return fromDetail;
+
+    final detailResult = await OrderService.getOrderDetail(
+      odId: odId,
+      mbId: mbId,
+    );
+    if (detailResult['success'] == true && detailResult['order'] is OrderDetailModel) {
+      return (detailResult['order'] as OrderDetailModel).paymentMethod;
+    }
+    return '';
+  }
+
+  /// 가상계좌: 환불계좌 입력 → 취소 확인 → API 취소. 그 외: 취소 확인 → API 취소. 성공 시 true.
+  static Future<bool> runOrderCancelFlow(
+    BuildContext context, {
+    required String odId,
+    required String mbId,
+    OrderDetailModel? orderDetail,
+  }) async {
+    final paymentMethod = await _resolvePaymentMethod(
+      odId: odId,
+      mbId: mbId,
+      orderDetail: orderDetail,
+    );
+
+    RefundAccountInput? refundInput;
+    if (_isVirtualAccountPayment(paymentMethod)) {
+      if (!context.mounted) return false;
+      refundInput = await RefundAccountPopup.show(context, mbId: mbId);
+      if (refundInput == null) return false;
+
+      await RefundAccountService.save(
+        mbId: mbId,
+        refundBank: refundInput.bank,
+        refundAccountDigits: refundInput.accountDigits,
+        refundHolder: refundInput.holder,
+      );
+    }
+
+    if (!context.mounted) return false;
+    final confirmed = await showOrderCancelConfirm(context);
+    if (confirmed != true) return false;
+
+    final result = await OrderService.cancelOrder(
+      odId: odId,
+      mbId: mbId,
+      refundBank: refundInput?.bank,
+      refundAccount: refundInput?.accountDigits,
+      refundHolder: refundInput?.holder,
+    );
+
+    if (!context.mounted) return false;
+    if (result['success'] == true) {
+      await showOrderCancelSuccess(context);
+      return true;
+    }
+
+    return false;
+  }
 
   /// 1단계: 취소 확인 → true == 확인
   static Future<bool> showOrderCancelConfirm(BuildContext context) {

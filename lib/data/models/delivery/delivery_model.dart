@@ -230,6 +230,10 @@ class OrderDetailModel {
   final bool isPrescriptionOrder;
   final String paymentMethod;
   final String? paymentMethodDetail;
+  /// KCP 거래번호 (`od_tno`) — 영수증 URL 등
+  final String? odTno;
+  /// 카드 승인번호 (`od_app_no`)
+  final String? odAppNo;
   /// 가상계좌 등 원문 `od_bank_account` (은행/계좌/입금기한)
   final String? odBankAccount;
   /// 카드 매출전표/영수증 URL (백엔드가 내려주는 경우)
@@ -240,7 +244,8 @@ class OrderDetailModel {
   final String? cancelReason;
   final String? cancelType;
   final String? reservationDate; // 예약 날짜 (hp_rsvt_date)
-  final String? reservationTime; // 예약 시간 (hp_rsvt_stime)
+  final String? reservationTime; // 예약 시작 (hp_rsvt_stime)
+  final String? reservationEndTime; // 예약 종료 (hp_rsvt_etime)
 
   OrderDetailModel({
     required this.odId,
@@ -264,6 +269,8 @@ class OrderDetailModel {
     this.isPrescriptionOrder = false,
     required this.paymentMethod,
     this.paymentMethodDetail,
+    this.odTno,
+    this.odAppNo,
     this.odBankAccount,
     this.cardReceiptUrl,
     required this.ordererName,
@@ -273,6 +280,7 @@ class OrderDetailModel {
     this.cancelType,
     this.reservationDate,
     this.reservationTime,
+    this.reservationEndTime,
   });
 
   factory OrderDetailModel.fromJson(Map<dynamic, dynamic> json) {
@@ -325,6 +333,8 @@ class OrderDetailModel {
       isPrescriptionOrder: topLevelPrescription || inferredPrescription,
       paymentMethod: NodeValueParser.asString(normalized['paymentMethod']) ?? '',
       paymentMethodDetail: NodeValueParser.asString(normalized['paymentMethodDetail']),
+      odTno: NodeValueParser.asString(normalized['odTno'] ?? normalized['od_tno']),
+      odAppNo: NodeValueParser.asString(normalized['odAppNo'] ?? normalized['od_app_no']),
       odBankAccount: NodeValueParser.asString(normalized['odBankAccount'] ?? normalized['od_bank_account']),
       cardReceiptUrl: receiptUrl,
       ordererName: NodeValueParser.asString(normalized['ordererName']) ?? '',
@@ -334,6 +344,9 @@ class OrderDetailModel {
       cancelType: NodeValueParser.asString(normalized['cancelType']),
       reservationDate: NodeValueParser.asString(normalized['reservationDate']),
       reservationTime: NodeValueParser.asString(normalized['reservationTime']),
+      reservationEndTime: NodeValueParser.asString(
+        normalized['reservationEndTime'] ?? normalized['reservation_end_time'],
+      ),
     );
   }
 
@@ -360,6 +373,8 @@ class OrderDetailModel {
       'isPrescriptionOrder': isPrescriptionOrder,
       'paymentMethod': paymentMethod,
       'paymentMethodDetail': paymentMethodDetail,
+      'odTno': odTno,
+      'odAppNo': odAppNo,
       'odBankAccount': odBankAccount,
       'cardReceiptUrl': cardReceiptUrl,
       'ordererName': ordererName,
@@ -369,6 +384,7 @@ class OrderDetailModel {
       'cancelType': cancelType,
       'reservationDate': reservationDate,
       'reservationTime': reservationTime,
+      'reservationEndTime': reservationEndTime,
     };
   }
 }
