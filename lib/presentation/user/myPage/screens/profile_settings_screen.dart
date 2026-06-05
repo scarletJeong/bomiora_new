@@ -39,6 +39,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   static const String _contactOtpPurpose = 'profile_phone';
   String _originalPhoneDigits = '';
+  String _originalNickname = '';
+  static const int _nicknameChangeIntervalMonths = 6;
   String? _contactOtpToken;
   bool _contactPhoneVerified = true;
   bool _contactOtpSending = false;
@@ -79,7 +81,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final phone = (user?.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
     setState(() {
       _currentUser = user;
-      _nicknameController.text = user?.nickname ?? '';
+      _originalNickname = user?.nickname ?? '';
+      _nicknameController.text = _originalNickname;
 
       if (phone.length >= 10) {
         _phone1Controller.text = phone.substring(0, 3);
@@ -121,6 +124,159 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   static String _digitsOnly(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+
+  DateTime? _parseNicknameChangedAt(String? raw) {
+    final text = (raw ?? '').trim();
+    if (text.isEmpty || text.startsWith('0000-00-00')) return null;
+    final iso = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(text);
+    if (iso != null) {
+      final y = int.tryParse(iso.group(1)!);
+      final m = int.tryParse(iso.group(2)!);
+      final d = int.tryParse(iso.group(3)!);
+      if (y != null && m != null && d != null) {
+        return DateTime(y, m, d);
+      }
+    }
+    final digits = text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length < 8) return null;
+    final y = int.tryParse(digits.substring(0, 4));
+    final m = int.tryParse(digits.substring(4, 6));
+    final d = int.tryParse(digits.substring(6, 8));
+    if (y == null || m == null || d == null) return null;
+    return DateTime(y, m, d);
+  }
+
+  DateTime? get _nextNicknameChangeDate {
+    final last = _parseNicknameChangedAt(_currentUser?.nicknameChangedAt);
+    if (last == null) return null;
+    return DateTime(last.year, last.month + _nicknameChangeIntervalMonths, last.day);
+  }
+
+  bool _canChangeNicknameNow() {
+    final next = _nextNicknameChangeDate;
+    if (next == null) return true;
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final nextDate = DateTime(next.year, next.month, next.day);
+    return !todayDate.isBefore(nextDate);
+  }
+
+  bool get _nicknameChanged =>
+      _nicknameController.text.trim() != _originalNickname.trim();
+
+  String _formatYmdDot(DateTime date) {
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '${date.year}.$m.$d';
+  }
+
+  Future<void> _showNicknameChangeLimitDialog({String? nextChangeDate}) async {
+    final parsedNext = nextChangeDate != null && nextChangeDate.isNotEmpty
+        ? _parseNicknameChangedAt(nextChangeDate) ??
+            DateTime.tryParse(nextChangeDate)
+        : _nextNicknameChangeDate;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        const kInk = Color(0xFF1A1A1E);
+        const kMuted = Color(0xFF898686);
+        const kPink = Color(0xFFFF5A8D);
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: EdgeInsets.symmetric(horizontal: healthDp(ctx, 24)),
+          child: Container(
+            width: healthDp(ctx, 272),
+            padding: EdgeInsets.all(healthDp(ctx, 20)),
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(ctx, 20)),
+              ),
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 8.14,
+                  offset: Offset.zero,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '닉네임 변경 제한',
+                  style: TextStyle(
+                    color: kInk,
+                    fontSize: healthSp(ctx, 20),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: healthDp(ctx, 20)),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '닉네임은 6개월에 1번만 변경할 수 있습니다.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: kMuted,
+                        fontSize: healthSp(ctx, 14),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        height: 1.57,
+                      ),
+                    ),
+                    if (parsedNext != null) ...[
+                      SizedBox(height: healthDp(ctx, 8)),
+                      Text(
+                        '다음 변경 가능일: ${_formatYmdDot(parsedNext)}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: kMuted,
+                          fontSize: healthSp(ctx, 14),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                          height: 1.57,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                SizedBox(height: healthDp(ctx, 20)),
+                SizedBox(
+                  width: double.infinity,
+                  height: healthDp(ctx, 40),
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: kPink,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
+                      ),
+                    ),
+                    child: Text(
+                      '확인',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(ctx, 16),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   String _formatPhoneForApi(String phoneDigits) {
     if (phoneDigits.length == 11) {
@@ -281,6 +437,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (_passwordMismatch) {
       return;
     }
+
+    if (_nicknameChanged && !_canChangeNicknameNow()) {
+      await _showNicknameChangeLimitDialog();
+      _nicknameController.text = _originalNickname;
+      return;
+    }
     
     try {
       final phone = _enteredPhoneDigits;
@@ -296,6 +458,27 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       );
       
       if (!mounted) return;
+
+      if (result['success'] != true) {
+        if (result['code'] == 'NICKNAME_CHANGE_TOO_SOON') {
+          await _showNicknameChangeLimitDialog(
+            nextChangeDate: result['nextChangeDate']?.toString(),
+          );
+          _nicknameController.text = _originalNickname;
+          if (mounted) setState(() {});
+        }
+        return;
+      }
+
+      // 프로필 저장 직후 로컬 사용자·닉네임 잠금 상태 반영
+      final refreshed = await AuthService.getUser();
+      if (mounted && refreshed != null) {
+        setState(() {
+          _currentUser = refreshed;
+          _originalNickname = refreshed.nickname ?? '';
+          _nicknameController.text = _originalNickname;
+        });
+      }
       
       if (result['success'] == true) {
         final newPw = _newPasswordController.text.trim();
@@ -447,30 +630,53 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ),
           ),
           SizedBox(height: healthDp(context, 5)),
-          _InputBox(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: TextField(
-              controller: _nicknameController,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isCollapsed: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: '닉네임을 입력해 주세요',
-                hintStyle: TextStyle(
-                  color: Color(0xFF898686),
-                  fontSize: healthSp(context, 12),
-                  fontWeight: FontWeight.w500,
-                  height: 1,
+          GestureDetector(
+            onTap: !_canChangeNicknameNow()
+                ? () => _showNicknameChangeLimitDialog()
+                : null,
+            child: AbsorbPointer(
+              absorbing: !_canChangeNicknameNow(),
+              child: _InputBox(
+                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                child: TextField(
+                  controller: _nicknameController,
+                  readOnly: !_canChangeNicknameNow(),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '닉네임을 입력해 주세요',
+                    hintStyle: TextStyle(
+                      color: Color(0xFF898686),
+                      fontSize: healthSp(context, 12),
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                    ),
+                  ),
+                  style: TextStyle(
+                    color: !_canChangeNicknameNow()
+                        ? const Color(0xFF898686)
+                        : Colors.black,
+                    fontSize: healthSp(context, 16),
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
                 ),
               ),
+            ),
+          ),
+          if (!_canChangeNicknameNow() && _nextNicknameChangeDate != null) ...[
+            SizedBox(height: healthDp(context, 6)),
+            Text(
+              '닉네임은 6개월에 1번 변경할 수 있습니다. \n(다음 변경: ${_formatYmdDot(_nextNicknameChangeDate!)})',
               style: TextStyle(
-                color: Colors.black,
-                fontSize: healthSp(context, 16),
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 11),
                 fontWeight: FontWeight.w500,
                 height: 1,
               ),
             ),
-          ),
+          ],
           SizedBox(height: healthDp(context, 14)),
 
           Text(
