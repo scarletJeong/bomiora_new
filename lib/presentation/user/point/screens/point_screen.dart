@@ -24,6 +24,13 @@ class _PointScreenState extends State<PointScreen> {
   int _displayCount = 10; // 처음에 보여줄 개수
   bool _isLoading = true;
 
+  static const Color _pink = Color(0xFFFF5A8D);
+  static const Color _border = Color(0x7FD2D2D2);
+  static const Color _textMain = Color(0xFF1A1A1A);
+  static const Color _textSub = Color(0xFF898686);
+  static const Color _warnRed = Color(0xFFEF4444);
+  static const Color _loadMoreBorder = Color(0xFFD2D2D2);
+
   @override
   void initState() {
     super.initState();
@@ -114,20 +121,18 @@ class _PointScreenState extends State<PointScreen> {
         child: DefaultTextStyle.merge(
           style: const TextStyle(
             fontFamily: 'Gmarket Sans TTF',
-            color: Color(0xFF1A1A1A),
+            color: _textMain,
           ),
           child: MobileAppLayoutWrapper(
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '포인트',
-              titleFontSize: healthSp(context, 18),
+              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFFF5A8D),
-                    ),
+                    child: CircularProgressIndicator(color: _pink),
                   )
                 : _buildContent(),
           ),
@@ -184,11 +189,14 @@ class _PointScreenState extends State<PointScreen> {
     final pointText = PointService.formatPoint(_currentPoint ?? 0);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 5, bottom: 10),
+      padding: EdgeInsets.only(
+        top: healthDp(context, 0),
+        bottom: healthDp(context, 10),
+      ),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
-          borderRadius: BorderRadius.circular(7),
+          side: BorderSide(width: healthDp(context, 1), color: _border),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Column(
@@ -200,10 +208,15 @@ class _PointScreenState extends State<PointScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SvgPicture.asset(
-                    AppAssets.pointIcon,
-                    width: 80,
-                    height: 80,
+                  SizedBox(
+                    width: healthDp(context, 106),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        AppAssets.pointIcon,
+                        width: healthDp(context, 80),
+                        height: healthDp(context, 80),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -215,16 +228,16 @@ class _PointScreenState extends State<PointScreen> {
               Text(
                 '포인트',
                 style: TextStyle(
-                  color: Color(0xFF1A1A1A),
+                  color: _textMain,
                   fontSize: healthSp(context, 14),
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(width: 2),
+              SizedBox(width: healthDp(context, 2)),
               Text(
                 pointText,
                 style: TextStyle(
-                  color: Color(0xFFFF5A8D),
+                  color: _pink,
                   fontSize: healthSp(context, 14),
                   fontWeight: FontWeight.w700,
                 ),
@@ -243,27 +256,30 @@ class _PointScreenState extends State<PointScreen> {
         Text(
           '*100P = 100원 입니다.(1P = 1원)',
           style: TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: healthSp(context, 12),
+            color: _textMain,
+            fontSize: healthSp(context, 10),
             fontWeight: FontWeight.w300,
+            height: 1.35,
           ),
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: healthDp(context, 5)),
         Text(
           '*2025년 8월 8일 이후 지급된 포인트는 지급일자 기준으로\n 1년 후 자동소멸됩니다.',
           style: TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontSize: healthSp(context, 12),
+            color: _textMain,
+            fontSize: healthSp(context, 10),
             fontWeight: FontWeight.w300,
+            height: 1.35,
           ),
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: healthDp(context, 5)),
         Text(
           '*할인 적용 및 프로모션 페이지를 통한 결제 시 \n 포인트 사용이 불가합니다.(중복 할인 불가) ',
           style: TextStyle(
-            color: Color(0xFFEF4444),
-            fontSize: healthSp(context, 12),
+            color: _warnRed,
+            fontSize: healthSp(context, 10),
             fontWeight: FontWeight.w300,
+            height: 1.3,
           ),
         ),
       ],
@@ -276,14 +292,14 @@ class _PointScreenState extends State<PointScreen> {
     final amountText = '${sign}${PointService.formatPoint(changeAmount.abs())}p';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
       child: Container(
-        padding: const EdgeInsets.all(15),
+        padding: EdgeInsets.all(healthDp(context, 15)),
         decoration: ShapeDecoration(
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1, color: Color(0x7FD2D2D2)),
-            borderRadius: BorderRadius.circular(7),
+            side: BorderSide(width: healthDp(context, 1), color: _border),
+            borderRadius: BorderRadius.circular(healthDp(context, 7)),
           ),
         ),
         child: Column(
@@ -296,7 +312,7 @@ class _PointScreenState extends State<PointScreen> {
                 Text(
                   history.formattedDate,
                   style: TextStyle(
-                    color: Color(0xFF1A1A1A),
+                    color: _textMain,
                     fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w500,
                   ),
@@ -304,16 +320,16 @@ class _PointScreenState extends State<PointScreen> {
                 Text(
                   '만료 : ${history.formattedExpireDate}',
                   style: TextStyle(
-                    color: Color(0xFF898686),
+                    color: _textSub,
                     fontSize: healthSp(context, 10),
                     fontWeight: FontWeight.w300,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Container(height: 1, color: const Color(0x7FD2D2D2)),
-            const SizedBox(height: 10),
+            SizedBox(height: healthDp(context, 8)),
+            Container(height: healthDp(context, 1), color: _border),
+            SizedBox(height: healthDp(context, 8)),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -321,18 +337,18 @@ class _PointScreenState extends State<PointScreen> {
                   child: Text(
                     history.content.isNotEmpty ? history.content : '포인트 내역',
                     style: TextStyle(
-                      color: Color(0xFF1A1A1A),
+                      color: _textMain,
                       fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: healthDp(context, 10)),
                 Text(
                   amountText,
                   style: TextStyle(
-                    color: Color(0xFFFF5A8D),
-                    fontSize: healthSp(context, 14),
+                    color: _pink,
+                    fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -347,19 +363,24 @@ class _PointScreenState extends State<PointScreen> {
   Widget _buildLoadMoreButton() {
     return SizedBox(
       width: double.infinity,
-      height: 40,
+      height: healthDp(context, 40),
       child: OutlinedButton(
         onPressed: _loadMore,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _loadMoreBorder,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          ),
           backgroundColor: Colors.white,
         ),
         child: Text(
           '더보기',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Color(0xFF898686),
+            color: _textSub,
             fontSize: healthSp(context, 16),
             fontWeight: FontWeight.w500,
           ),
