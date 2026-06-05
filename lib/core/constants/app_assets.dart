@@ -31,6 +31,13 @@ abstract final class AppAssets {
   // 검색 아이콘
   static const String searchIcon = '${_img}search_icon.svg';
 
+  // 사진추가하기 회색카드 아이콘
+  static const String addPhotoIcon = '${_img}add_photo_icon.svg';
+  
+  // 예약시간 변경 예약일자 핑크 달력 아이콘
+  static const String reservationCalendarIcon = '${_img}reservation_calendar_icon.svg';
+
+  
   /* 1. 홈 */
   // 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 assets/img/review_card_overlay.png`
   static const String reviewCardOverlay = '${_img}review_card_overlay.png';
@@ -145,9 +152,6 @@ abstract final class AppAssets {
 
   // 마이페이지 - 리뷰 별점 아이콘
   static const String reviewStar = '${_img}review_star.svg';
-
-  // 마이페이지 - 리뷰 사진 추가 아이콘
-  static const String reviewAddPhotoIcon = '${_img}review_add_photo_icon.svg';
 
   /* 7. 건강프로필 */
   // 건강프로필 문진표 단계 아이콘 (SVG)

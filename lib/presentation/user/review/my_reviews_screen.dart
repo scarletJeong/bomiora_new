@@ -12,6 +12,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/coupon_service.dart';
 import 'review_write_general_screen.dart';
 import 'review_write_screen.dart';
 
@@ -33,6 +34,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   ReviewModel? _activeReview;
   /// 방금 접힌 리뷰는 '이전 리뷰 내역' 맨 위로
   int? _historyHeadId;
+  int? _downloadingCouponReviewId;
   String _productNameQuery = '';
   final TextEditingController _productNameFilterController =
       TextEditingController();
@@ -128,6 +130,23 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     final n = (r.itName ?? '').trim();
     if (n.isNotEmpty) return n;
     return '상품명 없음';
+  }
+
+  /// HTML·공백만 있는 리뷰 본문은 미작성으로 처리
+  bool _hasReviewBodyText(String? raw) {
+    var t = (raw ?? '').trim();
+    if (t.isEmpty) return false;
+    t = t
+        .replaceAll(RegExp(r'<[^>]*>', multiLine: true), ' ')
+        .replaceAll(RegExp(r'&nbsp;|&#160;', caseSensitive: false), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return t.isNotEmpty;
+  }
+
+  String? _reviewBodyPlain(String? raw) {
+    if (!_hasReviewBodyText(raw)) return null;
+    return (raw ?? '').trim();
   }
 
   List<ReviewModel> _sorted(List<ReviewModel> list) {
@@ -600,8 +619,85 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 
+  ReviewModel _reviewWithCzDownload(ReviewModel r, int downloadCount) {
+    return ReviewModel(
+      isId: r.isId,
+      itId: r.itId,
+      itName: r.itName,
+      itKind: r.itKind,
+      mbId: r.mbId,
+      isName: r.isName,
+      isTime: r.isTime,
+      isConfirm: r.isConfirm,
+      isScore1: r.isScore1,
+      isScore2: r.isScore2,
+      isScore3: r.isScore3,
+      isScore4: r.isScore4,
+      totalIsScore: r.totalIsScore,
+      averageScore: r.averageScore,
+      isRvkind: r.isRvkind,
+      isRecommend: r.isRecommend,
+      isGood: r.isGood,
+      czDownload: downloadCount,
+      isPositiveReviewText: r.isPositiveReviewText,
+      isNegativeReviewText: r.isNegativeReviewText,
+      isMoreReviewText: r.isMoreReviewText,
+      images: r.images,
+      productImage: r.productImage,
+      isBirthday: r.isBirthday,
+      isWeight: r.isWeight,
+      isHeight: r.isHeight,
+      isPayMthod: r.isPayMthod,
+      isOutageNum: r.isOutageNum,
+      odId: r.odId,
+    );
+  }
+
+  void _replaceReviewInState(ReviewModel updated) {
+    setState(() {
+      _reviews = _reviews
+          .map((x) => x.isId == updated.isId ? updated : x)
+          .toList();
+      if (_activeReview?.isId == updated.isId) {
+        _activeReview = updated;
+      }
+    });
+  }
+
+  Future<void> _downloadHelpCoupon(ReviewModel r) async {
+    if (r.isId == null || _downloadingCouponReviewId != null) return;
+
+    setState(() => _downloadingCouponReviewId = r.isId);
+
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) return;
+
+      final result = await CouponService.downloadHelpCoupon(
+        mbId: user.id,
+        itId: r.itId,
+        isId: r.isId!,
+      );
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        final count = result['downloadCount'] is int
+            ? result['downloadCount'] as int
+            : (r.czDownload ?? 0) + 1;
+        _replaceReviewInState(_reviewWithCzDownload(r, count));
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() => _downloadingCouponReviewId = null);
+      }
+    }
+  }
+
   Widget _couponBanner(ReviewModel r) {
     final n = r.czDownload ?? 0;
+    final isDownloading = _downloadingCouponReviewId == r.isId;
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
@@ -673,21 +769,33 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
               ],
             ),
           ),
-          Container(
-            width: healthDp(context, 40),
-            height: healthDp(context, 40),
-            decoration: ShapeDecoration(
-              color: const Color(0x19FF5A8D),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 50)),
-              ),
-            ),
-            alignment: Alignment.center,
-            child: SvgPicture.asset(
-              AppAssets.myReviewCouponCardDownload,
+          GestureDetector(
+            onTap: isDownloading ? null : () => _downloadHelpCoupon(r),
+            child: Container(
               width: healthDp(context, 40),
               height: healthDp(context, 40),
-              fit: BoxFit.contain,
+              decoration: ShapeDecoration(
+                color: const Color(0x19FF5A8D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: isDownloading
+                  ? SizedBox(
+                      width: healthDp(context, 20),
+                      height: healthDp(context, 20),
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _kPink,
+                      ),
+                    )
+                  : SvgPicture.asset(
+                      AppAssets.myReviewCouponCardDownload,
+                      width: healthDp(context, 40),
+                      height: healthDp(context, 40),
+                      fit: BoxFit.contain,
+                    ),
             ),
           ),
         ],
@@ -742,8 +850,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
 
     var textSectionGapIndex = 0;
     void appendTextSection(String title, String? raw) {
-      final text = (raw ?? '').trim();
-      if (text.isEmpty) return;
+      final text = _reviewBodyPlain(raw);
+      if (text == null) return;
       children.add(SizedBox(
         height: healthDp(
           context,
@@ -787,8 +895,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     final body = [
       r.isPositiveReviewText,
       r.isNegativeReviewText,
-      r.isMoreReviewText,
-    ].whereType<String>().map((s) => s.trim()).where((s) => s.isNotEmpty).join('\n\n');
+      if (_hasReviewBodyText(r.isMoreReviewText)) r.isMoreReviewText,
+    ].map(_reviewBodyPlain).whereType<String>().join('\n\n');
 
     return Container(
       width: double.infinity,

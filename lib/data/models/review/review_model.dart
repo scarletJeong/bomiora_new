@@ -324,7 +324,7 @@ class ReviewModel {
       if (czDownload != null) 'czDownload': czDownload,
       if (isPositiveReviewText != null) 'isPositiveReviewText': isPositiveReviewText,
       if (isNegativeReviewText != null) 'isNegativeReviewText': isNegativeReviewText,
-      if (isMoreReviewText != null) 'isMoreReviewText': isMoreReviewText,
+      'isMoreReviewText': isMoreReviewText ?? '',
       'images': images,
       if (productImage != null) 'productImage': productImage,
       if (isBirthday != null) 'isBirthday': isBirthday!.toIso8601String().split('T')[0],
