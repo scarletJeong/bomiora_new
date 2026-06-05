@@ -25,16 +25,61 @@ class _CouponScreenState extends State<CouponScreen> {
   bool _isLoading = true;
   int _selectedCouponTab = 0;
   final TextEditingController _couponCodeController = TextEditingController();
+  bool _couponRegisterError = false;
 
   static const Color _pink = Color(0xFFFF5A8D);
+  static const Color _registerDisabled = Color(0xFFD2D2D2);
   static const Color _border = Color(0x7FD2D2D2);
   static const Color _textMain = Color(0xFF1A1A1A);
+  static const Color _textInk = Color(0xFF1A1A1E);
   static const Color _textMuted = Color(0xFF898383);
   static const Color _textSub = Color(0xFF898686);
   static const Color _usedRed = Color(0xFFEF4444);
+  static const Color _dialogShadow = Color(0x19000000);
+
+  static const List<String> _emptyMessages = [
+    '사용할 수 있는 쿠폰이 없습니다.',
+    '사용한 쿠폰이 없습니다.',
+    '만료된 쿠폰이 없습니다.',
+  ];
+
+  bool get _isRegisterEnabled =>
+      _couponCodeController.text.trim().length == 16;
+
+  double _pagePadH(BuildContext context) => healthDp(context, 27);
+
+  ShapeDecoration _outlinedCardDecoration(BuildContext context) =>
+      ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _border),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        ),
+      );
+
+  TextStyle _couponText(
+    BuildContext context, {
+    required double size,
+    required Color color,
+    FontWeight weight = FontWeight.w500,
+    double? height,
+  }) =>
+      TextStyle(
+        color: color,
+        fontSize: healthSp(context, size),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: weight,
+        height: height,
+      );
+
+  Widget _solidDivider(BuildContext context, {Color? color}) => Container(
+        height: healthDp(context, 1),
+        color: color ?? _registerDisabled,
+      );
 
   @override
   void dispose() {
+    _couponCodeController.removeListener(_onCouponCodeChanged);
     _couponCodeController.dispose();
     super.dispose();
   }
@@ -42,7 +87,14 @@ class _CouponScreenState extends State<CouponScreen> {
   @override
   void initState() {
     super.initState();
+    _couponCodeController.addListener(_onCouponCodeChanged);
     _loadData();
+  }
+
+  void _onCouponCodeChanged() {
+    setState(() {
+      if (_couponRegisterError) _couponRegisterError = false;
+    });
   }
 
   Future<void> _loadData() async {
@@ -55,10 +107,7 @@ class _CouponScreenState extends State<CouponScreen> {
       final user = await AuthService.getUser();
       if (!mounted) return;
       if (user != null) {
-        if (!mounted) return;
-        setState(() {
-          _currentUser = user;
-        });
+        setState(() => _currentUser = user);
         await _loadCoupons();
       }
     } catch (e) {
@@ -90,36 +139,20 @@ class _CouponScreenState extends State<CouponScreen> {
     }
   }
 
-  List<Coupon> get _filteredCoupons {
-    switch (_selectedCouponTab) {
-      case 0:
-        return _availableCoupons;
-      case 1:
-        return _usedCoupons;
-      case 2:
-        return _expiredCoupons;
-      default:
-        return [];
-    }
-  }
+  List<Coupon> get _filteredCoupons => switch (_selectedCouponTab) {
+        0 => _availableCoupons,
+        1 => _usedCoupons,
+        2 => _expiredCoupons,
+        _ => <Coupon>[],
+      };
 
-  String get _emptyMessage {
-    switch (_selectedCouponTab) {
-      case 0:
-        return '사용할 수 있는 쿠폰이 없습니다.';
-      case 1:
-        return '사용한 쿠폰이 없습니다.';
-      case 2:
-        return '만료된 쿠폰이 없습니다.';
-      default:
-        return '';
-    }
-  }
+  String get _emptyMessage =>
+      _selectedCouponTab < _emptyMessages.length
+          ? _emptyMessages[_selectedCouponTab]
+          : '';
 
   Future<void> _registerCoupon() async {
-    if (_couponCodeController.text.trim().isEmpty) {
-      return;
-    }
+    if (!_isRegisterEnabled) return;
 
     if (_currentUser == null) {
       await showLoginRequiredDialog(
@@ -128,6 +161,8 @@ class _CouponScreenState extends State<CouponScreen> {
       );
       return;
     }
+
+    setState(() => _couponRegisterError = false);
 
     try {
       final result = await CouponService.registerCoupon(
@@ -141,8 +176,12 @@ class _CouponScreenState extends State<CouponScreen> {
         _couponCodeController.clear();
         await _loadCoupons();
         if (mounted) await _showCouponRegisteredDialog();
+      } else {
+        setState(() => _couponRegisterError = true);
       }
-    } catch (e) {}
+    } catch (e) {
+      if (mounted) setState(() => _couponRegisterError = true);
+    }
   }
 
   @override
@@ -171,14 +210,12 @@ class _CouponScreenState extends State<CouponScreen> {
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
               title: '내 쿠폰',
-              titleFontSize: healthSp(context, 18),
+              titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFFF5A8D),
-                    ),
+                    child: CircularProgressIndicator(color: _pink),
                   )
                 : _buildContent(),
           ),
@@ -197,7 +234,7 @@ class _CouponScreenState extends State<CouponScreen> {
       child: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+            padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
             sliver: SliverToBoxAdapter(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -207,10 +244,10 @@ class _CouponScreenState extends State<CouponScreen> {
                   _buildCouponSummaryCard(),
                   SizedBox(height: healthDp(context, 20)),
                   _buildCouponFilterTabs(),
-                  SizedBox(height: healthDp(context, 20)),
+                  SizedBox(height: healthDp(context, 10)),
                   if (_selectedCouponTab == 0) ...[
                     _buildCouponRegistration(),
-                    SizedBox(height: healthDp(context, 20)),
+                    SizedBox(height: healthDp(context, 10)),
                   ],
                 ],
               ),
@@ -218,7 +255,7 @@ class _CouponScreenState extends State<CouponScreen> {
           ),
           if (filtered.isEmpty)
             SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+              padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
               sliver: SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
@@ -226,10 +263,10 @@ class _CouponScreenState extends State<CouponScreen> {
                     child: Text(
                       _emptyMessage,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: healthSp(context, 14),
-                        color: Colors.grey[600],
-                        fontFamily: 'Gmarket Sans TTF',
+                      style: _couponText(
+                        context,
+                        size: 14,
+                        color: Colors.grey.shade600,
                       ),
                     ),
                   ),
@@ -239,9 +276,9 @@ class _CouponScreenState extends State<CouponScreen> {
           else
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
-                healthDp(context, 27),
+                _pagePadH(context),
                 0,
-                healthDp(context, 27),
+                _pagePadH(context),
                 healthDp(context, 24),
               ),
               sliver: SliverList(
@@ -270,15 +307,15 @@ class _CouponScreenState extends State<CouponScreen> {
     final count = _availableCoupons.length;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1,
+          side: BorderSide(
+            width: healthDp(context, 1),
             color: _border,
           ),
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Column(
@@ -294,10 +331,15 @@ class _CouponScreenState extends State<CouponScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SvgPicture.asset(
-                    AppAssets.couponIcon,
-                    width: 80,
-                    height: 80,
+                  SizedBox(
+                    width: healthDp(context, 106),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        AppAssets.couponIcon,
+                        width: healthDp(context, 80),
+                        height: healthDp(context, 80),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -311,21 +353,16 @@ class _CouponScreenState extends State<CouponScreen> {
               children: [
                 Text(
                   '내 쿠폰',
-                  style: TextStyle(
-                    color: _textMain,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: _couponText(context, size: 14, color: _textMain, weight: FontWeight.w500),
                 ),
-                const SizedBox(width: 2),
+                SizedBox(width: healthDp(context, 2)),
                 Text(
                   '$count',
-                  style: TextStyle(
+                  style: _couponText(
+                    context,
+                    size: 14,
                     color: _pink,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
+                    weight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -338,55 +375,67 @@ class _CouponScreenState extends State<CouponScreen> {
 
   Widget _buildCouponFilterTabs() {
     Widget vDivider() => Container(
-          width: 0.5,
-          height: 11,
-          color: const Color(0xFFD2D2D2),
+          width: healthDp(context, 0.5),
+          height: healthDp(context, 11),
+          color: _registerDisabled,
         );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(child: _buildTabChip(0, '사용가능한 쿠폰')),
-        vDivider(),
-        Expanded(child: _buildTabChip(1, '사용한 쿠폰')),
-        vDivider(),
-        Expanded(child: _buildTabChip(2, '지난 쿠폰')),
-      ],
+    return SizedBox(
+      width: double.infinity,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildTabChip(0, '사용가능한 쿠폰'),
+          vDivider(),
+          _buildTabChip(1, '사용한 쿠폰'),
+          vDivider(),
+          _buildTabChip(2, '지난 쿠폰'),
+        ],
+      ),
     );
   }
 
   Widget _buildTabChip(int index, String label) {
     final selected = _selectedCouponTab == index;
+    final tabW = healthDp(context, 99);
+    final underlineH = healthDp(context, 1);
+
     return GestureDetector(
       onTap: () => setState(() => _selectedCouponTab = index),
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 5),
-        child: Center(
-          // 탭 영역은 Expanded로 넓게 유지하되, underline은 텍스트 폭만큼만 그려지게.
-          child: IntrinsicWidth(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: selected ? _pink : _textMuted,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  width: double.infinity,
-                  height: 1,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: tabW),
+        child: SizedBox(
+          width: tabW,
+          child: Container(
+            padding: EdgeInsets.only(bottom: healthDp(context, 0)),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  width: underlineH,
                   color: selected ? _pink : Colors.transparent,
                 ),
-              ],
+              ),
+            ),
+            child: Align(
+              alignment: Alignment.center,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: _couponText(
+                    context,
+                    size: 14,
+                    color: selected ? _pink : _textMuted,
+                    weight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -411,19 +460,18 @@ class _CouponScreenState extends State<CouponScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           child: Container(
-            width: 272,
-            padding: const EdgeInsets.all(20),
+            width: healthDp(ctx, 272),
+            padding: EdgeInsets.all(healthDp(ctx, 20)),
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(healthDp(ctx, 20)),
               ),
-              shadows: const [
+              shadows: [
                 BoxShadow(
-                  color: Color(0x19000000),
-                  blurRadius: 8.14,
-                  offset: Offset(0, 0),
-                  spreadRadius: 0,
+                  color: _dialogShadow,
+                  blurRadius: healthDp(ctx, 8.14),
+                  offset: Offset.zero,
                 ),
               ],
             ),
@@ -436,40 +484,39 @@ class _CouponScreenState extends State<CouponScreen> {
                 children: [
                   Text(
                     '쿠폰 등록',
-                    style: TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 20),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
+                    style: _couponText(
+                      ctx,
+                      size: 20,
+                      color: _textInk,
+                      weight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: healthDp(ctx, 20)),
                   Text(
                     '쿠폰이 성공적으로 등록되었습니다.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
+                    style: _couponText(
+                      ctx,
+                      size: 14,
+                      color: _textSub,
                       height: 1.57,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: healthDp(ctx, 20)),
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () => Navigator.of(ctx).pop(),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
                       child: Container(
                         width: double.infinity,
-                        height: 40,
-                        padding: const EdgeInsets.all(10),
+                        height: healthDp(ctx, 40),
+                        padding: EdgeInsets.all(healthDp(ctx, 10)),
                         clipBehavior: Clip.antiAlias,
                         decoration: ShapeDecoration(
                           color: _pink,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
                           ),
                         ),
                         child: Row(
@@ -479,11 +526,10 @@ class _CouponScreenState extends State<CouponScreen> {
                           children: [
                             Text(
                               '확인',
-                              style: TextStyle(
+                              style: _couponText(
+                                ctx,
+                                size: 16,
                                 color: Colors.white,
-                                fontSize: healthSp(context, 16),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -501,84 +547,95 @@ class _CouponScreenState extends State<CouponScreen> {
   }
 
   Widget _buildCouponRegistration() {
-    const underlineBorder = UnderlineInputBorder(
-      borderSide: BorderSide(width: 1, color: _border),
+    final underlineBorder = UnderlineInputBorder(
+      borderSide: BorderSide(width: healthDp(context, 1), color: _border),
     );
+    final registerBtnColor =
+        _isRegisterEnabled ? _pink : _registerDisabled;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _border),
-          borderRadius: BorderRadius.circular(7),
-        ),
-      ),
+      padding: EdgeInsets.all(healthDp(context, 15)),
+      decoration: _outlinedCardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '쿠폰등록하기',
-            style: TextStyle(
-              color: _textMain,
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
+            style: _couponText(context, size: 12, color: _textMain, height: 1),
           ),
-          const SizedBox(height: 10),
-          Container(height: 1, color: const Color(0xFFD2D2D2)),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          SizedBox(height: healthDp(context, 10)),
+          _solidDivider(context, color: const Color(0x7FD2D2D2)),
+          SizedBox(height: healthDp(context, 10)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _couponCodeController,
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
-                    color: _textMain,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: '쿠폰 코드를 입력해주세요',
-                    hintStyle: TextStyle(
-                      color: _textMuted,
-                      fontSize: healthSp(context, 10),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                    contentPadding: const EdgeInsets.only(bottom: 8, top: 4),
-                    border: underlineBorder,
-                    enabledBorder: underlineBorder,
-                    focusedBorder: underlineBorder,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Material(
-                color: const Color(0xFFD2D2D2),
-                borderRadius: BorderRadius.circular(7),
-                child: InkWell(
-                  onTap: _registerCoupon,
-                  borderRadius: BorderRadius.circular(7),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Text(
-                      '등록',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _couponCodeController,
+                      maxLength: 16,
+                      style: _couponText(context, size: 12, color: _textMain),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        counterText: '',
+                        hintText: '쿠폰 코드를 입력해주세요',
+                        hintStyle:
+                            _couponText(context, size: 10, color: Color(0xFFD2D2D2)),
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: healthDp(context, 10),
+                        ),
+                        border: underlineBorder,
+                        enabledBorder: underlineBorder,
+                        focusedBorder: underlineBorder,
                       ),
                     ),
                   ),
-                ),
+                  SizedBox(width: healthDp(context, 10)),
+                  GestureDetector(
+                    onTap: _isRegisterEnabled ? _registerCoupon : null,
+                    child: SizedBox(
+                      height: healthDp(context, 34),
+                      child: Container(
+                        padding: EdgeInsets.all(healthDp(context, 10)),
+                        alignment: Alignment.center,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: ShapeDecoration(
+                          color: registerBtnColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 7)),
+                          ),
+                        ),
+                        child: Text(
+                          '등록',
+                          textAlign: TextAlign.center,
+                          style: _couponText(
+                            context,
+                            size: 12,
+                            color: Colors.white,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              if (_couponRegisterError) ...[
+                SizedBox(height: healthDp(context, 4)),
+                Text(
+                  '쿠폰정보를 다시 입력해주세요.',
+                  style: _couponText(
+                    context,
+                    size: 10,
+                    color: _usedRed,
+                    weight: FontWeight.w300,
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -598,14 +655,8 @@ class _CouponScreenState extends State<CouponScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _border),
-          borderRadius: BorderRadius.circular(7),
-        ),
-      ),
+      padding: EdgeInsets.all(healthDp(context, 15)),
+      decoration: _outlinedCardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -615,21 +666,16 @@ class _CouponScreenState extends State<CouponScreen> {
                 Expanded(
                   child: Text(
                     usedDateLine,
-                    style: TextStyle(
-                      color: _textMain,
-                      fontSize: healthSp(context, 12),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: _couponText(context, size: 12, color: _textMain),
                   ),
                 ),
                 Text(
                   '사용완료',
-                  style: TextStyle(
+                  style: _couponText(
+                    context,
+                    size: 10,
                     color: _usedRed,
-                    fontSize: healthSp(context, 10),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
+                    weight: FontWeight.w300,
                   ),
                 ),
               ],
@@ -637,84 +683,64 @@ class _CouponScreenState extends State<CouponScreen> {
           else
             Text(
               dateLine,
-              style: TextStyle(
-                color: _textMain,
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
+              style: _couponText(context, size: 12, color: _textMain),
             ),
-          const SizedBox(height: 10),
-          Container(height: 1, color: _border),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
+          _solidDivider(context, color: const Color(0x7FD2D2D2)),
+          SizedBox(height: healthDp(context, 10)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '보미오라',
-                style: TextStyle(
-                  color: _textMain,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+                style: _couponText(context, size: 12, color: _textSub),
               ),
-              const SizedBox(height: 2),
               Text(
                 coupon.subject.isNotEmpty ? coupon.subject : '쿠폰',
-                style: TextStyle(
-                  color: _textMain,
-                  fontSize: healthSp(context, 16),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+                style: _couponText(context, size: 14, color: _textMain),
               ),
               if (showUsageDetail && appliedLine.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: healthDp(context, 4)),
                 Text(
                   appliedLine,
-                  style: TextStyle(
+                  style: _couponText(
+                    context,
+                    size: 10,
                     color: _textSub,
-                    fontSize: healthSp(context, 10),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
                     height: 1.35,
                   ),
                 ),
               ],
-              if (showUsageDetail && minMaxLine != null) ...[
-                const SizedBox(height: 5),
+              if (showUsageDetail && minMaxLine != null)
                 Text(
                   minMaxLine,
-                  style: TextStyle(
+                  style: _couponText(
+                    context,
+                    size: 10,
                     color: _textSub,
-                    fontSize: healthSp(context, 10),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w500,
                     height: 1.35,
                   ),
                 ),
-              ],
               if (showOrderId) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: healthDp(context, 5)),
                 Text(
                   '주문번호: ${coupon.orderId}',
-                  style: TextStyle(
+                  style: _couponText(
+                    context,
+                    size: 10,
                     color: _textMain,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
+                    weight: FontWeight.w300,
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
+              SizedBox(height: healthDp(context, 10)),
               Text(
                 coupon.discountPrimaryLabel,
-                style: TextStyle(
+                style: _couponText(
+                  context,
+                  size: 16,
                   color: _pink,
-                  fontSize: healthSp(context, 20),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
+                  weight: FontWeight.w700,
                 ),
               ),
             ],
