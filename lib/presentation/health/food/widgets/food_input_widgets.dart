@@ -193,7 +193,7 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       anchorContext: anchorContext,
       items: _photoSourceLabels,
       menuWidth: healthDp(context, 110),
-      itemFontSize: healthDp(context, 10),
+      itemFontSizeBase: 10,
       itemFontFamily: 'Gmarket Sans TTF',
       itemFontWeight: FontWeight.w300,
       blurBackdrop: true,
@@ -250,41 +250,16 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
     setState(() => _isUploadingPhoto = true);
     try {
       final recordId = await _ensureFoodRecordId();
-      if (recordId == null || recordId.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('식사 기록을 먼저 만들 수 없습니다.')),
-          );
-        }
-        return;
-      }
+      if (recordId == null || recordId.isEmpty) return;
 
       final imageUrl = kIsWeb
           ? await FoodRepository.uploadMealImage(image)
           : await FoodRepository.uploadMealImage(File(image.path));
 
-      if (imageUrl == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('사진 업로드에 실패했습니다.')),
-          );
-        }
-        return;
-      }
+      if (imageUrl == null) return;
 
       final current = List<String>.from(_localImagePaths);
-      if (current.length >= FoodRepository.maxMealImages) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '사진은 최대 ${FoodRepository.maxMealImages}장까지 등록할 수 있습니다.',
-              ),
-            ),
-          );
-        }
-        return;
-      }
+      if (current.length >= FoodRepository.maxMealImages) return;
 
       final updated = [...current, imageUrl];
       final ok =
@@ -293,14 +268,6 @@ class _CalorieSearchBlockState extends State<CalorieSearchBlock> {
       if (ok) {
         setState(() => _localImagePaths = _sanitizeImagePaths(updated));
         _notifyParentRefresh();
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              '사진 저장에 실패했습니다. DB에 photos 컬럼이 있는지 확인해 주세요.',
-            ),
-          ),
-        );
       }
     } finally {
       if (mounted) setState(() => _isUploadingPhoto = false);
