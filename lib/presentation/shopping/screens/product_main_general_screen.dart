@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../common/widgets/app_bar_menu.dart';
@@ -109,7 +110,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       arguments: {
         'categoryId': item.categoryId,
         'categoryName': item.label,
-        'productKind': 'general',
+        'productKind': item.productKind,
       },
     );
   }
@@ -317,7 +318,9 @@ class _HeroBlock extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Image.network(
-              'https://placehold.co/800x450/E8E0D5/6D5F47?text=Healthcare+Store',
+              ImageUrlHelper.placeholdCoAsPng(
+                'https://placehold.co/800x450/E8E0D5/6D5F47?text=Healthcare+Store',
+              ),
               fit: BoxFit.cover,
               alignment: Alignment.center,
               errorBuilder: (_, __, ___) => Container(
@@ -680,7 +683,8 @@ class _MdPickSection extends StatelessWidget {
   Widget build(BuildContext context) {
     const items = [
       _MdPickData(
-        imageUrl: 'https://placehold.co/204x204/FFE4EC/FF5A8D?text=MD+1',
+        imageUrl:
+            'https://placehold.co/204x204/FFE4EC/FF5A8D/png?text=MD+1',
         brand: '닥터스칼프',
         title: '7, 8, 9단계_보미 다이어트환',
         promo: '[신제품 프로모션]',
@@ -692,7 +696,8 @@ class _MdPickSection extends StatelessWidget {
         reviews: '(491)',
       ),
       _MdPickData(
-        imageUrl: 'https://placehold.co/204x204/E8F4FF/231F20?text=MD+2',
+        imageUrl:
+            'https://placehold.co/204x204/E8F4FF/231F20/png?text=MD+2',
         brand: '닥터스칼프',
         title: '7, 8, 9단계_보미 다이어트환',
         promo: '[신제품 프로모션]',
@@ -704,7 +709,8 @@ class _MdPickSection extends StatelessWidget {
         reviews: '(491)',
       ),
       _MdPickData(
-        imageUrl: 'https://placehold.co/204x204/F0FFF4/6D5F47?text=MD+3',
+        imageUrl:
+            'https://placehold.co/204x204/F0FFF4/6D5F47/png?text=MD+3',
         brand: '닥터스칼프',
         title: '7, 8, 9단계_보미 다이어트환',
         promo: '[신제품 프로모션]',
