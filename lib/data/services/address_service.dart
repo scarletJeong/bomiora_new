@@ -35,6 +35,8 @@ class AddressService {
           NodeValueParser.asString(item['adAddr2'] ?? item['ad_addr2']) ?? '',
       'adAddr3':
           NodeValueParser.asString(item['adAddr3'] ?? item['ad_addr3']) ?? '',
+      'adMemo':
+          NodeValueParser.asString(item['adMemo'] ?? item['ad_memo']) ?? '',
       'adDefault': isDefault ? 1 : 0,
     };
   }
