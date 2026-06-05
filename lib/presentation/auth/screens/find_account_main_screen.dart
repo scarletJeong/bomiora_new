@@ -446,14 +446,6 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               _isPhoneCertExpanded = true;
             });
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  forgot['error']?.toString() ??
-                      '본인인증이 등록된 계정입니다. 아래 본인인증으로 진행해 주세요.',
-                ),
-              ),
-            );
             return;
           }
           if (forgot['error']?.toString().contains('일치') == true ||

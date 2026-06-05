@@ -307,17 +307,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         _isFavorite = !_isFavorite;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('오류가 발생했습니다: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            width: 568, // 600px - 32px (양쪽 16px 여백)
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
     }
   }
 
@@ -1014,27 +1003,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           tooltip: '공유하기',
           onPressed: () async {
             try {
-              final usedShareUi = await ProductShare.shareProduct(
+              await ProductShare.shareProduct(
                 anchorContext: anchorContext,
                 itId: _product!.id,
                 productName: _product!.name,
               );
-              if (!mounted) return;
-              if (!usedShareUi) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      '공유 창을 띄울 수 없어 링크를 클립보드에 복사했습니다. 붙여넣기로 전달해 주세요.',
-                    ),
-                  ),
-                );
-              }
-            } catch (e) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('공유를 실행할 수 없습니다: $e')),
-              );
-            }
+            } catch (_) {}
           },
           icon: const Icon(Icons.share_outlined),
         );
@@ -1343,12 +1317,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         Navigator.of(context).pop();
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('장바구니에 추가 중...'),
-            duration: Duration(seconds: 1),
-          ),
-        );
 
         final result = await CartService.addOptionsToCart(
           product: _product!,
@@ -1361,16 +1329,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _safeSetState(() {
             _selectedOptions.clear();
           });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? '장바구니 추가에 실패했습니다.'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              width: 568,
-              duration: const Duration(seconds: 2),
-            ),
-          );
         }
       },
       onReserve: () async {},
@@ -1405,13 +1363,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               builder: (_) => const cart_general.CartScreen(),
             ),
           );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? '구매 처리에 실패했습니다.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       },
     );
@@ -1438,14 +1389,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (!mounted) return false;
 
     final success = result['success'] == true;
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? '장바구니 추가에 실패했습니다.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
     return success;
   }
 

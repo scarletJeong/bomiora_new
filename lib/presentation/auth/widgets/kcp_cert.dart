@@ -544,15 +544,7 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
       onReceivedError: (controller, request, error) {
         debugPrint('[KCP] onReceivedError: ${error.description} url=${request.url}');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('본인인증 중 오류가 발생했습니다: ${error.description}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          debugPrint('[KCP] onReceivedError: SnackBar 표시');
-        } else {
-          debugPrint('[KCP] onReceivedError: unmounted → SnackBar 스킵');
+          debugPrint('[KCP] onReceivedError: ${error.description}');
         }
       },
     );
@@ -979,19 +971,6 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
             }
             if (dup['exists'] == true) {
               debugPrint('[KCP] _pollKcpResult: 중복 가입 분기 → overlay duplicate');
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      dup['error']?.toString() ?? '이미 가입된 본인인증 정보입니다.',
-                    ),
-                    backgroundColor: Colors.red,
-                    behavior: SnackBarBehavior.floating,
-                    width: 568, // 600px - 32px (양쪽 16px 여백)
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              }
               if (!mounted) return;
               _popKcpCertOverlay(<String, dynamic>{'duplicate': true});
               return;
@@ -1077,31 +1056,9 @@ class _KcpCertWebViewScreenState extends State<KcpCertWebViewScreen> {
         return;
       }
 
-      debugPrint('[KCP] _pollKcpResult: 인증 실패/미완료 분기 → SnackBar');
       final message =
           (data['message'] ?? data['res_msg'] ?? '본인인증에 실패했습니다.').toString();
-      if (mounted) {
-        final compact =
-            message.toLowerCase().replaceAll(RegExp(r'\s+'), '');
-        final suppressKcpLibrarySnack = compact.contains('kcp') &&
-            compact.contains('라이브러리') &&
-            compact.contains('찾을수없');
-        if (!suppressKcpLibrarySnack) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              backgroundColor: Colors.red,
-            ),
-          );
-          debugPrint('[KCP] _pollKcpResult: SnackBar 표시 msg=$message');
-        } else {
-          debugPrint(
-            '[KCP] _pollKcpResult: KCP 라이브러리 미설치류 메시지 → SnackBar 생략 msg=$message',
-          );
-        }
-      } else {
-        debugPrint('[KCP] _pollKcpResult: 실패인데 unmounted → SnackBar 스킵');
-      }
+      debugPrint('[KCP] _pollKcpResult: 인증 실패/미완료 msg=$message');
     } catch (e, st) {
       debugPrint('[KCP] poll error: $e\n$st');
     }

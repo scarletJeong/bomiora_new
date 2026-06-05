@@ -112,10 +112,6 @@ class _TempCartScreenState extends State<TempCartScreen> {
       await _loadData();
       return;
     }
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result['message']?.toString() ?? '삭제 실패')),
-    );
   }
 
   Future<void> _updateQuantity(CartItem item, int quantity) async {
@@ -128,10 +124,6 @@ class _TempCartScreenState extends State<TempCartScreen> {
       await _loadData();
       return;
     }
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result['message']?.toString() ?? '수량 변경 실패')),
-    );
   }
 
   bool _isGeneralKind(String kind) =>
@@ -169,13 +161,6 @@ class _TempCartScreenState extends State<TempCartScreen> {
       if (!mounted) return;
 
       if (prescItems.isNotEmpty) {
-        if (generalItems.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('처방 상품 예약을 먼저 진행합니다. 일반 상품은 임시 장바구니에 유지됩니다.'),
-            ),
-          );
-        }
         await Navigator.push<void>(
           context,
           MaterialPageRoute<void>(
@@ -217,19 +202,11 @@ class _TempCartScreenState extends State<TempCartScreen> {
       if (!mounted) return;
 
       if (genFail > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('일반 상품 $genFail개를 장바구니로 옮기지 못했습니다.'),
-          ),
-        );
         await _loadData();
         return;
       }
 
       if (genSuccess > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('선택 항목을 장바구니에 담았습니다.')),
-        );
         Navigator.pushReplacementNamed(context, '/cart');
       }
     } finally {

@@ -149,10 +149,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
               final Uri uri = Uri.parse(widget.url);
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('링크를 열 수 없습니다: ${widget.url}')),
-                );
               }
             },
             icon: const Icon(Icons.open_in_new),

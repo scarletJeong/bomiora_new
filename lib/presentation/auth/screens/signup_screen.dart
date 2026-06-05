@@ -56,15 +56,6 @@ class _SignupScreenState extends State<SignupScreen> {
         _passwordConfirmController.text.isNotEmpty;
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
   bool _isDuplicateEmailMessage(String? message) {
     if (message == null) return false;
     return message.contains('이미 존재하는 이메일') || message.contains('이미 있는 아이디');
@@ -174,7 +165,6 @@ class _SignupScreenState extends State<SignupScreen> {
         _certBirthday = null;
         _certGender = null;
       });
-      _showErrorSnackBar('팝업 차단을 해제한 뒤 다시 시도해 주세요.');
       return;
     }
 
@@ -252,7 +242,6 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_certName == null || _certPhone == null || _certBirthday == null || _certGender == null) {
-      _showErrorSnackBar('본인인증 정보를 확인한 뒤 다시 진행해주세요.');
       return;
     }
 
@@ -266,14 +255,10 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
 
       if (checkResult['success'] != true) {
-        _showErrorSnackBar(
-          checkResult['error']?.toString() ?? '이메일 중복 확인 중 오류가 발생했습니다.',
-        );
         return;
       }
 
       if (checkResult['exists'] == true) {
-        _showErrorSnackBar('이미 있는 아이디입니다.');
         return;
       }
 
@@ -342,26 +327,18 @@ class _SignupScreenState extends State<SignupScreen> {
           setState(() {
             _step = _SignupStep.form;
           });
-          _showErrorSnackBar('이미 있는 아이디입니다.');
           return;
         }
         if (_isDuplicateCertMessage(errorMessage)) {
           setState(() {
             _step = _SignupStep.form;
           });
-          _showErrorSnackBar(
-            errorMessage.contains('이미')
-                ? errorMessage
-                : '이미 가입된 본인인증 정보입니다.',
-          );
           return;
         }
-        _showErrorSnackBar(errorMessage);
       }
     } catch (e) {
       if (!mounted) return;
       debugPrint('❌ [SIGNUP] 회원가입 오류: $e');
-      _showErrorSnackBar('회원가입 중 오류가 발생했습니다: $e');
     } finally {
       if (mounted) {
         setState(() {

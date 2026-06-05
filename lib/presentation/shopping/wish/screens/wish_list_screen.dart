@@ -152,21 +152,9 @@ class _WishListScreenState extends State<WishListScreen> {
     try {
       await WishService.removeFromWish(productId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('찜 목록에서 삭제되었습니다.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
       await _loadWishList();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('삭제 실패: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 

@@ -77,12 +77,7 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
 
   Future<void> _handleSubmit() async {
     if (!_canSubmit) return;
-    if (!_hasRequiredContext) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('본인인증 정보가 올바르지 않습니다. 다시 시도해 주세요.')),
-      );
-      return;
-    }
+    if (!_hasRequiredContext) return;
 
     setState(() {
       _isSubmitting = true;
@@ -106,9 +101,6 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
     });
 
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['data']?['message']?.toString() ?? '비밀번호가 변경되었습니다.')),
-      );
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/login',
@@ -117,11 +109,6 @@ class _FindPasswordResetScreenState extends State<FindPasswordResetScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['error']?.toString() ?? '비밀번호 재설정에 실패했습니다.'),
-      ),
-    );
   }
 
   @override

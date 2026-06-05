@@ -23,14 +23,6 @@ import '../../../data/services/coupon_service.dart';
 import '../../../data/services/point_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
-/// 서버에서 내려오는 KCP 결제 모듈(라이브러리) 미설치 등 메시지 — 스낵바로는 띄우지 않음.
-bool _isKcpLibraryMissingServerMessage(String text) {
-  final c = text.toLowerCase().replaceAll(RegExp(r'\s+'), '');
-  return c.contains('kcp') &&
-      c.contains('라이브러리') &&
-      c.contains('찾을수없');
-}
-
 class PaymentScreen extends StatefulWidget {
   final List<CartItem> cartItems;
   final int shippingCost;
@@ -330,15 +322,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _phoneController.text.trim().isEmpty ||
         _zipController.text.trim().isEmpty ||
         _addressController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('배송지 필수 항목을 입력해 주세요.')),
-      );
       return false;
     }
     if (_finalAmount < _minPayableAmount) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('최소 결제 금액은 3,000원입니다.')),
-      );
       return false;
     }
     return true;
@@ -385,30 +371,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (!_validateBeforePay()) return;
 
     final webPendingPopup = kIsWeb ? openPendingKcpPopup() : null;
-    if (kIsWeb && webPendingPopup == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해 주세요.')),
-      );
-      return;
-    }
+    if (kIsWeb && webPendingPopup == null) return;
 
     final user = await AuthService.getUser();
-    if (user == null || user.id.trim().isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인해 주세요.')),
-      );
-      return;
-    }
+    if (user == null || user.id.trim().isEmpty) return;
 
     final cartIds = widget.cartItems.map((e) => e.ctId).toList();
-    if (cartIds.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('결제할 장바구니 항목이 없습니다.')),
-      );
-      return;
-    }
+    if (cartIds.isEmpty) return;
 
     setState(() {
       _submitting = true;
@@ -486,15 +455,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           }
         }
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('새 탭에서 결제를 진행해 주세요. 완료 후 결과를 자동 확인합니다.'),
-            action: SnackBarAction(
-              label: '결제창 다시열기',
-              onPressed: _reopenWebKcpLaunch,
-            ),
-          ),
-        );
         result = await _pollKcpPayResult(token, webPopup: webPendingPopup);
       } else {
         result = await Navigator.pushNamed(
@@ -516,9 +476,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final orderId = (resultMap['order_id'] ?? '').toString();
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message.isEmpty ? '결제가 완료되었습니다.' : message)),
-        );
         if (orderId.isNotEmpty) {
           Navigator.pushNamedAndRemoveUntil(
             context,
@@ -545,22 +502,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         if (kIsWeb && message.contains('3017')) {
           _showWebPopupBlockedDialog();
         }
-        if (!_isKcpLibraryMissingServerMessage(message)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message.isEmpty ? '결제가 완료되지 않았습니다.' : message),
-            ),
-          );
-        }
       }
     } catch (e) {
       if (!mounted) return;
-      final errText = e.toString();
-      if (!_isKcpLibraryMissingServerMessage(errText)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('결제 처리 중 오류가 발생했습니다: $e')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() {
@@ -574,12 +518,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (!kIsWeb) return;
     final url = (_lastWebKcpLaunchUrl ?? '').trim();
     if (url.isEmpty) return;
-    final opened = openKcpUrlInNewTab(url);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('결제창 재열기에 실패했습니다. 팝업 허용 상태를 확인해 주세요.')),
-      );
-    }
+    openKcpUrlInNewTab(url);
   }
 
   Future<void> _showWebPopupBlockedDialog() async {
@@ -1765,10 +1704,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _selectedCoupons.where((coupon) => coupon.method == 1).length;
         if (categoryCount < 2) {
           _selectedCoupons.add(picked);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('카테고리 쿠폰은 최대 2개까지 선택할 수 있습니다.')),
-          );
         }
       } else {
         _selectedCoupons.removeWhere(

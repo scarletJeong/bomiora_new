@@ -365,17 +365,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _isFavorite = !_isFavorite;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('오류가 발생했습니다: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            width: 568, // 600px - 32px (양쪽 16px 여백)
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
     }
   }
 
@@ -1152,27 +1141,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           tooltip: '공유하기',
           onPressed: () async {
             try {
-              final usedShareUi = await ProductShare.shareProduct(
+              await ProductShare.shareProduct(
                 anchorContext: anchorContext,
                 itId: _product!.id,
                 productName: _product!.name,
               );
-              if (!mounted) return;
-              if (!usedShareUi) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      '공유 창을 띄울 수 없어 링크를 클립보드에 복사했습니다. 붙여넣기로 전달해 주세요.',
-                    ),
-                  ),
-                );
-              }
-            } catch (e) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('공유를 실행할 수 없습니다: $e')),
-              );
-            }
+            } catch (_) {}
           },
           icon: const Icon(Icons.share_outlined),
         );
@@ -1496,12 +1470,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         Navigator.of(context).pop();
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('장바구니에 추가 중...'),
-            duration: Duration(seconds: 1),
-          ),
-        );
 
         final result = await CartService.addOptionsToCart(
           product: _product!,
@@ -1514,16 +1482,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _safeSetState(() {
             _selectedOptions.clear();
           });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? '장바구니 추가에 실패했습니다.'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              width: 568,
-              duration: const Duration(seconds: 2),
-            ),
-          );
         }
       },
       onReserve: () async {
@@ -1557,13 +1515,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           });
           // 처방 상품 구매 플로우는 "임시 장바구니 → 문진표 → 장바구니"를 거침
           await _addPrescriptionItemsToTempCart();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? '구매 처리에 실패했습니다.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       },
     );
@@ -1583,12 +1534,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('임시 장바구니에 담는 중...'),
-        duration: Duration(seconds: 1),
-      ),
-    );
 
     final result = await CartService.addOptionsToCart(
       product: _product!,
@@ -1603,64 +1548,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _selectedOptions.clear();
       });
       Navigator.pushNamed(context, '/temp-cart');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']?.toString() ?? '임시 장바구니 추가 실패'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
   /// 옵션 선택 후 예약 진행
   void _proceedWithReservation() {
-    if (_selectedOptions.isEmpty || _product == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('옵션을 선택해주세요.'),
-          behavior: SnackBarBehavior.floating,
-          width: 568, // 600px - 32px (양쪽 16px 여백)
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    // 총 가격 계산
-    final basePrice = _product!.price;
-    int totalOptionPrice = 0;
-    int totalQuantity = 0;
-    _selectedOptions.forEach((option, quantity) {
-      totalOptionPrice += option.price * quantity;
-      totalQuantity += quantity;
-    });
-    final totalPrice = (basePrice * totalQuantity) + totalOptionPrice;
-
-    // 선택된 옵션 정보 표시
-    String message = '처방 예약 기능은 준비 중입니다.\n\n';
-    message += '선택된 옵션:\n';
-    _selectedOptions.forEach((option, quantity) {
-      final itemPrice = (basePrice + option.price) * quantity;
-      message +=
-          '  - ${option.displayText} x $quantity: ${itemPrice.toString().replaceAllMapped(
-                RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                (Match m) => '${m[1]},',
-              )}원\n';
-    });
-    message += '\n총 결제금액: ${totalPrice.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        )}원';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        width: 568, // 600px - 32px (양쪽 16px 여백)
-        duration: const Duration(seconds: 5),
-      ),
-    );
+    if (_selectedOptions.isEmpty || _product == null) return;
   }
 }
 

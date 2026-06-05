@@ -195,12 +195,7 @@ class _CartScreenState extends State<CartScreen> {
     if (!await _ensureLoggedIn(message: '장바구니 수정은 로그인 후 이용할 수 있습니다.')) {
       return;
     }
-    if (newQuantity < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('수량은 1개 이상이어야 합니다')),
-      );
-      return;
-    }
+    if (newQuantity < 1) return;
 
     // 백엔드 API 호출로 수량 업데이트
     final result = await CartService.updateCartQuantity(
@@ -211,14 +206,6 @@ class _CartScreenState extends State<CartScreen> {
     if (result['success'] == true) {
       // 성공 시 장바구니 다시 로드 (캐시된 데이터를 표시하면서 백그라운드 갱신)
       _loadCart(showCachedData: true);
-    } else {
-      // 실패 시 에러 메시지 표시
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? '수량 변경에 실패했습니다.'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -239,18 +226,11 @@ class _CartScreenState extends State<CartScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('장바구니에서 삭제되었습니다')),
-        );
         // 선택된 아이템에서도 제거
         setState(() {
           selectedItems.remove(ctId);
         });
         _loadCart(showCachedData: true); // 장바구니 다시 로드 (캐시 표시)
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? '삭제에 실패했습니다.')),
-        );
       }
     }
   }
@@ -275,16 +255,8 @@ class _CartScreenState extends State<CartScreen> {
     if (confirmed) {
       // 선택된 아이템들을 순차적으로 삭제
       final itemsToDelete = List<int>.from(selectedDisplayedItems);
-      int successCount = 0;
-      int failCount = 0;
-
       for (int ctId in itemsToDelete) {
-        final result = await CartService.removeCartItem(ctId);
-        if (result['success'] == true) {
-          successCount++;
-        } else {
-          failCount++;
-        }
+        await CartService.removeCartItem(ctId);
       }
 
       // 선택 상태 초기화
@@ -292,20 +264,6 @@ class _CartScreenState extends State<CartScreen> {
         selectedItems.removeAll(itemsToDelete);
         selectAll = false;
       });
-
-      // 결과 메시지 표시
-      if (failCount == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${successCount}개 상품이 장바구니에서 삭제되었습니다')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${successCount}개 삭제 완료, ${failCount}개 삭제 실패'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
 
       _loadCart(showCachedData: true); // 장바구니 다시 로드 (캐시 표시)
     }
@@ -344,13 +302,7 @@ class _CartScreenState extends State<CartScreen> {
     if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
       return;
     }
-    if (_selectedDisplayedItemIds.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('결제할 상품을 선택해 주세요.')),
-      );
-      return;
-    }
+    if (_selectedDisplayedItemIds.isEmpty) return;
 
     final selectedCartItems = _displayedCartItems
         .where((item) => _selectedDisplayedItemIds.contains(item.ctId))
@@ -372,9 +324,6 @@ class _CartScreenState extends State<CartScreen> {
     if (!mounted) return;
     if (paid == true) {
       await _loadCart(showCachedData: false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('결제가 완료되어 앱으로 돌아왔습니다.')),
-      );
     }
   }
 

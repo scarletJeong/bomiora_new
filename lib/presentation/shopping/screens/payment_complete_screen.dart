@@ -111,27 +111,10 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
 
   Future<void> _openCardPurchaseReceipt(OrderDetailModel order) async {
     final url = (order.cardReceiptUrl ?? '').trim();
-    if (url.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('영수증 URL이 아직 준비되지 않았습니다. (백엔드 응답 필드 확인 필요)')),
-      );
-      return;
-    }
+    if (url.isEmpty) return;
     final uri = Uri.tryParse(url);
-    if (uri == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('영수증 URL 형식이 올바르지 않습니다.')),
-      );
-      return;
-    }
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('영수증 페이지를 열 수 없습니다.')),
-      );
-    }
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   bool _isCardPayment(OrderDetailModel order) {
@@ -614,10 +597,6 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     return InkWell(
       onTap: () async {
         await Clipboard.setData(ClipboardData(text: copyText));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('입금계좌가 복사되었습니다.')),
-        );
       },
       borderRadius: BorderRadius.circular(6),
       child: Container(
