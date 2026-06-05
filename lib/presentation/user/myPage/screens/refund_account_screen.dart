@@ -222,7 +222,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                       ? '예금주명을 입력해주세요'
                                       : null,
                             ),
-                            SizedBox(height: healthDp(context, 20)),
+                            SizedBox(height: healthDp(context, 10)),
                             Text(
                               '*환불 처리를 위해 정확한 계좌정보를 입력해 주세요.',
                               style: TextStyle(
