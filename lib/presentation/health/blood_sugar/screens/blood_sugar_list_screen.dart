@@ -429,9 +429,9 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     return i >= 0 ? i : 50;
   }
 
-  // 메인 그래프 Y축: 기존 유지 (50~250)
+  // 메인 그래프 Y축: 0~400, 100단위
   List<double> getYAxisLabelsMain() {
-    return const [250, 200, 150, 100, 50];
+    return const [400, 300, 200, 100, 0];
   }
 
   // 확대 그래프 Y축: 요청 반영 (20~200, 20단위 10개)
