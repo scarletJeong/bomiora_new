@@ -39,7 +39,7 @@ abstract final class AppAssets {
 
   
   /* 1. 홈 */
-  // 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 assets/img/review_card_overlay.png`
+  // 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 assets/img/review_card_overlay`
   static const String reviewCardOverlay = '${_img}review_card_overlay.png';
 
 
@@ -163,6 +163,8 @@ abstract final class AppAssets {
 
   // 회원 탈퇴 아이콘
   static const String cancelMemberIcon = '${_img}cancel_member_icon.svg';
+  // 회원 탈퇴 설명 아이콘
+  static const String cancelIcon1 = '${_img}cancel_icon1.svg';
   
   
   /* 8. 결제 */
