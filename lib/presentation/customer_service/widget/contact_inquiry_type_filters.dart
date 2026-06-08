@@ -63,7 +63,7 @@ class _ContactInquiryTypeSelectorRowState
             items: contactInquiryPrimaryTypes,
             value: primary,
             emptyText: '문의 유형',
-            buttonHeight: healthDp(context, 40),
+            buttonHeight: healthDp(context, 34),
             panelMaxHeight: healthDp(context, 320),
             onChanged: (v) {
               final details = contactInquiryDetailMap[v] ?? const ['기타'];
@@ -78,7 +78,7 @@ class _ContactInquiryTypeSelectorRowState
             items: detailOpts,
             value: widget.detailType,
             emptyText: '상세 유형',
-            buttonHeight: healthDp(context, 40),
+            buttonHeight: healthDp(context, 34),
             panelMaxHeight: healthDp(context, 320),
             onChanged: (v) => widget.onChanged(primary, v),
           ),
@@ -117,7 +117,9 @@ class _ContactInquiryTypeFiltersState extends State<ContactInquiryTypeFilters> {
             items: contactInquiryPrimaryTypes,
             value: _selectedPrimary ?? '',
             emptyText: '문의 유형 선택',
-            buttonHeight: healthDp(context, 30),
+            emptyTextColor: Colors.black,
+            itemFontSizeBase: 12,
+            buttonHeight: healthDp(context, 34),
             panelMaxHeight: healthDp(context, 320),
             onChanged: (v) {
               setState(() {
@@ -134,7 +136,9 @@ class _ContactInquiryTypeFiltersState extends State<ContactInquiryTypeFilters> {
             items: detailOptions,
             value: _selectedDetail ?? '',
             emptyText: '상세 유형 선택',
-            buttonHeight: healthDp(context, 30),
+            emptyTextColor: Colors.black,
+            itemFontSizeBase: 12,
+            buttonHeight: healthDp(context, 34),
             panelMaxHeight: healthDp(context, 320),
             onChanged: (v) => setState(() => _selectedDetail = v),
           ),

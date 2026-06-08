@@ -3,8 +3,8 @@ import '../widget/contact_inquiry_type_filters.dart';
 import 'contact_form_screen.dart';
 import 'contact_detail_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -26,11 +26,31 @@ class ContactListScreenState extends State<ContactListScreen> {
   /// 목록에 표시할 최대 개수(더보기/8개 단위 확장).
   int _visibleCount = 8;
 
-  static const Color _kBorder = Color(0x7FD2D2D2);
-  static const Color _kMuted = Color(0xFF898686);
-  static const Color _kPink = Color(0xFFFF5A8D);
-  static const Color _kCardBorder = Color(0x7FD2D2D2);
-  static const Color _kDateColor = Color(0xFF584045);
+  static const Color _border = Color(0x7FD2D2D2);
+  static const Color _muted = Color(0xFF898686);
+  static const Color _pink = Color(0xFFFF5A8D);
+  static const Color _textMain = Color(0xFF1A1A1A);
+  static const Color _textInk = Color(0xFF1A1A1E);
+  static const Color _loadMoreBorder = Color(0xFFD2D2D2);
+
+  double _pagePadH(BuildContext context) => healthDp(context, 27);
+
+  TextStyle _contactText(
+    BuildContext context, {
+    required double size,
+    required Color color,
+    FontWeight weight = FontWeight.w500,
+    double? height,
+    double? letterSpacing,
+  }) =>
+      TextStyle(
+        color: color,
+        fontSize: healthSp(context, size),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: weight,
+        height: height,
+        letterSpacing: letterSpacing,
+      );
 
   @override
   void initState() {
@@ -80,14 +100,18 @@ class ContactListScreenState extends State<ContactListScreen> {
         builder: (context) => const ContactFormScreen(),
       ),
     );
-    if (result == true) _loadContacts();
+    if (result == true && mounted) _loadContacts();
+  }
+
+  void _loadMore() {
+    setState(() {
+      final total = _contacts.length;
+      _visibleCount =
+          (_visibleCount + 8 > total) ? total : _visibleCount + 8;
+    });
   }
 
   String _statusLabel(Contact contact) {
-    // 스레드의 "최신 글" 기준 상태 표기
-    // - 추가질문이 있고 최신 글이 미답변이면: 재문의
-    // - 최신 글이 답변완료면: 답변완료
-    // - 그 외: 접수완료
     if (contact.followupCount > 0 && !contact.latestAnswered) return '재문의';
     if (contact.latestAnswered) return '답변완료';
     return '접수완료';
@@ -99,45 +123,42 @@ class ContactListScreenState extends State<ContactListScreen> {
       children: [
         Container(
           width: double.infinity,
-          height: 1,
-          color: _kBorder,
+          height: healthDp(context, 1),
+          color: _border,
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: healthDp(context, 5)),
         Text.rich(
           TextSpan(
             children: [
               TextSpan(
                 text: '총 문의수 ',
-                style: TextStyle(
-                  color: _kMuted,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+                style: _contactText(context, size: 12, color: _muted),
               ),
               TextSpan(
                 text: '$_contactCount',
-                style: TextStyle(
-                  color: _kPink,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
+                style: _contactText(
+                  context,
+                  size: 12,
+                  color: _pink,
+                  weight: FontWeight.w700,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: healthDp(context, 5)),
         Container(
           width: double.infinity,
-          height: 1,
-          color: _kBorder,
+          height: healthDp(context, 1),
+          color: _border,
         ),
       ],
     );
   }
 
+  // 문의 카드
   Widget _buildContactItem(BuildContext context, Contact contact) {
+    final cardRadius = healthDp(context, 16);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -149,15 +170,15 @@ class ContactListScreenState extends State<ContactListScreen> {
             ),
           ).then((_) => _loadContacts());
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(cardRadius),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(healthDp(context, 16)),
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: _kCardBorder),
-              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(width: healthDp(context, 1), color: _border),
+              borderRadius: BorderRadius.circular(cardRadius),
             ),
           ),
           child: Row(
@@ -168,45 +189,76 @@ class ContactListScreenState extends State<ContactListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      DateDisplayFormatter.formatYmdFromString(contact.wrDatetime),
-                      style: TextStyle(
-                        color: _kDateColor,
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
+                      DateDisplayFormatter.formatYmdFromString(
+                        contact.wrDatetime,
+                      ),
+                      style: _contactText(
+                        context,
+                        size: 10,
+                        color: _textInk,
+                        height: 1,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: healthDp(context, 0.5)),
                     Text(
-                      contact.wrSubject.isEmpty ? '(제목 없음)' : contact.wrSubject,
-                      style: TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: healthSp(context, 16),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: -1.44,
-                        height: 1.25,
+                      contact.wrSubject.isEmpty
+                          ? '(제목 없음)'
+                          : contact.wrSubject,
+                      style: _contactText(
+                        context,
+                        size: 14,
+                        color: _textInk,
+                        letterSpacing: -1.26,
+                        height: 1,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: healthDp(context, 2)),
                     Text(
                       _statusLabel(contact),
-                      style: TextStyle(
-                        color: _kMuted,
-                        fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
+                      style: _contactText(
+                        context,
+                        size: 12,
+                        color: _muted,
                         letterSpacing: -1.08,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: _kMuted, size: 12),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.black,
+                size: healthDp(context, 20),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadMoreButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 40),
+      child: OutlinedButton(
+        onPressed: _loadMore,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _loadMoreBorder,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          ),
+          backgroundColor: Colors.white,
+        ),
+        child: Text(
+          '더보기',
+          textAlign: TextAlign.center,
+          style: _contactText(context, size: 16, color: _muted),
         ),
       ),
     );
@@ -215,7 +267,7 @@ class ContactListScreenState extends State<ContactListScreen> {
   Widget _buildListBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFF3787)),
+        child: CircularProgressIndicator(color: _pink),
       );
     }
 
@@ -226,19 +278,16 @@ class ContactListScreenState extends State<ContactListScreen> {
     if (_errorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 27),
+          padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontFamily: 'Gmarket Sans TTF',
-                ),
+                style: _contactText(context, size: 14, color: Colors.red),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: healthDp(context, 16)),
               ElevatedButton(
                 onPressed: _loadContacts,
                 child: const Text('다시 시도'),
@@ -251,22 +300,27 @@ class ContactListScreenState extends State<ContactListScreen> {
 
     if (_contacts.isEmpty) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(27, 0, 27, 100),
+        padding: EdgeInsets.fromLTRB(
+          _pagePadH(context),
+          0,
+          _pagePadH(context),
+          healthDp(context, 100),
+        ),
         child: Column(
           children: [
-            const SizedBox(height: 48),
+            SizedBox(height: healthDp(context, 48)),
             Icon(
               Icons.inbox_outlined,
-              size: 64,
+              size: healthDp(context, 64),
               color: Colors.grey[400],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(context, 16)),
             Text(
               '문의내역이 없습니다.',
-              style: TextStyle(
-                fontSize: healthSp(context, 16),
-                color: Colors.grey[600],
-                fontFamily: 'Gmarket Sans TTF',
+              style: _contactText(
+                context,
+                size: 16,
+                color: Colors.grey.shade600,
               ),
             ),
           ],
@@ -279,32 +333,17 @@ class ContactListScreenState extends State<ContactListScreen> {
     final hasMore = shown < total;
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(27, 0, 27, 100),
+      padding: EdgeInsets.fromLTRB(
+        _pagePadH(context),
+        0,
+        _pagePadH(context),
+        healthDp(context, 100),
+      ),
       itemCount: shown + (hasMore ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => SizedBox(height: healthDp(context, 12)),
       itemBuilder: (context, index) {
         if (index == shown && hasMore) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Center(
-              child: TextButton(
-                onPressed: () {
-                  setState(() {
-                    _visibleCount = (_visibleCount + 8 > total) ? total : _visibleCount + 8;
-                  });
-                },
-                child: Text(
-                  '더보기',
-                  style: TextStyle(
-                    color: _kPink,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          );
+          return _buildLoadMoreButton();
         }
         return _buildContactItem(context, _contacts[index]);
       },
@@ -313,77 +352,91 @@ class ContactListScreenState extends State<ContactListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(
-        fontFamily: 'Gmarket Sans TTF',
-        color: Color(0xFF1A1A1A),
-      ),
-      child: MobileAppLayoutWrapper(
-        appBar: const HealthAppBar(
-          title: '1:1 문의',
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
         ),
-        child: ColoredBox(
-          color: Colors.white,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!_requiresLogin)
-                Padding(
-                  padding: const EdgeInsets.only(left: 27, right: 27),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildCountRow(),
-                      const SizedBox(height: 20),
-                      const ContactInquiryTypeFilters(),
-                      const SizedBox(height: 12),
-                    ],
-                  ),
-                ),
-              Expanded(child: _buildListBody()),
-              if (!_requiresLogin)
-                SafeArea(
-                  top: false,
-                  minimum: EdgeInsets.fromLTRB(
-                    healthDp(context, 27),
-                    healthDp(context, 8),
-                    healthDp(context, 27),
-                    healthDp(context, 12),
-                  ),
-                  child: GestureDetector(
-                    onTap: _openContactForm,
-                    child: Container(
-                      width: double.infinity,
-                      height: healthDp(context, 40),
-                      padding: EdgeInsets.all(healthDp(context, 10)),
-                      clipBehavior: Clip.antiAlias,
-                      decoration: ShapeDecoration(
-                        color: const Color(0xFFFF5A8D),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: _textMain,
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '1:1 문의',
+              titleFontSize: healthSp(context, 16),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: ColoredBox(
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!_requiresLogin)
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            '1:1 문의하기',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: healthSp(context, 16),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          SizedBox(height: healthDp(context, 20)),
+                          _buildCountRow(),
+                          SizedBox(height: healthDp(context, 20)),
+                          const ContactInquiryTypeFilters(),
+                          SizedBox(height: healthDp(context, 20)),
                         ],
                       ),
                     ),
-                  ),
-                ),
-            ],
+                  Expanded(child: _buildListBody()),
+                  if (!_requiresLogin)
+                    SafeArea(
+                      top: false,
+                      minimum: EdgeInsets.fromLTRB(
+                        _pagePadH(context),
+                        healthDp(context, 8),
+                        _pagePadH(context),
+                        healthDp(context, 12),
+                      ),
+                      child: GestureDetector(
+                        onTap: _openContactForm,
+                        child: Container(
+                          width: double.infinity,
+                          height: healthDp(context, 40),
+                          padding: EdgeInsets.all(healthDp(context, 10)),
+                          clipBehavior: Clip.antiAlias,
+                          decoration: ShapeDecoration(
+                            color: _pink,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 10)),
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '1:1 문의하기',
+                            style: _contactText(
+                              context,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -393,22 +446,22 @@ class ContactListScreenState extends State<ContactListScreen> {
   Widget _buildLoginMessage() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 27),
+        padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.inbox_outlined,
-              size: 64,
+              size: healthDp(context, 64),
               color: Colors.grey[400],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(context, 16)),
             Text(
               '로그인 후 이용 가능합니다.',
-              style: TextStyle(
-                fontSize: healthSp(context, 16),
-                color: Colors.grey[600],
-                fontFamily: 'Gmarket Sans TTF',
+              style: _contactText(
+                context,
+                size: 16,
+                color: Colors.grey.shade600,
               ),
               textAlign: TextAlign.center,
             ),

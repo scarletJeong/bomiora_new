@@ -7,9 +7,9 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/contact_service.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import 'contact_form_screen.dart';
 
 class ContactDetailScreen extends StatefulWidget {
@@ -41,6 +41,87 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
   static const Color _kAnswerBg = Color(0x4CD2D2D2);
   static const Color _kDot = Color(0xFFE9E9E9);
   static const Color _kMutedGray = Color(0xFF898686);
+  static const Color _kTextMain = Color(0xFF1A1A1A);
+  static const Color _kActionGray = Color(0xFF898383);
+  static const Color _kButtonBorder = Color(0xFFD2D2D2);
+
+  double _pagePadH(BuildContext context) => healthDp(context, 27);
+
+  TextStyle _contactText(
+    BuildContext context, {
+    required double size,
+    required Color color,
+    FontWeight weight = FontWeight.w500,
+    double? height,
+  }) =>
+      TextStyle(
+        color: color,
+        fontSize: healthSp(context, size),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: weight,
+        height: height,
+      );
+
+  Widget _buildQuestionActions(Contact c, {required bool canEdit, required bool canDelete}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (canEdit) ...[
+          TextButton(
+            onPressed: () => _navigateToEdit(c),
+            style: TextButton.styleFrom(
+              foregroundColor: _kActionGray,
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 4),
+                vertical: healthDp(context, 2),
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              '수정',
+              style: _contactText(
+                context,
+                size: 10,
+                color: _kActionGray,
+                weight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            '|',
+            style: _contactText(
+              context,
+              size: 10,
+              color: _kActionGray,
+              weight: FontWeight.w500,
+            ),
+          ),
+        ],
+        if (canDelete)
+          TextButton(
+            onPressed: () => _confirmAndDeleteContact(c.wrId),
+            style: TextButton.styleFrom(
+              foregroundColor: _kActionGray,
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 4),
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              '삭제',
+              style: _contactText(
+                context,
+                size: 10,
+                color: _kActionGray,
+                weight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 
   @override
   void initState() {
@@ -151,8 +232,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
 
     final confirmed = await ConfirmDialog.show(
       context,
-      title: '문의 삭제',
-      message: '이 문의를 삭제하시겠습니까?',
+      title: '1:1 문의 삭제',
+      message: '문의를 삭제하시겠습니까?',
       cancelText: '취소',
       confirmText: '삭제',
     );
@@ -198,13 +279,25 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
   Widget _buildQuestionCardFor(Contact c) {
     final canEdit = _canEditFor(c);
     final canDelete = _canDeleteFor(c);
+    final hasActions = canEdit || canDelete;
+    final cardRadius = healthDp(context, 12);
+    final qSize = healthDp(context, 40);
+    final subject = c.wrSubject.isEmpty ? '(제목 없음)' : c.wrSubject;
+    final titleStyle = _contactText(
+      context,
+      size: 16,
+      color: _kTextMain,
+      weight: FontWeight.w700,
+      height: 1.5,
+    );
+
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorderMuted, width: 1),
+        borderRadius: BorderRadius.circular(cardRadius),
+        border: Border.all(color: _kBorderMuted, width: healthDp(context, 1)),
       ),
       child: Stack(
         children: [
@@ -213,136 +306,85 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             top: 0,
             bottom: 0,
             child: Container(
-              width: 4,
-              decoration: const BoxDecoration(
+              width: healthDp(context, 4),
+              decoration: BoxDecoration(
                 color: _kPink,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  bottomLeft: Radius.circular(12),
+                  topLeft: Radius.circular(cardRadius),
+                  bottomLeft: Radius.circular(cardRadius),
                 ),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 24),
+              hasActions ? healthDp(context, 10) : healthDp(context, 24),
+              healthDp(context, 24),
+              healthDp(context, 24),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (hasActions)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: _buildQuestionActions(
+                      c,
+                      canEdit: canEdit,
+                      canDelete: canDelete,
+                    ),
+                  ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      width: qSize,
+                      height: qSize,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: _kPink,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        'Q',
+                        style: _contactText(
+                          context,
+                          size: 20,
+                          color: Colors.white,
+                          weight: FontWeight.w700,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: healthDp(context, 12)),
                     Expanded(
-                      child: Row(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            alignment: Alignment.center,
-                            decoration: const BoxDecoration(
-                              color: _kPink,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              'Q',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: healthSp(context, 20),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
-                                height: 1,
-                              ),
-                            ),
+                          Text(
+                            subject,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: titleStyle,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  c.wrSubject.isEmpty ? '(제목 없음)' : c.wrSubject,
-                                  style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: healthSp(context, 16),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.5,
-                                  ),
-                                ),
-                                Text(
-                                  DateDisplayFormatter.formatYmdFromString(c.wrDatetime),
-                                  style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: healthSp(context, 10),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
+                          Text(
+                            DateDisplayFormatter.formatYmdFromString(
+                              c.wrDatetime,
+                            ),
+                            style: _contactText(
+                              context,
+                              size: 10,
+                              color: _kTextMain,
+                              height: 1.5,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (canEdit || canDelete)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                    // 답변이 있으면 수정은 숨기고 삭제만 노출
-                    if (canEdit) ...[
-                            TextButton(
-                              onPressed: () => _navigateToEdit(c),
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFF898383),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                '수정',
-                                style: TextStyle(
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w300,
-                                  fontSize: healthSp(context, 11),
-                                  color: Color(0xFF898383),
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '|',
-                              style: TextStyle(
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                                fontSize: healthSp(context, 11),
-                                color: Color(0xFF898383),
-                              ),
-                            ),
-                          ],
-                    if (canDelete)
-                            TextButton(
-                              onPressed: () => _confirmAndDeleteContact(c.wrId),
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFF898383),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                '삭제',
-                                style: TextStyle(
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w300,
-                                  fontSize: healthSp(context, 11),
-                                  color: Color(0xFF898383),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
                   ],
                 ),
-                const SizedBox(height: 15),
+                SizedBox(height: healthDp(context, 15)),
                 _buildContactHtmlBody(c.wrContent),
               ],
             ),
@@ -388,16 +430,24 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     return _threadQuestions.where((c) => c.wrId != root).length;
   }
 
+
+  // 답변 카드
   Widget _buildAnswerCard(Contact reply) {
     final title = reply.wrSubject.trim().isEmpty ? '답변' : reply.wrSubject;
+    final cardRadius = healthDp(context, 12);
+    final aSize = healthDp(context, 32);
+    final dotSize = healthDp(context, 16);
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: EdgeInsets.only(top: healthDp(context, 20)),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.only(left: 24),
-        decoration: const BoxDecoration(
+        padding: EdgeInsets.only(left: healthDp(context, 24)),
+        decoration: BoxDecoration(
           border: Border(
-            left: BorderSide(width: 2, color: _kBorderMuted),
+            left: BorderSide(
+              width: healthDp(context, 2),
+              color: _kBorderMuted,
+            ),
           ),
         ),
         child: Stack(
@@ -405,10 +455,10 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(healthDp(context, 24)),
               decoration: BoxDecoration(
                 color: _kAnswerBg,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(cardRadius),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,8 +467,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: aSize,
+                        height: aSize,
                         alignment: Alignment.center,
                         decoration: const BoxDecoration(
                           color: _kPinkSoft,
@@ -426,37 +476,38 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                         ),
                         child: Text(
                           'A',
-                          style: TextStyle(
+                          style: _contactText(
+                            context,
+                            size: 20,
                             color: Colors.white,
-                            fontSize: healthSp(context, 20),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
+                            weight: FontWeight.w700,
                             height: 1,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: healthDp(context, 12)),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               title,
-                              style: TextStyle(
-                                color: Color(0xFF1A1A1A),
-                                fontSize: healthSp(context, 14),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
+                              style: _contactText(
+                                context,
+                                size: 14,
+                                color: _kTextMain,
+                                weight: FontWeight.w700,
                                 height: 1.43,
                               ),
                             ),
                             Text(
-                              DateDisplayFormatter.formatYmdFromString(reply.wrDatetime),
-                              style: TextStyle(
-                                color: Color(0xFF1A1A1A),
-                                fontSize: healthSp(context, 10),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
+                              DateDisplayFormatter.formatYmdFromString(
+                                reply.wrDatetime,
+                              ),
+                              style: _contactText(
+                                context,
+                                size: 10,
+                                color: _kTextMain,
                                 height: 1.5,
                               ),
                             ),
@@ -465,18 +516,18 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 15),
+                  SizedBox(height: healthDp(context, 15)),
                   _buildContactHtmlBody(_primaryContactHtml(reply)),
                 ],
               ),
             ),
-            const Positioned(
-              left: -33,
-              top: -1,
+            Positioned(
+              left: -healthDp(context, 33),
+              top: -healthDp(context, 1),
               child: SizedBox(
-                width: 16,
-                height: 16,
-                child: DecoratedBox(
+                width: dotSize,
+                height: dotSize,
+                child: const DecoratedBox(
                   decoration: BoxDecoration(
                     color: _kDot,
                     shape: BoxShape.circle,
@@ -500,7 +551,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
       final answerHtml = _answerHtmlFor(q);
       blocks.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.only(bottom: healthDp(context, 24)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -534,131 +585,177 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     return blocks;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '1:1 문의 상세'),
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF3787)))
-          : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 27),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.red, fontFamily: 'Gmarket Sans TTF'),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadContactDetail,
-                          child: const Text('다시 시도'),
-                        ),
-                      ],
+  Widget _buildBottomButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: healthDp(context, 40),
+            child: OutlinedButton(
+              onPressed: () {
+                final root = _rootWrId ?? widget.wrId;
+                if (_followupCount >= 2) {
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ContactFormScreen(
+                      parentWrId: root,
+                      onSuccess: _loadContactDetail,
                     ),
                   ),
-                )
-              : _contact == null
-                  ? const Center(child: Text('문의를 찾을 수 없습니다.'))
-                  : ColoredBox(
-                      color: Colors.white,
-                      child: Column(
-                        children: [
-                          Expanded(
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _kMutedGray,
+                side: BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: _kButtonBorder,
+                ),
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    healthDp(context, 10),
+                  ),
+                ),
+                padding: EdgeInsets.all(healthDp(context, 10)),
+              ),
+              child: Text(
+                '추가질문',
+                style: _contactText(
+                  context,
+                  size: 16,
+                  color: _kMutedGray,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: healthDp(context, 20)),
+        Expanded(
+          child: SizedBox(
+            height: healthDp(context, 40),
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: _kPink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    healthDp(context, 10),
+                  ),
+                ),
+                padding: EdgeInsets.all(healthDp(context, 10)),
+              ),
+              child: Text(
+                '목록보기',
+                style: _contactText(
+                  context,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseTheme = Theme.of(context);
+    final gmarketTheme = baseTheme.copyWith(
+      textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+      primaryTextTheme:
+          baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
+    );
+    final textScale =
+        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
+
+    return Theme(
+      data: gmarketTheme,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(textScale),
+        ),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            color: _kTextMain,
+          ),
+          child: MobileAppLayoutWrapper(
+            backgroundColor: Colors.white,
+            appBar: HealthAppBar(
+              title: '1:1 문의',
+              titleFontSize: healthSp(context, 16),
+              leadingIconSize: healthDp(context, 24),
+            ),
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(color: _kPink),
+                  )
+                : _errorMessage != null
+                    ? Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: _pagePadH(context),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: _contactText(
+                                  context,
+                                  size: 14,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 16)),
+                              ElevatedButton(
+                                onPressed: _loadContactDetail,
+                                child: const Text('다시 시도'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _contact == null
+                        ? Center(
+                            child: Text(
+                              '문의를 찾을 수 없습니다.',
+                              style: _contactText(
+                                context,
+                                size: 14,
+                                color: _kTextMain,
+                              ),
+                            ),
+                          )
+                        : ColoredBox(
+                            color: Colors.white,
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(27, 20, 27, 20),
-                              child: DefaultTextStyle.merge(
-                                style: const TextStyle(
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    ..._buildThreadBlocks(),
-                                  ],
-                                ),
+                              padding: EdgeInsets.fromLTRB(
+                                _pagePadH(context),
+                                healthDp(context, 20),
+                                _pagePadH(context),
+                                healthDp(context, 20),
+                              ),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                children: [
+                                  ..._buildThreadBlocks(),
+                                  _buildBottomButtons(),
+                                ],
                               ),
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 40,
-                                    child: OutlinedButton(
-                                      onPressed: () {
-                                        final root = _rootWrId ?? widget.wrId;
-                                        if (_followupCount >= 2) {
-                                          return;
-                                        }
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => ContactFormScreen(
-                                              parentWrId: root,
-                                              onSuccess: _loadContactDetail,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: _kMutedGray,
-                                        side: const BorderSide(width: 0.5, color: Color(0xFFD2D2D2)),
-                                        backgroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        padding: const EdgeInsets.all(10),
-                                      ),
-                                      child: Text(
-                                        '추가질문',
-                                        style: TextStyle(
-                                          color: Color(0xFF898686),
-                                          fontSize: healthSp(context, 16),
-                                          fontFamily: 'Gmarket Sans TTF',
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 40,
-                                    child: FilledButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: _kPink,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        padding: const EdgeInsets.all(10),
-                                      ),
-                                      child: Text(
-                                        '목록보기',
-                                        style: TextStyle(
-                                          fontSize: healthSp(context, 16),
-                                          fontFamily: 'Gmarket Sans TTF',
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -677,20 +774,22 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     if (processed.trim().isEmpty) {
       return Text(
         ContentService.normalizeHtmlToText(rawHtml),
-        style: TextStyle(
-          color: Color(0xFF1A1A1A),
-          fontSize: healthSp(context, 14),
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w300,
+        style: _contactText(
+          context,
+          size: 14,
+          color: _kTextMain,
+          weight: FontWeight.w300,
           height: 1.63,
         ),
       );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
+        final horizontalPad = healthDp(context, 24) * 2;
         final maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width - 48;
+            : MediaQuery.sizeOf(context).width - horizontalPad;
+        final htmlGap = healthDp(context, 8);
         return Html(
           data: processed,
           style: {
@@ -703,16 +802,16 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
               fontWeight: FontWeight.w300,
               lineHeight: const LineHeight(1.63),
               textAlign: TextAlign.start,
-              color: const Color(0xFF1A1A1A),
+              color: _kTextMain,
             ),
             'p': Style(
-              margin: Margins.only(bottom: 8),
+              margin: Margins.only(bottom: htmlGap),
               padding: HtmlPaddings.zero,
             ),
             'img': Style(
               width: Width(maxWidth),
               display: Display.block,
-              margin: Margins.symmetric(vertical: 8),
+              margin: Margins.symmetric(vertical: htmlGap),
             ),
             'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
             'span': Style(fontFamily: 'Gmarket Sans TTF'),

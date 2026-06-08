@@ -1,12 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/constants/app_assets.dart';
+import '../../../core/utils/image_picker_utils.dart';
 import '../../../data/models/contact/contact_model.dart';
 import '../../../data/services/contact_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/photo_limit_popup.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../widget/contact_inquiry_type_filters.dart';
@@ -33,11 +35,12 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kBorder = Color(0xFFD2D2D2);
   static const Color _kSoftBorder = Color(0x7FD2D2D2);
+  static const int _maxImages = 3;
+  static const int _maxImageBytes = 5 * 1024 * 1024;
 
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
 
   String _selectedType = contactInquiryPrimaryTypes.first;
   String _selectedDetailType =
@@ -46,6 +49,8 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   bool _isSubmitting = false;
 
   bool get _isEditMode => widget.contact != null;
+
+  double _pagePadH(BuildContext context) => healthDp(context, 27);
 
   @override
   void initState() {
@@ -93,15 +98,60 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    if (_images.length >= 3) {
+  Future<void> _openPhotoSourceDropdown(BuildContext anchorContext) async {
+    if (_images.length >= _maxImages) {
+      await PhotoLimitPopup.show(context);
       return;
     }
+    ImagePickerUtils.showPhotoSourceDropdown(
+      context: context,
+      anchorContext: anchorContext,
+      onImageSelected: _applyPickedImage,
+    );
+  }
 
-    final image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (image == null) return;
-    if (!mounted) return;
-    setState(() => _images.add(image));
+  Future<void> _applyPickedImage(XFile? image) async {
+    if (image == null || !mounted) return;
+    if (_images.length >= _maxImages) {
+      await PhotoLimitPopup.show(context);
+      return;
+    }
+    try {
+      final bytes = await image.readAsBytes();
+      if (bytes.length > _maxImageBytes) return;
+      setState(() => _images.add(image));
+    } catch (e) {
+      debugPrint('이미지 선택 오류: $e');
+    }
+  }
+
+  Widget _buildImageThumb(XFile image, double size, double radius) {
+    return FutureBuilder<Uint8List>(
+      future: image.readAsBytes(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return SizedBox(
+            width: size,
+            height: size,
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: healthDp(context, 2),
+                color: _kPink,
+              ),
+            ),
+          );
+        }
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Image.memory(
+            snapshot.data!,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _submitContact() async {
@@ -168,14 +218,14 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
               key: _formKey,
               child: ListView(
                 padding: EdgeInsets.only(
-                  left: healthDp(context, 27),
-                  right: healthDp(context, 27),
+                  left: _pagePadH(context),
+                  right: _pagePadH(context),
                   bottom: healthDp(context, 20),
                 ),
                 children: [
-                  SizedBox(height: healthDp(context, 16)),
+                  SizedBox(height: healthDp(context, 20)),
                   _buildTypeSelectors(),
-                  SizedBox(height: healthDp(context, 16)),
+                  SizedBox(height: healthDp(context, 20)),
                   _buildTitleField(),
                   SizedBox(height: healthDp(context, 10)),
                   _buildContentBox(),
@@ -194,40 +244,53 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   }
 
   Widget _buildTitleField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: healthDp(context, 8)),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 12)),
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              side: BorderSide(
-                  width: healthDp(context, 1), color: _kBorder),
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            ),
-          ),
-          child: TextFormField(
-            controller: _titleController,
-            maxLength: 120,
-            style: TextStyle(
-              fontSize: healthSp(context, 10), // 확인해봐
-              fontWeight: FontWeight.w500,
-              color: _kInk,
-            ),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              counterText: '',
-              hintText: '제목을 입력해주세요.',
-              hintStyle: TextStyle(
-                color: _kMuted,
-                fontSize: healthSp(context, 12),
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ),
+    final padH = healthDp(context, 10);
+    final radius = healthDp(context, 7);
+    final fontSize = healthSp(context, 12);
+    final boxH = healthDp(context, 40);
+    final borderW = healthDp(context, 1);
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(radius),
+      borderSide: BorderSide(width: borderW, color: _kBorder),
+    );
+
+    final vPad = (boxH - fontSize) / 2;
+    final nudge = healthDp(context, 0.5);
+
+    return SizedBox(
+      height: boxH,
+      child: TextFormField(
+        controller: _titleController,
+        maxLength: 120,
+        maxLines: 1,
+        textAlignVertical: TextAlignVertical.center,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w300,
+          color: Colors.black,
+          height: 1,
         ),
-      ],
+        decoration: InputDecoration(
+          counterText: '',
+          isDense: true,
+          contentPadding: EdgeInsets.only(
+            left: padH,
+            right: padH,
+            top: vPad - nudge,
+            bottom: vPad + nudge,
+          ),
+          hintText: '제목을 입력해주세요.',
+          hintStyle: TextStyle(
+            color: _kMuted,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w300,
+            height: 1,
+          ),
+          border: border,
+          enabledBorder: border,
+          focusedBorder: border,
+        ),
+      ),
     );
   }
 
@@ -267,10 +330,13 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                   controller: _contentController,
                   maxLength: 3000,
                   maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
                   style: TextStyle(
                     fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w500,
-                    color: _kInk,
+                    color: Colors.black,
+                    height: 1.2,
                   ),
                   decoration: InputDecoration(
                     hintText: '문의 내용을 입력해주세요.',
@@ -278,9 +344,12 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                       color: _kMuted,
                       fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w300,
+                      height: 1.2,
                     ),
                     border: InputBorder.none,
                     counterText: '',
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
                   ),
                   validator: (value) {
                     final text = (value ?? '').trim();
@@ -298,6 +367,7 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                     color: _kMuted,
                     fontSize: healthSp(context, 10),
                     fontWeight: FontWeight.w300,
+                    letterSpacing: -0.50,
                   ),
                 ),
               ),
@@ -316,36 +386,43 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       children: [
         Row(
           children: [
-            InkWell(
-              onTap: _pickImage,
-              child: Container(
-                width: thumb,
-                height: thumb,
-                decoration: ShapeDecoration(
-                  color: const Color(0x99D2D2D2),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(r10)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add_a_photo_outlined,
-                      color: Colors.white,
-                      size: healthDp(context, 24),
-                    ),
-                    SizedBox(height: healthDp(context, 4)),
-                    Text(
-                      '사진추가하기',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: healthSp(context, 10),
-                        fontWeight: FontWeight.w500,
+            Builder(
+              builder: (anchorContext) {
+                return InkWell(
+                  onTap: () => _openPhotoSourceDropdown(anchorContext),
+                  borderRadius: BorderRadius.circular(r10),
+                  child: Container(
+                    width: thumb,
+                    height: thumb,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x99D2D2D2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(r10),
                       ),
                     ),
-                  ],
-                ),
-              ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          AppAssets.addPhotoIcon,
+                          width: healthDp(context, 34),
+                          height: healthDp(context, 31),
+                        ),
+                        SizedBox(height: healthDp(context, 9)),
+                        Text(
+                          '사진추가하기',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 10),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
             SizedBox(width: healthDp(context, 5)),
             ..._images.asMap().entries.map((entry) {
@@ -355,14 +432,7 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                 padding: EdgeInsets.only(right: healthDp(context, 5)),
                 child: Stack(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(r10),
-                      child: kIsWeb
-                          ? Image.network(image.path,
-                              width: thumb, height: thumb, fit: BoxFit.cover)
-                          : Image.file(File(image.path),
-                              width: thumb, height: thumb, fit: BoxFit.cover),
-                    ),
+                    _buildImageThumb(image, thumb, r10),
                     Positioned(
                       right: healthDp(context, 3),
                       top: healthDp(context, 3),
