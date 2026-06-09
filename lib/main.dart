@@ -35,6 +35,8 @@ import 'presentation/customer_service/screens/contact_list_screen.dart';
 import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
+import 'presentation/user/delivery/refund/refund_apply_general_screen.dart';
+import 'presentation/user/delivery/refund/refund_apply_prescription_screen.dart';
 import 'presentation/user/coupon/screens/coupon_screen.dart';
 import 'presentation/user/healthprofile/screens/health_profile_list_screen.dart';
 import 'presentation/user/review/my_reviews_screen.dart';
@@ -48,6 +50,10 @@ import 'presentation/content/dashboard/screens/content_dashboard_screen.dart';
 import 'presentation/content/dashboard/screens/content_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_detail_screen.dart';
 import 'presentation/home/search/search_list_screen.dart';
+import 'presentation/common/widgets/dropdown_btn.dart';
+
+/// 개발용: 앱 시작 시 로그인 화면을 먼저 표시 (원복 시 false)
+const bool kDevForceLoginScreenFirst = true;
 
 void main() async {
   // Flutter 바인딩 초기화
@@ -86,8 +92,19 @@ void main() async {
   runApp(const BomioraApp());
 }
 
-class BomioraApp extends StatelessWidget {
+class BomioraApp extends StatefulWidget {
   const BomioraApp({super.key});
+
+  @override
+  State<BomioraApp> createState() => _BomioraAppState();
+}
+
+class _BomioraAppState extends State<BomioraApp> {
+  @override
+  void reassemble() {
+    super.reassemble();
+    DropdownBtn.closeMenu();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +127,9 @@ class BomioraApp extends StatelessWidget {
         Locale('ko', 'KR'),
         Locale('en', 'US'),
       ],
-      home: const AuthWrapper(),
+      home: kDevForceLoginScreenFirst
+          ? const LoginScreen()
+          : const AuthWrapper(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/find-account': (context) {
@@ -180,6 +199,24 @@ class BomioraApp extends StatelessWidget {
                 (args['orderNumber'] ?? args['odId'] ?? '').toString();
           }
           return DeliveryDetailScreen(orderNumber: orderNumber);
+        },
+        '/refund': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          var orderNumber = '';
+          if (args is Map) {
+            orderNumber =
+                (args['orderNumber'] ?? args['odId'] ?? '').toString();
+          }
+          return RefundApplyPrescriptionScreen(orderNumber: orderNumber);
+        },
+        '/refund-general': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          var orderNumber = '';
+          if (args is Map) {
+            orderNumber =
+                (args['orderNumber'] ?? args['odId'] ?? '').toString();
+          }
+          return RefundApplyGeneralScreen(orderNumber: orderNumber);
         },
         '/announcement': (context) => const AnnouncementListScreen(),
         '/event': (context) => const EventListScreen(),
@@ -389,10 +426,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final already = await AuthService.isLoggedIn();
     if (already) return true;
 
-    const email = 'test@naver.com';
-    const password = 'testtest1234';
-
-    final result = await AuthRepository.login(email: email, password: password);
+    final result = await AuthRepository.login(
+      email: AuthRepository.devAllowedLoginEmail,
+      password: AuthRepository.devAllowedLoginPassword,
+    );
     if (result['success'] != true) return false;
 
     final resultData = result['data'];
@@ -407,7 +444,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final userId =
         NodeValueParser.asString(userJson['mb_id']) ?? NodeValueParser.asString(userJson['id']) ?? '';
     userJson['id'] = userId;
-    userJson['password'] = password;
+    userJson['password'] = AuthRepository.devAllowedLoginPassword;
 
     final user = UserModel.fromJson(userJson);
     final token = NodeValueParser.asString(userData['token']);

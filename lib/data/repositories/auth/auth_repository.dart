@@ -4,6 +4,18 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 
 class AuthRepository {
+  /// 임시: 이 계정만 로그인 허용 (그 외 이메일/비밀번호는 API 호출 전 차단)
+  static const String devAllowedLoginEmail = 'test@naver.com';
+  static const String devAllowedLoginPassword = 'testtest1234';
+
+  static bool isDevAllowedLogin({
+    required String email,
+    required String password,
+  }) {
+    return email.trim() == devAllowedLoginEmail &&
+        password == devAllowedLoginPassword;
+  }
+
   static String _asErrorMessage(dynamic value, {String fallback = '요청 처리 중 오류가 발생했습니다'}) {
     if (value == null) return fallback;
     if (value is String && value.isNotEmpty) return value;
@@ -109,11 +121,18 @@ class AuthRepository {
     required String email,
     required String password,
   }) async {
+    if (!isDevAllowedLogin(email: email, password: password)) {
+      return {
+        'success': false,
+        'error': '아이디 혹은 비밀번호가 일치하지 않습니다.',
+      };
+    }
+
     try {
       // 평문 비밀번호를 전송 (Spring Boot에서 PBKDF2로 검증)
       final response = await ApiClient.post(ApiEndpoints.login, {
-        'email': email,
-        'password': password, // 평문 비밀번호 전송 (HTTPS로 보호)
+        'email': email.trim(),
+        'password': password,
       });
 
       if (response.statusCode == 200) {

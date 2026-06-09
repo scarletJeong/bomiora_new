@@ -135,31 +135,29 @@ class AuthService {
       );
       
       print('📡 [프로필 수정] 응답 상태: ${response.statusCode}');
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        
-        if (data['success'] == true) {
-          print('✅ [프로필 수정] 성공');
-          
-          // 수정된 사용자 정보 저장
-          if (data['user'] != null) {
-            final updatedUser = UserModel.fromJson(data['user']);
-            await updateUser(updatedUser);
-          }
-          
-          return {
-            'success': true,
-            'message': data['message'] ?? '프로필이 수정되었습니다.',
-          };
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        print('✅ [프로필 수정] 성공');
+
+        if (data['user'] != null) {
+          final updatedUser = UserModel.fromJson(data['user']);
+          await updateUser(updatedUser);
         }
+
+        return {
+          'success': true,
+          'message': data['message'] ?? '프로필이 수정되었습니다.',
+        };
       }
-      
+
       print('❌ [프로필 수정] 실패');
-      final errorData = json.decode(response.body);
       return {
         'success': false,
-        'message': errorData['message'] ?? '프로필 수정에 실패했습니다.',
+        'message': data['message']?.toString() ?? '프로필 수정에 실패했습니다.',
+        'code': data['code']?.toString(),
+        'nextChangeDate': data['nextChangeDate']?.toString(),
       };
     } catch (e) {
       print('❌ [프로필 수정] 에러: $e');
