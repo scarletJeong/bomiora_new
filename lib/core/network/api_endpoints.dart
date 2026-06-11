@@ -43,6 +43,12 @@ class ApiEndpoints {
   static const String addToWish = '/api/wish/toggle';
   static const String removeFromWish = '/api/wish/remove';
 
+  // 최근 본 상품
+  static const String recentViewRecord = '/api/recent-view/record';
+  static const String recentViewList = '/api/recent-view/list';
+  static const String recentViewRemove = '/api/recent-view/remove';
+  static const String recentViewClear = '/api/recent-view/clear';
+
   // 리뷰 관련 — 메인 홈 베스트 리뷰는 Node `bomiora_main_review` (쿼리: ?size=8)
   static const String mainHomeReviews = '/api/user/reviews/main';
 

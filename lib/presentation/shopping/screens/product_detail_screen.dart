@@ -14,6 +14,7 @@ import '../../../core/utils/product_share.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/wish_service.dart';
+import '../../../data/services/recent_view_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
@@ -97,6 +98,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
+    RecentViewService.recordView(
+      widget.productId,
+      productKind: 'prescription',
+    );
   }
 
   Future<void> _loadAuthUser() async {
