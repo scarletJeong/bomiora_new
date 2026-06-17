@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/faq/faq_model.dart';
 import '../../../../data/services/category_service.dart';
 import '../../../../data/services/faq_service.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
 class FaqListScreen extends StatefulWidget {
-  /// `true`이면 [MobileAppLayoutWrapper]·앱바 없이 본문만 그립니다. (고객센터 탭 등)
-  const FaqListScreen({super.key, this.embedInTabView = false});
-
-  final bool embedInTabView;
+  const FaqListScreen({super.key});
 
   @override
   State<FaqListScreen> createState() => _FaqListScreenState();
 }
 
 class _FaqListScreenState extends State<FaqListScreen> {
-  static const Color _kText = Color(0xFF1A1A1A);
+  static const Color _kText = Color(0xFF1A1A1E);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5B8C);
+  static const Color _kCountPink = Color(0xFFFF5A8D);
   static const Color _kBorder = Color(0xFFD2D2D2);
 
   final TextEditingController _searchController = TextEditingController();
@@ -103,55 +103,41 @@ class _FaqListScreenState extends State<FaqListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final list = RefreshIndicator(
-      onRefresh: () => _load(page: 1),
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          27,
-          widget.embedInTabView ? 8 : 16,
-          27,
-          20,
-        ),
-        children: [
-          _buildCategoryChips(),
-          const SizedBox(height: 12),
-          _buildSearchBar(),
-          const SizedBox(height: 12),
-          Text(
-            '총 ${_visibleItems.length}건',
-            style: TextStyle(
-              color: _kMuted,
-              fontSize: healthSp(context, 12),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_error != null)
-            _buildError()
-          else if (_items.isEmpty)
-            _buildEmpty()
-          else
-            ..._visibleItems.map(_buildFaqCard),
-        ],
-      ),
-    );
-
-    if (widget.embedInTabView) {
-      return ColoredBox(color: Colors.white, child: list);
-    }
-
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
         title: 'FAQ',
         centerTitle: false,
       ),
-      child: list,
+      child: RefreshIndicator(
+        onRefresh: () => _load(page: 1),
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 20),
+          ),
+          children: [
+            _buildCategoryChips(),
+            SizedBox(height: healthDp(context, 10)),
+            _buildSearchBar(),
+            SizedBox(height: healthDp(context, 10)),
+            _buildTotalRow(),
+            SizedBox(height: healthDp(context, 14)),
+            if (_loading)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 60)),
+                child: const Center(child: CircularProgressIndicator()),
+              )
+            else if (_error != null)
+              _buildError()
+            else if (_items.isEmpty)
+              _buildEmpty()
+            else
+              ..._visibleItems.map(_buildFaqCard),
+          ],
+        ),
+      ),
     );
   }
 
@@ -167,41 +153,104 @@ class _FaqListScreenState extends State<FaqListScreen> {
 
   Widget _buildCategoryChips() {
     return SizedBox(
-      height: 34,
-      child: ListView.separated(
+      height: healthDp(context, 24),
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 5),
-        itemBuilder: (context, index) {
-          final category = _categories[index];
-          final selected = category == _selectedTabCategory;
-          return InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => _load(page: 1, category: category),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-              decoration: ShapeDecoration(
-                color: selected ? _kPink : null,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide.none,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            for (var index = 0; index < _categories.length; index++) ...[
+              if (index > 0) SizedBox(width: healthDp(context, 5)),
+              Builder(
+                builder: (context) {
+                  final category = _categories[index];
+                  final selected = category == _selectedTabCategory;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(healthDp(context, 20)),
+                    onTap: () => _load(page: 1, category: category),
+                    child: Container(
+                      height: healthDp(context, 24),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 10),
+                        vertical: healthDp(context, 2),
+                      ),
+                      alignment: Alignment.center,
+                      decoration: ShapeDecoration(
+                        color: selected ? _kPink : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 20)),
+                        ),
+                      ),
+                      child: Text(
+                        category,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: selected ? Colors.white : _kMuted,
+                          fontSize: healthSp(context, 14),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                          height: 1.43,
+                        ),
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              child: Text(
-                category,
-                textAlign: TextAlign.center,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTotalRow() {
+    final count = _visibleItems.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(height: healthDp(context, 1), color: _kBorder),
+        SizedBox(height: healthDp(context, 5)),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '총 ',
                 style: TextStyle(
-                  color: selected ? Colors.white : _kMuted,
+                  color: _kMuted,
                   fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
-                  height: 1.67,
                 ),
               ),
-            ),
-          );
-        },
-      ),
+              TextSpan(
+                text: '$count',
+                style: TextStyle(
+                  color: _kCountPink,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextSpan(
+                text: '건',
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        Container(height: healthDp(context, 1), color: _kBorder),
+      ],
     );
   }
 
@@ -221,18 +270,24 @@ class _FaqListScreenState extends State<FaqListScreen> {
             },
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: healthDp(context, 8)),
         Expanded(
           flex: 5,
           child: Container(
-            height: 36,
-            padding: const EdgeInsets.only(left: 10, right: 4),
+            height: healthDp(context, 36),
+            padding: EdgeInsets.only(
+              left: healthDp(context, 10),
+              right: healthDp(context, 4),
+            ),
             alignment: Alignment.center,
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _kBorder),
-                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  width: healthDp(context, 1),
+                  color: _kBorder,
+                ),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
               ),
             ),
             child: Row(
@@ -263,12 +318,19 @@ class _FaqListScreenState extends State<FaqListScreen> {
                     ),
                   ),
                 ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.search, size: 16, color: _kMuted),
-                  onPressed: () =>
+                GestureDetector(
+                  onTap: () =>
                       _load(page: 1, query: _searchController.text.trim()),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.all(healthDp(context, 6)),
+                    child: SvgPicture.asset(
+                      AppAssets.searchIcon,
+                      width: healthDp(context, 18),
+                      height: healthDp(context, 18),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -281,18 +343,21 @@ class _FaqListScreenState extends State<FaqListScreen> {
   Widget _buildFaqCard(FaqModel item) {
     final expanded = _expandedIds.contains(item.id);
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: healthDp(context, 14)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 0.5, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _kBorder,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             onTap: () {
               setState(() {
                 if (expanded) {
@@ -303,7 +368,10 @@ class _FaqListScreenState extends State<FaqListScreen> {
               });
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 12),
+                vertical: healthDp(context, 14),
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -312,14 +380,14 @@ class _FaqListScreenState extends State<FaqListScreen> {
                       item.question,
                       style: TextStyle(
                         color: _kText,
-                        fontSize: healthSp(context, 16),
+                        fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
-                        letterSpacing: -1.2,
+                        letterSpacing: healthSp(context, -1.26),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: healthDp(context, 6)),
                   Icon(
                     expanded
                         ? Icons.keyboard_arrow_up_rounded
@@ -331,19 +399,23 @@ class _FaqListScreenState extends State<FaqListScreen> {
             ),
           ),
           if (expanded) ...[
-            const Divider(height: 1, thickness: 0.5, color: _kBorder),
+            Divider(
+              height: healthDp(context, 1),
+              thickness: healthDp(context, 0.5),
+              color: _kBorder,
+            ),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(healthDp(context, 12)),
               decoration: const BoxDecoration(color: Colors.white),
               child: Text(
                 _normalizeHtmlToText(item.answer),
                 style: TextStyle(
                   color: _kText,
-                  fontSize: healthSp(context, 14),
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w400,
-                  height: 1.6,
+                  fontWeight: FontWeight.w300,
+                  height: 1.67,
                 ),
               ),
             ),
@@ -376,7 +448,7 @@ class _FaqListScreenState extends State<FaqListScreen> {
 
   Widget _buildError() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 50),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 50)),
       child: Center(
         child: Text(
           _error!,
@@ -394,7 +466,7 @@ class _FaqListScreenState extends State<FaqListScreen> {
 
   Widget _buildEmpty() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 50),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 50)),
       child: Center(
         child: Text(
           '조건에 맞는 FAQ가 없습니다.',
