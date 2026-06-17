@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import 'announcement_detail_screen.dart';
 
@@ -96,25 +98,30 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
       child: RefreshIndicator(
         onRefresh: () => _load(page: 1),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(27, 16, 27, 20),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 20),
+          ),
           children: [
-            _buildSearchBar(),
-            const SizedBox(height: 14),
-            _buildTotalRow(),
-            const SizedBox(height: 10),
+            _buildSearchBar(context),
+            SizedBox(height: healthDp(context, 10)),
+            _buildTotalRow(context),
+            SizedBox(height: healthDp(context, 10)),
             if (_loading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 64),
-                child: Center(child: CircularProgressIndicator()),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 64)),
+                child: const Center(child: CircularProgressIndicator()),
               )
             else if (_error != null)
-              _buildError()
+              _buildError(context)
             else if (_items.isEmpty)
-              _buildEmpty()
+              _buildEmpty(context)
             else ...[
-              ..._items.map(_buildNoticeCard),
-              const SizedBox(height: 16),
-              _buildPagination(),
+              ..._items.map((item) => _buildNoticeCard(context, item)),
+              SizedBox(height: healthDp(context, 16)),
+              _buildPagination(context),
             ],
           ],
         ),
@@ -122,55 +129,75 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: healthDp(context, 36),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0xFFD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _submitSearch(),
-              style: TextStyle(
-                color: _kText,
-                fontSize: healthSp(context, 14),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w400,
-              ),
-              decoration: InputDecoration(
-                hintText: '검색',
-                border: InputBorder.none,
-                hintStyle: TextStyle(
-                  color: _kMuted,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _submitSearch(),
+                style: TextStyle(
+                  color: _kText,
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w400,
+                  height: 1,
+                ),
+                decoration: InputDecoration(
+                  hintText: '검색',
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                    color: _kMuted,
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                    height: 1,
+                  ),
                 ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search, size: 18, color: _kMuted),
-            onPressed: _submitSearch,
-          ),
-        ],
+            GestureDetector(
+              onTap: _submitSearch,
+              behavior: HitTestBehavior.opaque,
+              child: SvgPicture.asset(
+                AppAssets.searchIcon,
+                width: healthDp(context, 18),
+                height: healthDp(context, 18),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTotalRow() {
+  Widget _buildTotalRow(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(height: 1, color: _kBorder),
-        const SizedBox(height: 5),
+        Container(height: healthDp(context, 1), color: _kBorder),
+        SizedBox(height: healthDp(context, 5)),
         Text.rich(
           TextSpan(
             children: [
@@ -204,8 +231,8 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 5),
-        Container(height: 1, color: _kBorder),
+        SizedBox(height: healthDp(context, 5)),
+        Container(height: healthDp(context, 1), color: _kBorder),
       ],
     );
   }
@@ -219,7 +246,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     return '-';
   }
 
-  Widget _buildNoticeCard(AnnouncementModel item) {
+  Widget _buildNoticeCard(BuildContext context, AnnouncementModel item) {
     final date = _noticeDateLabel(item);
     final title = item.title
         .replaceAll(r'\n', ' ')
@@ -234,14 +261,17 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
           settings: RouteSettings(name: '/announcement/${item.id}'),
         ),
       ),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(healthDp(context, 16)),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(bottom: healthDp(context, 14)),
+        padding: EdgeInsets.all(healthDp(context, 16)),
         decoration: ShapeDecoration(
           shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1, color: _kBorder),
-            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              width: healthDp(context, 1),
+              color: _kBorder,
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 16)),
           ),
         ),
         child: Column(
@@ -256,23 +286,27 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
+                letterSpacing: healthSp(context, -1.26),
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: healthDp(context, 10)),
             Row(
               children: [
                 if (item.isNotice) ...[
                   Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    margin: EdgeInsets.only(right: healthDp(context, 6)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 6),
+                      vertical: healthDp(context, 2),
+                    ),
                     decoration: ShapeDecoration(
                       color: _kPink,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
                     child: Text(
-                      '공지',
+                      '고정',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: healthSp(context, 10),
@@ -289,9 +323,10 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                     fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
+                    letterSpacing: healthSp(context, -1.65),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: healthDp(context, 10)),
                 Text(
                   '조회 : ${item.viewCount}',
                   style: TextStyle(
@@ -309,7 +344,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     );
   }
 
-  Widget _buildPagination() {
+  Widget _buildPagination(BuildContext context) {
     final startPage = ((_page - 1) ~/ 6) * 6 + 1;
     final endPage = (startPage + 5).clamp(1, _totalPages);
     final pages = List<int>.generate(endPage - startPage + 1, (i) => startPage + i);
@@ -322,22 +357,22 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
           icon: const Icon(Icons.chevron_left_rounded),
         ),
         ...pages.map((p) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
               child: InkWell(
                 onTap: p == _page ? null : () => _load(page: p),
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(healthDp(context, 7)),
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: healthDp(context, 30),
+                  height: healthDp(context, 30),
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
                     color: p == _page ? _kPink : Colors.white,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
-                        width: p == _page ? 0 : 1,
+                        width: p == _page ? 0 : healthDp(context, 1),
                         color: const Color(0x7FD2D2D2),
                       ),
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius: BorderRadius.circular(healthDp(context, 7)),
                     ),
                   ),
                   child: Text(
@@ -360,9 +395,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     );
   }
 
-  Widget _buildError() {
+  Widget _buildError(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
       alignment: Alignment.center,
       child: Text(
         _error ?? '오류가 발생했습니다.',
@@ -377,9 +412,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
       child: Center(
         child: Text(
           '공지사항이 없습니다.',

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
 import '../../../../core/utils/image_url_helper.dart';
+import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
 import '../../../../data/services/content_service.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
@@ -88,77 +89,96 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                         ),
                       ),
                     )
-                  : _buildBody(_item!),
+                  : _buildBody(context, _item!),
     );
   }
 
-  Widget _buildBody(AnnouncementModel item) {
+  Widget _buildBody(BuildContext context, AnnouncementModel item) {
     final hasImage = item.imagePath != null && item.imagePath!.trim().isNotEmpty;
     final formattedTitle = _normalizeTitle(item.title);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(27, 16, 27, 24),
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 20),
+        healthDp(context, 27),
+        healthDp(context, 20),
+      ),
       children: [
         Text(
           formattedTitle,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: _kText,
-            fontSize: healthSp(context, 20),
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
+            letterSpacing: healthSp(context, -1.44),
           ),
         ),
-        const SizedBox(height: 12),
-        Container(height: 1, color: _kBorder),
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 10)),
+        Container(height: healthDp(context, 1), color: _kBorder),
+        SizedBox(height: healthDp(context, 30)),
         if (hasImage) ...[
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
             child: Image.network(
               ImageUrlHelper.getImageUrl(item.imagePath),
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
-                height: 180,
+                height: healthDp(context, 180),
                 alignment: Alignment.center,
                 color: const Color(0xFFF6F6F6),
-                child: const Icon(Icons.broken_image_outlined, color: _kMuted),
+                child: Icon(
+                  Icons.broken_image_outlined,
+                  color: _kMuted,
+                  size: healthDp(context, 32),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
         ],
-        _buildAnnouncementBody(item.content),
-        const SizedBox(height: 20),
-        Container(height: 1, color: _kBorder),
-        const SizedBox(height: 14),
+        _buildAnnouncementBody(context, item.content),
+        SizedBox(height: healthDp(context, 30)),
+        Container(height: healthDp(context, 1), color: _kBorder),
+        if (_prev != null || _next != null)
+          SizedBox(height: healthDp(context, 10)),
         if (_prev != null) ...[
           _buildAdjacentRow(
+            context,
             label: '이전글',
             title: (_prev?['title'] ?? '').toString(),
             isPrev: true,
-            onTap: () => _moveToAdjacent((_prev?['id'] as num?)?.toInt()),
+            onTap: () => _moveToAdjacent(_adjacentId(_prev)),
           ),
-          Container(height: 1, color: _kBorder),
+          if (_next != null) SizedBox(height: healthDp(context, 10)),
         ],
-        if (_next != null) ...[
+        if (_next != null)
           _buildAdjacentRow(
+            context,
             label: '다음글',
             title: (_next?['title'] ?? '').toString(),
             isPrev: false,
-            onTap: () => _moveToAdjacent((_next?['id'] as num?)?.toInt()),
+            onTap: () => _moveToAdjacent(_adjacentId(_next)),
           ),
-          Container(height: 1, color: _kBorder),
-        ],
-        const SizedBox(height: 18),
+        if (_prev != null || _next != null)
+          SizedBox(height: healthDp(context, 10)),
+        Container(height: healthDp(context, 1), color: _kBorder),
+        SizedBox(height: healthDp(context, 20)),
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: _kPink,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 15),
+                vertical: healthDp(context, 8),
+              ),
             ),
             onPressed: () {
               if (Navigator.canPop(context)) {
@@ -181,7 +201,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     );
   }
 
-  Widget _buildAnnouncementBody(String rawHtml) {
+  Widget _buildAnnouncementBody(BuildContext context, String rawHtml) {
     final processed = ContentService.prepareContentHtmlForRender(rawHtml);
     if (processed.trim().isEmpty) {
       final plain = ContentService.normalizeHtmlToText(rawHtml);
@@ -191,16 +211,17 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
           color: _kText,
           fontSize: healthSp(context, 14),
           fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w300,
           height: 1.7,
         ),
       );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
+        final horizontalPad = healthDp(context, 27) * 2;
         final maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width - 54;
+            : MediaQuery.sizeOf(context).width - horizontalPad;
         return Html(
           data: processed,
           style: {
@@ -210,19 +231,19 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               padding: HtmlPaddings.zero,
               fontFamily: 'Gmarket Sans TTF',
               fontSize: FontSize(healthSp(context, 14)),
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w300,
               lineHeight: const LineHeight(1.7),
               textAlign: TextAlign.start,
               color: _kText,
             ),
             'p': Style(
-              margin: Margins.only(bottom: 8),
+              margin: Margins.only(bottom: healthDp(context, 8)),
               padding: HtmlPaddings.zero,
             ),
             'img': Style(
               width: Width(maxWidth),
               display: Display.block,
-              margin: Margins.symmetric(vertical: 8),
+              margin: Margins.symmetric(vertical: healthDp(context, 8)),
             ),
             'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
             'span': Style(fontFamily: 'Gmarket Sans TTF'),
@@ -239,7 +260,8 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         .trim();
   }
 
-  Widget _buildAdjacentRow({
+  Widget _buildAdjacentRow(
+    BuildContext context, {
     required String label,
     required String title,
     required bool isPrev,
@@ -247,19 +269,19 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+      child: SizedBox(
+        height: healthDp(context, 30),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Transform.rotate(
               angle: isPrev ? 1.57 : -1.57,
-              child: const Icon(
+              child: Icon(
                 Icons.chevron_left_rounded,
-                size: 16,
+                size: healthDp(context, 12),
                 color: _kMuted,
               ),
             ),
-            const SizedBox(width: 2),
             Text(
               label,
               textAlign: TextAlign.center,
@@ -268,9 +290,10 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
+                height: 1,
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 5)),
             Expanded(
               child: Text(
                 title,
@@ -281,6 +304,8 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                   fontSize: healthSp(context, 14),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
+                  letterSpacing: healthSp(context, -1.26),
+                  height: 1,
                 ),
               ),
             ),
@@ -288,6 +313,11 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         ),
       ),
     );
+  }
+
+  int? _adjacentId(Map<String, dynamic>? raw) {
+    if (raw == null) return null;
+    return NodeValueParser.asInt(raw['id']);
   }
 
   void _moveToAdjacent(int? id) {
