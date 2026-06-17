@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
-import '../common/widgets/app_bar.dart';
+import '../health/health_common/widgets/health_app_bar.dart';
 import '../health/health_common/health_responsive_scale.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -33,19 +33,25 @@ class _NotificationSettingsScreenState
           centerTitle: false,
         ),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 20),
+          ),
           children: [
-            const SizedBox(height: 10),
+            //SizedBox(height: healthDp(context, 10)),
             _buildSingleOptionCard(
+              context,
               title: '주문 정보 알림 수신동의',
               value: _orderAgree,
               onChanged: (value) => setState(() => _orderAgree = value),
             ),
-            const SizedBox(height: 10),
-            _buildMarketingCard(),
-            const SizedBox(height: 24),
+            SizedBox(height: healthDp(context, 14)),
+            _buildMarketingCard(context),
+            SizedBox(height: healthDp(context, 20)),
             SizedBox(
-              height: 40,
+              height: healthDp(context, 40),
               child: ElevatedButton(
                 onPressed: _saveSettings,
                 style: ElevatedButton.styleFrom(
@@ -53,7 +59,7 @@ class _NotificationSettingsScreenState
                   backgroundColor: _kPink,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
                 ),
                 child: Text(
@@ -72,20 +78,29 @@ class _NotificationSettingsScreenState
     );
   }
 
-  Widget _buildSingleOptionCard({
+  Widget _buildSingleOptionCard(
+    BuildContext context, {
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      height: healthDp(context, 56),
+      padding: EdgeInsets.symmetric(
+        vertical: healthDp(context, 10),
+        horizontal: healthDp(context, 10),
+      ),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 0.5, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _kBorder,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: _buildOptionRow(
+        context,
         title: title,
         value: value,
         onChanged: onChanged,
@@ -93,50 +108,93 @@ class _NotificationSettingsScreenState
     );
   }
 
-  Widget _buildMarketingCard() {
+  Widget _buildMarketingConsentRow(BuildContext context) {
+    return _buildOptionRow(
+      context,
+      title: '마케팅 정보 수신 동의',
+      value: _marketingAgree,
+      onChanged: (value) {
+        setState(() {
+          _marketingAgree = value;
+          if (value) {
+            _appPushAgree = true;
+            _smsAgree = true;
+          } else {
+            _appPushAgree = false;
+            _smsAgree = false;
+          }
+        });
+      },
+    );
+  }
+
+  Widget _buildMarketingCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 0.5, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _kBorder,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _buildOptionRow(
-            title: '마케팅 정보 수신 동의',
-            value: _marketingAgree,
-            onChanged: (value) {
-              setState(() {
-                _marketingAgree = value;
-                if (value) {
-                  _appPushAgree = true;
-                  _smsAgree = true;
-                } else {
-                  _appPushAgree = false;
-                  _smsAgree = false;
-                }
-              });
-            },
-            isTopLevel: true,
+          SizedBox(
+            height: healthDp(context, 56),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                vertical: healthDp(context, 10),
+                horizontal: healthDp(context, 10),
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildMarketingConsentRow(context),
+              ),
+            ),
           ),
           if (_marketingAgree) ...[
-            const SizedBox(height: 10),
-            Container(height: 1, color: const Color(0x7FD2D2D2)),
-            const SizedBox(height: 10),
-            _buildOptionRow(
-              title: '앱 푸시 수신',
-              value: _appPushAgree,
-              onChanged: (value) => setState(() => _appPushAgree = value),
-              indent: 20,
+            SizedBox(height: healthDp(context, 10)),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+              child: Container(
+                height: healthDp(context, 1),
+                color: const Color(0x7FD2D2D2),
+              ),
             ),
-            const SizedBox(height: 10),
-            _buildOptionRow(
-              title: 'SMS 수신',
-              value: _smsAgree,
-              onChanged: (value) => setState(() => _smsAgree = value),
-              indent: 20,
+            SizedBox(
+              height: healthDp(context, 36),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  vertical: healthDp(context, 10),
+                  horizontal: healthDp(context, 10),
+                ),
+                child: _buildOptionRow(
+                  context,
+                  title: '앱 푸시 수신',
+                  value: _appPushAgree,
+                  onChanged: (value) => setState(() => _appPushAgree = value),
+                  indent: healthDp(context, 20),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: healthDp(context, 36),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  vertical: healthDp(context, 10),
+                  horizontal: healthDp(context, 10),
+                ),
+                child: _buildOptionRow(
+                  context,
+                  title: 'SMS 수신',
+                  value: _smsAgree,
+                  onChanged: (value) => setState(() => _smsAgree = value),
+                  indent: healthDp(context, 20),
+                ),
+              ),
             ),
           ],
         ],
@@ -144,26 +202,27 @@ class _NotificationSettingsScreenState
     );
   }
 
-  Widget _buildOptionRow({
+  Widget _buildOptionRow(
+    BuildContext context, {
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
-    bool isTopLevel = false,
     double indent = 0,
   }) {
     return Padding(
       padding: EdgeInsets.only(left: indent),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             title,
             style: TextStyle(
               color: _kText,
-              fontSize: healthSp(context, 16),
+              fontSize: healthSp(context, 14),
               fontFamily: _font,
               fontWeight: FontWeight.w300,
-              letterSpacing: -1.44,
+              letterSpacing: healthSp(context, -1.26),
             ),
           ),
           _TinyToggle(
@@ -197,29 +256,30 @@ class _TinyToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final knob = healthDp(context, 12);
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(healthDp(context, 12)),
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 30,
-        padding: const EdgeInsets.all(2),
+        width: healthDp(context, 30),
+        padding: EdgeInsets.all(healthDp(context, 2)),
         decoration: ShapeDecoration(
           color: value ? activeColor : inactiveColor,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
           ),
         ),
         child: Row(
           mainAxisAlignment:
               value ? MainAxisAlignment.end : MainAxisAlignment.start,
-          children: const [
+          children: [
             DecoratedBox(
-              decoration: ShapeDecoration(
+              decoration: const ShapeDecoration(
                 color: Colors.white,
                 shape: StadiumBorder(),
               ),
-              child: SizedBox(width: 12, height: 12),
+              child: SizedBox(width: knob, height: knob),
             ),
           ],
         ),

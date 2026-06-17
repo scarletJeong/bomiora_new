@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
-import '../common/widgets/app_bar.dart';
+import '../health/health_common/widgets/health_app_bar.dart';
 import '../common/widgets/confirm_dialog.dart';
 import 'notification_center_screen.dart';
 import 'policy/screens/terms_of_service_screen.dart';
@@ -33,11 +33,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         centerTitle: false,
       ),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
+        padding: EdgeInsets.fromLTRB(
+          healthDp(context, 27),
+          healthDp(context, 20),
+          healthDp(context, 27),
+          healthDp(context, 20),
+        ),
         children: [
           _buildCard(
+            context,
             children: [
               _buildRowItem(
+                context,
                 title: '알림 설정',
                 icon: Icons.notifications_none_rounded,
                 onTap: () => Navigator.push(
@@ -50,15 +57,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 14)),
           _buildCard(
+            context,
             children: [
               _buildRowItem(
+                context,
                 title: '공지사항',
                 icon: Icons.campaign_outlined,
                 onTap: () => Navigator.pushNamed(context, '/announcement'),
               ),
               _buildRowItem(
+                context,
                 title: '이벤트',
                 icon: Icons.local_activity_outlined,
                 onTap: () => Navigator.pushNamed(context, '/event'),
@@ -66,10 +76,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 14)),
           _buildCard(
+            context,
             children: [
               _buildRowItem(
+                context,
                 title: '서비스 이용약관',
                 icon: Icons.description_outlined,
                 onTap: () => Navigator.push(
@@ -78,6 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               _buildRowItem(
+                context,
                 title: '개인정보처리방침',
                 icon: Icons.privacy_tip_outlined,
                 onTap: () => Navigator.push(
@@ -89,21 +102,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 14)),
           _buildCard(
+            context,
             children: [
               _buildRowItem(
+                context,
                 title: '앱정보',
                 icon: Icons.info_outline_rounded,
                 onTap: _showAppInfoDialog,
                 isLast: false,
                 trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 5),
+                    vertical: healthDp(context, 5),
+                  ),
                   decoration: ShapeDecoration(
                     color: const Color(0xFFF6F3F2),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(
+                        healthDp(context, 20),
+                      ),
                     ),
                   ),
                   child: Text(
@@ -117,11 +136,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               _buildRowItem(
+                context,
                 title: 'FAQ',
                 icon: Icons.help_outline_rounded,
                 onTap: () => Navigator.pushNamed(context, '/faq'),
               ),
               _buildRowItem(
+                context,
                 title: '1:1 문의',
                 icon: Icons.support_agent_outlined,
                 onTap: () => Navigator.push(
@@ -130,6 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               _buildRowItem(
+                context,
                 title: '카카오톡 상담',
                 icon: Icons.chat_bubble_outline_rounded,
                 onTap: _openKakaoChannel,
@@ -137,9 +159,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: healthDp(context, 24)),
           SizedBox(
-            height: 40,
+            height: healthDp(context, 40),
             child: ElevatedButton(
               onPressed: _handleLogout,
               style: ElevatedButton.styleFrom(
@@ -147,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: _kPink,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
               ),
               child: Text(
@@ -164,19 +186,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildCard({required List<Widget> children}) {
+  Widget _buildCard(
+    BuildContext context, {
+    required List<Widget> children,
+  }) {
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 0.5, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _kBorder,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(children: children),
     );
   }
 
-  Widget _buildRowItem({
+  Widget _buildRowItem(
+    BuildContext context, {
     required String title,
     required IconData icon,
     required VoidCallback onTap,
@@ -185,15 +214,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(healthDp(context, 10)),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        padding: EdgeInsets.symmetric(
+          vertical: healthDp(context, 14),
+          horizontal: healthDp(context, 10),
+        ),
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : const Border(
-                  bottom: BorderSide(width: 0.5, color: _kBorder),
+              : Border(
+                  bottom: BorderSide(
+                    width: healthDp(context, 0.5),
+                    color: _kBorder,
+                  ),
                 ),
         ),
         child: Row(
@@ -201,23 +236,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, size: 20, color: _kPink),
-                const SizedBox(width: 8),
+                Icon(icon, size: healthDp(context, 20), color: _kPink),
+                SizedBox(width: healthDp(context, 6)),
                 Text(
                   title,
                   style: TextStyle(
                     color: _kText,
-                    fontSize: healthSp(context, 16),
+                    fontSize: healthSp(context, 14),
                     fontWeight: FontWeight.w300,
+                    letterSpacing: -1.26,
                   ),
                 ),
               ],
             ),
             trailing ??
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   color: _kMuted,
-                  size: 18,
+                  size: healthDp(context, 18),
                 ),
           ],
         ),
@@ -229,7 +265,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showAppInfoDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('앱 정보'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -238,20 +274,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               '보미오라',
               style: TextStyle(
-                fontSize: healthSp(context, 18),
+                fontSize: healthSp(dialogContext, 18),
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: healthDp(dialogContext, 5)),
             Text(
               '버전: $_appVersion',
-              style: TextStyle(fontSize: healthSp(context, 14), color: _kMuted),
+              style: TextStyle(
+                fontSize: healthSp(dialogContext, 12),
+                color: _kMuted,
+              ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(dialogContext, 16)),
             Text(
               '건강한 삶을 위한 스마트한 선택\n보미오라와 함께하세요.',
               style: TextStyle(
-                fontSize: healthSp(context, 14),
+                fontSize: healthSp(dialogContext, 14),
                 color: Colors.grey[800],
               ),
             ),
@@ -259,7 +298,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('확인'),
           ),
         ],
@@ -286,7 +325,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await AuthService.logout();
 
         if (mounted) {
-          // 로그인 화면으로 이동
           Navigator.pushNamedAndRemoveUntil(
             context,
             '/login',

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../core/constants/app_assets.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
-import '../common/widgets/app_bar.dart';
+import '../health/health_common/widgets/health_app_bar.dart';
 import 'notification_settings_screen.dart';
 import '../health/health_common/health_responsive_scale.dart';
 
@@ -66,6 +68,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   int get _unreadCount => _items.where((item) => item.isUnread).length;
 
+  void _openNotificationSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const NotificationSettingsScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = _filteredItems;
@@ -76,35 +87,54 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           title: '알림센터',
           centerTitle: false,
           actions: [
-            IconButton(
-              tooltip: '알림 설정',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const NotificationSettingsScreen(),
+            Padding(
+              padding: EdgeInsets.only(right: healthDp(context, 27)),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openNotificationSettings,
+                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                  splashFactory: NoSplash.splashFactory,
+                  hoverColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: SizedBox(
+                    width: healthDp(context, 30),
+                    height: healthDp(context, 30),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        AppAssets.settingsIcon,
+                        width: healthDp(context, 22),
+                        height: healthDp(context, 22),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              icon: const Icon(
-                Icons.settings_outlined,
-                color: _kMuted,
-                size: 22,
               ),
             ),
           ],
         ),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 20),
+          ),
           children: [
-            _buildTabSelector(),
-            const SizedBox(height: 14),
+            _buildTabSelector(context),
+            SizedBox(height: healthDp(context, 14)),
             if (items.isEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 36),
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 36)),
                 alignment: Alignment.center,
                 decoration: ShapeDecoration(
                   shape: RoundedRectangleBorder(
-                    side: const BorderSide(width: 0.5, color: _kBorder),
-                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      width: healthDp(context, 0.5),
+                      color: _kBorder,
+                    ),
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
                 ),
                 child: Text(
@@ -118,25 +148,27 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 ),
               )
             else
-              ...items.map(_buildNotificationCard),
+              ...items.map((item) => _buildNotificationCard(context, item)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTabSelector() {
+  Widget _buildTabSelector(BuildContext context) {
     return Container(
+      height: healthDp(context, 36),
       decoration: ShapeDecoration(
         color: const Color(0xFFF9F9F9),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
       ),
       child: Row(
         children: [
           Expanded(
             child: _buildTabButton(
+              context,
               label: '전체',
               selected: _selectedTab == 0,
               onTap: () => setState(() => _selectedTab = 0),
@@ -144,6 +176,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           ),
           Expanded(
             child: _buildTabButton(
+              context,
               label: '안읽음',
               selected: _selectedTab == 1,
               count: _unreadCount,
@@ -155,27 +188,30 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     );
   }
 
-  Widget _buildTabButton({
+  Widget _buildTabButton(
+    BuildContext context, {
     required String label,
     required bool selected,
     required VoidCallback onTap,
     int? count,
   }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(healthDp(context, 20)),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
         decoration: selected
             ? ShapeDecoration(
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 0.5, color: Color(0x7F898686)),
-                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    width: healthDp(context, 0.5),
+                    color: const Color(0x7F898686),
+                  ),
+                  borderRadius: BorderRadius.circular(healthDp(context, 20)),
                 ),
               )
             : null,
-        alignment: Alignment.center,
         child: count == null
             ? Text(
                 label,
@@ -183,7 +219,12 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   color: selected ? _kText : _kMuted,
                   fontSize: healthSp(context, 16),
                   fontFamily: _font,
-                  fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                ),
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
                 ),
               )
             : Text.rich(
@@ -193,39 +234,48 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       text: label,
                       style: TextStyle(
                         color: selected ? _kText : _kMuted,
-                        fontSize: healthSp(context, 16),
+                        fontSize: healthSp(context, 14),
                         fontFamily: _font,
                         fontWeight: FontWeight.w500,
+                        height: 1,
                       ),
                     ),
                     TextSpan(
                       text: '$count',
                       style: TextStyle(
                         color: _kPink,
-                        fontSize: healthSp(context, 16),
+                        fontSize: healthSp(context, 14),
                         fontFamily: _font,
                         fontWeight: FontWeight.w700,
+                        height: 1,
                       ),
                     ),
                   ],
+                ),
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
                 ),
               ),
       ),
     );
   }
 
-  Widget _buildNotificationCard(_NotificationItem item) {
+  Widget _buildNotificationCard(BuildContext context, _NotificationItem item) {
     return Container(
-      margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 15),
+      margin: EdgeInsets.only(bottom: healthDp(context, 10)),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 15)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 0.5, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: _kBorder,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -240,34 +290,34 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                         item.date,
                         style: TextStyle(
                           color: _kMuted,
-                          fontSize: healthSp(context, 12),
+                          fontSize: healthSp(context, 10),
                           fontFamily: _font,
                           fontWeight: FontWeight.w300,
-                          letterSpacing: -1.08,
+                          letterSpacing: healthSp(context, -0.9),
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      SizedBox(height: healthDp(context, 6)),
                       Row(
                         children: [
                           if (item.isUnread) ...[
                             Container(
-                              width: 8,
-                              height: 8,
+                              width: healthDp(context, 8),
+                              height: healthDp(context, 8),
                               decoration: const ShapeDecoration(
                                 color: _kPink,
                                 shape: OvalBorder(),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: healthDp(context, 4)),
                           ],
                           Text(
                             item.category,
                             style: TextStyle(
                               color: _kText,
-                              fontSize: healthSp(context, 16),
+                              fontSize: healthSp(context, 14),
                               fontFamily: _font,
                               fontWeight: FontWeight.w500,
-                              letterSpacing: -1.44,
+                              letterSpacing: healthSp(context, -1.26),
                             ),
                           ),
                         ],
@@ -276,22 +326,26 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   ),
                 ),
                 InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(healthDp(context, 16)),
                   onTap: () => _removeItem(item),
-                  child: const Padding(
-                    padding: EdgeInsets.all(2),
-                    child: Icon(Icons.close, size: 18, color: _kMuted),
+                  child: Padding(
+                    padding: EdgeInsets.all(healthDp(context, 2)),
+                    child: Icon(
+                      Icons.close,
+                      size: healthDp(context, 16),
+                      color: _kMuted,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: healthDp(context, 5)),
             Container(
               width: double.infinity,
-              height: 1,
+              height: healthDp(context, 1),
               color: const Color(0x7FD2D2D2),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: healthDp(context, 10)),
             if (item.description == null)
               Text(
                 item.title,
@@ -300,13 +354,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   fontSize: healthSp(context, 12),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
-                  letterSpacing: -1.08,
+                  letterSpacing: healthSp(context, -1.08),
                 ),
               )
             else
               Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 4,
+                spacing: healthDp(context, 5),
                 children: [
                   Text(
                     item.title,
@@ -315,7 +369,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       fontSize: healthSp(context, 12),
                       fontFamily: _font,
                       fontWeight: FontWeight.w500,
-                      letterSpacing: -1.08,
+                      letterSpacing: healthSp(context, -1.08),
                     ),
                   ),
                   Text(
@@ -325,7 +379,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       fontSize: healthSp(context, 12),
                       fontFamily: _font,
                       fontWeight: FontWeight.w500,
-                      letterSpacing: -1.08,
+                      letterSpacing: healthSp(context, -1.08),
                     ),
                   ),
                 ],
