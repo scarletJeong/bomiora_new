@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import 'event_detail_screen.dart';
@@ -75,7 +77,6 @@ class _EventListScreenState extends State<EventListScreen> {
     }
   }
 
-  /// API 두 목록을 합치되 `wr_id` 기준 중복 제거 (진행 목록 우선).
   List<EventModel> _mergeUniqueEvents() {
     final byId = <int, EventModel>{};
     for (final e in _activeEvents) {
@@ -88,7 +89,6 @@ class _EventListScreenState extends State<EventListScreen> {
     return list;
   }
 
-  /// `wr2`(종료일) 기준: 오늘 날짜가 종료일 **다음날**부터면 종료. 파싱 불가 시 서버 `isActive`.
   bool _isEventEnded(EventModel e) {
     final end = DateDisplayFormatter.tryParseYmdFlexible(e.wr2);
     if (end != null) {
@@ -127,17 +127,22 @@ class _EventListScreenState extends State<EventListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: const HealthAppBar(title: '이벤트', centerTitle: false),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(27, 24, 27, 20),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            healthDp(context, 20),
+            healthDp(context, 27),
+            healthDp(context, 20),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildFilterTabs(),
-              const SizedBox(height: 12),
-              _buildSearchBox(),
-              const SizedBox(height: 12),
-              _buildCountRow(events.length),
-              const SizedBox(height: 10),
-              Expanded(child: _buildBody(events)),
+              _buildFilterTabs(context),
+              SizedBox(height: healthDp(context, 10)),
+              _buildSearchBox(context),
+              SizedBox(height: healthDp(context, 10)),
+              _buildCountRow(context, events.length),
+              SizedBox(height: healthDp(context, 10)),
+              Expanded(child: _buildBody(context, events)),
             ],
           ),
         ),
@@ -145,17 +150,16 @@ class _EventListScreenState extends State<EventListScreen> {
     );
   }
 
-  Widget _buildFilterTabs() {
+  Widget _buildFilterTabs(BuildContext context) {
     Widget tab(String text, int index) {
       final selected = _selectedTab == index;
       return InkWell(
         onTap: () => setState(() => _selectedTab = index),
         child: Container(
-          padding: const EdgeInsets.only(bottom: 5),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                width: 1,
+                width: healthDp(context, 1),
                 color: selected ? _kPink : Colors.transparent,
               ),
             ),
@@ -173,72 +177,98 @@ class _EventListScreenState extends State<EventListScreen> {
       );
     }
 
-    Widget divider() =>
-        Container(width: 0.5, height: 11, color: const Color(0xFFD2D2D2));
+    Widget divider() => Container(
+          width: healthDp(context, 0.5),
+          height: healthDp(context, 11),
+          color: const Color(0xFFD2D2D2),
+        );
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         tab('전체', 0),
-        const SizedBox(width: 12),
+        SizedBox(width: healthDp(context, 22)),
         divider(),
-        const SizedBox(width: 12),
+        SizedBox(width: healthDp(context, 22)),
         tab('진행중인 이벤트', 1),
-        const SizedBox(width: 12),
+        SizedBox(width: healthDp(context, 22)),
         divider(),
-        const SizedBox(width: 12),
+        SizedBox(width: healthDp(context, 22)),
         tab('종료된 이벤트', 2),
       ],
     );
   }
 
-  Widget _buildSearchBox() {
+  Widget _buildSearchBox(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: healthDp(context, 36),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: _kBorder),
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: _kBorder,
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _applySearch(),
-              style: TextStyle(
-                fontFamily: _font,
-                fontSize: healthSp(context, 14),
-                color: const Color(0xFF1A1A1A),
-              ),
-              decoration: InputDecoration(
-                hintText: '검색',
-                hintStyle: TextStyle(
-                  color: _kMuted,
-                  fontSize: healthSp(context, 14),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 10),
+          vertical: healthDp(context, 10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _applySearch(),
+                style: TextStyle(
                   fontFamily: _font,
-                  fontWeight: FontWeight.w300,
+                  fontSize: healthSp(context, 14),
+                  color: const Color(0xFF1A1A1A),
+                  height: 1,
                 ),
-                border: InputBorder.none,
+                decoration: InputDecoration(
+                  hintText: '검색',
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                    color: _kMuted,
+                    fontSize: healthSp(context, 14),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w300,
+                    height: 1,
+                  ),
+                ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search, size: 18, color: _kMuted),
-            onPressed: _applySearch,
-          ),
-        ],
+            GestureDetector(
+              onTap: _applySearch,
+              behavior: HitTestBehavior.opaque,
+              child: SvgPicture.asset(
+                AppAssets.searchIcon,
+                width: healthDp(context, 18),
+                height: healthDp(context, 18),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCountRow(int total) {
+  Widget _buildCountRow(BuildContext context, int total) {
     return Column(
       children: [
-        Container(height: 1, color: const Color(0x7FD2D2D2)),
-        const SizedBox(height: 5),
+        Container(
+          height: healthDp(context, 1),
+          color: const Color(0x7FD2D2D2),
+        ),
+        SizedBox(height: healthDp(context, 5)),
         Align(
           alignment: Alignment.centerLeft,
           child: Text.rich(
@@ -275,13 +305,16 @@ class _EventListScreenState extends State<EventListScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 5),
-        Container(height: 1, color: const Color(0x7FD2D2D2)),
+        SizedBox(height: healthDp(context, 5)),
+        Container(
+          height: healthDp(context, 1),
+          color: const Color(0x7FD2D2D2),
+        ),
       ],
     );
   }
 
-  Widget _buildBody(List<EventModel> events) {
+  Widget _buildBody(BuildContext context, List<EventModel> events) {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: _kPink),
@@ -300,7 +333,7 @@ class _EventListScreenState extends State<EventListScreen> {
                 fontSize: healthSp(context, 14),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: healthDp(context, 12)),
             ElevatedButton(
               onPressed: _loadEvents,
               child: const Text('다시 시도'),
@@ -326,17 +359,22 @@ class _EventListScreenState extends State<EventListScreen> {
       onRefresh: _loadEvents,
       child: ListView.separated(
         itemCount: events.length,
-        padding: const EdgeInsets.only(bottom: 24),
-        separatorBuilder: (_, __) => const SizedBox(height: 16),
+        padding: EdgeInsets.only(bottom: healthDp(context, 24)),
+        separatorBuilder: (_, __) => SizedBox(height: healthDp(context, 14)),
         itemBuilder: (context, index) {
           final event = events[index];
-          return _buildEventCard(event, ended: _isEventEnded(event));
+          return _buildEventCard(context, event, ended: _isEventEnded(event));
         },
       ),
     );
   }
 
-  Widget _buildEventCard(EventModel event, {required bool ended}) {
+  //이벤트 카드
+  Widget _buildEventCard(
+    BuildContext context,
+    EventModel event, {
+    required bool ended,
+  }) {
     final imageUrl = event.getImageUrl();
     final card = InkWell(
       onTap: () => Navigator.push(
@@ -346,21 +384,24 @@ class _EventListScreenState extends State<EventListScreen> {
           settings: RouteSettings(name: '/event/${event.wrId}'),
         ),
       ),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(healthDp(context, 10)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(healthDp(context, 10)),
+              topRight: Radius.circular(healthDp(context, 10)),
+            ),
             child: SizedBox(
-              height: 220,
+              height: healthDp(context, 220),
               child: imageUrl == null
                   ? Container(
                       color: const Color(0xFFF4F4F4),
                       alignment: Alignment.center,
-                      child: const Icon(
+                      child: Icon(
                         Icons.image_outlined,
-                        size: 42,
+                        size: healthDp(context, 42),
                         color: _kMuted,
                       ),
                     )
@@ -370,9 +411,9 @@ class _EventListScreenState extends State<EventListScreen> {
                       errorBuilder: (_, __, ___) => Container(
                         color: const Color(0xFFF4F4F4),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           Icons.broken_image_outlined,
-                          size: 42,
+                          size: healthDp(context, 42),
                           color: _kMuted,
                         ),
                       ),
@@ -380,10 +421,29 @@ class _EventListScreenState extends State<EventListScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 12),
+              vertical: healthDp(context, 10),
+            ),
             decoration: BoxDecoration(
-              border: Border.all(color: _kBorder, width: 0.8),
-              borderRadius: BorderRadius.circular(10),
+              border: Border(
+                left: BorderSide(
+                  color: _kBorder,
+                  width: healthDp(context, 0.8),
+                ),
+                right: BorderSide(
+                  color: _kBorder,
+                  width: healthDp(context, 0.8),
+                ),
+                bottom: BorderSide(
+                  color: _kBorder,
+                  width: healthDp(context, 0.8),
+                ),
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(healthDp(context, 10)),
+                bottomRight: Radius.circular(healthDp(context, 10)),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,15 +452,15 @@ class _EventListScreenState extends State<EventListScreen> {
                   event.wrSubject,
                   style: TextStyle(
                     color: const Color(0xFF231F20),
-                    fontSize: healthSp(context, 20),
+                    fontSize: healthSp(context, 16),
                     fontFamily: _font,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -1.8,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: healthSp(context, -1.44),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: healthDp(context, 10)),
                 Text(
                   _periodText(event),
                   style: TextStyle(
@@ -426,7 +486,7 @@ class _EventListScreenState extends State<EventListScreen> {
           child: Container(
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
             alignment: Alignment.center,
             child: Text(
@@ -434,7 +494,7 @@ class _EventListScreenState extends State<EventListScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: healthSp(context, 20),
+                fontSize: healthSp(context, 18),
                 fontFamily: _font,
                 fontWeight: FontWeight.w700,
               ),

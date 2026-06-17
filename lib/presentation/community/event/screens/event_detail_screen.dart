@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
@@ -113,7 +113,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: healthDp(context, 16)),
             ElevatedButton(
               onPressed: _loadEventDetail,
               child: const Text('다시 시도'),
@@ -141,7 +141,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final nextEvent = _getNextEvent();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(27, 24, 27, 24),
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 20),
+        healthDp(context, 27),
+        healthDp(context, 20),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -151,35 +156,35 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 20),
+                fontSize: healthSp(context, 16),
                 fontFamily: _font,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1.8,
+                fontWeight: FontWeight.w500,
+                letterSpacing: healthSp(context, -1.44),
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          Container(height: 1, color: _kBorder),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 10)),
+          Container(height: healthDp(context, 1), color: _kBorder),
+          SizedBox(height: healthDp(context, 30)),
           if (imageUrl != null)
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
               child: Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  height: 240,
+                  height: healthDp(context, 240),
                   color: const Color(0xFFF4F4F4),
                   alignment: Alignment.center,
-                  child: const Icon(
+                  child: Icon(
                     Icons.broken_image_outlined,
-                    size: 42,
-                    color: Color(0xFF898686),
+                    size: healthDp(context, 42),
+                    color: const Color(0xFF898686),
                   ),
                 ),
               ),
             ),
-          if (imageUrl != null) const SizedBox(height: 24),
+          if (imageUrl != null) SizedBox(height: healthDp(context, 24)),
           if (plainText.isNotEmpty)
             Text(
               plainText,
@@ -188,11 +193,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 fontSize: healthSp(context, 14),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
-                letterSpacing: -0.56,
+                letterSpacing: healthSp(context, -0.56),
                 height: 1.5,
               ),
             ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 30)),
           Text(
             '이벤트 기간',
             style: TextStyle(
@@ -202,9 +207,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: healthDp(context, 5)),
           Padding(
-            padding: const EdgeInsets.only(left: 20),
+            padding: EdgeInsets.only(left: healthDp(context, 20)),
             child: Text(
               '- ${_periodText(_event!)}',
               style: TextStyle(
@@ -215,41 +220,43 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: healthDp(context, 20)),
           if (prevEvent != null || nextEvent != null) ...[
             if (prevEvent != null) ...[
-              Container(height: 1, color: _kBorder),
+              Container(height: healthDp(context, 1), color: _kBorder),
               _buildNavRow(
                 context,
                 label: '이전글',
-                event: prevEvent!,
+                event: prevEvent,
                 isPrev: true,
               ),
             ],
             if (nextEvent != null) ...[
-              Container(height: 1, color: _kBorder),
+              Container(height: healthDp(context, 1), color: _kBorder),
               _buildNavRow(
                 context,
                 label: '다음글',
-                event: nextEvent!,
+                event: nextEvent,
                 isPrev: false,
               ),
             ],
-            Container(height: 1, color: _kBorder),
+            Container(height: healthDp(context, 1), color: _kBorder),
           ],
-          const SizedBox(height: 14),
+          SizedBox(height: healthDp(context, 20)),
           Align(
             alignment: Alignment.centerRight,
             child: InkWell(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(healthDp(context, 4)),
               onTap: () => Navigator.pop(context),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 15),
+                  vertical: healthDp(context, 6),
+                ),
                 decoration: ShapeDecoration(
                   color: _kPink,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
                   ),
                 ),
                 child: Text(
@@ -283,12 +290,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
         child: Row(
           children: [
             Icon(
               isPrev ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: 20,
+              size: healthDp(context, 20),
               color: const Color(0xFF898686),
             ),
             Text(
@@ -300,7 +307,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: Text(
                 event.wrSubject,
