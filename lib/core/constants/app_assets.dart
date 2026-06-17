@@ -37,11 +37,15 @@ abstract final class AppAssets {
   // 예약시간 변경 예약일자 핑크 달력 아이콘
   static const String reservationCalendarIcon = '${_img}reservation_calendar_icon.svg';
 
+  // 설정 아이콘
+  static const String settingsIcon = '${_img}mypage_settings_icon.svg';
   
   /* 1. 홈 */
-  // 홈 리뷰 카드 오버레이 (PNG) — 프로젝트 assets/img/review_card_overlay`
+  // 리뷰카드 오버레이 (PNG) assets/img/review_card_overlay`
   static const String reviewCardOverlay = '${_img}review_card_overlay.png';
 
+  // 검색 - 결과 없음 아이콘
+  static const String searchEmptyIcon = '${_img}search_empty_icon.svg';
 
   /* 2. 회원가입/로그인 */
   // 간편로그인 아이콘
@@ -58,48 +62,47 @@ abstract final class AppAssets {
   // 제품 상세보기 하단 - 기관인증 아이콘
   static const String productDetailCertification = '${_img}product_detail_certification.svg';
   
-
   /* 4. 건강대시보드 */
   // 건강대시보드 연동 아이콘
   static const String healthConnectApple = '${_img}connect_apple.svg';
   static const String healthConnectSamsung = '${_img}connect_samsung.svg';
   static const String healthConnectGoogle = '${_img}connect_google.svg';
 
-  // 건강대시보드 그래프 확대 아이콘
+  // 그래프 확대 아이콘
   static const String healthZoomin = '${_img}graph_zoomin.svg';
 
-  // 건강대시보드 위아래 아이콘
+  // 위아래 아이콘콘
   static const String arrowUp = '${_img}arrow_up.svg';
   static const String arrowDown = '${_img}arrow_down.svg';
 
-  // 건강대시보드 달력 아이콘
+  // 달력 아이콘
   static const String calendarIcon = '${_img}health_calendar.svg';
 
-  // 건강대시보드 - 메인 카드 아이콘
+  // 메인 카드 아이콘   
   static const String mainCardIconHeartRate = '${_img}health_heart_rate.svg';
   static const String mainCardIconBloodPressure = '${_img}health_blood_pressure.svg';
   static const String mainCardIconBloodSugar = '${_img}health_blood_sugar.svg';
   static const String mainCardIconMenstrual = '${_img}health_menstrual.svg';
 
-  // 건강대시보드 - 생리주기 추천 카드 아이콘
+  // 생리주기 추천 카드 아이콘콘
   static const String menstrualIcon1 = '${_img}menstrual_icon1.png';
   static const String menstrualIcon2 = '${_img}menstrual_icon2.png';
   static const String menstrualIcon3 = '${_img}menstrual_icon3.png';
 
-  // 건강대시보드 - 걸음 수 카드 아이콘
+  // 걸음수 카드 아이콘
   static const String stepsDown = '${_img}step_arrow_down.svg';
   static const String stepsUp = '${_img}step_arrow_up.svg';
   static const String stepsDistanceCard = '${_img}step_distanceCard.svg';
   static const String stepsCaloriesCard = '${_img}step_caloriesCard.svg';
 
-  // 건강대시보드 - 섭취 칼로리 카드 아이콘
+  // 식사 카드 아이콘
   static const String foodCaloriesCard = '${_img}food_nothingCard.svg';
 
-  // 건강대시보드 - 음식 촬영 아이콘
+  // 음식 촬영 아이콘 
   static const String foodCamera = '${_img}food_camera.svg';
 
   /* 5. 스토어 */
-  // 메인 퀵 탭 아이콘
+  // 빠른 탭 (메인 퀵 탭) 아이콘
   static const String quickTabIcon1 = '${_img}main_quick_tap_icon1.svg'; // 비대면 진료
   static const String quickTabIcon2 = '${_img}main_quick_tap_icon2.svg'; // 문진표
   static const String quickTabIcon3 = '${_img}main_quick_tap_icon3.svg'; // 건강대시보드
@@ -130,20 +133,19 @@ abstract final class AppAssets {
   
   /* 6. 마이페이지 */
   // 마이페이지 - 설정 아이콘 및 포토프로필 아이콘
-  static const String mypageSettingsIcon = '${_img}mypage_settings_icon.svg';
   static const String mypagePersonalInfoSettingsIcon = '${_img}mypage_personal_info_settings_icon.svg';
   static const String mypagePhotoProfileIcon = '${_img}mypage_photo_profile_icon.svg';
 
-  // 마이페이지 주문내역~내쿠폰까지 통계 카드 아이콘/테두리 (SVG)
+  // 마이페이지 주문내역~내쿠폰까지 통계 카드 아이콘/테두리
   static const String deliveryMain = '${_img}deliveryMain.svg';
   static const String couponMain = '${_img}couponMain.svg';
   static const String pointMain = '${_img}pointMain.svg';
   static const String mypageMenuBorder = '${_img}mypage_menu_border.svg';
   
-  // 포인트 화면 등에서 사용하는 포인트 아이콘 (SVG)
+  // 포인트 화면 등에서 사용하는 포인트 아이콘
   static const String pointIcon = '${_img}point_icon.svg';
 
-  // 쿠폰 화면 등에서 사용하는 쿠폰 아이콘 (SVG)
+  // 쿠폰 화면 등에서 사용하는 쿠폰 아이콘
   static const String couponIcon = '${_img}coupon_icon.svg';
 
   // 마이페이지 - 내 리뷰 도움쿠폰 카드

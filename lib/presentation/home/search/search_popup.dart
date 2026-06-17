@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../data/services/recent_search_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'search_list_screen.dart';
@@ -111,6 +113,7 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                     padding: EdgeInsets.only(right: healthDp(context, 28)),
                     child: Text(
                       '검색어를 입력하세요',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 20),
@@ -119,10 +122,11 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                       ),
                     ),
                   ),
-                  SizedBox(height: healthDp(context, 12)),
+                  SizedBox(height: healthDp(context, 20)),
                   Container(
                     height: healthDp(context, 36),
-                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
                     alignment: Alignment.center,
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
@@ -130,7 +134,8 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                           width: 1,
                           color: Color(0xFFD2D2D2),
                         ),
-                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
                     child: Row(
@@ -160,48 +165,51 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                             textInputAction: TextInputAction.search,
                           ),
                         ),
-                        IconButton(
-                          onPressed: _submit,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          icon: Icon(
-                            Icons.search,
-                            size: healthDp(context, 20),
-                            color: const Color(0xFF898686),
+                        GestureDetector(
+                          onTap: _submit,
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: EdgeInsets.all(healthDp(context, 6)),
+                            child: SvgPicture.asset(
+                              AppAssets.searchIcon,
+                              width: healthDp(context, 18),
+                              height: healthDp(context, 18),
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: healthDp(context, 16)),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '최근 검색어',
-                      style: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
+                  SizedBox(height: healthDp(context, 20)),
+                  Text(
+                    '최근 검색어',
+                    textAlign: TextAlign.start,
+                    style: TextStyle(
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(height: healthDp(context, 10)),
                   if (_loadingRecent)
                     Padding(
-                      padding: EdgeInsets.symmetric(vertical: healthDp(context, 16)),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                      padding: EdgeInsets.only(top: healthDp(context, 20)),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: healthDp(context, 16),
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
                       ),
                     )
-                  else if (_recent.isEmpty)
+                  else if (_recent.isEmpty) ...[
+                    SizedBox(height: healthDp(context, 20)),
                     SizedBox(
                       height: healthDp(context, 68),
                       child: Center(
@@ -210,22 +218,26 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: const Color(0xFF898686),
-                            fontSize: healthSp(context, 16),
+                            fontSize: healthSp(context, 14),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w300,
-                            height: 1.63,
+                            height: 1.86,
                           ),
                         ),
                       ),
-                    )
-                  else
+                    ),
+                  ] else ...[
+                    SizedBox(height: healthDp(context, 10)),
                     ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: healthDp(context, 160)),
+                      constraints:
+                          BoxConstraints(maxHeight: healthDp(context, 160)),
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: _recent.length,
-                        separatorBuilder: (_, __) =>
-                            SizedBox(height: healthDp(context, 4)),
+                        separatorBuilder: (_, __) => Container(
+                          height: healthDp(context, 1),
+                          color: const Color(0xFFD2D2D2),
+                        ),
                         itemBuilder: (context, i) {
                           final item = _recent[i];
                           return Material(
@@ -253,18 +265,18 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                                         ),
                                       ),
                                     ),
-                                    IconButton(
-                                      onPressed: () => _removeRecent(item),
-                                      icon: Icon(
-                                        Icons.close,
-                                        size: healthDp(context, 18),
-                                        color: const Color(0xFFB0B0B0),
-                                      ),
-                                      visualDensity: VisualDensity.compact,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 32,
-                                        minHeight: 32,
+                                    GestureDetector(
+                                      onTap: () => _removeRecent(item),
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Padding(
+                                        padding: EdgeInsets.all(
+                                          healthDp(context, 4),
+                                        ),
+                                        child: Icon(
+                                          Icons.close,
+                                          size: healthDp(context, 14),
+                                          color: const Color(0xFFB0B0B0),
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -275,15 +287,23 @@ class _SearchPopupDialogState extends State<_SearchPopupDialog> {
                         },
                       ),
                     ),
+                  ],
                 ],
               ),
               Positioned(
-                right: -healthDp(context, 4),
-                top: -healthDp(context, 4),
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: Color(0xFF1A1A1A)),
-                  tooltip: '닫기',
+                right: -healthDp(context, 12),
+                top: -healthDp(context, 12),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.all(healthDp(context, 4)),
+                    child: Icon(
+                      Icons.close,
+                      size: healthDp(context, 16),
+                      color: const Color(0xFF1A1A1A),
+                    ),
+                  ),
                 ),
               ),
             ],

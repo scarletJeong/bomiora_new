@@ -1,12 +1,16 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/services/content_service.dart';
 import '../../../data/services/search_service.dart';
-import '../../common/widgets/app_bar.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../common/widgets/product_card.dart';
+import 'widgets/search_product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 통합 검색 결과 (비대면 진료 / 스토어 / 콘텐츠 탭).
@@ -29,11 +33,13 @@ class _SearchListScreenState extends State<SearchListScreen> {
   static const Color _border = Color(0xFFD2D2D2);
 
   late final TextEditingController _queryController;
+  Timer? _debounce;
 
   List<Product> _rx = const [];
   List<Product> _store = const [];
   List<Map<String, dynamic>> _content = const [];
   bool _loading = true;
+  bool _initialLoad = true;
   String? _error;
 
   int _tab = 0; // 0: 비대면 진료, 1: 스토어, 2: 콘텐츠
@@ -42,13 +48,36 @@ class _SearchListScreenState extends State<SearchListScreen> {
   void initState() {
     super.initState();
     _queryController = TextEditingController(text: widget.initialQuery.trim());
+    _queryController.addListener(_onQueryChanged);
     _runSearch(_queryController.text);
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _queryController.removeListener(_onQueryChanged);
     _queryController.dispose();
     super.dispose();
+  }
+
+  void _onQueryChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _runSearch(_queryController.text);
+    });
+  }
+
+  void _selectBestTab() {
+    if (_rx.isNotEmpty) {
+      _tab = 0;
+    } else if (_store.isNotEmpty) {
+      _tab = 1;
+    } else if (_content.isNotEmpty) {
+      _tab = 2;
+    } else {
+      _tab = 0;
+    }
   }
 
   Future<void> _runSearch(String raw) async {
@@ -59,7 +88,9 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _store = const [];
         _content = const [];
         _loading = false;
+        _initialLoad = false;
         _error = null;
+        _tab = 0;
       });
       return;
     }
@@ -78,11 +109,14 @@ class _SearchListScreenState extends State<SearchListScreen> {
         _store = result.storeProducts;
         _content = result.contents;
         _loading = false;
+        _initialLoad = false;
+        _selectBestTab();
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
+        _initialLoad = false;
         _error = e.toString();
       });
     }
@@ -90,9 +124,21 @@ class _SearchListScreenState extends State<SearchListScreen> {
 
   int get _total => _rx.length + _store.length + _content.length;
 
+  int get _tabResultCount {
+    switch (_tab) {
+      case 0:
+        return _rx.length;
+      case 1:
+        return _store.length;
+      case 2:
+        return _content.length;
+      default:
+        return 0;
+    }
+  }
+
   void _openProduct(Product p, {required bool general}) {
-    final route =
-        general ? '/product-general/${p.id}' : '/product/${p.id}';
+    final route = general ? '/product-general/${p.id}' : '/product/${p.id}';
     Navigator.pushNamed(context, route);
   }
 
@@ -114,77 +160,25 @@ class _SearchListScreenState extends State<SearchListScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: const HealthAppBar(title: '검색', centerTitle: true),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator(color: _pink))
-            : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(healthDp(context, 24)),
-                      child: Text(
-                        '검색 중 오류가 발생했습니다.\n$_error',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: healthSp(context, 14),
-                          color: _muted,
-                          fontFamily: 'Gmarket Sans TTF',
-                        ),
+      appBar: const HealthAppBar(title: '검색', centerTitle: false),
+      child: _initialLoad && _loading
+          ? const Center(child: CircularProgressIndicator(color: _pink))
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(healthDp(context, 24)),
+                    child: Text(
+                      '검색 중 오류가 발생했습니다.\n$_error',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: healthSp(context, 14),
+                        color: _muted,
+                        fontFamily: 'Gmarket Sans TTF',
                       ),
                     ),
-                  )
-                : _total == 0
-                    ? _buildGlobalEmpty()
-                    : _buildResults(),
-      ),
-    );
-  }
-
-  Widget _buildGlobalEmpty() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 20),
-        healthDp(context, 27),
-        healthDp(context, 24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildSearchBar(),
-          SizedBox(height: healthDp(context, 40)),
-          Icon(
-            Icons.search_off_outlined,
-            size: healthDp(context, 80),
-            color: Colors.grey.shade300,
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '검색 결과가 없습니다.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 20),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-              height: 1.6,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 8)),
-          Text(
-            '검색어를 다시 입력해주세요.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _muted,
-              fontSize: healthSp(context, 16),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-              height: 1.63,
-            ),
-          ),
-        ],
-      ),
+                  ),
+                )
+              : _buildResults(),
     );
   }
 
@@ -195,19 +189,72 @@ class _SearchListScreenState extends State<SearchListScreen> {
         Padding(
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 27),
-            healthDp(context, 8),
+            healthDp(context, 20),
             healthDp(context, 27),
-            healthDp(context, 8),
+            0,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildSearchBar(),
-              SizedBox(height: healthDp(context, 12)),
+              SizedBox(height: healthDp(context, 20)),
               _buildTabRow(),
               SizedBox(height: healthDp(context, 10)),
-              Text(
-                '검색 결과 $_total개',
+              _buildResultCountRow(),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: _pink))
+              : _total == 0
+                  ? _buildGlobalEmpty()
+                  : Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+                      child: IndexedStack(
+                        index: _tab,
+                        children: [
+                          _buildProductGrid(_rx, general: false),
+                          _buildProductGrid(_store, general: true),
+                          _buildContentList(),
+                        ],
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultCountRow() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(height: healthDp(context, 1), color: _border),
+        SizedBox(height: healthDp(context, 5)),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '검색 결과 ',
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              TextSpan(
+                text: '$_tabResultCount',
+                style: TextStyle(
+                  color: _pink,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextSpan(
+                text: '개',
                 style: TextStyle(
                   color: _muted,
                   fontSize: healthSp(context, 12),
@@ -218,20 +265,51 @@ class _SearchListScreenState extends State<SearchListScreen> {
             ],
           ),
         ),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
-            child: IndexedStack(
-              index: _tab,
-              children: [
-                _buildProductGrid(_rx, general: false),
-                _buildProductGrid(_store, general: true),
-                _buildContentList(),
-              ],
+        SizedBox(height: healthDp(context, 5)),
+        Container(height: healthDp(context, 1), color: _border),
+      ],
+    );
+  }
+
+  Widget _buildGlobalEmpty() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 20),
+        healthDp(context, 27),
+        healthDp(context, 20),
+      ),
+      child: Column(
+        children: [
+          SvgPicture.asset(
+            AppAssets.searchEmptyIcon,
+            width: healthDp(context, 80),
+            height: healthDp(context, 80),
+            fit: BoxFit.contain,
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          Text(
+            '검색 결과가 없습니다.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _ink,
+              fontSize: healthSp(context, 16),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ),
-      ],
+          Text(
+            '검색어를 다시 입력해주세요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _muted,
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -271,17 +349,17 @@ class _SearchListScreenState extends State<SearchListScreen> {
               textInputAction: TextInputAction.search,
             ),
           ),
-          IconButton(
-            onPressed: () => _runSearch(_queryController.text),
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(
-              minWidth: healthDp(context, 32),
-              minHeight: healthDp(context, 32),
-            ),
-            icon: Icon(
-              Icons.search,
-              size: healthDp(context, 20),
-              color: _muted,
+          GestureDetector(
+            onTap: () => _runSearch(_queryController.text),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: EdgeInsets.all(healthDp(context, 6)),
+              child: SvgPicture.asset(
+                AppAssets.searchIcon,
+                width: healthDp(context, 18),
+                height: healthDp(context, 18),
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ],
@@ -354,14 +432,14 @@ class _SearchListScreenState extends State<SearchListScreen> {
       ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.58,
+        mainAxisExtent: SearchProductCard.preferredMainAxisExtent(context),
         crossAxisSpacing: healthDp(context, 12),
         mainAxisSpacing: healthDp(context, 16),
       ),
       itemCount: list.length,
       itemBuilder: (context, i) {
         final p = list[i];
-        return ProductCatalogCard(
+        return SearchProductCard(
           product: p,
           onTap: () => _openProduct(p, general: general),
         );
@@ -405,60 +483,54 @@ class _SearchListScreenState extends State<SearchListScreen> {
         final item = _content[i];
         final title = item['title']?.toString().trim() ?? '';
         final url = _contentThumb(item);
-        final thumbWidget = url.isEmpty
-            ? Container(
-                width: healthDp(context, 100),
-                height: healthDp(context, 72),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                ),
-                alignment: Alignment.center,
-                child:
-                    Icon(Icons.article_outlined, color: Colors.grey.shade400),
-              )
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                child: Image.network(
-                  url,
-                  width: healthDp(context, 100),
-                  height: healthDp(context, 72),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: healthDp(context, 100),
-                    height: healthDp(context, 72),
-                    color: Colors.grey.shade200,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Icons.article_outlined,
-                      color: Colors.grey.shade400,
-                    ),
-                  ),
-                ),
-              );
+
         return InkWell(
           onTap: () => _openContent(item),
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              thumbWidget,
-              SizedBox(width: healthDp(context, 12)),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(top: healthDp(context, 4)),
-                  child: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _ink,
-                      fontSize: healthSp(context, 15),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                    ),
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: healthDp(context, 200),
+                  child: url.isEmpty
+                      ? Container(
+                          color: Colors.grey.shade200,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.article_outlined,
+                            color: Colors.grey.shade400,
+                            size: healthDp(context, 40),
+                          ),
+                        )
+                      : Image.network(
+                          url,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade200,
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.article_outlined,
+                              color: Colors.grey.shade400,
+                              size: healthDp(context, 40),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+              SizedBox(height: healthDp(context, 12)),
+              Text(
+                title,
+                style: TextStyle(
+                  color: _ink,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: healthSp(context, -1.26),
                 ),
               ),
             ],

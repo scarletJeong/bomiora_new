@@ -66,7 +66,9 @@ class Product {
       imageUrl: () {
         // 대표 썸네일은 it_img1~it_img9 중 실제 값이 있는 첫 슬롯을 선택
         final selectedValue = _pickFirstThumbnailValue(rawFields) ??
-            _pickFirstThumbnailValue(normalized);
+            _pickFirstThumbnailValue(normalized) ??
+            _pickFallbackImageValue(rawFields) ??
+            _pickFallbackImageValue(normalized);
 
         return ImageUrlHelper.normalizeThumbnailUrl(
           selectedValue,
@@ -176,6 +178,26 @@ class Product {
     return null;
   }
 
+  static String? _pickFallbackImageValue(Map<String, dynamic> source) {
+    const keys = [
+      'image_url',
+      'imageUrl',
+      'thumbnail',
+      'thumbnailUrl',
+      'it_img',
+    ];
+    for (final key in keys) {
+      final raw = NodeValueParser.asString(source[key]);
+      if (raw != null) {
+        final trimmed = raw.trim();
+        if (trimmed.isNotEmpty && trimmed.toLowerCase() != 'null') {
+          return trimmed;
+        }
+      }
+    }
+    return null;
+  }
+
   static Map<String, dynamic> _extractRawFields(Map<String, dynamic> normalized) {
     final raw = <String, dynamic>{};
     final additionalInfo = normalized['additionalInfo'];
@@ -251,6 +273,78 @@ class Product {
     }
     return null;
   }
+
+  /// JSON 맵에서 `it_mb_inf` 값 추출 (루트·additionalInfo·키 변형)
+  static String? readItMbInfFromMap(Map<String, dynamic>? source) {
+    if (source == null) return null;
+    final normalized = NodeValueParser.normalizeMap(source);
+
+    String? pick(dynamic value) {
+      final s = NodeValueParser.asString(value)?.trim();
+      if (s == null || s.isEmpty || s.toLowerCase() == 'null') return null;
+      return s;
+    }
+
+    final direct = pick(normalized['it_mb_inf']) ?? pick(normalized['itMbInf']);
+    if (direct != null) return direct;
+
+    final additionalInfo = normalized['additionalInfo'];
+    if (additionalInfo is Map) {
+      final nested =
+          NodeValueParser.normalizeMap(Map<String, dynamic>.from(additionalInfo));
+      final nestedVal =
+          pick(nested['it_mb_inf']) ?? pick(nested['itMbInf']);
+      if (nestedVal != null) return nestedVal;
+    }
+
+    for (final entry in normalized.entries) {
+      final key =
+          entry.key.toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+      if (key == 'itmbinf') {
+        final v = pick(entry.value);
+        if (v != null) return v;
+      }
+    }
+    return null;
+  }
+
+  /// 검색 API 원본 item 기준 인플루언서 여부 (it_mb_inf 미포함 응답 보완)
+  static bool isInfluencerFromRawJson(Map<String, dynamic> json) {
+    if (readItMbInfFromMap(json) != null) return true;
+
+    final normalized = NodeValueParser.normalizeMap(json);
+    final name = NodeValueParser.asString(normalized['name']) ??
+        NodeValueParser.asString(normalized['it_name']) ??
+        '';
+    if (name.contains('(@')) return true;
+
+    final categoryId = NodeValueParser.asString(normalized['categoryId']) ??
+        NodeValueParser.asString(normalized['ca_id']) ??
+        '';
+    final kind = (NodeValueParser.asString(normalized['productKind']) ??
+            NodeValueParser.asString(normalized['it_kind']) ??
+            NodeValueParser.asString(normalized['ct_kind']) ??
+            '')
+        .toLowerCase();
+
+    // 비대면 일반 카탈로그(10·20·80·50) 밖 기타(40) 채널 상품
+    if (kind == 'prescription' && categoryId == '40') return true;
+
+    return false;
+  }
+
+  /// 인플루언서 연동 상품 (`it_mb_inf` 값이 있으면 true)
+  bool get isInfluencerProduct => isInfluencerFromRawJson({
+        'id': id,
+        'name': name,
+        'categoryId': categoryId,
+        'productKind': productKind,
+        if (additionalInfo != null) ...additionalInfo!,
+        'additionalInfo': additionalInfo,
+      });
+
+  /// 목록/카드용 이미지 URL (환경별 경로 정규화)
+  String get displayImageUrl => ImageUrlHelper.getImageUrl(imageUrl);
 
   /// 장바구니에 추가할 때 사용할 ct_kind 값 반환
   /// productKind (it_kind)를 기반으로 판단, 없으면 'general'
