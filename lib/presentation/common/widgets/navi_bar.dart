@@ -4,18 +4,23 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
+/// 하단 가로 바 ↔ 오른쪽 세로 바 전환 기준 (px).
+const double kFooterBarWideBreakpoint = 950;
+
 /// 공통으로 쓰는 하단 핑크 탭 바 (Figma)
 ///
 /// - 파일명만 `footer_bar.dart` → `navi_bar.dart`로 변경했습니다.
 /// - 기존 사용처가 많아서 클래스명(`FooterBar`)은 유지합니다.
+/// - [kFooterBarWideBreakpoint] 이상에서는 빈 위젯을 반환하고 [SideNaviBar]를 레이아웃 래퍼에서 표시합니다.
+/// - 수치는 모두 [healthDp]/[healthSp]로 375~650 폭 기준 스케일 적용.
 class FooterBar extends StatelessWidget {
   const FooterBar({super.key});
 
   static const Color _pink = Color(0xFFFF5A8D);
 
-  Widget _sep(BuildContext context, double widthScale) {
+  Widget _sep(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 6 / widthScale),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 6)),
       child: Text(
         '|',
         style: TextStyle(
@@ -32,8 +37,6 @@ class FooterBar extends StatelessWidget {
   void _go(BuildContext context, String routeName) {
     final current = ModalRoute.of(context)?.settings.name;
     if (current == routeName) return;
-    // 하단바 탭 이동 후에도 "뒤로가기"가 동작해야 하므로
-    // 네비게이션 스택을 비우지 않고 push로 이동한다.
     Navigator.pushNamed(context, routeName);
   }
 
@@ -48,7 +51,7 @@ class FooterBar extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(healthDp(context, 8)),
           child: Padding(
             padding: EdgeInsets.only(
               top: healthDp(context, 6),
@@ -65,7 +68,7 @@ class FooterBar extends StatelessWidget {
                   colorFilter:
                       const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                 ),
-                SizedBox(height: healthDp(context, 4)),
+                SizedBox(height: healthDp(context, 4.62)),
                 Text(
                   label,
                   textAlign: TextAlign.center,
@@ -73,7 +76,7 @@ class FooterBar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: healthSp(context, 6),
+                    fontSize: healthSp(context, 8),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -88,9 +91,12 @@ class FooterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final widthScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
-    // 폭이 넓어질수록 텍스트·아이콘이 커지므로 양옆 패딩은 역비례(375에서 36 기준)해 라벨이 잘리지 않게 함
-    final padH = 36.0 / widthScale;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    if (screenWidth >= kFooterBarWideBreakpoint) {
+      return const SizedBox.shrink();
+    }
+
+    final padH = healthDp(context, 10);
     final barH = healthDp(context, 62);
     final radius = healthDp(context, 15);
 
@@ -118,28 +124,28 @@ class FooterBar extends StatelessWidget {
             iconAsset: AppAssets.naviIcon1,
             onTap: () => _go(context, '/home'),
           ),
-          _sep(context, widthScale),
+          _sep(context),
           _item(
             context: context,
             label: '건강대시보드',
             iconAsset: AppAssets.naviIcon2,
             onTap: () => _go(context, '/health'),
           ),
-          _sep(context, widthScale),
+          _sep(context),
           _item(
             context: context,
             label: '비대면 진료',
             iconAsset: AppAssets.naviIcon3,
-            onTap: null, // 요청대로 일단 유지
+            onTap: null,
           ),
-          _sep(context, widthScale),
+          _sep(context),
           _item(
             context: context,
             label: '문진표',
             iconAsset: AppAssets.naviIcon4,
             onTap: () => _go(context, '/profile'),
           ),
-          _sep(context, widthScale),
+          _sep(context),
           _item(
             context: context,
             label: 'MY PAGE',
@@ -152,3 +158,145 @@ class FooterBar extends StatelessWidget {
   }
 }
 
+/// 넓은 화면(≥950)에서 콘텐츠 패널 오른쪽에 표시하는 세로 핑크 네비 바.
+///
+/// Figma에서 950+ 레이아웃 기준으로 내려준 고정 px만 사용합니다. [healthDp]/[healthSp] 미사용.
+class SideNaviBar extends StatelessWidget {
+  const SideNaviBar({super.key});
+
+  static const Color _pink = Color(0xFFFF5A8D);
+
+  static const double _padH = 10;
+  static const double _padV = 30;
+  static const double _radius = 50.53;
+  static const double _itemGap = 14;
+  static const double _iconSize = 33;
+  static const double _labelGap = 6.74;
+  static const double _labelSize = 11;
+  static const double _separatorWidth = 14;
+  static const double _separatorHeight = 1;
+
+  static const _items = <_SideNaviEntry>[
+    _SideNaviEntry(label: 'HOME', icon: AppAssets.naviIcon1, route: '/home'),
+    _SideNaviEntry(
+      label: '건강대시보드',
+      icon: AppAssets.naviIcon2,
+      route: '/health',
+    ),
+    _SideNaviEntry(
+      label: '비대면 진료',
+      icon: AppAssets.naviIcon3,
+      route: null,
+    ),
+    _SideNaviEntry(
+      label: '문진표',
+      icon: AppAssets.naviIcon4,
+      route: '/profile',
+    ),
+    _SideNaviEntry(
+      label: 'MY PAGE',
+      icon: AppAssets.naviIcon5,
+      route: '/my_page',
+    ),
+  ];
+
+  void _go(BuildContext context, String routeName) {
+    final current = ModalRoute.of(context)?.settings.name;
+    if (current == routeName) return;
+    Navigator.pushNamed(context, routeName);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: _padH, vertical: _padV),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: _pink,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radius),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < _items.length; i++) ...[
+            if (i > 0) _itemSeparator(),
+            _sideItem(
+              entry: _items[i],
+              onTap: _items[i].route == null
+                  ? null
+                  : () => _go(context, _items[i].route!),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _itemSeparator() {
+    return const Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(height: _itemGap),
+        SizedBox(
+          width: _separatorWidth,
+          height: _separatorHeight,
+          child: DecoratedBox(
+            decoration: BoxDecoration(color: Colors.white),
+          ),
+        ),
+        SizedBox(height: _itemGap),
+      ],
+    );
+  }
+
+  Widget _sideItem({
+    required _SideNaviEntry entry,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              entry.icon,
+              width: _iconSize,
+              height: _iconSize,
+              colorFilter:
+                  const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            ),
+            const SizedBox(height: _labelGap),
+            Text(
+              entry.label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: _labelSize,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SideNaviEntry {
+  final String label;
+  final String icon;
+  final String? route;
+
+  const _SideNaviEntry({
+    required this.label,
+    required this.icon,
+    required this.route,
+  });
+}
