@@ -8,8 +8,6 @@ import '../../../health/health_common/health_responsive_scale.dart';
 class SearchProductCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
   static const Color _textDark = Color(0xFF231F20);
-  static const Color _ratingGrey = Color(0xFF999999);
-  static const Color _starGold = Color(0xFFFFCC00);
   static const String _gmarket = 'Gmarket Sans TTF';
 
   final Product product;
@@ -42,7 +40,6 @@ class SearchProductCard extends StatelessWidget {
     final fsTitle = healthSp(context, 12);
     final fsDiscNum = healthSp(context, 11.70);
     final fsPriceRow = healthSp(context, 12);
-    final fsRating = healthSp(context, 7.80);
     final imageHeight = healthDp(context, 185);
     final gap = healthDp(context, 8);
     final hPad = healthDp(context, 8);
@@ -58,22 +55,11 @@ class SearchProductCard extends StatelessWidget {
       height: 1.2,
     );
 
-    final ratingStyle = TextStyle(
-      fontSize: fsRating,
-      color: _ratingGrey,
-      fontWeight: FontWeight.w500,
-      fontFamily: _gmarket,
-      height: 1.1,
-    );
-
     return GestureDetector(
       onTap: onTap,
-      child: Card(
-        margin: EdgeInsets.zero,
-        elevation: healthDp(context, 2),
-        shadowColor: Colors.black26,
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(cardRadius),
         ),
         clipBehavior: Clip.antiAlias,
@@ -181,30 +167,6 @@ class SearchProductCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                         ),
-                        if ((product.rating ?? 0) > 0 ||
-                            (product.reviewCount ?? 0) > 0) ...[
-                          SizedBox(width: healthDp(context, 3)),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Icon(
-                                Icons.star_rounded,
-                                size: healthDp(context, 8),
-                                color: _starGold,
-                              ),
-                              SizedBox(width: healthDp(context, 1)),
-                              Text(
-                                (product.rating ?? 0).toStringAsFixed(1),
-                                style: ratingStyle,
-                              ),
-                              Text(
-                                '(${product.reviewCount ?? 0})',
-                                style: ratingStyle,
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
