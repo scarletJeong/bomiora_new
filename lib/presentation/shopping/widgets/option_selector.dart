@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_option_model.dart';
+import '../../common/widgets/dropdown_btn.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 class OptionSelectorBottomSheet extends StatefulWidget {
@@ -42,7 +43,6 @@ class OptionSelectorBottomSheet extends StatefulWidget {
       _OptionSelectorBottomSheetState();
 }
 
-enum _ExpandedType { step, months }
 
 const String _kGmarketSans = 'Gmarket Sans TTF';
 
@@ -53,18 +53,49 @@ TextStyle _optionLabelTextStyle(BuildContext context) => TextStyle(
       fontWeight: FontWeight.w500,
     );
 
-TextStyle _optionChoiceTextStyle(BuildContext context) => TextStyle(
-      color: Colors.black,
-      fontSize: healthSp(context, 15.54),
+
+TextStyle _selectedCardLabelTextStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1A),
+      fontSize: healthSp(context, 14),
       fontFamily: _kGmarketSans,
       fontWeight: FontWeight.w500,
     );
 
-TextStyle _selectedCardProductTextStyle(BuildContext context) => TextStyle(
-      fontSize: healthSp(context, 11.65),
-      fontFamily: _kGmarketSans,
-      fontWeight: FontWeight.w500,
-    );
+String _formatPrice(int value) {
+  return value.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},',
+      );
+}
+
+String _extractStepShort(String step) {
+  final match = RegExp(r'\[?0*(\d+)단계\]?').firstMatch(step);
+  if (match != null) return '${match.group(1)}단계';
+  return step.trim();
+}
+
+String? _extractDiscountSuffix(ProductOption option) {
+  for (final source in [option.id, option.step, option.subOption]) {
+    final match = RegExp(r'\(-\s*\d+%\s*\)').firstMatch(source);
+    if (match != null) return match.group(0);
+  }
+  return null;
+}
+
+String _selectedOptionValueText(ProductOption option) {
+  final stepShort = _extractStepShort(option.step);
+  final months = option.months;
+  if (months != null) {
+    return '$stepShort/${months}개월';
+  }
+  if (option.subOption.isNotEmpty) {
+    if (stepShort.isNotEmpty && stepShort != option.step) {
+      return '$stepShort/${option.subOption}';
+    }
+    return option.subOption;
+  }
+  return stepShort.isNotEmpty ? stepShort : option.step;
+}
 
 class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   final Map<String, List<ProductOption>> _groupedOptionsByStep = {};
@@ -74,7 +105,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   String? _selectedStep;
   int? _selectedMonths;
-  _ExpandedType? _expandedType;
   late Map<ProductOption, int> _selectedOptions;
   late bool _isFavorite;
 
@@ -158,7 +188,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       if (_stepGroups.length > 1) {
         _selectedStep = null;
       }
-      _expandedType = null;
       _updateMonthsGroups();
     });
 
@@ -238,10 +267,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildSelectionFields(),
-                              if (_expandedType != null) ...[
-                                SizedBox(height: healthDp(context, 6)),
-                                _buildExpandedOptionsList(),
-                              ],
                               if (_selectedOptions.isNotEmpty) ...[
                                 SizedBox(height: healthDp(context, 20)),
                                 Divider(
@@ -270,41 +295,54 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   Widget _buildSelectionFields() {
     final hasSingleSubjectFlow = _stepGroups.length <= 1;
+    final dropdownHeight = healthDp(context, 40);
+    final monthsItems = _monthsGroups.map((months) {
+      final option = _groupedOptionsByMonths[months]?.first;
+      if (option == null) return '$months개월';
+      if (option.price <= 0) return '$months개월';
+      return '$months개월 (+${option.formattedPrice.replaceAll('원', '')})';
+    }).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_stepGroups.length > 1) ...[
           _buildSelectionLabel(widget.stepLabel),
-          _buildSelectionField(
-            text: _selectedStep ?? '옵션 선택',
-            enabled: true,
-            expanded: _expandedType == _ExpandedType.step,
-            onTap: () {
+          DropdownBtn(
+            items: _stepGroups,
+            value: _selectedStep ?? '',
+            emptyText: '옵션 선택',
+            buttonHeight: dropdownHeight,
+            itemFontSizeBase: 15.54,
+            itemTextAlign: TextAlign.left,
+            onChanged: (step) {
               setState(() {
-                _expandedType = _expandedType == _ExpandedType.step
-                    ? null
-                    : _ExpandedType.step;
+                _selectedStep = step;
+                _selectedMonths = null;
+                _updateMonthsGroups();
               });
             },
           ),
-          SizedBox(height: healthDp(context, 2)),
+          SizedBox(height: healthDp(context, 8)),
         ],
         _buildSelectionLabel(widget.monthsLabel),
-        _buildSelectionField(
-          text: _selectedMonths != null
-              ? '${_selectedMonths}개월'
-              : (_isMonthsEnabled ? '옵션 선택' : '상위 옵션 선택'),
+        DropdownBtn(
+          items: monthsItems,
+          value: _selectedMonths != null ? '${_selectedMonths}개월' : '',
+          emptyText: _isMonthsEnabled ? '옵션 선택' : '상위 옵션 선택',
           enabled: _isMonthsEnabled || hasSingleSubjectFlow,
-          expanded: _expandedType == _ExpandedType.months,
-          onTap: (_isMonthsEnabled || hasSingleSubjectFlow)
-              ? () {
-                  setState(() {
-                    _expandedType = _expandedType == _ExpandedType.months
-                        ? null
-                        : _ExpandedType.months;
-                  });
-                }
-              : null,
+          buttonHeight: dropdownHeight,
+          itemFontSizeBase: 15.54,
+          itemTextAlign: TextAlign.left,
+          onChanged: (label) {
+            final monthsMatch = RegExp(r'^(\d+)').firstMatch(label);
+            if (monthsMatch == null) return;
+            final months = int.parse(monthsMatch.group(1)!);
+            final option = _groupedOptionsByMonths[months]?.first;
+            if (option == null) return;
+            setState(() => _selectedMonths = months);
+            _addOption(option);
+          },
         ),
       ],
     );
@@ -323,251 +361,113 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     );
   }
 
-  Widget _buildSelectionField({
-    required String text,
-    required bool enabled,
-    required bool expanded,
-    required VoidCallback? onTap,
-  }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: healthDp(context, 6)),
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 12),
-        vertical: healthDp(context, 8),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(
-          color: enabled ? Colors.grey[300]! : Colors.grey[200]!,
-          width: healthDp(context, 1),
-        ),
-        borderRadius: BorderRadius.circular(healthDp(context, 8)),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                text,
-                style: _optionChoiceTextStyle(context).copyWith(
-                  color: enabled ? Colors.black : Colors.grey[400],
-                ),
-              ),
-            ),
-            Icon(
-              expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              color: enabled ? Colors.grey[700] : Colors.grey[350],
-              size: healthDp(context, 20),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildSelectedOptionsList() {
+    return Column(
+      children: _selectedOptions.entries.map((entry) {
+        final option = entry.key;
+        final quantity = entry.value;
+        return _buildSelectedOptionCard(option, quantity);
+      }).toList(),
     );
   }
 
-  Widget _buildExpandedOptionsList() {
-    if (_expandedType == _ExpandedType.step) {
-      return Column(
-        children: _stepGroups.map((step) {
-          final isSelected = _selectedStep == step;
-          return InkWell(
-            onTap: () {
-              setState(() {
-                _selectedStep = step;
-                _selectedMonths = null;
-                _expandedType = null;
-                _updateMonthsGroups();
-              });
-            },
-            child: Container(
-              margin: EdgeInsets.only(bottom: healthDp(context, 6)),
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 12),
-                vertical: healthDp(context, 8),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                border: Border.all(
-                  color:
-                      isSelected ? const Color(0xFFFF4081) : Colors.grey[300]!,
-                  width: healthDp(context, 1),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    step,
-                    style: _optionChoiceTextStyle(context),
-                  ),
-                  if (isSelected)
-                    Icon(
-                      Icons.check_circle,
-                      color: const Color(0xFFFF4081),
-                      size: healthDp(context, 18),
-                    ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      );
-    }
+  Widget _buildSelectedOptionCard(ProductOption option, int quantity) {
+    final lineTotal = (widget.basePrice + option.price) * quantity;
+    final valueText = _selectedOptionValueText(option);
+    final discountSuffix = _extractDiscountSuffix(option);
+    final pinkValue = discountSuffix != null
+        ? '$valueText $discountSuffix'
+        : valueText;
 
-    return Column(
-      children: _monthsGroups.map((months) {
-        final optionForMonths = _groupedOptionsByMonths[months]?.first;
-        if (optionForMonths == null) return const SizedBox.shrink();
-        final isSelected = _selectedMonths == months;
-        return InkWell(
-          onTap: () {
-            setState(() {
-              _selectedMonths = months;
-            });
-            _addOption(optionForMonths);
-          },
-          child: Container(
-            margin: EdgeInsets.only(bottom: healthDp(context, 6)),
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 12),
-              vertical: healthDp(context, 8),
+    return Container(
+      margin: EdgeInsets.only(bottom: healthDp(context, 8)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        border: Border.all(color: const Color(0x7FD2D2D2)),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 12),
+              healthDp(context, 10),
+              healthDp(context, 30),
+              healthDp(context, 10),
             ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              border: Border.all(
-                color: isSelected ? const Color(0xFFFF4081) : Colors.grey[300]!,
-                width: healthDp(context, 1),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '$months개월',
-                  style: _optionChoiceTextStyle(context),
-                ),
-                Row(
-                  children: [
-                    if (optionForMonths.price > 0)
-                      Text(
-                        '+${optionForMonths.formattedPrice.replaceAll('원', '')}',
-                        style: TextStyle(
-                          fontSize: healthSp(context, 13),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: widget.stepLabel,
+                        style: _selectedCardLabelTextStyle(context),
+                      ),
+                      TextSpan(
+                        text: ' | ',
+                        style: _selectedCardLabelTextStyle(context).copyWith(
+                          color: const Color(0xFFBDBDBD),
+                          fontWeight: FontWeight.w300,
                         ),
                       ),
-                    if (isSelected) ...[
-                      SizedBox(width: healthDp(context, 6)),
-                      Icon(
-                        Icons.check_circle,
-                        color: const Color(0xFFFF4081),
-                        size: healthDp(context, 18),
+                      TextSpan(
+                        text: pinkValue,
+                        style: _selectedCardLabelTextStyle(context).copyWith(
+                          color: const Color(0xFFFF4081),
+                        ),
                       ),
                     ],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: healthDp(context, 10)),
+                Row(
+                  children: [
+                    _buildQuantityControl(
+                      quantity: quantity,
+                      compact: true,
+                      onDecrease: quantity > 1
+                          ? () => _updateOptionQuantity(option, quantity - 1)
+                          : null,
+                      onIncrease: () =>
+                          _updateOptionQuantity(option, quantity + 1),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${_formatPrice(lineTotal)}원',
+                      style: TextStyle(
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildSelectedOptionsList() {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 4)),
-      child: Column(
-        children: _selectedOptions.entries.map((entry) {
-          final option = entry.key;
-          final quantity = entry.value;
-          final itemPrice = option.price * quantity;
-          return Container(
-            margin: EdgeInsets.only(bottom: healthDp(context, 6)),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(healthDp(context, 10)),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                option.displayText,
-                                style: _selectedCardProductTextStyle(context)
-                                    .copyWith(
-                                  color: Colors.black87,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            SizedBox(width: healthDp(context, 8)),
-                            _buildQuantityControl(
-                              quantity: quantity,
-                              compact: true,
-                              onDecrease: quantity > 1
-                                  ? () => _updateOptionQuantity(
-                                      option, quantity - 1)
-                                  : null,
-                              onIncrease: () =>
-                                  _updateOptionQuantity(option, quantity + 1),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: healthDp(context, 8)),
-                      Text(
-                        '+${itemPrice.toString().replaceAllMapped(
-                              RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                              (Match m) => '${m[1]},',
-                            )}원',
-                        style: TextStyle(
-                          fontSize: healthSp(context, 12),
-                          color: Colors.grey[800],
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+          Positioned(
+            top: healthDp(context, 6),
+            right: healthDp(context, 6),
+            child: InkWell(
+              onTap: () => _removeOption(option),
+              borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              child: Padding(
+                padding: EdgeInsets.all(healthDp(context, 2)),
+                child: Icon(
+                  Icons.close,
+                  size: healthDp(context, 16),
+                  color: Colors.black54,
                 ),
-                Positioned(
-                  top: healthDp(context, 4),
-                  right: healthDp(context, 4),
-                  child: InkWell(
-                    onTap: () => _removeOption(option),
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 4)),
-                    child: Padding(
-                      padding: EdgeInsets.all(healthDp(context, 2)),
-                      child: Icon(
-                        Icons.close,
-                        size: healthDp(context, 16),
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
-        }).toList(),
+          ),
+        ],
       ),
     );
   }
