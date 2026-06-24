@@ -431,6 +431,36 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
     }
   }
 
+  bool get _hasValidContact {
+    final name = (_currentUser?.name ?? '').trim();
+    final phone = (_currentUser?.phone ?? '').trim();
+    return name.isNotEmpty && phone.isNotEmpty;
+  }
+
+  bool get _canProceed =>
+      _hasValidContact && _agreedRefundPolicy && !_isLoading;
+
+  Future<void> _showRefundPolicyPopup() async {
+    final confirmed = await ContentPopup.show(
+      context,
+      title: '교환 및 환불 안내',
+      subtitle:
+          '본 상품은 처방 및 건강 관련 상품으로 교환 및 환불 기준과 절차가 일반 다른 상품과 다르게 적용될 수 있습니다.',
+      body: '''
+구매 전 교환·환불 조건, 상담 절차 및 처리 기준을 반드시 확인해 주시기 바랍니다.
+
+· 처방 및 건강 관련 상품의 특성상 단순 변심에 의한 교환·환불이 제한될 수 있습니다.
+· 상품 수령 후 개봉·복용이 시작된 경우 교환 및 환불이 불가할 수 있습니다.
+· 배송 중 파손·오배송 등 판매자 귀책 사유가 확인된 경우 교환 또는 환불이 가능합니다.
+· 교환·환불 문의는 고객센터 또는 마이페이지 주문내역을 통해 접수해 주세요.
+· 상담 예약 후 취소·변경은 안내드린 절차에 따라 처리됩니다.
+· 자세한 기준은 관련 법령 및 서비스 이용약관을 따릅니다.''',
+    );
+    if (confirmed && mounted) {
+      setState(() => _agreedRefundPolicy = true);
+    }
+  }
+
   Widget _buildReadonlyLabelField({
     required String label,
     required String value,
@@ -673,23 +703,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                         SizedBox(height: healthDp(context, 8)),
                         Center(
                           child: InkWell(
-                            onTap: () {
-                              ContentPopup.show(
-                                context,
-                                title: '교환 및 환불 안내',
-                                subtitle:
-                                    '본 상품은 처방 및 건강 관련 상품으로 교환 및 환불 기준과 절차가 일반 다른 상품과 다르게 적용될 수 있습니다.',
-                                body: '''
-구매 전 교환·환불 조건, 상담 절차 및 처리 기준을 반드시 확인해 주시기 바랍니다.
-
-· 처방 및 건강 관련 상품의 특성상 단순 변심에 의한 교환·환불이 제한될 수 있습니다.
-· 상품 수령 후 개봉·복용이 시작된 경우 교환 및 환불이 불가할 수 있습니다.
-· 배송 중 파손·오배송 등 판매자 귀책 사유가 확인된 경우 교환 또는 환불이 가능합니다.
-· 교환·환불 문의는 고객센터 또는 마이페이지 주문내역을 통해 접수해 주세요.
-· 상담 예약 후 취소·변경은 안내드린 절차에 따라 처리됩니다.
-· 자세한 기준은 관련 법령 및 서비스 이용약관을 따릅니다.''',
-                              );
-                            },
+                            onTap: _showRefundPolicyPopup,
                             child: Text(
                               '교환환불 안내보기 >',
                               style: TextStyle(
@@ -770,14 +784,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                       child: SizedBox(
                         height: healthDp(context, 34),
                         child: ElevatedButton(
-                          onPressed: _isLoading
-                              ? null
-                              : () {
-                                  if (!_agreedRefundPolicy) {
-                                    return;
-                                  }
-                                  _submitBooking();
-                                },
+                          onPressed: _canProceed ? _submitBooking : null,
                           style: ElevatedButton.styleFrom(
                             minimumSize: Size(
                               double.infinity,
@@ -790,11 +797,13 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                             padding: EdgeInsets.zero,
                             backgroundColor: const Color(0xFFFF5A8D),
                             foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                const Color(0xFFFF5A8D).withValues(alpha: 0.4),
                             shape: RoundedRectangleBorder(
                               borderRadius:
                                   BorderRadius.circular(healthDp(context, 7)),
                             ),
-                            disabledBackgroundColor: Colors.grey[300],
+                            elevation: 0,
                           ),
                           child: _isLoading
                               ? SizedBox(

@@ -217,7 +217,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                     style: TextStyle(
                       fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   SizedBox(height: healthDp(context, 12)),
@@ -306,7 +306,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                     '2. 시간을 선택해주세요',
                     style: TextStyle(
                       fontSize: healthSp(context, 14),
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w500,
                       fontFamily: 'Gmarket Sans TTF',
                     ),
                   ),
@@ -321,7 +321,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          '먼저 날짜를 선택해주세요',
+                          '날짜를 먼저 선택해주세요',
                           style: TextStyle(
                             fontSize: healthSp(context, 14),
                             color: Colors.grey,
@@ -607,7 +607,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                   child: SizedBox(
                     height: healthDp(context, 34),
                     child: ElevatedButton(
-                      onPressed: _nextStep,
+                      onPressed: hasSelectedDateTime ? _nextStep : null,
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(
                           double.infinity,
@@ -620,10 +620,13 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                         padding: EdgeInsets.zero,
                         backgroundColor: const Color(0xFFFF5A8D),
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor:
+                            const Color(0xFFFF5A8D).withValues(alpha: 0.4),
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(healthDp(context, 7)),
                         ),
+                        elevation: 0,
                       ),
                       child: Text(
                         '다음',
