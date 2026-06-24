@@ -29,6 +29,24 @@ class _TempCartScreenState extends State<TempCartScreen> {
   bool _isLoading = true;
   bool _isSubmitting = false;
   String? _errorMessage;
+  Set<int> _selectedItems = {};
+  bool _selectAll = true;
+
+  Set<int> get _itemIds => _tempItems.map((item) => item.ctId).toSet();
+
+  void _syncSelectionAfterLoad(List<CartItem> items) {
+    final existingIds = items.map((e) => e.ctId).toSet();
+    _selectedItems = _selectedItems.where(existingIds.contains).toSet();
+    if (_selectAll) {
+      _selectedItems.addAll(existingIds);
+    }
+    _selectAll = items.isNotEmpty &&
+        existingIds.difference(_selectedItems).isEmpty;
+  }
+
+  List<CartItem> get _selectedTempItems => _tempItems
+      .where((item) => _selectedItems.contains(item.ctId))
+      .toList();
 
   @override
   void initState() {
@@ -80,6 +98,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
         setState(() {
           _tempItems = items;
           _recommendedProducts = recommended;
+          _syncSelectionAfterLoad(items);
           _isLoading = false;
         });
       } else {
@@ -111,9 +130,30 @@ class _TempCartScreenState extends State<TempCartScreen> {
   Future<void> _removeItem(int ctId) async {
     final result = await CartService.removeCartItem(ctId);
     if (result['success'] == true) {
+      if (mounted) {
+        setState(() => _selectedItems.remove(ctId));
+      }
       await _loadData();
       return;
     }
+  }
+
+  Future<void> _deleteSelectedItems() async {
+    if (_selectedItems.isEmpty) return;
+
+    final itemsToDelete = List<int>.from(_selectedItems);
+    for (final ctId in itemsToDelete) {
+      await CartService.removeCartItem(ctId);
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${itemsToDelete.length}개 상품 삭제 완료'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    await _loadData();
   }
 
   Future<void> _updateQuantity(CartItem item, int quantity) async {
@@ -150,16 +190,17 @@ class _TempCartScreenState extends State<TempCartScreen> {
   }
 
   Future<void> _commitToCart() async {
-    if (_tempItems.isEmpty || _isSubmitting) return;
+    final selectedItems = _selectedTempItems;
+    if (selectedItems.isEmpty || _isSubmitting) return;
 
     setState(() => _isSubmitting = true);
     try {
       if (!await _ensureLoggedIn()) return;
 
       final generalItems =
-          _tempItems.where((e) => _isGeneralKind(e.ctKind)).toList();
+          selectedItems.where((e) => _isGeneralKind(e.ctKind)).toList();
       final prescItems =
-          _tempItems.where((e) => !_isGeneralKind(e.ctKind)).toList();
+          selectedItems.where((e) => !_isGeneralKind(e.ctKind)).toList();
       if (!mounted) return;
 
       if (prescItems.isNotEmpty) {
@@ -274,14 +315,17 @@ class _TempCartScreenState extends State<TempCartScreen> {
                             ),
                           ),
                         ),
-                      ..._tempItems.map(_buildTempItemCard),
                       if (_tempItems.isNotEmpty) ...[
+                        _buildSelectAllRow(),
+                        ..._tempItems.map(_buildTempItemCard),
                         SizedBox(height: healthDp(context, 10)),
                         SizedBox(
                           width: double.infinity,
                           height: healthDp(context, 40),
                           child: ElevatedButton(
-                            onPressed: _isSubmitting ? null : _commitToCart,
+                            onPressed: _selectedTempItems.isEmpty || _isSubmitting
+                                ? null
+                                : _commitToCart,
                             style: ElevatedButton.styleFrom(
                               minimumSize: Size(
                                 double.infinity,
@@ -342,7 +386,121 @@ class _TempCartScreenState extends State<TempCartScreen> {
     );
   }
 
+  Widget _buildSelectAllRow() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(bottom: healthDp(context, 8)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey[300]!,
+            width: healthDp(context, 1),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _lightCheckbox(
+                value: _tempItems.isNotEmpty &&
+                    _itemIds.difference(_selectedItems).isEmpty,
+                onChanged: (bool? value) {
+                  setState(() {
+                    final shouldSelect = value ?? false;
+                    if (shouldSelect) {
+                      _selectedItems.addAll(_itemIds);
+                    } else {
+                      _selectedItems.removeAll(_itemIds);
+                    }
+                    _selectAll = _tempItems.isNotEmpty &&
+                        _itemIds.difference(_selectedItems).isEmpty;
+                  });
+                },
+              ),
+              SizedBox(width: healthDp(context, 4)),
+              Text(
+                '전체선택',
+                style: TextStyle(
+                  fontSize: healthSp(context, 13),
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w300,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          TextButton(
+            onPressed:
+                _selectedItems.isEmpty ? null : _deleteSelectedItems,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 8),
+                vertical: healthDp(context, 4),
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              '선택삭제',
+              style: TextStyle(
+                fontSize: healthSp(context, 12),
+                fontFamily: _kGmarketSans,
+                fontWeight: FontWeight.w300,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _lightCheckbox({
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    const double checkboxBase = 18;
+    final boxSize = healthDp(context, checkboxBase);
+    final scale = boxSize / checkboxBase;
+
+    return SizedBox(
+      width: boxSize,
+      height: boxSize,
+      child: Center(
+        child: Transform.scale(
+          scale: scale,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              checkboxTheme: CheckboxThemeData(
+                side: BorderSide(
+                  color: const Color(0xFFD2D2D2),
+                  width: healthDp(context, 1),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                ),
+              ),
+            ),
+            child: Checkbox(
+              value: value,
+              onChanged: onChanged,
+              activeColor: const Color(0xFFFF5A8D),
+              checkColor: Colors.white,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTempItemCard(CartItem item) {
+    final isSelected = _selectedItems.contains(item.ctId);
     final thumbSize = healthDp(context, 87);
 
     return Container(
@@ -359,8 +517,28 @@ class _TempCartScreenState extends State<TempCartScreen> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              SizedBox(
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
+                child: Center(
+                  child: _lightCheckbox(
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value ?? false) {
+                          _selectedItems.add(item.ctId);
+                        } else {
+                          _selectedItems.remove(item.ctId);
+                        }
+                        _selectAll = _tempItems.isNotEmpty &&
+                            _itemIds.difference(_selectedItems).isEmpty;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const Spacer(),
               InkWell(
                 onTap: () => _removeItem(item.ctId),
                 borderRadius: BorderRadius.circular(healthDp(context, 4)),
@@ -415,7 +593,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
                       style: TextStyle(
                         color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 14),
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         fontFamily: _kGmarketSans,
                       ),
                     ),
@@ -509,7 +687,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
                 style: TextStyle(
                   color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 16),
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   fontFamily: _kGmarketSans,
                 ),
               ),

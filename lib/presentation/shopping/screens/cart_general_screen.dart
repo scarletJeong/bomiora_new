@@ -203,30 +203,26 @@ class _CartScreenState extends State<CartScreen> {
     final selectedDisplayedItems = _selectedDisplayedItemIds;
     if (selectedDisplayedItems.isEmpty) return;
 
-    final confirmed = await ConfirmDialog.show(
-      context,
-      title: '삭제 확인',
-      message:
-          '선택한 ${selectedDisplayedItems.length}개 상품을 장바구니에서\n 삭제하시겠습니까?',
-      cancelText: '취소',
-      confirmText: '삭제',
+    final itemsToDelete = List<int>.from(selectedDisplayedItems);
+    for (final ctId in itemsToDelete) {
+      await CartService.removeCartItem(ctId);
+    }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${itemsToDelete.length}개 상품 삭제 완료'),
+        duration: const Duration(seconds: 2),
+      ),
     );
 
-    if (confirmed) {
-      // 선택된 아이템들을 순차적으로 삭제
-      final itemsToDelete = List<int>.from(selectedDisplayedItems);
-      for (int ctId in itemsToDelete) {
-        await CartService.removeCartItem(ctId);
-      }
+    setState(() {
+      selectedItems.removeAll(itemsToDelete);
+      selectAll = false;
+    });
 
-      // 선택 상태 초기화
-      setState(() {
-        selectedItems.removeAll(itemsToDelete);
-        selectAll = false;
-      });
-
-      _loadCart(showCachedData: true); // 장바구니 다시 로드 (캐시 표시)
-    }
+    _loadCart(showCachedData: true);
   }
 
   // 선택된 아이템들의 총구매금액 계산
