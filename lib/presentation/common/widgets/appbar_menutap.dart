@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/constants/app_assets.dart';
+import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/node_value_parser.dart';
+import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/recent_view_service.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/utils/get_product.dart';
 import '../../settings/settings_screen.dart';
@@ -33,19 +39,66 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   static const Color _brandPink = Color(0xFFFF5A8D);
 
   UserModel? _user;
-  bool _isTelemedicineExpanded = true;
+  bool _isTelemedicineExpanded = false;
   bool _isHealthcareStoreExpanded = false;
   bool _isContentExpanded = false;
+  List<Map<String, dynamic>> _recentProducts = [];
+  bool _isLoadingRecent = false;
+  bool _drawerOpenTracked = false;
 
   @override
   void initState() {
     super.initState();
-    _refreshUser();
+    _refreshUser().then((_) => _loadRecentProducts());
   }
 
   Future<void> _refreshUser() async {
     final u = await AuthService.getUser();
     if (mounted) setState(() => _user = u);
+  }
+
+  Future<void> _loadRecentProducts() async {
+    if (!mounted) return;
+    setState(() => _isLoadingRecent = true);
+    final items = await RecentViewService.getRecentList(limit: 4);
+    if (!mounted) return;
+    setState(() {
+      _recentProducts = items;
+      _isLoadingRecent = false;
+    });
+  }
+
+  void _trackDrawerOpen(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scaffold = Scaffold.maybeOf(context);
+      if (scaffold == null) return;
+      final isOpen = scaffold.isDrawerOpen;
+      if (isOpen && !_drawerOpenTracked) {
+        _drawerOpenTracked = true;
+        _refreshUser().then((_) => _loadRecentProducts());
+      } else if (!isOpen) {
+        _drawerOpenTracked = false;
+      }
+    });
+  }
+
+  void _openRecentProduct(BuildContext context, Map<String, dynamic> item) {
+    final itId = NodeValueParser.asString(item['it_id'])?.trim() ?? '';
+    if (itId.isEmpty) return;
+
+    final kind = (NodeValueParser.asString(item['it_kind']) ??
+            NodeValueParser.asString(item['product_kind']) ??
+            '')
+        .trim()
+        .toLowerCase();
+
+    Navigator.pop(context);
+    if (kind == 'general') {
+      Navigator.pushNamed(context, '/product-general/$itId');
+    } else {
+      Navigator.pushNamed(context, '/product/$itId');
+    }
   }
 
   String get _greetingName {
@@ -80,6 +133,17 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     Navigator.pushNamed(context, route, arguments: arguments);
   }
 
+  TextStyle _mainMenuTitleStyle(BuildContext context) => TextStyle(
+        color: const Color(0xFF1A1A1E),
+        fontSize: healthSp(context, 14),
+        fontFamily: _fontFamily,
+        fontWeight: FontWeight.w500,
+        letterSpacing: healthSp(context, -1.26),
+      );
+
+  EdgeInsets _mainMenuTitlePadding(BuildContext context) =>
+      EdgeInsets.symmetric(vertical: healthDp(context, 10));
+
   Future<void> _openKakaoTalkConsult() async {
     const kakaoChannelUrl = 'https://pf.kakao.com/_NdxgAG';
     final uri = Uri.parse(kakaoChannelUrl);
@@ -92,7 +156,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     Widget cell(_DrawerShortcutData d) {
       return Expanded(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
           child: _DrawerShortcut(
             icon: d.icon,
             label: d.label,
@@ -145,7 +209,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             )),
           ],
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: healthDp(context, 14)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -180,13 +244,16 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    _trackDrawerOpen(context);
     final theme = Theme.of(context);
     return Theme(
       data: theme.copyWith(
         drawerTheme: DrawerThemeData(
-          width: 322,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
+          width: healthDp(context, 250),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.horizontal(
+              right: Radius.circular(healthDp(context, 20)),
+            ),
           ),
           scrimColor: Colors.black.withValues(alpha: 0.20),
         ),
@@ -195,21 +262,33 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
         backgroundColor: Colors.white,
         child: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 20),
+              healthDp(context, 50),
+              healthDp(context, 20),
+              healthDp(context, 20),
+            ),
             children: [
               _buildHeader(context),
-              const SizedBox(height: 20),
+              SizedBox(height: healthDp(context, 20)),
               _buildShortcutGrid(context),
-              const SizedBox(height: 20),
-              const Divider(height: 1, thickness: 1, color: _divider),
-              const SizedBox(height: 10),
+              SizedBox(height: healthDp(context, 20)),
+              Divider(
+                height: healthDp(context, 1),
+                thickness: healthDp(context, 1),
+                color: _divider,
+              ),
+              SizedBox(height: healthDp(context, 20)),
               _SectionRow(
                 title: '건강 대시보드',
+                titleStyle: _mainMenuTitleStyle(context),
+                titlePadding: _mainMenuTitlePadding(context),
                 onTap: () {
                   Navigator.pop(context);
                   widget.onHealthDashboardTap();
                 },
               ),
+              SizedBox(height: healthDp(context, 10)),
               Theme(
                 data: theme.copyWith(dividerColor: Colors.transparent),
                 child: Column(
@@ -223,16 +302,10 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                 onTap: () =>
                                     _popAndPushNamed(context, '/product-main'),
                                 child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  padding: _mainMenuTitlePadding(context),
                                   child: Text(
-                                    '비대면 치료',
-                                    style: TextStyle(
-                                      color: _inkTitle,
-                                      fontSize: healthSp(context, 16),
-                                      fontFamily: _fontFamily,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: -1.44,
-                                    ),
+                                    '비대면 진료',
+                                    style: _mainMenuTitleStyle(context),
                                   ),
                                 ),
                               ),
@@ -249,13 +322,14 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                     ? Icons.keyboard_arrow_up
                                     : Icons.keyboard_arrow_down,
                                 color: _inkTitle,
+                                size: healthDp(context, 24),
                               ),
                             ),
                           ],
                         ),
                         AnimatedCrossFade(
                           firstChild: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: EdgeInsets.only(bottom: healthDp(context, 8)),
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -286,6 +360,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                         ),
                       ],
                     ),
+                    SizedBox(height: healthDp(context, 10)),
                     Column(
                       children: [
                         Row(
@@ -300,16 +375,10 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                   );
                                 },
                                 child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  padding: _mainMenuTitlePadding(context),
                                   child: Text(
                                     '헬스케어 스토어',
-                                    style: TextStyle(
-                                      color: _inkTitle,
-                                      fontSize: healthSp(context, 16),
-                                      fontFamily: _fontFamily,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: -1.44,
-                                    ),
+                                    style: _mainMenuTitleStyle(context),
                                   ),
                                 ),
                               ),
@@ -326,13 +395,14 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                     ? Icons.keyboard_arrow_up
                                     : Icons.keyboard_arrow_down,
                                 color: _inkTitle,
+                                size: healthDp(context, 24),
                               ),
                             ),
                           ],
                         ),
                         AnimatedCrossFade(
                           firstChild: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: EdgeInsets.only(bottom: healthDp(context, 8)),
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -363,6 +433,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                         ),
                       ],
                     ),
+                    SizedBox(height: healthDp(context, 10)),
                     Column(
                       children: [
                         Row(
@@ -371,16 +442,10 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                               child: InkWell(
                                 onTap: () => _popAndPushNamed(context, '/content'),
                                 child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  padding: _mainMenuTitlePadding(context),
                                   child: Text(
                                     '건강 콘텐츠',
-                                    style: TextStyle(
-                                      color: _inkTitle,
-                                      fontSize: healthSp(context, 16),
-                                      fontFamily: _fontFamily,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: -1.44,
-                                    ),
+                                    style: _mainMenuTitleStyle(context),
                                   ),
                                 ),
                               ),
@@ -396,13 +461,14 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                                     ? Icons.keyboard_arrow_up
                                     : Icons.keyboard_arrow_down,
                                 color: _inkTitle,
+                                size: healthDp(context, 24),
                               ),
                             ),
                           ],
                         ),
                         AnimatedCrossFade(
                           firstChild: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: EdgeInsets.only(bottom: healthDp(context, 8)),
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -454,9 +520,13 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
-              const Divider(height: 1, thickness: 1, color: _divider),
-              const SizedBox(height: 16),
+              SizedBox(height: healthDp(context, 20)),
+              Divider(
+                height: healthDp(context, 1),
+                thickness: healthDp(context, 1),
+                color: _divider,
+              ),
+              SizedBox(height: healthDp(context, 20)),
               Text(
                 '최근에 본 상품',
                 style: TextStyle(
@@ -467,11 +537,12 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   height: 1.32,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: healthDp(context, 10)),
               _RecentProductsGrid(
-                onTapProduct: () {
-                  Navigator.pop(context);
-                },
+                items: _recentProducts,
+                isLoading: _isLoadingRecent,
+                isLoggedIn: _user != null,
+                onTapProduct: (item) => _openRecentProduct(context, item),
               ),
             ],
           ),
@@ -495,17 +566,19 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     color: Colors.black,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
               _DrawerSettingsIcon(context),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: healthDp(context, 16)),
           Row(
             children: [
-              Expanded(
+              SizedBox(
+                width: healthDp(context, 70),
+                height: healthDp(context, 22),
                 child: FilledButton(
                   onPressed: () {
                     Navigator.pop(context);
@@ -514,26 +587,35 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   style: FilledButton.styleFrom(
                     backgroundColor: _brandPink,
                     foregroundColor: Colors.white,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    minimumSize: const Size(0, 36),
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size(
+                      healthDp(context, 70),
+                      healthDp(context, 22),
+                    ),
+                    fixedSize: Size(
+                      healthDp(context, 70),
+                      healthDp(context, 22),
+                    ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(healthDp(context, 6)),
                     ),
                   ),
                   child: Text(
                     '로그인',
                     style: TextStyle(
                       fontFamily: _fontFamily,
-                      fontSize: healthSp(context, 12),
+                      fontSize: healthSp(context, 10),
                       fontWeight: FontWeight.w700,
+                      height: 1.2,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
+              SizedBox(width: healthDp(context, 10)),
+              SizedBox(
+                width: healthDp(context, 70),
+                height: healthDp(context, 22),
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(context);
@@ -542,21 +624,31 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: _brandPink,
-                    side: const BorderSide(color: _brandPink, width: 1),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    minimumSize: const Size(0, 36),
+                    side: BorderSide(
+                      color: _brandPink,
+                      width: healthDp(context, 1),
+                    ),
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size(
+                      healthDp(context, 70),
+                      healthDp(context, 22),
+                    ),
+                    fixedSize: Size(
+                      healthDp(context, 70),
+                      healthDp(context, 22),
+                    ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(healthDp(context, 6)),
                     ),
                   ),
                   child: Text(
                     '회원가입',
                     style: TextStyle(
                       fontFamily: _fontFamily,
-                      fontSize: healthSp(context, 12),
+                      fontSize: healthSp(context, 10),
                       fontWeight: FontWeight.w700,
+                      height: 1.2,
                     ),
                   ),
                 ),
@@ -584,11 +676,19 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   children: [
                     TextSpan(
                       text: '$_greetingName 님 ',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _fontFamily,
+                      ),
                     ),
-                    const TextSpan(
+                    TextSpan(
                       text: '안녕하세요.',
-                      style: TextStyle(fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _fontFamily,
+                      ),
                     ),
                   ],
                 ),
@@ -597,23 +697,41 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             _DrawerSettingsIcon(context),
           ],
         ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: () => _onLogoutPressed(context),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(84, 32),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            side: const BorderSide(color: _logoutBorder, width: 1),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            foregroundColor: const Color(0xFF898686),
-          ),
-          child: Text(
-            '로그아웃',
-            style: TextStyle(
-              fontSize: healthSp(context, 10),
-              fontFamily: _fontFamily,
-              fontWeight: FontWeight.w500,
+        SizedBox(height: healthDp(context, 5)),
+        SizedBox(
+          width: healthDp(context, 70),
+          height: healthDp(context, 22),
+          child: OutlinedButton(
+            onPressed: () => _onLogoutPressed(context),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: Size(
+                healthDp(context, 70),
+                healthDp(context, 22),
+              ),
+              fixedSize: Size(
+                healthDp(context, 70),
+                healthDp(context, 22),
+              ),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              side: BorderSide(
+                color: _logoutBorder,
+                width: healthDp(context, 1),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              ),
+              foregroundColor: const Color(0xFF898686),
+            ),
+            child: Text(
+              '로그아웃',
+              style: TextStyle(
+                fontSize: healthSp(context, 10),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF898686),
+                height: 1.2,
+              ),
             ),
           ),
         ),
@@ -643,21 +761,16 @@ class _DrawerSettingsIcon extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: _onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: const SizedBox(
-          width: 30,
-          height: 30,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Color(0xFFF3F3F3),
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-            ),
-            child: Center(
-              child: Icon(
-                Icons.settings_outlined,
-                size: 18,
-                color: Color(0xFF898686),
-              ),
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+        child: SizedBox(
+          //width: healthDp(context, 25),
+          //height: healthDp(context, 25),
+          child: Center(
+            child: SvgPicture.asset(
+              AppAssets.settingsIcon,
+              width: healthDp(context, 25),
+              height: healthDp(context, 25),
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -675,13 +788,16 @@ class _ExpansionSubmenuWithRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          left: BorderSide(color: Color(0xFFD2D2D2), width: 1.5),
+          left: BorderSide(
+            color: const Color(0xFFD2D2D2),
+            width: healthDp(context, 1.5),
+          ),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(left: 12),
+        padding: EdgeInsets.only(left: healthDp(context, 12)),
         child: child,
       ),
     );
@@ -770,11 +886,14 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
 
     final menuW = cartDropdownWidth(context);
     double left = anchorTopLeft.dx + anchorBox.size.width - menuW;
-    double top = anchorTopLeft.dy + anchorBox.size.height + 6;
+    double top = anchorTopLeft.dy +
+        anchorBox.size.height +
+        healthDp(context, 6);
     if (overlayBox != null) {
-      left = left.clamp(8, overlayBox.size.width - menuW - 8);
+      final edge = healthDp(context, 8);
+      left = left.clamp(edge, overlayBox.size.width - menuW - edge);
       final menuH = healthDp(context, 96);
-      top = top.clamp(8, overlayBox.size.height - menuH - 8);
+      top = top.clamp(edge, overlayBox.size.height - menuH - edge);
     }
 
     _cartDropdownEntry = OverlayEntry(
@@ -837,7 +956,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
         _highlight ? _DrawerShortcut._hoverPink : _DrawerShortcut._muted;
     final labelStyle = TextStyle(
       color: color,
-      fontSize: healthSp(context, 9.5),
+      fontSize: healthSp(context, 10),
       fontFamily: _DrawerShortcut._fontFamily,
       fontWeight: _highlight ? FontWeight.w700 : FontWeight.w500,
       height: 1.35,
@@ -856,33 +975,35 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
           onPointerCancel: (_) => setState(() => _pressed = false),
           child: InkWell(
             onTap: _onShortcutTap,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
             splashColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.18),
             highlightColor: _DrawerShortcut._hoverPink.withValues(alpha: 0.08),
             hoverColor: Colors.transparent,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: EdgeInsets.symmetric(vertical: healthDp(context, 4)),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
+                  SizedBox(
                     key: _cartAnchorKey,
-                    width: 46,
-                    height: 46,
+                    width: healthDp(context, 44),
+                    height: healthDp(context, 44),
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
                         Container(
-                          width: 46,
-                          height: 46,
+                          width: healthDp(context, 44),
+                          height: healthDp(context, 44),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: const [
+                            borderRadius: BorderRadius.circular(
+                              healthDp(context, 15),
+                            ),
+                            boxShadow: [
                               BoxShadow(
-                                color: Color(0x19000000),
-                                blurRadius: 4,
-                                offset: Offset(0, 0),
+                                color: const Color(0x19000000),
+                                blurRadius: healthDp(context, 4),
+                                offset: Offset.zero,
                               ),
                             ],
                           ),
@@ -899,32 +1020,32 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                                 )
                               : Icon(
                                   widget.icon,
-                                  size: 22,
+                                  size: healthDp(context, 22),
                                   color: color,
                                 ),
                         ),
                         if (_isCartShortcut)
                           Positioned(
-                            right: -4,
-                            bottom: -4,
+                            right: -healthDp(context, 4),
+                            bottom: -healthDp(context, 4),
                             child: GestureDetector(
                               onTap: _toggleCartDropdown,
                               behavior: HitTestBehavior.opaque,
                               child: Container(
-                                width: 20,
-                                height: 20,
+                                width: healthDp(context, 20),
+                                height: healthDp(context, 20),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: const Color(0xFFFF5A8D),
-                                    width: 1,
+                                    width: healthDp(context, 1),
                                   ),
-                                  boxShadow: const [
+                                  boxShadow: [
                                     BoxShadow(
-                                      color: Color(0x19000000),
-                                      blurRadius: 4,
-                                      offset: Offset(0, 0),
+                                      color: const Color(0x19000000),
+                                      blurRadius: healthDp(context, 4),
+                                      offset: Offset.zero,
                                     ),
                                   ],
                                 ),
@@ -932,7 +1053,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                                   _showCartDropdown
                                       ? Icons.keyboard_arrow_up
                                       : Icons.keyboard_arrow_down,
-                                  size: 16,
+                                  size: healthDp(context, 16),
                                   color: const Color(0xFFFF5A8D),
                                 ),
                               ),
@@ -941,7 +1062,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: healthDp(context, 6)),
                   Text(
                     widget.label,
                     style: labelStyle,
@@ -960,37 +1081,39 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
 }
 
 class _SectionRow extends StatelessWidget {
-  static const String _fontFamily = 'Gmarket Sans TTF';
-
   final String title;
+  final TextStyle titleStyle;
+  final EdgeInsets titlePadding;
   final VoidCallback onTap;
 
-  const _SectionRow({required this.title, required this.onTap});
+  const _SectionRow({
+    required this.title,
+    required this.titleStyle,
+    required this.titlePadding,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: titlePadding,
         child: Row(
           children: [
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontSize: healthSp(context, 16),
-                  fontFamily: _fontFamily,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -1.44,
-                ),
+                style: titleStyle,
               ),
             ),
             Transform.rotate(
               angle: -1.5708,
-              child: const Icon(Icons.keyboard_arrow_down,
-                  size: 20, color: Color(0xFF1A1A1A)),
+              child: Icon(
+                Icons.keyboard_arrow_down,
+                size: healthDp(context, 20),
+                color: const Color(0xFF1A1A1E),
+              ),
             ),
           ],
         ),
@@ -1012,17 +1135,20 @@ class _SubLink extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: EdgeInsets.symmetric(
+          vertical: healthDp(context, 8),
+          horizontal: healthDp(context, 4),
+        ),
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
             label,
             style: TextStyle(
-              color: Color(0xFF898686),
+              color: const Color(0xFF898686),
               fontSize: healthSp(context, 14),
               fontFamily: _fontFamily,
               fontWeight: FontWeight.w500,
-              letterSpacing: -1.26,
+              letterSpacing: healthSp(context, -1.26),
             ),
           ),
         ),
@@ -1031,69 +1157,108 @@ class _SubLink extends StatelessWidget {
   }
 }
 
-/// 디자인 시안용 정적 카드 그리드 (추후 최근 본 상품 API 연동 시 교체)
 class _RecentProductsGrid extends StatelessWidget {
-  final VoidCallback onTapProduct;
+  final List<Map<String, dynamic>> items;
+  final bool isLoading;
+  final bool isLoggedIn;
+  final void Function(Map<String, dynamic> item) onTapProduct;
 
-  const _RecentProductsGrid({required this.onTapProduct});
+  const _RecentProductsGrid({
+    required this.items,
+    required this.isLoading,
+    required this.isLoggedIn,
+    required this.onTapProduct,
+  });
 
   @override
   Widget build(BuildContext context) {
-    const radius = 5.12;
+    if (isLoading) {
+      return SizedBox(
+        height: healthDp(context, 120),
+        child: Center(
+          child: SizedBox(
+            width: healthDp(context, 24),
+            height: healthDp(context, 24),
+            child: CircularProgressIndicator(
+              strokeWidth: healthDp(context, 2),
+              color: const Color(0xFFFF5A8D),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!isLoggedIn) {
+      return _buildEmptyMessage(
+        context,
+        '로그인 후 최근 본 상품을 확인할 수 있습니다.',
+      );
+    }
+
+    if (items.isEmpty) {
+      return _buildEmptyMessage(context, '최근 본 상품이 없습니다.');
+    }
+
+    final radius = healthDp(context, 5.12);
     const borderColor = Color(0x7FD2D2D2);
+    final display = items.take(4).toList();
+    final rows = <List<Map<String, dynamic>>>[];
+    for (var i = 0; i < display.length; i += 2) {
+      final end = (i + 2 <= display.length) ? i + 2 : display.length;
+      rows.add(display.sublist(i, end));
+    }
 
     return Column(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _RecentProductCard(
-                title: '4, 5, 6단계 보미 다이어트환',
-                price: '178,000원',
-                onTap: onTapProduct,
-                radius: radius,
-                borderColor: borderColor,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _RecentProductCard(
-                title: '보미 디톡스환 Plus',
-                price: '68,000원',
-                onTap: onTapProduct,
-                radius: radius,
-                borderColor: borderColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _RecentProductCard(
-                title: '4, 5, 6단계 보미 다이어트환',
-                price: '178,000원',
-                onTap: onTapProduct,
-                radius: radius,
-                borderColor: borderColor,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _RecentProductCard(
-                title: '보미 디톡스환 Plus',
-                price: '68,000원',
-                onTap: onTapProduct,
-                radius: radius,
-                borderColor: borderColor,
-              ),
-            ),
-          ],
-        ),
+        for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) ...[
+          if (rowIndex > 0) SizedBox(height: healthDp(context, 10)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var colIndex = 0; colIndex < rows[rowIndex].length; colIndex++) ...[
+                if (colIndex > 0) SizedBox(width: healthDp(context, 10)),
+                Expanded(
+                  child: _RecentProductCard(
+                    item: rows[rowIndex][colIndex],
+                    onTap: () => onTapProduct(rows[rowIndex][colIndex]),
+                    radius: radius,
+                    borderColor: borderColor,
+                  ),
+                ),
+              ],
+              if (rows[rowIndex].length == 1)
+                Expanded(child: SizedBox(height: healthDp(context, 1))),
+            ],
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildEmptyMessage(BuildContext context, String message) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
+      alignment: Alignment.center,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: healthDp(context, 0.5),
+            color: const Color(0x7FD2D2D2),
+          ),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        ),
+      ),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: const Color(0xFF898686),
+          fontSize: healthSp(context, 12),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }
@@ -1101,22 +1266,41 @@ class _RecentProductsGrid extends StatelessWidget {
 class _RecentProductCard extends StatelessWidget {
   static const String _fontFamily = 'Gmarket Sans TTF';
 
-  final String title;
-  final String price;
+  final Map<String, dynamic> item;
   final VoidCallback onTap;
   final double radius;
   final Color borderColor;
 
   const _RecentProductCard({
-    required this.title,
-    required this.price,
+    required this.item,
     required this.onTap,
     required this.radius,
     required this.borderColor,
   });
 
+  String get _title =>
+      NodeValueParser.asString(item['product_name'])?.trim() ??
+      NodeValueParser.asString(item['it_name'])?.trim() ??
+      '상품';
+
+  String get _price {
+    final raw = NodeValueParser.asInt(item['product_price']) ??
+        NodeValueParser.asInt(item['it_price']);
+    return '${PriceFormatter.format(raw)}원';
+  }
+
+  String get _imageUrl {
+    final raw = NodeValueParser.asString(item['image_url']) ??
+        NodeValueParser.asString(item['it_img']) ??
+        NodeValueParser.asString(item['it_img1']) ??
+        '';
+    return raw.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageUrl = _imageUrl;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1134,34 +1318,60 @@ class _RecentProductCard extends StatelessWidget {
                     topRight: Radius.circular(radius),
                   ),
                   child: Container(
-                    height: 100,
+                    height: healthDp(context, 100),
                     color: const Color(0xFFE8E8E8),
                     alignment: Alignment.center,
-                    child: Icon(Icons.image_outlined,
-                        color: Colors.grey.shade500, size: 32),
+                    child: imageUrl.isNotEmpty
+                        ? Image.network(
+                            ImageUrlHelper.getImageUrl(imageUrl),
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: healthDp(context, 100),
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.image_outlined,
+                              color: Colors.grey.shade500,
+                              size: healthDp(context, 32),
+                            ),
+                          )
+                        : Icon(
+                            Icons.image_outlined,
+                            color: Colors.grey.shade500,
+                            size: healthDp(context, 32),
+                          ),
                   ),
                 ),
                 Positioned(
-                  right: 6,
-                  top: 6,
+                  right: healthDp(context, 6),
+                  top: healthDp(context, 6),
                   child: Container(
-                    width: 22,
-                    height: 22,
+                    width: healthDp(context, 22),
+                    height: healthDp(context, 22),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.6),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.favorite_border,
-                        size: 12, color: Color(0xFF898686)),
+                    child: Icon(
+                      Icons.favorite_border,
+                      size: healthDp(context, 12),
+                      color: const Color(0xFF898686),
+                    ),
                   ),
                 ),
               ],
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 6),
+                healthDp(context, 6),
+                healthDp(context, 6),
+                healthDp(context, 10),
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: borderColor, width: 0.51),
+                border: Border.all(
+                  color: borderColor,
+                  width: healthDp(context, 0.51),
+                ),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(radius),
                   bottomRight: Radius.circular(radius),
@@ -1173,42 +1383,42 @@ class _RecentProductCard extends StatelessWidget {
                   Text(
                     '보미오라한의원',
                     style: TextStyle(
-                      color: Color(0xFF1A1A1A),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 8),
                       fontFamily: _fontFamily,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: healthDp(context, 2)),
                   Text(
-                    title,
+                    _title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Color(0xFF1A1A1A),
+                      color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 10),
                       fontFamily: _fontFamily,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: -0.90,
+                      letterSpacing: healthSp(context, -0.90),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: healthDp(context, 4)),
                   Row(
                     children: [
                       Text(
                         '0%',
                         style: TextStyle(
-                          color: Color(0xFFFF5A8D),
+                          color: const Color(0xFFFF5A8D),
                           fontSize: healthSp(context, 8),
                           fontFamily: _fontFamily,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: healthDp(context, 4)),
                       Text(
-                        price,
+                        _price,
                         style: TextStyle(
-                          color: Color(0xFF1A1A1A),
+                          color: const Color(0xFF1A1A1A),
                           fontSize: healthSp(context, 8),
                           fontFamily: _fontFamily,
                           fontWeight: FontWeight.w700,
