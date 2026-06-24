@@ -10,8 +10,8 @@ import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../home/search/search_popup.dart';
 import 'cart_dropdown_menu.dart';
 
-/// [HealthAppBar]와 동일한 전체 높이(375 기준 48).
-/// 아이콘·로고는 48 높이 안에서 세로 중앙 배치.
+/// [HealthAppBar]와 동일한 전체 높이(375 기준 52).
+/// 아이콘·로고는 52 높이 안에서 세로 중앙 배치.
 /// 좌우 패딩 `5`, 좌측 메뉴·우측 액션 아이콘 `19.82`, 액션 당김(겹침) `12`,
 /// 로고는 패딩 안 전체 폭 기준 [Stack] + [Center]로 **화면 가로 정중앙**.
 /// 모든 길이·간격은 [healthDp] / [healthAppBarTotalHeight]로 스케일합니다.
@@ -124,7 +124,8 @@ class _AppBarMenuState extends State<AppBarMenu> {
   Widget _leadingMenu({
     required double width,
     required double height,
-    required double iconSz,
+    required double iconW,
+    required double iconH,
     required VoidCallback onPressed,
   }) {
     return SizedBox(
@@ -137,10 +138,11 @@ class _AppBarMenuState extends State<AppBarMenu> {
           onTap: onPressed,
           child: Align(
             alignment: Alignment.center,
-            child: SizedBox(
-              width: iconSz,
-              height: iconSz,
-              child: Icon(Icons.menu, color: Colors.black, size: iconSz),
+            child: SvgPicture.asset(
+              AppAssets.menuIcon,
+              width: iconW,
+              height: iconH,
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -185,6 +187,8 @@ class _AppBarMenuState extends State<AppBarMenu> {
     final barH = healthAppBarTotalHeight(context);
     final padH = healthDp(context, 5);
     final iconSz = healthDp(context, 19.82);
+    final menuIconW = healthDp(context, 18);
+    final menuIconH = healthDp(context, 14);
     /// [Row.spacing]은 0 이상만 허용. 예전 음수 간격과 같은 밀도는 `Stack`으로 겹침 배치.
     final actionOverlap = healthDp(context, 12);
     final logoW = healthDp(context, 99.09);
@@ -219,7 +223,8 @@ class _AppBarMenuState extends State<AppBarMenu> {
                         _leadingMenu(
                           width: tapBoxW,
                           height: barH,
-                          iconSz: iconSz,
+                          iconW: menuIconW,
+                          iconH: menuIconH,
                           onPressed: widget.onMenuPressed,
                         ),
                         const Spacer(),

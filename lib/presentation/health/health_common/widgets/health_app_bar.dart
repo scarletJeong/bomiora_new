@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../health_responsive_scale.dart';
 
 /// 건강 화면 공통 AppBar (뒤로가기, 제목, 선택적 액션).
-/// 375 기준 전체 높이 48, 아이콘·제목은 높이 안에서 세로 중앙.
+/// 375 기준 전체 높이 52, 아이콘·제목은 높이 안에서 세로 중앙.
 class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
-  static const double toolbarHeightBase = 48;
+  static const double toolbarHeightBase = 52;
 
   final String title;
   final bool centerTitle;
