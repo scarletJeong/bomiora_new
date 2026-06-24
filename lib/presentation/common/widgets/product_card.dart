@@ -28,12 +28,11 @@ bool shouldShowProductCardSubject(String strippedSubject) {
   return true;
 }
 
-/// 비대면 처방·일반 상품 목록 공통 카드 (`ProductListScreen` Figma 타이포 기준)
+/// 비대면 처방·일반 상품 목록 공통 카드 (2열 그리드 Figma)
 class ProductCatalogCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
-  static const Color _textDark = Color(0xFF231F20);
-  static const Color _ratingGrey = Color(0xFF999999);
-  static const Color _starGold = Color(0xFFFFCC00);
+  static const Color _textDark = Color(0xFF1A1A1E);
+  static const Color _categoryMuted = Color(0xFF898686);
   static const String _gmarket = 'Gmarket Sans TTF';
 
   final Product product;
@@ -45,248 +44,169 @@ class ProductCatalogCard extends StatelessWidget {
     required this.onTap,
   });
 
+  /// 텍스트 `height: 1.2` 한 줄 높이 (레이아웃·extent 계산 공통)
+  static double _textLineH(BuildContext context, double baseFont) {
+    return (healthSp(context, baseFont) * 1.2).ceilToDouble();
+  }
+
+  /// 그리드 [mainAxisExtent] — 이미지 185 + 텍스트 영역 (375 기준, 제목 2줄 고정)
+  static double preferredMainAxisExtent(BuildContext context) {
+    final imageH = healthDp(context, 185);
+    final imageGap = healthDp(context, 8);
+    final catH = _textLineH(context, 8);
+    final titleGap = healthDp(context, 2);
+    final titleH = _textLineH(context, 12) * 2;
+    final blockGap = healthDp(context, 8);
+    final priceH = _textLineH(context, 10);
+    // 폰트 메트릭·스케일 반올림으로 인한 미세 overflow 방지
+    return imageH +
+        imageGap +
+        catH +
+        titleGap +
+        titleH +
+        blockGap +
+        priceH +
+        1;
+  }
+
+  static double preferredAspectRatio(BuildContext context, double cellWidth) {
+    final extent = preferredMainAxisExtent(context);
+    if (extent <= 0) return 0.58;
+    return cellWidth / extent;
+  }
+
+  String _categoryLabel() {
+    final name = stripProductCatalogHtml(product.categoryName);
+    if (name.isNotEmpty) return name;
+    if (product.productKind == 'general') return '헬스케어';
+    return '한의약품';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final namePlain = stripProductCatalogHtml(product.name);
-    final subjectPlain = stripProductCatalogHtml(product.itSubject);
-    final basicPlain = stripProductCatalogHtml(
-      product.itBasic ?? product.description,
+    final title = stripProductCatalogHtml(product.name);
+    final category = _categoryLabel();
+
+    final imageH = healthDp(context, 185);
+    final imageRadius = healthDp(context, 10);
+    final imageGap = healthDp(context, 8);
+    final catTitleGap = healthDp(context, 2);
+    final blockGap = healthDp(context, 8);
+    final priceGap = healthDp(context, 4);
+
+    final fsCategory = healthSp(context, 8);
+    final fsTitle = healthSp(context, 12);
+    final fsPrice = healthSp(context, 10);
+    final titleLetterSpacing = healthSp(context, -1.08);
+    final titleAreaH = _textLineH(context, 12) * 2;
+
+    final categoryStyle = TextStyle(
+      color: _categoryMuted,
+      fontSize: fsCategory,
+      fontFamily: _gmarket,
+      fontWeight: FontWeight.w500,
+      height: 1.2,
     );
 
-    final fsTitle = healthSp(context, 12.18);
-    final fsBody = healthSp(context, 8.77);
-    final fsDiscNum = healthSp(context, 11.70);
-    final fsPriceRow = healthSp(context, 12);
-    final fsRating = healthSp(context, 7.80);
-    final fsOrig = healthSp(context, 10);
+    final titleStyle = TextStyle(
+      color: _textDark,
+      fontSize: fsTitle,
+      fontFamily: _gmarket,
+      fontWeight: FontWeight.w500,
+      letterSpacing: titleLetterSpacing,
+      height: 1.2,
+    );
 
-    return LayoutBuilder(
-      builder: (context, itemConstraints) {
-        final imageHeight = itemConstraints.hasBoundedHeight
-            ? itemConstraints.maxHeight * 0.58
-            : healthDp(context, 220);
+    final pricePinkStyle = TextStyle(
+      color: _brandPink,
+      fontSize: fsPrice,
+      fontFamily: _gmarket,
+      fontWeight: FontWeight.w700,
+      height: 1.2,
+    );
 
-        final cardRadius = healthDp(context, 12);
-        final innerPad = EdgeInsets.fromLTRB(
-          healthDp(context, 8),
-          healthDp(context, 8),
-          healthDp(context, 8),
-          healthDp(context, 6),
-        );
+    final priceDarkStyle = TextStyle(
+      color: _textDark,
+      fontSize: fsPrice,
+      fontFamily: _gmarket,
+      fontWeight: FontWeight.w700,
+      height: 1.2,
+    );
 
-        final ratingStyle = TextStyle(
-          fontSize: fsRating,
-          color: _ratingGrey,
-          fontWeight: FontWeight.w500,
-          fontFamily: _gmarket,
-          height: 1.1,
-        );
-
-        return GestureDetector(
-          onTap: onTap,
-          child: Card(
-            elevation: healthDp(context, 2),
-            shadowColor: Colors.black26,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(cardRadius),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: imageHeight,
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(cardRadius),
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        product.imageUrl != null
-                            ? Image.network(
-                                product.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _placeholder(context),
-                                loadingBuilder: (context, child, progress) {
-                                  if (progress == null) return child;
-                                  return Center(
-                                    child: SizedBox(
-                                      width: healthDp(context, 28),
-                                      height: healthDp(context, 28),
-                                      child: const CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              )
-                            : _placeholder(context),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.white,
-                    padding: innerPad,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Text(
-                                namePlain,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: _textDark,
-                                  fontSize: fsTitle,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: _gmarket,
-                                  height: 1.2,
-                                ),
-                              ),
-                              if (shouldShowProductCardSubject(subjectPlain)) ...[
-                                SizedBox(height: healthDp(context, 3)),
-                                Text(
-                                  subjectPlain,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: _textDark,
-                                    fontSize: fsTitle,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: _gmarket,
-                                    height: 1.2,
-                                  ),
-                                ),
-                              ],
-                              if (basicPlain.isNotEmpty) ...[
-                                SizedBox(height: healthDp(context, 6)),
-                                Text(
-                                  basicPlain,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: _textDark,
-                                    fontSize: fsBody,
-                                    fontWeight: FontWeight.w300,
-                                    fontFamily: _gmarket,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        if (product.originalPrice != null &&
-                            product.originalPrice! > product.price) ...[
-                          Text(
-                            product.formattedOriginalPrice ?? '',
-                            style: TextStyle(
-                              fontSize: fsOrig,
-                              color: Colors.grey[600],
-                              decoration: TextDecoration.lineThrough,
-                              fontFamily: _gmarket,
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(imageRadius),
+            child: SizedBox(
+              width: double.infinity,
+              height: imageH,
+              child: product.displayImageUrl.isNotEmpty
+                  ? Image.network(
+                      product.displayImageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholder(context),
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Center(
+                          child: SizedBox(
+                            width: healthDp(context, 28),
+                            height: healthDp(context, 28),
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
                             ),
                           ),
-                          SizedBox(height: healthDp(context, 4)),
-                        ],
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Expanded(
-                              child: product.discountRate != null
-                                  ? Text.rich(
-                                      TextSpan(
-                                        children: [
-                                          TextSpan(
-                                            text: product.discountRate!
-                                                .toStringAsFixed(0),
-                                            style: TextStyle(
-                                              fontSize: fsDiscNum,
-                                              color: _brandPink,
-                                              fontWeight: FontWeight.w700,
-                                              fontFamily: _gmarket,
-                                            ),
-                                          ),
-                                          TextSpan(
-                                            text: '%  ',
-                                            style: TextStyle(
-                                              fontSize: fsPriceRow,
-                                              color: _brandPink,
-                                              fontWeight: FontWeight.w700,
-                                              fontFamily: _gmarket,
-                                            ),
-                                          ),
-                                          TextSpan(
-                                            text: product.formattedPrice,
-                                            style: TextStyle(
-                                              fontSize: fsPriceRow,
-                                              color: _textDark,
-                                              fontWeight: FontWeight.w700,
-                                              fontFamily: _gmarket,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : Text(
-                                      product.formattedPrice,
-                                      style: TextStyle(
-                                        fontSize: fsPriceRow,
-                                        fontWeight: FontWeight.w700,
-                                        color: _textDark,
-                                        fontFamily: _gmarket,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                            ),
-                            if ((product.rating ?? 0) > 0 ||
-                                (product.reviewCount ?? 0) > 0) ...[
-                              SizedBox(width: healthDp(context, 3)),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    size: healthDp(context, 8),
-                                    color: _starGold,
-                                  ),
-                                  SizedBox(width: healthDp(context, 1)),
-                                  Text(
-                                    (product.rating ?? 0).toStringAsFixed(1),
-                                    style: ratingStyle,
-                                  ),
-                                  Text(
-                                    '(${product.reviewCount ?? 0})',
-                                    style: ratingStyle,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                        );
+                      },
+                    )
+                  : _placeholder(context),
             ),
           ),
-        );
-      },
+          SizedBox(height: imageGap),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(category, style: categoryStyle),
+                  SizedBox(height: catTitleGap),
+                  SizedBox(
+                    height: titleAreaH,
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: blockGap),
+              Row(
+                children: [
+                  Text(
+                    '${(product.discountRate ?? 0).round()}%',
+                    style: pricePinkStyle,
+                  ),
+                  SizedBox(width: priceGap),
+                  Expanded(
+                    child: Text(
+                      product.formattedPrice,
+                      style: priceDarkStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
