@@ -117,10 +117,9 @@ class _HealthProfileDoneScreenState extends State<HealthProfileDoneScreen> {
                           fontSize: healthSp(context, 20),
                           fontFamily: _font,
                           fontWeight: FontWeight.w500,
-                          height: 1.60,
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 8)),
+                      SizedBox(height: healthDp(context, 10)),
                       Text(
                         '문진표의 정보 입력이 완료되었습니다.\n해당 데이터는 비대면 진료에 활용됩니다',
                         style: TextStyle(
@@ -128,7 +127,6 @@ class _HealthProfileDoneScreenState extends State<HealthProfileDoneScreen> {
                           fontSize: healthSp(context, 12),
                           fontFamily: _font,
                           fontWeight: FontWeight.w500,
-                          height: 1.67,
                         ),
                       ),
                       SizedBox(height: healthDp(context, 20)),
@@ -139,7 +137,7 @@ class _HealthProfileDoneScreenState extends State<HealthProfileDoneScreen> {
                         child: InkWell(
                           onTap: _goToProfile,
                           borderRadius:
-                              BorderRadius.circular(healthDp(context, 16)),
+                              BorderRadius.circular(healthDp(context, 10)),
                           child: Container(
                             width: double.infinity,
                             padding: EdgeInsets.all(healthDp(context, 16)),
@@ -175,7 +173,6 @@ class _HealthProfileDoneScreenState extends State<HealthProfileDoneScreen> {
                                           fontSize: healthSp(context, 10),
                                           fontFamily: _font,
                                           fontWeight: FontWeight.w500,
-                                          height: 1.65,
                                         ),
                                       ),
                                     ],
@@ -183,8 +180,8 @@ class _HealthProfileDoneScreenState extends State<HealthProfileDoneScreen> {
                                 ),
                                 Icon(
                                   Icons.chevron_right,
-                                  color: _pfPink,
-                                  size: healthDp(context, 28),
+                                  color: Colors.black,
+                                  size: healthDp(context, 20),
                                 ),
                               ],
                             ),
@@ -192,9 +189,8 @@ class _HealthProfileDoneScreenState extends State<HealthProfileDoneScreen> {
                         ),
                       ),
 
-                      SizedBox(height: healthDp(context, 22)),
+                      SizedBox(height: healthDp(context, 48)),
 
-                      // 추천상품
                       if (_loading)
                         Center(
                           child: Padding(
@@ -213,7 +209,7 @@ class _HealthProfileDoneScreenState extends State<HealthProfileDoneScreen> {
                         RecommendProductSection(
                           excludedProductNames: const [],
                           products: _recommendedProducts,
-                          title: '추천상품',
+                          title: '',
                           showLeadingBar: false,
                           hideWhenEmpty: true,
                           onProductTap: (product) {

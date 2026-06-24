@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
@@ -27,7 +27,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   static const TextStyle _listSubsectionStyle = TextStyle(
     color: _kInk,
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: _kFont,
     fontWeight: FontWeight.w500,
     height: 1.4,
@@ -90,7 +90,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       child: MobileAppLayoutWrapper(
         appBar: HealthAppBar(
           title: '문진표',
-          titleFontSize: healthSp(context, 18),
+          titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
         ),
         child: MediaQuery(
@@ -136,7 +136,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     Text(
                       '문진표가 없습니다',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[600],
                       ),
@@ -146,7 +146,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                       '다이어트 상담을 위해\n문진표를 작성해주세요',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: Colors.grey[500],
                       ),
                     ),
@@ -200,7 +200,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             children: [
               _buildFigmaSection(
                     title: '기본정보',
-                    onEdit: () => _openSectionForEdit([0], screenTitle: '기본 정보'),
+                    onEdit: () => _openSectionForEdit([0], screenTitle: '기본정보'),
                     innerPadding: EdgeInsets.zero,
                     showBottomDivider: true,
                     child: _buildBasicInfoBody(profile),
@@ -218,10 +218,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   ),
                   SizedBox(height: healthDp(context, 34)),
                   _buildFigmaSection(
-                    title: '운동',
+                    title: '운동 습관',
                     onEdit: () => _openSectionForEdit(
                       [2],
-                      screenTitle: '운동',
+                      screenTitle: '운동 습관',
                     ),
                     innerPadding: EdgeInsets.zero,
                     showBottomDivider: true,
@@ -229,8 +229,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   ),
                   SizedBox(height: healthDp(context, 34)),
                   _buildFigmaSection(
-                    title: '건강 상태',
-                    onEdit: () => _openSectionForEdit([3], screenTitle: '건강 상태'),
+                    title: '건강 정보',
+                    onEdit: () => _openSectionForEdit([3], screenTitle: '건강 정보'),
                     innerPadding: EdgeInsets.zero,
                     showBottomDivider: true,
                     child: _buildHealthBody(profile),
@@ -240,7 +240,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   SizedBox(height: healthDp(context, 24)),
                   SizedBox(
                     width: double.infinity,
-                    height: healthDp(context, 50),
+                    height: healthDp(context, 40),
                     child: FilledButton(
                       onPressed: _navigateToEditForm,
                       style: FilledButton.styleFrom(
@@ -258,9 +258,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                       child: const Text(
                         '문진표 전체 수정',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 14,
                           fontFamily: _kFont,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -290,8 +290,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: healthDp(context, 5),
-                    height: healthDp(context, 24),
+                    width: healthDp(context, 3),
+                    height: healthDp(context, 20),
                     decoration: BoxDecoration(
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 7)),
@@ -304,7 +304,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                       title,
                       style: const TextStyle(
                         color: _kInk,
-                        fontSize: 20,
+                        fontSize: 16,
                         fontFamily: _kFont,
                         fontWeight: FontWeight.w700,
                       ),
@@ -325,9 +325,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   '수정',
                   style: TextStyle(
                     color: _kPink,
-                    fontSize: 16,
+                    fontSize: 12,
                     fontFamily: _kFont,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -373,10 +373,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   SizedBox(width: healthDp(context, 8)),
                   const Expanded(
                     child: Text(
-                      '다이어트 경험',
+                      '다이어트 약 경험',
                       style: TextStyle(
                         color: _kInk,
-                        fontSize: 20,
+                        fontSize: 16,
                         fontFamily: _kFont,
                         fontWeight: FontWeight.w700,
                       ),
@@ -389,7 +389,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               behavior: HitTestBehavior.opaque,
               onTap: () => _openSectionForEdit(
                 [4],
-                screenTitle: '다이어트 경험',
+                screenTitle: '다이어트 약 경험',
               ),
               child: Padding(
                 padding: EdgeInsets.symmetric(
@@ -400,9 +400,9 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   '수정',
                   style: TextStyle(
                     color: _kPink,
-                    fontSize: 16,
+                    fontSize: 12,
                     fontFamily: _kFont,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -441,7 +441,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontFamily: _kFont,
             fontWeight: FontWeight.w500,
             color: _kInk,
@@ -453,7 +453,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             value,
             textAlign: TextAlign.right,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontFamily: _kFont,
               fontWeight: FontWeight.w300,
               color: _kInk,
@@ -483,7 +483,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   static const TextStyle _listLabelStyle = TextStyle(
     color: _kInk,
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: _kFont,
     fontWeight: FontWeight.w500,
     height: 1.35,
@@ -516,7 +516,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   Widget _readMetricBox(String value, String unit) {
     final v = value.trim().isEmpty ? '-' : value.trim();
     return Container(
-      height: healthDp(context, 50),
+      height: healthDp(context, 40),
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
@@ -532,7 +532,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             v,
             style: const TextStyle(
               color: _kInk,
-              fontSize: 16,
+              fontSize: 14,
               fontFamily: _kFont,
               fontWeight: FontWeight.w500,
             ),
@@ -542,7 +542,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               unit,
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 16,
+                fontSize: 14,
                 fontFamily: _kFont,
                 fontWeight: FontWeight.w300,
               ),
@@ -562,7 +562,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         _basicInfoLabeledRow(
           label: '생년월일',
           child: Container(
-            height: healthDp(context, 50),
+            height: healthDp(context, 40),
             padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             alignment: Alignment.centerLeft,
             decoration: ShapeDecoration(
@@ -575,26 +575,26 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               _birthDots(profile.answer1),
               style: const TextStyle(
                 color: _kInk,
-                fontSize: 16,
+                fontSize: 14,
                 fontFamily: _kFont,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
         ),
-        SizedBox(height: healthDp(context, 24)),
+        SizedBox(height: healthDp(context, 10)),
         _basicInfoLabeledRow(
           label: '성별',
-          labelWidth: healthDp(context, 56),
+          labelWidth: healthDp(context, 70),
           child: _genderReadSegment(g == 'M', g == 'F'),
         ),
-        SizedBox(height: healthDp(context, 24)),
+        SizedBox(height: healthDp(context, 10)),
         _basicInfoLabeledRow(
           label: '목표',
-          labelWidth: healthDp(context, 56),
+          labelWidth: healthDp(context, 70),
           labelColor: _kPink,
           child: Container(
-            height: healthDp(context, 50),
+            height: healthDp(context, 40),
             padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             decoration: ShapeDecoration(
               shape: RoundedRectangleBorder(
@@ -609,7 +609,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                   goal,
                   style: const TextStyle(
                     color: _kPink,
-                    fontSize: 16,
+                    fontSize: 14,
                     fontFamily: _kFont,
                     fontWeight: FontWeight.w500,
                   ),
@@ -619,7 +619,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
                     'kg',
                     style: TextStyle(
                       color: _kPink,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontFamily: _kFont,
                       fontWeight: FontWeight.w300,
                     ),
@@ -628,10 +628,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ),
           ),
         ),
-        SizedBox(height: healthDp(context, 24)),
+        SizedBox(height: healthDp(context, 10)),
         _basicInfoLabeledRow(
           label: '키/\n몸무게',
-          labelWidth: healthDp(context, 56),
+          labelWidth: healthDp(context, 70),
           child: Row(
             children: [
               Expanded(child: _readMetricBox(profile.answer4, 'cm')),
@@ -646,7 +646,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   Widget _genderReadSegment(bool male, bool female) {
     return Container(
-      height: healthDp(context, 50),
+      height: healthDp(context, 40),
       decoration: BoxDecoration(
         color: _kGenderTrack,
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
@@ -677,7 +677,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 16,
+          fontSize: 14,
           fontFamily: _kFont,
           fontWeight: FontWeight.w500,
           color: selected ? _kPink : _kMuted,
@@ -704,7 +704,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: _kInk,
-          fontSize: 16,
+          fontSize: 14,
           fontFamily: _kFont,
           fontWeight: fontWeight,
           height: 1.25,
@@ -731,7 +731,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         textAlign: TextAlign.center,
         style: const TextStyle(
           color: _kInk,
-          fontSize: 16,
+          fontSize: 14,
           fontFamily: _kFont,
           fontWeight: FontWeight.w500,
           height: 1.25,
@@ -745,7 +745,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       return const Text(
         '-',
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 9,
           fontWeight: FontWeight.w400,
           color: Colors.black54,
         ),
@@ -769,7 +769,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
-          child: Text('평균 식사 횟수 및 빈도', style: _listSubsectionStyle),
+          child: Text('평균 식사 횟수', style: _listSubsectionStyle),
         ),
         SizedBox(height: healthDp(context, 8)),
         _wrapChipsWhite(mealItems),
@@ -822,7 +822,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             ? const Text(
                 '-',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight: FontWeight.w500,
                   color: Colors.black54,
                 ),
@@ -862,7 +862,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       return const Text(
         '-',
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 9,
           fontWeight: FontWeight.w500,
           color: Colors.black54,
         ),
@@ -913,7 +913,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               Text(
                 tag,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 10,
                   fontFamily: _kFont,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF898383),
@@ -924,7 +924,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               Text(
                 time,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontFamily: _kFont,
                   fontWeight: FontWeight.w500,
                   color: _kInk,
@@ -964,7 +964,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         SizedBox(height: healthDp(context, 16)),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
-          child: Text('복용 약물', style: _listSubsectionStyle),
+          child: Text('복용중인 약', style: _listSubsectionStyle),
         ),
         SizedBox(height: healthDp(context, 8)),
         _healthDataChipsPipe(profile.answer12),
@@ -980,9 +980,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         t == '해당 없음' ||
         t == '해당없음';
     if (isNone) {
-      return SizedBox(
-        width: double.infinity,
-        child: _healthDataChip('해당 없음'),
+      return Wrap(
+        spacing: healthDp(context, 4),
+        runSpacing: healthDp(context, 4),
+        children: [_healthDataChip('해당 없음')],
       );
     }
     final parts = _pipeParts(t);
@@ -1009,7 +1010,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 16,
+          fontSize: 14,
           fontFamily: _kFont,
           fontWeight: FontWeight.w500,
           color: _kInk,
@@ -1047,7 +1048,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         label,
         textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: compact ? 10 : 12,
+          fontSize: compact ? 12 : 14,
           fontWeight: selected ? FontWeight.w400 : FontWeight.w300,
           color: selected ? Color(0xFFFF5A8D) : _kMuted.withValues(alpha: 0.55),
           height: 1.33,
@@ -1072,7 +1073,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
               child: Text(
                 '최근 1년 내\n다이어트 약 복용',
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: _kInk,
                   height: 1.33,
