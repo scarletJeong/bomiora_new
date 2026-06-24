@@ -5,7 +5,13 @@ import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 class ProductBannerSlider extends StatefulWidget {
-  const ProductBannerSlider({super.key});
+  /// 375 기준 배너 높이 — [healthDp]로 스케일.
+  final double heightBase;
+
+  const ProductBannerSlider({
+    super.key,
+    this.heightBase = 190,
+  });
 
   @override
   State<ProductBannerSlider> createState() => _ProductBannerSliderState();
@@ -69,7 +75,7 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: healthDp(context, 300),
+      height: healthDp(context, widget.heightBase),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(

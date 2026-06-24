@@ -7,63 +7,105 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
+TextStyle _tailSectionTitleStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 16),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      letterSpacing: healthSp(context, -1.44),
+    );
+
 TextStyle _tailBodyStyle(BuildContext context) => TextStyle(
-      fontSize: healthSp(context, 13),
+      fontSize: healthSp(context, 12),
       color: Colors.black87,
       height: 1.55,
-      letterSpacing: -0.2,
+      letterSpacing: healthSp(context, -0.84),
     );
 
 TextStyle _tailH2Style(BuildContext context) => TextStyle(
-      fontSize: healthSp(context, 14),
-      fontWeight: FontWeight.w700,
+      fontSize: healthSp(context, 12),
+      fontWeight: FontWeight.w500,
       color: Colors.black87,
       height: 1.35,
       letterSpacing: -0.2,
     );
 
 TextStyle _tailPStyle(BuildContext context) => TextStyle(
-      fontSize: healthSp(context, 12.5),
+      fontSize: healthSp(context, 12),
       fontWeight: FontWeight.w300,
       color: const Color(0xFF444444),
       height: 1.6,
-      letterSpacing: -0.15,
+      letterSpacing: healthSp(context, -0.84),
     );
 
 const double _kTailSectionContentIndent = 10;
 
-/// 섹션 하단 회색 구분선 (화면 대비 짧게, 가운데)
-Widget _sectionBottomDivider(BuildContext context) {
-  // 디자인 요청: 상세 하단 섹션들의 회색 구분선 제거
-  return const SizedBox.shrink();
-}
+double _tailHorizontalPad(BuildContext context) => healthDp(context, 27);
+
+Widget _tailSectionDivider(BuildContext context) => Divider(
+      height: healthDp(context, 1),
+      thickness: healthDp(context, 1),
+      color: Colors.grey.shade300,
+    );
 
 /// 접이식 섹션 제목 앞 세로 구분 표시 (`| 배송` 형태)
 Widget _expandableSectionTitle(BuildContext context, String title) {
+  final style = _tailSectionTitleStyle(context);
   return Row(
     children: [
-      Text(
-        '|',
-        style: TextStyle(
-          fontSize: healthSp(context, 16),
-          fontWeight: FontWeight.w300,
-          color: Colors.black,
-        ),
-      ),
-      const SizedBox(width: 2),
+      Text('|', style: style),
+      SizedBox(width: healthDp(context, 10)),
       Flexible(
         child: Text(
           title,
-          style: TextStyle(
-            fontSize: healthSp(context, 15.59),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w300,
-            color: Colors.black,
-          ),
+          style: style,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
       ),
+    ],
+  );
+}
+
+Widget _tailExpandableSectionShell({
+  required BuildContext context,
+  required bool isExpanded,
+  required VoidCallback onToggle,
+  required Widget title,
+  required Widget expandedChild,
+  bool showTrailingDivider = true,
+}) {
+  final gap = healthDp(context, 10);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      InkWell(
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        focusColor: Colors.transparent,
+        onTap: onToggle,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: gap),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: title),
+              Icon(
+                isExpanded ? Icons.expand_less : Icons.expand_more,
+                color: Colors.grey[600],
+              ),
+            ],
+          ),
+        ),
+      ),
+      AnimatedSize(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        child: isExpanded ? expandedChild : const SizedBox.shrink(),
+      ),
+      if (isExpanded) SizedBox(height: gap),
+      if (showTrailingDivider) _tailSectionDivider(context),
     ],
   );
 }
@@ -93,36 +135,18 @@ class ProductTailInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final result = Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 20),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _tailHorizontalPad(context)),
       child: Column(
         children: [
-          // 배송 정보
           _buildDeliverySection(),
-          const SizedBox(height: 12),
-
-          if (showCertification) ...[
-            // 기관인증
-            _buildCertificationSection(),
-            const SizedBox(height: 12),
-          ],
-          if (showWarning) ...[
-            // 주의사항
-            _buildWarningSection(context),
-            const SizedBox(height: 12),
-          ],
-          if (showPrescriptionProcess) ...[
-            // 처방 프로세스
-            _buildPrescriptionProcessSection(),
-            const SizedBox(height: 12),
-          ],
-
-          // 교환/환불
+          if (showCertification) _buildCertificationSection(),
+          if (showWarning) _buildWarningSection(context),
+          if (showPrescriptionProcess) _buildPrescriptionProcessSection(),
           _buildExchangeRefundSection(),
         ],
       ),
     );
-    return result;
   }
 
   /// 배송 정보 섹션
@@ -161,6 +185,7 @@ class ProductTailInfoSection extends StatelessWidget {
         context,
         warningText,
         pipeAsNewlineFallback: false,
+        fontWeight: FontWeight.w300,
       ),
     );
   }
@@ -189,16 +214,16 @@ class ProductTailInfoSection extends StatelessWidget {
               TextSpan(
                 text: '$step ',
                 style: TextStyle(
-                  fontSize: healthSp(context, 15),
-                  fontWeight: FontWeight.w700,
+                  fontSize: healthSp(context, 12),
+                  fontWeight: FontWeight.w500,
                   color: Colors.black87,
                 ),
               ),
               TextSpan(
                 text: title,
                 style: TextStyle(
-                  fontSize: healthSp(context, 15),
-                  fontWeight: FontWeight.w700,
+                  fontSize: healthSp(context, 12),
+                  fontWeight: FontWeight.w500,
                   color: Colors.black87,
                 ),
               ),
@@ -209,7 +234,7 @@ class ProductTailInfoSection extends StatelessWidget {
         Text(
           description,
           style: TextStyle(
-            fontSize: healthSp(context, 13),
+            fontSize: healthSp(context, 12),
             color: Colors.grey[700],
             height: 1.5,
           ),
@@ -244,50 +269,17 @@ class _DeliverySectionState extends State<_DeliverySection> {
 
   @override
   Widget build(BuildContext context) {
-    // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: _expandableSectionTitle(context, '배송')),
-                Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: Colors.grey[600],
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _isExpanded
-              ? Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _buildNoticeList(
-                    context,
-                    widget.deliveryText,
-                    pipeAsNewlineFallback: true,
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        _sectionBottomDivider(context),
-      ],
+    return _tailExpandableSectionShell(
+      context: context,
+      isExpanded: _isExpanded,
+      onToggle: () => setState(() => _isExpanded = !_isExpanded),
+      title: _expandableSectionTitle(context, '배송'),
+      expandedChild: _buildNoticeList(
+        context,
+        widget.deliveryText,
+        pipeAsNewlineFallback: true,
+        fontWeight: FontWeight.w300,
+      ),
     );
   }
 }
@@ -396,7 +388,18 @@ Widget _buildNoticeList(
   BuildContext context,
   String? raw, {
   bool pipeAsNewlineFallback = true,
+  FontWeight? fontWeight,
 }) {
+  final bodyStyle = fontWeight != null
+      ? _tailBodyStyle(context).copyWith(fontWeight: fontWeight)
+      : _tailBodyStyle(context);
+  final h2Style = fontWeight != null
+      ? _tailH2Style(context).copyWith(fontWeight: fontWeight)
+      : _tailH2Style(context);
+  final pStyle = fontWeight != null
+      ? _tailPStyle(context).copyWith(fontWeight: fontWeight)
+      : _tailPStyle(context);
+
   final blocks = _parseNoticeHtml(raw);
   if (blocks.isEmpty) {
     final text = _normalizeCmsText(raw, pipeAsNewline: pipeAsNewlineFallback);
@@ -405,7 +408,7 @@ Widget _buildNoticeList(
       child: Text(
         text.isEmpty ? '-' : text,
         textAlign: TextAlign.start,
-        style: _tailBodyStyle(context),
+        style: bodyStyle,
       ),
     );
   }
@@ -419,7 +422,7 @@ Widget _buildNoticeList(
             padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
             child: Text(
               b.title.trim(),
-              style: _tailH2Style(context),
+              style: h2Style,
             ),
           ),
         if (b.paragraphs.isNotEmpty) const SizedBox(height: 6),
@@ -428,7 +431,7 @@ Widget _buildNoticeList(
             padding: const EdgeInsets.only(left: _kTailSectionContentIndent),
             child: Text(
               p,
-              style: _tailPStyle(context),
+              style: pStyle,
             ),
           ),
           const SizedBox(height: 6),
@@ -471,92 +474,56 @@ class _CertificationSectionState extends State<_CertificationSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: _expandableSectionTitle(context, '기관인증')),
-                Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: Colors.grey[600],
-                ),
-              ],
+    return _tailExpandableSectionShell(
+      context: context,
+      isExpanded: _isExpanded,
+      onToggle: () => setState(() => _isExpanded = !_isExpanded),
+      title: _expandableSectionTitle(context, '기관인증'),
+      expandedChild: ClipRRect(
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+        child: ColoredBox(
+          color: Colors.white,
+          child: Padding(
+            padding: EdgeInsets.only(left: healthDp(context, _kTailSectionContentIndent)),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth.isFinite
+                    ? constraints.maxWidth
+                    : MediaQuery.sizeOf(context).width -
+                        _tailHorizontalPad(context) * 2;
+                final targetW = (w * 0.20).clamp(70.0, 160.0);
+                final h = (targetW * 0.55).clamp(35.0, 80.0);
+
+                _embeddedPngFuture ??= _loadEmbeddedPngFromSvgAsset();
+
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: targetW,
+                    height: h,
+                    child: FutureBuilder<Uint8List?>(
+                      future: _embeddedPngFuture,
+                      builder: (context, snapshot) {
+                        final bytes = snapshot.data;
+                        if (bytes != null && bytes.isNotEmpty) {
+                          return Image.memory(
+                            bytes,
+                            fit: BoxFit.contain,
+                          );
+                        }
+                        return SvgPicture.asset(
+                          AppAssets.productDetailCertification,
+                          fit: BoxFit.contain,
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _isExpanded
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: ColoredBox(
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: _kTailSectionContentIndent,
-                        ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final w = constraints.maxWidth.isFinite
-                                ? constraints.maxWidth
-                                : MediaQuery.sizeOf(context).width - 32;
-                            // 너무 커 보이지 않도록 1/4 수준으로 축소
-                            final targetW = (w * 0.20).clamp(70.0, 160.0);
-                            final h = (targetW * 0.55).clamp(35.0, 80.0);
-
-                            _embeddedPngFuture ??= _loadEmbeddedPngFromSvgAsset();
-
-                            return Align(
-                              alignment: Alignment.centerLeft,
-                              child: SizedBox(
-                                width: targetW,
-                                height: h,
-                                child: FutureBuilder<Uint8List?>(
-                                  future: _embeddedPngFuture,
-                                  builder: (context, snapshot) {
-                                    final bytes = snapshot.data;
-                                    if (bytes != null && bytes.isNotEmpty) {
-                                      return Image.memory(
-                                        bytes,
-                                        fit: BoxFit.contain,
-                                      );
-                                    }
-                                    // 폴백: flutter_svg로 렌더링 시도 (지원되는 SVG면 표시됨)
-                                    return SvgPicture.asset(
-                                      AppAssets.productDetailCertification,
-                                      fit: BoxFit.contain,
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        _sectionBottomDivider(context),
-      ],
+      ),
     );
   }
 }
@@ -590,56 +557,21 @@ class _SimpleExpandableSectionState extends State<_SimpleExpandableSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: _expandableSectionTitle(context, widget.title),
-                ),
-                Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: Colors.grey[600],
-                ),
-              ],
-            ),
+    return _tailExpandableSectionShell(
+      context: context,
+      isExpanded: _isExpanded,
+      onToggle: () => setState(() => _isExpanded = !_isExpanded),
+      title: _expandableSectionTitle(context, widget.title),
+      expandedChild: widget.customBodyBuilder?.call() ??
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: widget.rows
+                .map((row) => Padding(
+                      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
+                      child: _buildInfoRow(row.label, row.value),
+                    ))
+                .toList(),
           ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _isExpanded
-              ? Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: widget.customBodyBuilder?.call() ??
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: widget.rows
-                            .map((row) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: _buildInfoRow(row.label, row.value),
-                                ))
-                            .toList(),
-                      ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        _sectionBottomDivider(context),
-      ],
     );
   }
 
@@ -706,46 +638,12 @@ class _PrescriptionProcessSectionState
 
   @override
   Widget build(BuildContext context) {
-    // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: _expandableSectionTitle(context, '처방 프로세스')),
-                Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: Colors.grey[600],
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _isExpanded
-              ? Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _buildNoticeList(context, widget.processText),
-                )
-              : const SizedBox.shrink(),
-        ),
-        _sectionBottomDivider(context),
-      ],
+    return _tailExpandableSectionShell(
+      context: context,
+      isExpanded: _isExpanded,
+      onToggle: () => setState(() => _isExpanded = !_isExpanded),
+      title: _expandableSectionTitle(context, '처방 프로세스'),
+      expandedChild: _buildNoticeList(context, widget.processText),
     );
   }
 }
@@ -775,46 +673,13 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
 
   @override
   Widget build(BuildContext context) {
-    // ExpansionTile 대신 커스텀 위젯 사용 (Flutter 웹 타입 변환 문제 해결)
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: _expandableSectionTitle(context, '교환/환불')),
-                Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: Colors.grey[600],
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: _isExpanded
-              ? Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _buildNoticeList(context, widget.changeContentText),
-                )
-              : const SizedBox.shrink(),
-        ),
-        _sectionBottomDivider(context),
-      ],
+    return _tailExpandableSectionShell(
+      context: context,
+      isExpanded: _isExpanded,
+      onToggle: () => setState(() => _isExpanded = !_isExpanded),
+      title: _expandableSectionTitle(context, '교환/환불'),
+      expandedChild: _buildNoticeList(context, widget.changeContentText),
+      showTrailingDivider: false,
     );
   }
 }

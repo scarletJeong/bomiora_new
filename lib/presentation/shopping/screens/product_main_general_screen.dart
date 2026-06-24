@@ -121,55 +121,52 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
     final scale = (w / 375.0).clamp(0.85, 1.15);
 
     return MobileAppLayoutWrapper(
-      child: Scaffold(
-        key: _pageScaffoldKey,
-        backgroundColor: Colors.white,
-        appBar: AppBarMenu(
-          onMenuPressed: () => _pageScaffoldKey.currentState?.openDrawer(),
-        ),
-        drawer: AppBarMenuTapDrawer(
-          onHealthDashboardTap: () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/health');
-          },
-        ),
-        body: DefaultTextStyle.merge(
-          style: const TextStyle(fontFamily: _font),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '상품을 불러오지 못했습니다.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: healthSp(context, 15),
-                                color: Colors.grey[800],
-                              ),
+      scaffoldKey: _pageScaffoldKey,
+      appBar: AppBarMenu(
+        onMenuPressed: () => _pageScaffoldKey.currentState?.openDrawer(),
+      ),
+      drawer: AppBarMenuTapDrawer(
+        onHealthDashboardTap: () {
+          Navigator.pop(context);
+          Navigator.pushNamed(context, '/health');
+        },
+      ),
+      bottomNavigationBar: const FooterBar(),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: _font),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '상품을 불러오지 못했습니다.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: healthSp(context, 15),
+                              color: Colors.grey[800],
                             ),
-                            const SizedBox(height: 16),
-                            FilledButton(
-                              onPressed: _load,
-                              child: const Text('다시 시도'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: _buildHealthcareStoreMainSlivers(context, scale),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _load,
+                            child: const Text('다시 시도'),
+                          ),
+                        ],
                       ),
                     ),
-        ),
-        bottomNavigationBar: const FooterBar(),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: _buildHealthcareStoreMainSlivers(context, scale),
+                    ),
+                  ),
       ),
     );
   }

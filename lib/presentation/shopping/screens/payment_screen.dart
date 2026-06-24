@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:convert';
 
-import '../../common/widgets/app_bar.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/daum_postcode_search_dialog.dart';
@@ -21,6 +21,7 @@ import '../../../data/services/address_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
 import '../../../data/services/point_service.dart';
+import '../../user/delivery/widgets/delivery_address_change_popup_ver2.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -44,6 +45,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
   static const _ink = Color(0xFF1A1A1A);
   static const _muted = Color(0xFF898686);
   static const _border = Color(0xFFD2D2D2);
+  static const _figmaPink = Color(0xFFFF5B8C);
+  static const _figmaBrown = Color(0xFF584045);
+  static const _figmaDark = Color(0xFF1A1B1F);
+  static const _figmaBorder = Color(0xFFE3E2E7);
+  static const _figmaRoseBorder = Color(0xFFE0BEC4);
+  static const _figmaSectionBg = Color(0xFFF4F3F8);
+
+  static const _deliveryMemoPresets = <String>[
+    '문 앞에 놓아주세요',
+    '경비실에 맡겨주세요',
+    '직접 받겠습니다',
+    '배송 전 연락바랍니다',
+    '부재 시 연락주세요',
+  ];
 
   double _fieldH(BuildContext context) => healthDp(context, 40);
 
@@ -59,7 +74,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _loading = true;
   bool _submitting = false;
-  bool _useDefaultAddress = true;
   bool _syncingPoint = false;
   bool _useAllPoints = false;
   bool _useEscrow = false;
@@ -259,32 +273,54 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _applyAddressMode() {
-    if (_useDefaultAddress) {
-      final ad = _defaultAddress;
-      _addressNameController.text = _safe(ad?['adSubject']);
-      _receiverController.text = _safe(ad?['adName']);
-      _phoneController.text = _safe(ad?['adHp']);
-      _zipController.text = _safe(ad?['adZip1']);
-      _addressController.text = [
-        _safe(ad?['adAddr1']),
-        _safe(ad?['adAddr2']),
-        _safe(ad?['adAddr3']),
-      ].where((e) => e.isNotEmpty).join(' ');
-      _detailAddressController.clear();
-      _memoController.text = _safe(ad?['adMemo']);
-      return;
-    }
-
-    _addressNameController.clear();
-    _receiverController.clear();
-    _phoneController.clear();
-    _zipController.clear();
-    _addressController.clear();
+    final ad = _defaultAddress;
+    _addressNameController.text = _safe(ad?['adSubject']);
+    _receiverController.text = _safe(ad?['adName']);
+    _phoneController.text = _safe(ad?['adHp']);
+    _zipController.text = _safe(ad?['adZip1']);
+    _addressController.text = [
+      _safe(ad?['adAddr1']),
+      _safe(ad?['adAddr2']),
+      _safe(ad?['adAddr3']),
+    ].where((e) => e.isNotEmpty).join(' ');
     _detailAddressController.clear();
-    _memoController.clear();
+    _memoController.text = _safe(ad?['adMemo']);
+  }
+
+  Future<void> _openDeliveryAddressChangePopup() async {
+    final result = await showDialog<dynamic>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const DeliveryAddressChangePopup(),
+    );
+    if (!mounted) return;
+    if (result is Map<String, dynamic>) {
+      setState(() {
+        _defaultAddress = result;
+        _applyAddressMode();
+      });
+    }
   }
 
   String _safe(dynamic value) => (value ?? '').toString().trim();
+
+  String _formatPhoneDisplay(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 11) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7)}';
+    }
+    if (digits.length == 10) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
+    }
+    return raw;
+  }
+
+  String _fullDeliveryAddressText() {
+    return [
+      _addressController.text.trim(),
+      _detailAddressController.text.trim(),
+    ].where((e) => e.isNotEmpty).join(' ');
+  }
 
   /// 운영 쇼핑몰 `www/shop/orderform.sub.payment.php` 의 `od_settle_case` 값과 동일.
   String get _paymentMethodLabel {
@@ -763,470 +799,728 @@ class _PaymentScreenState extends State<PaymentScreen> {
         appBar: const HealthAppBar(title: '주문/결제', centerTitle: false),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 27),
-                  healthDp(context, 20),
-                  healthDp(context, 27),
-                  healthDp(context, 20),
+            : Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(
+                        bottom: healthDp(context, 16),
+                      ),
+                      child: DefaultTextStyle.merge(
+                        style:
+                            const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildOrderListSection(context),
+                            _sectionGap(context),
+                            _buildDeliverySection(context),
+                            _sectionGap(context),
+                            _buildCouponSection(context),
+                            _buildPointSection(context),
+                            _sectionGap(context),
+                            _buildPaymentAmountSection(context),
+                            _sectionGap(context),
+                            _buildPaymentMethodHeaderSection(context),
+                            if (_paymentMethodIndex == 1 ||
+                                _paymentMethodIndex == 2) ...[
+                              SizedBox(height: healthDp(context, 10)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: healthDp(context, 27)),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _escrowToggle(
+                                          context,
+                                          '에스크로 사용',
+                                          _useEscrow, () {
+                                        setState(() => _useEscrow = true);
+                                      }),
+                                    ),
+                                    SizedBox(width: healthDp(context, 10)),
+                                    Expanded(
+                                      child: _escrowToggle(
+                                          context,
+                                          '에스크로 미사용',
+                                          !_useEscrow, () {
+                                        setState(() => _useEscrow = false);
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 10)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: healthDp(context, 27)),
+                                child: _escrowNotice(context),
+                              ),
+                              SizedBox(height: healthDp(context, 4)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: healthDp(context, 27)),
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    '2006.4.1 제정, 2013.11.29 개정 전자상거래 등에서의 소비자 보호에 관한 법률',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: healthSp(context, 6.82),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  _buildPaymentBottomBar(context),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _sectionGap(BuildContext context) => Container(
+        width: double.infinity,
+        height: healthDp(context, 8),
+        color: _figmaSectionBg,
+      );
+
+  Widget _buildPaymentBottomBar(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+          healthDp(context, 27),
+          healthDp(context, 10),
+          healthDp(context, 27),
+          healthDp(context, 16),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: healthDp(context, 8),
+              offset: Offset(0, -healthDp(context, 2)),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: healthDp(context, 40),
+          child: ElevatedButton(
+            onPressed: _submitting ? null : _requestKcpPayment,
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(double.infinity, healthDp(context, 40)),
+              maximumSize: Size(double.infinity, healthDp(context, 40)),
+              padding: EdgeInsets.zero,
+              backgroundColor: _pink,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              ),
+            ),
+            child: _submitting
+                ? SizedBox(
+                    width: healthDp(context, 18),
+                    height: healthDp(context, 18),
+                    child: CircularProgressIndicator(
+                      strokeWidth: healthDp(context, 2),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text(
+                    '결제하기',
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitleLarge(BuildContext context, String text) => Text(
+        text,
+        style: TextStyle(
+          color: _figmaPink,
+          fontSize: healthSp(context, 15),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
+      );
+
+  Widget _addressChangeButton(BuildContext context) => InkWell(
+        onTap: _openDeliveryAddressChangePopup,
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 12),
+            vertical: healthDp(context, 4),
+          ),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 1, color: _figmaRoseBorder),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
+            ),
+          ),
+          child: Text(
+            '변경',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.26,
+            ),
+          ),
+        ),
+      );
+
+  Widget _buildDeliverySection(BuildContext context) {
+    final addressLabel = _addressNameController.text.trim().isNotEmpty
+        ? _addressNameController.text.trim()
+        : '배송지';
+    final fullAddress = _fullDeliveryAddressText();
+    final phone = _formatPhoneDisplay(_phoneController.text.trim());
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 27),
+        vertical: healthDp(context, 20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _sectionTitleLarge(context, '배송지'),
+              _addressChangeButton(context),
+            ],
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(healthDp(context, 16)),
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(width: 1, color: _figmaBorder),
+                borderRadius: BorderRadius.circular(healthDp(context, 12)),
+              ),
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x0C000000),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
                 ),
-                child: DefaultTextStyle.merge(
-                  style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _title(context, '배송지'),
-                      SizedBox(height: healthDp(context, 10)),
-                      Text(
-                        '배송지 선택',
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 6),
+                        vertical: healthDp(context, 2),
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0x19FF5B8C),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 4)),
+                      ),
+                      child: Text(
+                        addressLabel,
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
+                          color: _figmaPink,
                           fontSize: healthSp(context, 12),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 8)),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _modeButton(
-                                context,
-                                '기본배송지',
-                                _useDefaultAddress, () {
-                              setState(() {
-                                _useDefaultAddress = true;
-                                _applyAddressMode();
-                              });
-                            }),
-                          ),
-                          SizedBox(width: healthDp(context, 10)),
-                          Expanded(
-                            child: _modeButton(
-                                context,
-                                '신규배송지',
-                                !_useDefaultAddress, () {
-                              setState(() {
-                                _useDefaultAddress = false;
-                                _applyAddressMode();
-                              });
-                            }),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: healthDp(context, 10)),
-                      _inputField(
-                          context,
-                          '배송지명',
-                          _addressNameController,
-                          '배송지명을 입력해 주세요.'),
-                      _inputField(
-                          context,
-                          '수령인*',
-                          _receiverController,
-                          '수령인의 이름을 입력해 주세요.'),
-                      _inputField(
-                          context,
-                          '핸드폰 번호*',
-                          _phoneController,
-                          '\'-\'없이 기입해주세요.'),
-                      _zipSearchRow(context),
-                      _inputField(
-                          context,
-                          '주소*',
-                          _addressController,
-                          '\'주소 검색\'을 통하여 입력됩니다.'),
-                      _inputField(
-                          context,
-                          '상세 주소*',
-                          _detailAddressController,
-                          '상세 주소를 입력해 주세요.'),
-                      _inputField(
-                          context,
-                          '배송 요청 사항',
-                          _memoController,
-                          '배송 관련 요청 사항이 있으시면 입력해 주세요.'),
-                      SizedBox(height: healthDp(context, 2)),
-                      Text(
-                        '※ 영업일 기준 오후 2시 이전 처방완료 시 당일 발송',
+                    ),
+                    SizedBox(width: healthDp(context, 8)),
+                    Expanded(
+                      child: Text(
+                        _receiverController.text.trim().isEmpty
+                            ? '수령인 없음'
+                            : _receiverController.text.trim(),
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
-                          fontSize: healthSp(context, 12),
+                          color: _figmaDark,
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 20)),
-                      Divider(
-                          height: 1,
-                          thickness: healthDp(context, 1.5),
-                          color: const Color(0xFFD9D9D9)),
-                      SizedBox(height: healthDp(context, 12)),
-                      _title(context, '결제 예정 목록'),
-                      SizedBox(height: healthDp(context, 10)),
-                      ...widget.cartItems
-                          .map((e) => _orderCard(context, e)),
-                      SizedBox(height: healthDp(context, 20)),
-                      Divider(
-                          height: 1,
-                          thickness: healthDp(context, 1.5),
-                          color: const Color(0xFFD9D9D9)),
-                      SizedBox(height: healthDp(context, 12)),
-                      _title(context, '쿠폰 선택'),
-                      SizedBox(height: healthDp(context, 8)),
-                      if (_couponPointDisabled)
+                    ),
+                  ],
+                ),
+                SizedBox(height: healthDp(context, 4)),
+                Text(
+                  fullAddress.isEmpty ? '주소를 선택해 주세요' : fullAddress,
+                  style: TextStyle(
+                    color: _figmaBrown,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+                if (phone.isNotEmpty) ...[
+                  SizedBox(height: healthDp(context, 4)),
+                  Text(
+                    phone,
+                    style: TextStyle(
+                      color: const Color(0xB2584045),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.only(top: healthDp(context, 10)),
+                  padding: EdgeInsets.only(top: healthDp(context, 10)),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(width: 1, color: _figmaSectionBg),
+                    ),
+                  ),
+                  child: Builder(
+                    builder: (context) {
+                      final memo = _memoController.text.trim();
+                      final memoItems = [
+                        ..._deliveryMemoPresets,
+                        if (memo.isNotEmpty &&
+                            !_deliveryMemoPresets.contains(memo))
+                          memo,
+                      ];
+                      return DropdownBtn(
+                        buttonHeight: healthDp(context, 40),
+                        items: memoItems,
+                        value: memo,
+                        emptyText: '배송 요청 사항을 선택해 주세요',
+                        emptyTextColor: _figmaDark,
+                        valueTextColor: _figmaDark,
+                        borderColor: _figmaBorder,
+                        itemFontSizeBase: 12,
+                        itemTextAlign: TextAlign.left,
+                        onChanged: (value) {
+                          setState(() => _memoController.text = value);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: healthDp(context, 8)),
+          Text(
+            '※ 영업일 기준 오후 2시 이전 처방완료 시 당일 발송',
+            style: TextStyle(
+              color: _figmaDark,
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderListSection(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 27),
+        vertical: healthDp(context, 20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitleLarge(context, '결제 예정 목록'),
+          SizedBox(height: healthDp(context, 16)),
+          ...widget.cartItems.map((e) => _orderCard(context, e)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponSection(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 27),
+        vertical: healthDp(context, 20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitleLarge(context, '쿠폰'),
+          SizedBox(height: healthDp(context, 16)),
+          if (_couponPointDisabled)
+            Text(
+              '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.',
+              style: TextStyle(
+                color: _figmaBrown,
+                fontSize: healthSp(context, 13),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w400,
+              ),
+            )
+          else ...[
+            _couponDropdown(context),
+            SizedBox(height: healthDp(context, 5)),
+            ..._selectedCoupons.map((c) => _selectedCouponRow(context, c)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPointSection(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 0),
+        healthDp(context, 27),
+        healthDp(context, 20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitleLarge(context, '포인트'),
+          SizedBox(height: healthDp(context, 16)),
+          if (_couponPointDisabled)
+            Text(
+              '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.',
+              style: TextStyle(
+                color: _figmaBrown,
+                fontSize: healthSp(context, 13),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w400,
+              ),
+            )
+          else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Container(
+                    height: healthDp(context, 34),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 12),
+                    ),
+                    decoration: ShapeDecoration(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(
+                            width: 1, color: _figmaBorder),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _pointController,
+                            enabled: !_couponPointDisabled,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: _figmaDark,
+                              fontSize: healthSp(context, 14),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                            decoration: InputDecoration(
+                              isCollapsed: true,
+                              border: InputBorder.none,
+                              hintText: '0',
+                              hintStyle: TextStyle(
+                                color: _figmaBrown,
+                                fontSize: healthSp(context, 14),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
                         Text(
-                          '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.',
+                          '점',
                           style: TextStyle(
-                            color: _muted,
-                            fontSize: healthSp(context, 11),
+                            color: _figmaBrown,
+                            fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
-                          ),
-                        )
-                      else
-                        _couponDropdown(context),
-                      SizedBox(height: healthDp(context, 8)),
-                      ..._selectedCoupons
-                          .map((c) => _selectedCouponRow(context, c)),
-                      SizedBox(height: healthDp(context, 20)),
-                      Divider(
-                          height: 1,
-                          thickness: healthDp(context, 1.5),
-                          color: const Color(0xFFD9D9D9)),
-                      SizedBox(height: healthDp(context, 12)),
-                      _title(context, '포인트'),
-                      SizedBox(height: healthDp(context, 8)),
-                      _summaryRow(
-                          context,
-                          '보유 포인트',
-                          '${PointService.formatPoint(_myPoint)} 점'),
-                      _summaryRow(
-                          context,
-                          '최대 사용 가능 포인트',
-                          '${PointService.formatPoint(_maxUsablePointHundreds)} 점'),
-                      SizedBox(height: healthDp(context, 8)),
-                      SizedBox(
-                        width: double.infinity,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: healthDp(context, 137.08),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    '포인트 사용',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: healthSp(context, 12),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w300,
-                                    ),
-                                  ),
-                                  SizedBox(width: healthDp(context, 4)),
-                                  Text(
-                                    '(100점단위)',
-                                    style: TextStyle(
-                                      color: _muted,
-                                      fontSize: healthSp(context, 12),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w300,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              width: healthDp(context, 80),
-                              height: healthDp(context, 32),
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: healthDp(context, 10)),
-                              clipBehavior: Clip.antiAlias,
-                              decoration: ShapeDecoration(
-                                shape: RoundedRectangleBorder(
-                                  side: const BorderSide(
-                                    width: 1,
-                                    color: Color(0xFFD2D2D2),
-                                  ),
-                                  borderRadius:
-                                      BorderRadius.circular(healthDp(context, 8)),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _pointController,
-                                      enabled: !_couponPointDisabled,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      textAlign: TextAlign.right,
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: healthSp(context, 12),
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        fontWeight: FontWeight.w300,
-                                      ),
-                                      decoration: InputDecoration(
-                                        isCollapsed: true,
-                                        border: InputBorder.none,
-                                        hintText: '0',
-                                        hintStyle: TextStyle(
-                                          color: const Color(0xFF898686),
-                                          fontSize: healthSp(context, 12),
-                                          fontFamily: 'Gmarket Sans TTF',
-                                          fontWeight: FontWeight.w300,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: healthDp(context, 4)),
-                                  Text(
-                                    '점',
-                                    style: TextStyle(
-                                      color: const Color(0xFF898686),
-                                      fontSize: healthSp(context, 12),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w300,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Theme(
-                            data: Theme.of(context).copyWith(
-                              checkboxTheme: CheckboxThemeData(
-                                side: const BorderSide(
-                                  color: Color(0xFFE3E3E3),
-                                  width: 0.8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                            ),
-                            child: Checkbox(
-                              value: _useAllPoints,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: const VisualDensity(
-                                  horizontal: -4, vertical: -4),
-                              activeColor: _pink,
-                              onChanged: _couponPointDisabled
-                                  ? null
-                                  : (checked) {
-                                      final all = checked ?? false;
-                                      setState(() {
-                                        _useAllPoints = all;
-                                        _usedPoint = all ? _maxUsablePointHundreds : 0;
-                                        _pointController.text = _usedPoint == 0
-                                            ? ''
-                                            : '$_usedPoint';
-                                      });
-                                    },
-                            ),
-                          ),
-                          Text(
-                            '모두 사용',
-                            style: TextStyle(
-                              color: _ink,
-                              fontSize: healthSp(context, 11.7),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: healthDp(context, 20)),
-                      Divider(
-                          height: 1,
-                          thickness: healthDp(context, 1.5),
-                          color: const Color(0xFFD9D9D9)),
-                      SizedBox(height: healthDp(context, 12)),
-                      _title(context, '결제 금액'),
-                      SizedBox(height: healthDp(context, 8)),
-                      _summaryRow(
-                          context,
-                          '구매금액',
-                          '${PriceFormatter.format(_purchaseAmount)} 원'),
-                      _summaryRow(
-                          context,
-                          '쿠폰할인',
-                          _discountAmountText(_couponDiscount)),
-                      _summaryRow(
-                          context,
-                          '포인트할인',
-                          _discountAmountText(_pointDiscount)),
-                      _summaryRow(
-                          context,
-                          '배송비',
-                          '${PriceFormatter.format(widget.shippingCost)} 원'),
-                      SizedBox(height: healthDp(context, 6)),
-                      Divider(
-                        height: 1,
-                        thickness: healthDp(context, 1),
-                        color: const Color(0xFFD9D9D9),
-                      ),
-                      SizedBox(height: healthDp(context, 15)),
-                      _strongRow(
-                          context,
-                          '총 결제비용',
-                          '${PriceFormatter.format(_finalAmount)}원'),
-                      SizedBox(height: healthDp(context, 15)),
-                      Divider(
-                        height: 1,
-                        thickness: healthDp(context, 1),
-                        color: const Color(0xFFD9D9D9),
-                      ),
-                      SizedBox(height: healthDp(context, 10)),
-                      _summaryRow(
-                          context,
-                          '예상 적립 포인트',
-                          '${PointService.formatPoint(_expectedPoint)} 점'),
-                      _footnoteWithPinkLeadingAsterisk(
-                          context,
-                          '상품별 포인트 설정 기준 예상 적립'),
-                      
-                      SizedBox(height: healthDp(context, 20)),
-                      Divider(
-                          height: 1,
-                          thickness: healthDp(context, 1.5),
-                          color: const Color(0xFFD9D9D9)),
-                      SizedBox(height: healthDp(context, 12)),
-                      _title(context, '결제 수단'),
-                      SizedBox(height: healthDp(context, 8)),
-                      Row(
-                        children: [
-                          Expanded(
-                              child:
-                                  _methodButton(context, '신용카드', 0)),
-                          SizedBox(width: healthDp(context, 10)),
-                          Expanded(
-                              child:
-                                  _methodButton(context, '계좌이체', 1)),
-                          SizedBox(width: healthDp(context, 10)),
-                          Expanded(
-                              child:
-                                  _methodButton(context, '가상계좌', 2)),
-                        ],
-                      ),
-                      SizedBox(height: healthDp(context, 10)),
-                      Container(
-                        width: double.infinity,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '※ 할부 결제는 일반카드 결제만 가능합니다.',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                            SizedBox(height: healthDp(context, 5)),
-                            Text(
-                              '※ 최소 결제금액은 3,000원입니다.',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_paymentMethodIndex == 1 ||
-                          _paymentMethodIndex == 2) ...[
-                        SizedBox(height: healthDp(context, 10)),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _escrowToggle(
-                                  context,
-                                  '에스크로 사용',
-                                  _useEscrow, () {
-                                setState(() => _useEscrow = true);
-                              }),
-                            ),
-                            SizedBox(width: healthDp(context, 10)),
-                            Expanded(
-                              child: _escrowToggle(
-                                  context,
-                                  '에스크로 미사용',
-                                  !_useEscrow, () {
-                                setState(() => _useEscrow = false);
-                              }),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: healthDp(context, 10)),
-                        _escrowNotice(context),
-                        SizedBox(height: healthDp(context, 4)),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            '2006.4.1 제정, 2013.11.29 개정 전자상거래 등에서의 소비자 보호에 관한 법률',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: healthSp(context, 6.82),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w300,
-                            ),
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
-                      SizedBox(height: healthDp(context, 20)),
-                      SizedBox(
-                        width: double.infinity,
-                        height: healthDp(context, 40),
-                        child: ElevatedButton(
-                          onPressed: _submitting ? null : _requestKcpPayment,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _pink,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
-                          ),
-                          child: _submitting
-                              ? SizedBox(
-                                  width: healthDp(context, 18),
-                                  height: healthDp(context, 18),
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
-                                  ),
-                                )
-                              : Text(
-                                  '결제하기',
-                                  style: TextStyle(
-                                    fontSize: healthSp(context, 14),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+                SizedBox(width: healthDp(context, 8)),
+                InkWell(
+                  onTap: _couponPointDisabled
+                      ? null
+                      : () {
+                          setState(() {
+                            _useAllPoints = true;
+                            _usedPoint = _maxUsablePointHundreds;
+                            _pointController.text = _usedPoint == 0
+                                ? ''
+                                : '$_usedPoint';
+                          });
+                        },
+                  borderRadius:
+                      BorderRadius.circular(healthDp(context, 8)),
+                  child: Container(
+                    height: healthDp(context, 34),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 12),
+                    ),
+                    alignment: Alignment.center,
+                    decoration: ShapeDecoration(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        side:
+                            const BorderSide(width: 1, color: _figmaPink),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
+                      ),
+                    ),
+                    child: Text(
+                      '모두 사용',
+                      style: TextStyle(
+                        color: _figmaPink,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 0.26,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  '보유 포인트',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+                Text(
+                  '${PointService.formatPoint(_myPoint)} 점',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            Text(
+              '* 포인트는 100점 단위로 사용 가능합니다.',
+              style: TextStyle(
+                color: const Color(0x99584045),
+                fontSize: healthSp(context, 11),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w400,
               ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentAmountSection(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 27),
+        vertical: healthDp(context, 20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitleLarge(context, '결제 금액'),
+          SizedBox(height: healthDp(context, 16)),
+          _amountRow(context, '구매금액',
+              '${PriceFormatter.format(_purchaseAmount)} 원'),
+          if (_couponDiscount > 0)
+            _amountRow(
+              context,
+              '쿠폰할인',
+              _discountAmountText(_couponDiscount),
+              valueColor: _figmaPink,
+            ),
+          if (_pointDiscount > 0)
+            _amountRow(
+              context,
+              '포인트할인',
+              _discountAmountText(_pointDiscount),
+              valueColor: _figmaPink,
+            ),
+          _amountRow(context, '배송비',
+              '${PriceFormatter.format(widget.shippingCost)} 원'),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.only(top: healthDp(context, 16)),
+            margin: EdgeInsets.only(top: healthDp(context, 8)),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(width: 1, color: _figmaBorder)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '총 결제비용',
+                  style: TextStyle(
+                    color: _figmaPink,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  '${PriceFormatter.format(_finalAmount)}원',
+                  style: TextStyle(
+                    color: _figmaDark,
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: healthDp(context, 5)),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '예상 적립 포인트: ${PointService.formatPoint(_expectedPoint)} 점',
+                style: TextStyle(
+                  color: const Color(0xFF1A1A1E),
+                  fontSize: healthSp(context, 10),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodHeaderSection(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 27),
+        vertical: healthDp(context, 20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitleLarge(context, '결제 수단'),
+          SizedBox(height: healthDp(context, 16)),
+          Row(
+            children: [
+              Expanded(child: _methodButton(context, '신용카드', 0)),
+              SizedBox(width: healthDp(context, 12)),
+              Expanded(child: _methodButton(context, '계좌이체', 1)),
+              SizedBox(width: healthDp(context, 12)),
+              Expanded(child: _methodButton(context, '가상계좌', 2)),
+            ],
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          Text(
+            '※ 최소 결제금액은 3,000원입니다.',
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 5)),
+          Text(
+            '※ 할부 결제는 일반카드 결제만 가능합니다.',
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _amountRow(
+    BuildContext context,
+    String left,
+    String right, {
+    Color? valueColor,
+  }) {
+    final color = valueColor ?? _figmaBrown;
+    return Padding(
+      padding: EdgeInsets.only(bottom: healthDp(context, 8)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            left,
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+          Text(
+            right,
+            style: TextStyle(
+              color: color,
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1240,32 +1534,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           fontWeight: FontWeight.w500,
         ),
       );
-
-  Widget _modeButton(
-      BuildContext context, String text, bool selected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 7)),
-      child: Container(
-        height: healthDp(context, 40),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? const Color(0x0CFF5A8D) : Colors.white,
-          border: Border.all(color: selected ? _pink : _border),
-          borderRadius: BorderRadius.circular(healthDp(context, 7)),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: selected ? _pink : _muted,
-            fontSize: healthSp(context, 12),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
 
   String _formatPostalCodeDisplay(String postalCode) {
     final t = postalCode.replaceAll(RegExp(r'[^0-9]'), '');
@@ -1345,7 +1613,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   onPressed: _openAddressSearch,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _pink,
-                    side: const BorderSide(color: _pink, width: 1),
+                    side: BorderSide(color: _pink, width: healthDp(context, 1)),
                     shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 10)),
@@ -1480,91 +1748,75 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // 주문 카드 - 결제 예정 목록 카드드
   Widget _orderCard(BuildContext context, CartItem item) {
     final reservationLine = _buildReservationLine(context, item);
-    final thumb = healthDp(context, 72);
+    final thumb = healthDp(context, 80);
+
     return Container(
-      margin: EdgeInsets.only(bottom: healthDp(context, 10)),
+      margin: EdgeInsets.only(bottom: healthDp(context, 16)),
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-        vertical: healthDp(context, 20),
-      ),
-      clipBehavior: Clip.antiAlias,
+      padding: EdgeInsets.all(healthDp(context, 8)),
       decoration: ShapeDecoration(
+        color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1,
-            color: Color(0x7FD2D2D2),
-          ),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          side: const BorderSide(width: 1, color: _figmaBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                  child: Image.network(
-                    _itemImageUrl(item),
-                    width: thumb,
-                    height: thumb,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: thumb,
-                      height: thumb,
-                      color: Colors.grey.shade200,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(healthDp(context, 8)),
+            child: Image.network(
+              _itemImageUrl(item),
+              width: thumb,
+              height: thumb,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: thumb,
+                height: thumb,
+                color: Colors.grey.shade200,
+              ),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 16)),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: healthDp(context, 4)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.itName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1E),
+                      fontSize: healthSp(context, 14),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-                SizedBox(width: healthDp(context, 20)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.itName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _ink,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 5)),
-                      _buildOrderMetaRow(context, item),
-                      SizedBox(height: healthDp(context, 5)),
-                      Text(
-                        '${PriceFormatter.format(item.ctPrice)}원',
-                        style: TextStyle(
-                          color: _ink,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (reservationLine != null) ...[
-                        SizedBox(height: healthDp(context, 8)),
-                        Container(
-                          width: double.infinity,
-                          height: 0.5,
-                          color: const Color(0xFFD2D2D2),
-                        ),
-                        SizedBox(height: healthDp(context, 8)),
-                        reservationLine,
-                      ],
-                    ],
+                  SizedBox(height: healthDp(context, 4)),
+                  _buildOrderMetaColumn(context, item),
+                  if (reservationLine != null) ...[
+                    SizedBox(height: healthDp(context, 6)),
+                    reservationLine,
+                  ],
+                  SizedBox(height: healthDp(context, 6)),
+                  Text(
+                    '${PriceFormatter.format(item.ctPrice)}원',
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1E),
+                      fontSize: healthSp(context, 12),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -1572,35 +1824,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildOrderMetaRow(BuildContext context, CartItem item) {
+  TextStyle _orderMetaTextStyle(BuildContext context) => TextStyle(
+        color: const Color(0xFF898383),
+        fontSize: healthSp(context, 10),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        letterSpacing: healthSp(context, -0.90),
+      );
+
+  Widget _buildOrderMetaColumn(BuildContext context, CartItem item) {
     final optionParts = item.ctOption
         .split(' / ')
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
-    final tokens = <String>['수량: ${item.ctQty}', ...optionParts];
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 5,
-      runSpacing: 4,
+    final metaStyle = _orderMetaTextStyle(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int i = 0; i < tokens.length; i++) ...[
-          Text(
-            tokens[i],
-            style: TextStyle(
-              color: const Color(0xFF898686),
-              fontSize: healthSp(context, 10),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (i < tokens.length - 1)
-            Container(
-              width: 0.5,
-              height: healthDp(context, 10),
-              color: const Color(0xFF898686),
-            ),
-        ],
+        if (optionParts.isNotEmpty)
+          Text(optionParts.join(' | '), style: metaStyle),
+        if (optionParts.isNotEmpty) SizedBox(height: healthDp(context, 4)),
+        Text('수량: ${item.ctQty}', style: metaStyle),
       ],
     );
   }
@@ -1619,10 +1865,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          '전화진료 예약시간 :',
+          '진료 예약시간 :',
           style: TextStyle(
             color: const Color(0xFF1A1A1A),
-            fontSize: healthSp(context, 9),
+            fontSize: healthSp(context, 10),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
             letterSpacing: -0.81,
@@ -1634,7 +1880,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             reservationText,
             style: TextStyle(
               color: const Color(0xFFFF5A8D),
-              fontSize: healthSp(context, 9),
+              fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
               letterSpacing: -0.81,
@@ -1721,24 +1967,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _couponDropdown(BuildContext context) {
     const displayOrder = [1, 0, 2, 3];
+    final sections = <Widget>[];
+    for (final method in displayOrder) {
+      final candidates = _availableCouponsByMethod(method);
+      final lines = _uniqueCouponPickerLines(candidates);
+      if (lines.isEmpty) continue;
+      if (_isCouponMethodDisabled(method)) continue;
+
+      final selectedByMethod =
+          _selectedCoupons.where((coupon) => coupon.method == method).length;
+      final canAdd = method != 1 || selectedByMethod < 2;
+      if (!canAdd) continue;
+
+      if (sections.isNotEmpty) {
+        sections.add(SizedBox(height: healthDp(context, 8)));
+      }
+      sections.add(_couponMethodSection(context, method));
+    }
     return Column(
-      children: [
-        for (final method in displayOrder) ...[
-          _couponMethodSection(context, method),
-          SizedBox(height: healthDp(context, 8)),
-        ],
-      ],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: sections,
     );
   }
 
   Widget _couponMethodSection(BuildContext context, int method) {
     final candidates = _availableCouponsByMethod(method);
     final lines = _uniqueCouponPickerLines(candidates);
-    final disabled = _isCouponMethodDisabled(method);
-    final selectedByMethod =
-        _selectedCoupons.where((coupon) => coupon.method == method).length;
-    final canAdd =
-        !disabled && lines.isNotEmpty && (method != 1 || selectedByMethod < 2);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1746,21 +2000,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
         Text(
           _couponMethodTitle(method),
           style: TextStyle(
-            color: _ink,
+            color: Colors.black,
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
+            letterSpacing: 0.26,
           ),
         ),
-        SizedBox(height: healthDp(context, 6)),
+        SizedBox(height: healthDp(context, 5)),
         DropdownBtn(
-          buttonHeight: healthDp(context, 44),
-          enabled: canAdd,
+          buttonHeight: healthDp(context, 40),
+          enabled: true,
           items: lines,
           value: '',
-          emptyText: disabled
-              ? '다른 종류 쿠폰 사용 중'
-              : (lines.isEmpty ? '선택 가능한 쿠폰 없음' : '쿠폰 선택'),
+          emptyText: '쿠폰 선택',
+          emptyTextColor: _figmaBrown,
+          valueTextColor: _figmaDark,
+          borderColor: _figmaRoseBorder,
+          itemFontSizeBase: 12,
+          itemTextAlign: TextAlign.left,
           onChanged: (label) => _onCouponChosenByMethod(method, label),
         ),
       ],
@@ -1787,92 +2045,62 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final safeSubject = coupon.subject.trim();
     final safeTarget = coupon.target.trim();
     final safeDiscount = coupon.discountText.trim();
-    final line1 = safeSubject.isNotEmpty
+    final name = safeSubject.isNotEmpty
         ? safeSubject
         : (safeTarget.isNotEmpty ? safeTarget : '쿠폰명 없음');
-    final line2 = safeDiscount.isNotEmpty ? safeDiscount : '할인 정보 없음';
+    final line = safeDiscount.isNotEmpty ? '$name ($safeDiscount)' : name;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 6)),
-      child: Column(
+      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                typeLabel,
-                style: TextStyle(
-                  color: const Color(0xFFFF5A8D),
-                  fontSize: healthSp(context, 8),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(width: healthDp(context, 10)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      line1,
-                      style: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 5)),
-                    Text(
-                      line2,
-                      style: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(
-                  top: healthDp(context, 1),
-                  right: healthDp(context, 6),
-                ),
-                child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedCoupons.removeWhere((c) => c.no == coupon.no);
-                    if (_usedPoint > _maxUsablePointHundreds) {
-                      _usedPoint = _maxUsablePointHundreds;
-                      _pointController.text = _usedPoint == 0 ? '' : '$_usedPoint';
-                    }
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 10),
-                    vertical: healthDp(context, 4),
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFEFEF),
-                    borderRadius: BorderRadius.circular(healthDp(context, 6)),
-                  ),
-                  child: Text(
-                    '삭제',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: healthSp(context, 10),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  typeLabel,
+                  style: TextStyle(
+                    color: _figmaPink,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
+                Text(
+                  line,
+                  style: TextStyle(
+                    color: _figmaDark,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _selectedCoupons.removeWhere((c) => c.no == coupon.no);
+                if (_usedPoint > _maxUsablePointHundreds) {
+                  _usedPoint = _maxUsablePointHundreds;
+                  _pointController.text =
+                      _usedPoint == 0 ? '' : '$_usedPoint';
+                }
+              });
+            },
+            child: Text(
+              '삭제',
+              style: TextStyle(
+                color: _figmaBrown,
+                fontSize: healthSp(context, 10),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w300,
+                decoration: TextDecoration.underline,
               ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -1971,39 +2199,63 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _methodButton(BuildContext context, String label, int index) {
     final selected = _paymentMethodIndex == index;
     final iconAsset = _paymentMethodIconAsset(index);
-    final iconColor = selected ? Colors.white : _ink;
-    final iconSz = healthDp(context, 28);
+    final iconSz = healthDp(context, 24);
     return InkWell(
       onTap: () => setState(() => _paymentMethodIndex = index),
-      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      borderRadius: BorderRadius.circular(healthDp(context, 12)),
       child: Container(
-        height: healthDp(context, 90),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? _pink : Colors.white,
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          border: Border.all(
-            color: selected ? _pink : _border,
-            width: selected ? 1 : 0.5,
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 12),
+          vertical: healthDp(context, 16),
+        ),
+        decoration: ShapeDecoration(
+          color: selected ? const Color(0x0CFF5B8C) : Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: healthDp(context, selected ? 2 : 1),
+              color: selected ? _figmaPink : _figmaBorder,
+            ),
+            borderRadius: BorderRadius.circular(healthDp(context, 12)),
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              iconAsset,
-              width: iconSz,
-              height: iconSz,
-              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+            Container(
+              width: healthDp(context, 48),
+              height: healthDp(context, 48),
+              decoration: ShapeDecoration(
+                color: selected ? _figmaPink : Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(
+                    width: healthDp(context, selected ? 0 : 1),
+                    color: _figmaBorder,
+                  ),
+                  borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+                ),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  iconAsset,
+                  width: iconSz,
+                  height: iconSz,
+                  colorFilter: ColorFilter.mode(
+                    selected ? Colors.white : _figmaBrown,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
             ),
-            SizedBox(height: healthDp(context, 6)),
+            SizedBox(height: healthDp(context, 8)),
             Text(
               label,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: selected ? Colors.white : _ink,
+                color: selected ? _figmaPink : _figmaBrown,
                 fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w300,
+                fontWeight: selected ? FontWeight.w500 : FontWeight.w300,
+                letterSpacing: 0.26,
               ),
             ),
           ],

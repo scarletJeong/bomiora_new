@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../data/models/shop_default/reservation_settings_model.dart';
 import '../../../../data/services/shop_default_service.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import 'prescription_contact_screen.dart';
 
@@ -192,8 +193,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
-        title: '03 진료 시간 예약',
-        centerTitle: true,
+        title: '03 진료 시간 예약', centerTitle: false,
       ),
       child: Theme(
         data: Theme.of(context).copyWith(
@@ -208,19 +208,19 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(healthDp(context, 20)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     '1. 가능한 날짜를 선택해주세요',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: healthSp(context, 14),
                       fontFamily: 'Gmarket Sans TTF',
                       fontWeight: FontWeight.w300,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: healthDp(context, 12)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: availableDates.take(7).map((date) {
@@ -236,22 +236,24 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                           _selectedDate = date;
                           _selectedTime = null;
                         }),
-                        borderRadius: BorderRadius.circular(18.33),
+                        borderRadius: BorderRadius.circular(healthDp(context, 18.33)),
                         child: Container(
-                          width: 40,
-                          height: 54.17,
+                          width: healthDp(context, 40),
+                          height: healthDp(context, 54.17),
                           decoration: ShapeDecoration(
                             color: isSelected
                                 ? const Color(0x0CFF5A8D)
                                 : Colors.white,
                             shape: RoundedRectangleBorder(
                               side: BorderSide(
-                                width: isSelected ? 1 : 0.5,
+                                width: isSelected
+                                    ? healthDp(context, 1)
+                                    : healthDp(context, 0.5),
                                 color: isSelected
                                     ? const Color(0xFFFF5A8D)
                                     : const Color(0xFFD2D2D2),
                               ),
-                              borderRadius: BorderRadius.circular(18.33),
+                              borderRadius: BorderRadius.circular(healthDp(context, 18.33)),
                             ),
                           ),
                           child: Column(
@@ -264,31 +266,31 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                     color: isSelected
                                         ? const Color(0xFFFF5A8D)
                                         : const Color(0xFF1A1A1A),
-                                    fontSize: 10,
+                                    fontSize: healthSp(context, 10),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w300,
                                   ),
                                 ),
-                              if (isToday) const SizedBox(height: 2),
+                              if (isToday) SizedBox(height: healthDp(context, 2)),
                               Text(
                                 '${date.day}',
                                 style: TextStyle(
                                   color: isSelected
                                       ? const Color(0xFFFF5A8D)
                                       : const Color(0xFF1A1A1A),
-                                  fontSize: 12,
+                                  fontSize: healthSp(context, 12),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 5),
+                              SizedBox(height: healthDp(context, 5)),
                               Text(
                                 weekday,
                                 style: TextStyle(
                                   color: isSelected
                                       ? const Color(0xFFFF5A8D)
                                       : const Color(0xFF1A1A1A),
-                                  fontSize: 10,
+                                  fontSize: healthSp(context, 10),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -299,43 +301,51 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 32),
-                  const Text(
+                  SizedBox(height: healthDp(context, 32)),
+                  Text(
                     '2. 시간을 선택해주세요',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: healthSp(context, 14),
                       fontWeight: FontWeight.w300,
                       fontFamily: 'Gmarket Sans TTF',
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: healthDp(context, 12)),
                   if (_selectedDate == null)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(healthDp(context, 16)),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           '먼저 날짜를 선택해주세요',
-                          style: TextStyle(fontSize: 14, color: Colors.grey, fontFamily: 'Gmarket Sans TTF'),
+                          style: TextStyle(
+                            fontSize: healthSp(context, 14),
+                            color: Colors.grey,
+                            fontFamily: 'Gmarket Sans TTF',
+                          ),
                         ),
                       ),
                     )
                   else if (availableTimes.isEmpty)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(healthDp(context, 16)),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           '예약 가능한 시간이 없습니다',
-                          style: TextStyle(fontSize: 14, color: Colors.grey, fontFamily: 'Gmarket Sans TTF'),
+                          style: TextStyle(
+                            fontSize: healthSp(context, 14),
+                            color: Colors.grey,
+                            fontFamily: 'Gmarket Sans TTF',
+                          ),
                         ),
                       ),
                     )
@@ -343,12 +353,11 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4,
-                        mainAxisExtent: 42,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
+                        mainAxisExtent: healthDp(context, 42),
+                        crossAxisSpacing: healthDp(context, 10),
+                        mainAxisSpacing: healthDp(context, 10),
                       ),
                       itemCount: availableTimes.length,
                       itemBuilder: (context, index) {
@@ -356,12 +365,12 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                         final isSelected = _selectedTime == time;
                         return InkWell(
                           onTap: () => setState(() => _selectedTime = time),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(healthDp(context, 10)),
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 10,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: healthDp(context, 5),
+                              vertical: healthDp(context, 10),
                             ),
                             decoration: ShapeDecoration(
                               color: isSelected
@@ -369,12 +378,12 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                   : Colors.white,
                               shape: RoundedRectangleBorder(
                                 side: BorderSide(
-                                  width: 1,
+                                  width: healthDp(context, 1),
                                   color: isSelected
                                       ? const Color(0xFFFF5A8D)
                                       : const Color(0xFFD2D2D2),
                                 ),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(healthDp(context, 10)),
                               ),
                             ),
                             child: Row(
@@ -387,7 +396,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                     color: isSelected
                                         ? const Color(0xFFFF5A8D)
                                         : const Color(0xFF1A1A1A),
-                                    fontSize: 12,
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -398,24 +407,24 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                         );
                       },
                     ),
-                  const SizedBox(height: 30),
+                  SizedBox(height: healthDp(context, 30)),
                   if (!hasSelectedDateTime)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 15,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 5),
+                        vertical: healthDp(context, 15),
                       ),
                       decoration: ShapeDecoration(
                         shape: RoundedRectangleBorder(
-                          side: const BorderSide(
-                            width: 1,
-                            color: Color(0xFFD2D2D2),
+                          side: BorderSide(
+                            width: healthDp(context, 1),
+                            color: const Color(0xFFD2D2D2),
                           ),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(healthDp(context, 10)),
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text.rich(
@@ -424,8 +433,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                 TextSpan(
                                   text: '날짜',
                                   style: TextStyle(
-                                    color: Color(0xFFFF5A8D),
-                                    fontSize: 12,
+                                    color: const Color(0xFFFF5A8D),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -433,8 +442,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                 TextSpan(
                                   text: '와 ',
                                   style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 12,
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -442,8 +451,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                 TextSpan(
                                   text: '시간',
                                   style: TextStyle(
-                                    color: Color(0xFFFF5A8D),
-                                    fontSize: 12,
+                                    color: const Color(0xFFFF5A8D),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -451,8 +460,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                 TextSpan(
                                   text: '을 선택해 주세요.',
                                   style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 12,
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -467,17 +476,17 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                   else
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 15,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 5),
+                        vertical: healthDp(context, 15),
                       ),
                       decoration: ShapeDecoration(
                         shape: RoundedRectangleBorder(
-                          side: const BorderSide(
-                            width: 1,
-                            color: Color(0xFFD2D2D2),
+                          side: BorderSide(
+                            width: healthDp(context, 1),
+                            color: const Color(0xFFD2D2D2),
                           ),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(healthDp(context, 10)),
                         ),
                       ),
                       child: Column(
@@ -485,14 +494,14 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Text.rich(
+                          Text.rich(
                             TextSpan(
                               children: [
                                 TextSpan(
                                   text: '‘결제 완료’',
                                   style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 12,
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -500,8 +509,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                 TextSpan(
                                   text: '를 하셔야 예약이 확정됩니다.',
                                   style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 12,
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -513,29 +522,29 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                           Text.rich(
                             TextSpan(
                               children: [
-                                const TextSpan(
+                                TextSpan(
                                   text: '상담전화는 ',
                                   style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 12,
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 TextSpan(
                                   text: _buildReservationGuideText(),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFF5A8D),
-                                    fontSize: 12,
+                                  style: TextStyle(
+                                    color: const Color(0xFFFF5A8D),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const TextSpan(
+                                TextSpan(
                                   text: '사이에 \n드리겠습니다',
                                   style: TextStyle(
-                                    color: Color(0xFF1A1A1A),
-                                    fontSize: 12,
+                                    color: const Color(0xFF1A1A1A),
+                                    fontSize: healthSp(context, 12),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -552,50 +561,75 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              0,
+              healthDp(context, 27),
+              healthDp(context, 20),
+            ),
             color: Colors.white,
             child: Row(
               children: [
                 SizedBox(
-                  width: 100,
-                  height: 40,
+                  width: healthDp(context, 72),
+                  height: healthDp(context, 34),
                   child: FilledButton.tonal(
                     onPressed: () => Navigator.pop(context),
                     style: FilledButton.styleFrom(
+                      minimumSize: Size(
+                        healthDp(context, 72),
+                        healthDp(context, 34),
+                      ),
+                      maximumSize: Size(
+                        healthDp(context, 72),
+                        healthDp(context, 34),
+                      ),
+                      padding: EdgeInsets.zero,
                       backgroundColor: const Color(0x26D2D2D2),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 7)),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       '이전',
                       style: TextStyle(
-                        color: Color(0xFF898686),
-                        fontSize: 20,
+                        color: const Color(0xFF898686),
+                        fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: healthDp(context, 10)),
                 Expanded(
                   child: SizedBox(
-                    height: 40,
+                    height: healthDp(context, 34),
                     child: ElevatedButton(
                       onPressed: _nextStep,
                       style: ElevatedButton.styleFrom(
+                        minimumSize: Size(
+                          double.infinity,
+                          healthDp(context, 34),
+                        ),
+                        maximumSize: Size(
+                          double.infinity,
+                          healthDp(context, 34),
+                        ),
+                        padding: EdgeInsets.zero,
                         backgroundColor: const Color(0xFFFF5A8D),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 7)),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         '다음',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
@@ -612,4 +646,3 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     );
   }
 }
-

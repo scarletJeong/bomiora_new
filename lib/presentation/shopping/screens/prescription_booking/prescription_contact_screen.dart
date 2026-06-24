@@ -5,8 +5,10 @@ import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
 import '../../../user/healthprofile/health_profile_payload.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/content_popup.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../data/services/cart_service.dart';
 import '../../../../core/navigation/app_navigator_key.dart';
@@ -199,20 +201,20 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       builder: (ctx) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          insetPadding: EdgeInsets.symmetric(horizontal: healthDp(ctx, 24)),
           child: Container(
-            width: 300,
+            width: healthDp(ctx, 300),
             clipBehavior: Clip.antiAlias,
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(healthDp(ctx, 20)),
               ),
-              shadows: const [
+              shadows: [
                 BoxShadow(
-                  color: Color(0x19000000),
-                  blurRadius: 8.14,
-                  offset: Offset(0, 0),
+                  color: const Color(0x19000000),
+                  blurRadius: healthDp(ctx, 8.14),
+                  offset: Offset.zero,
                   spreadRadius: 0,
                 ),
               ],
@@ -221,68 +223,73 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
+                  padding: EdgeInsets.only(
+                    top: healthDp(ctx, 20),
+                    left: healthDp(ctx, 20),
+                    right: healthDp(ctx, 20),
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const SizedBox(
-                        width: 260,
+                      SizedBox(
+                        width: healthDp(ctx, 260),
                         child: Text(
                           '연락처를 한번 더\n확인해주세요',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 20,
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(ctx, 20),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      const Text(
+                      SizedBox(height: healthDp(ctx, 10)),
+                      Text(
                         '아래 가입하신 연락처가 맞으신가요?',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 12,
+                          color: const Color(0xFF1A1A1A),
+                          fontSize: healthSp(ctx, 12),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                           height: 1,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: healthDp(ctx, 10)),
                       Text(
                         phoneDisplay,
-                        style: const TextStyle(
-                          color: Color(0xFFFF5A8D),
-                          fontSize: 20,
+                        style: TextStyle(
+                          color: const Color(0xFFFF5A8D),
+                          fontSize: healthSp(ctx, 20),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      const SizedBox(
-                        width: 260,
+                      SizedBox(height: healthDp(ctx, 10)),
+                      SizedBox(
+                        width: healthDp(ctx, 260),
                         child: Text(
                           '연락처를 잘 못 입력하시면\n전화 처방이 어려울 수 있으며,\n이로 인한 책임은 고객님에게 있음을 안내드립니다.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 11.70,
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(ctx, 11.70),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
-                            height: 1.54,
+                            letterSpacing: -1.08,
+                            height: 1.1,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: healthDp(ctx, 20)),
                 SizedBox(
-                  width: 300,
-                  height: 50,
+                  width: healthDp(ctx, 300),
+                  height: healthDp(ctx, 50),
                   child: Row(
                     children: [
                       Expanded(
@@ -290,12 +297,12 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                           color: const Color(0xFFF7F7F7),
                           child: InkWell(
                             onTap: () => Navigator.of(ctx).pop(false),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 '취소',
                                 style: TextStyle(
-                                  color: Color(0xFF898686),
-                                  fontSize: 16,
+                                  color: const Color(0xFF898686),
+                                  fontSize: healthSp(ctx, 16),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -309,12 +316,12 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                           color: const Color(0xFFFF5A8D),
                           child: InkWell(
                             onTap: () => Navigator.of(ctx).pop(true),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 '확인',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: healthSp(ctx, 16),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -433,31 +440,34 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 12,
+            fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w300,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 5)),
         Container(
           width: double.infinity,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: healthDp(context, 40),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
-              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                width: healthDp(context, 1),
+                color: const Color(0xFFD2D2D2),
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
           ),
           alignment: Alignment.centerLeft,
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.black,
-              fontSize: 13,
+              fontSize: healthSp(context, 13),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
@@ -472,8 +482,7 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
       appBar: const HealthAppBar(
-        title: '04 상담 고객 연락처',
-        centerTitle: true,
+        title: '04 상담 고객 연락처', centerTitle: false,
       ),
       child: Theme(
         data: Theme.of(context).copyWith(
@@ -488,202 +497,204 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(27, 30, 27, 0),
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 27),
+                healthDp(context, 30),
+                healthDp(context, 27),
+                0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Align(
                     alignment: Alignment.center,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 560),
+                      constraints: BoxConstraints(
+                        maxWidth: healthDp(context, 560),
+                      ),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(20),
+                        padding: EdgeInsets.all(healthDp(context, 20)),
                         decoration: ShapeDecoration(
                           color: const Color(0xFFF7F7F7),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 10)),
                           ),
                         ),
                         child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Center(
+                        Center(
                           child: Text(
                             '전화받으실\n연락처를 입력해 주세요.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 20,
+                              fontSize: healthSp(context, 16),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 15),
+                        SizedBox(height: healthDp(context, 15)),
                         _buildReadonlyLabelField(
                           label: '성함',
                           value: _currentUser?.name ?? '',
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: healthDp(context, 10)),
                         _buildReadonlyLabelField(
                           label: '연락처',
                           value: _currentUser?.phone ?? '',
                         ),
-                        const SizedBox(height: 5),
+                        SizedBox(height: healthDp(context, 5)),
                         const Divider(color: Color(0xFFD2D2D2)),
-                        const SizedBox(height: 5),
-                        const Center(
+                        SizedBox(height: healthDp(context, 5)),
+                        Center(
                           child: Text(
                             '개인정보를 위한 의료법 시행규칙',
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 12,
+                              fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Center(
+                        SizedBox(height: healthDp(context, 4)),
+                        Center(
                           child: Text(
                             '의료법 시행규칙 제 14조에 따라 진료를 받는 환자의\n성명, 연락처, 주소, 주민등록번호 등의 인적사항은\n진료 기록부에 의무 기록 기재사항입니다.\n주민등록번호는 환자의 신상정보/본인확인을 위해\n담당 한의사만 볼 수 있는 정보이니 개인정보 노출 우려는 없습니다.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 10,
+                              fontSize: healthSp(context, 10),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,
                               height: 1.5,
+                              letterSpacing: -1.08,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        const Center(
+                        SizedBox(height: healthDp(context, 12)),
+                        Center(
                           child: Text(
                             '교환·환불 안내 확인 및 동의',
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 12,
+                              fontSize: healthSp(context, 12),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Center(
+                        SizedBox(height: healthDp(context, 4)),
+                        Center(
                           child: Text(
                             '본 상품은 처방 및 건강 관련 상품으로 교환 및 환불 기준과 절차가\n일반 다른 상품과 다르게 적용될 수 있습니다.\n구매 전 교환환불 조건, 상담 절차 및 처리 기준을\n반드시 확인해 주시기 바랍니다.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 10,
+                              fontSize: healthSp(context, 10),
                               fontFamily: 'Gmarket Sans TTF',
                               fontWeight: FontWeight.w300,
                               height: 1.5,
+                              letterSpacing: -1.08,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: healthDp(context, 12)),
                         InkWell(
                           onTap: () => setState(() {
                             _agreedRefundPolicy = !_agreedRefundPolicy;
                           }),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 20)),
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: healthDp(context, 6),
+                              vertical: healthDp(context, 5),
                             ),
                             decoration: ShapeDecoration(
                               color: const Color(0xFFE5E5E5),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius:
+                                    BorderRadius.circular(healthDp(context, 20)),
                               ),
                             ),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                const boxW = 16.0;
-                                const gap = 6.0;
-                                final textMaxW = (constraints.maxWidth - boxW - gap)
-                                    .clamp(80.0, constraints.maxWidth);
-                                return Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        width: boxW,
-                                        height: boxW,
-                                        decoration: ShapeDecoration(
-                                          color: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            side: const BorderSide(
-                                              width: 1,
-                                              color: Color(0xFFD2D2D2),
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                        ),
-                                        child: _agreedRefundPolicy
-                                            ? const Icon(
-                                                Icons.check,
-                                                size: 12,
-                                                color: Color(0xFFFF5A8D),
-                                              )
-                                            : null,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: healthDp(context, 16),
+                                  height: healthDp(context, 16),
+                                  decoration: ShapeDecoration(
+                                    color: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      side: BorderSide(
+                                        width: healthDp(context, 1),
+                                        color: const Color(0xFFD2D2D2),
                                       ),
-                                      const SizedBox(width: gap),
-                                      ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: textMaxW,
-                                        ),
-                                        child: const Text(
-                                          '교환환불 안내사항을 확인하였으며, 이에 동의합니다.',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 12,
-                                            fontFamily: 'Gmarket Sans TTF',
-                                            fontWeight: FontWeight.w300,
-                                          ),
-                                        ),
+                                      borderRadius: BorderRadius.circular(
+                                        healthDp(context, 4),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                );
-                              },
+                                  child: _agreedRefundPolicy
+                                      ? Icon(
+                                          Icons.check,
+                                          size: healthDp(context, 12),
+                                          color: const Color(0xFFFF5A8D),
+                                        )
+                                      : null,
+                                ),
+                                SizedBox(width: healthDp(context, 4)),
+                                Expanded(
+                                  child: Text(
+                                    '교환환불 안내사항을 확인하였으며, 이에 동의합니다.',
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: healthSp(context, 12),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w300,
+                                      letterSpacing: -1.08,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: healthDp(context, 8)),
                         Center(
                           child: InkWell(
                             onTap: () {
-                              showDialog<void>(
-                                context: context,
-                                builder: (dialogContext) {
-                                  return AlertDialog(
-                                    content: const Text('(임시)'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(dialogContext),
-                                        child: const Text('확인'),
-                                      ),
-                                    ],
-                                  );
-                                },
+                              ContentPopup.show(
+                                context,
+                                title: '교환 및 환불 안내',
+                                subtitle:
+                                    '본 상품은 처방 및 건강 관련 상품으로 교환 및 환불 기준과 절차가 일반 다른 상품과 다르게 적용될 수 있습니다.',
+                                body: '''
+구매 전 교환·환불 조건, 상담 절차 및 처리 기준을 반드시 확인해 주시기 바랍니다.
+
+· 처방 및 건강 관련 상품의 특성상 단순 변심에 의한 교환·환불이 제한될 수 있습니다.
+· 상품 수령 후 개봉·복용이 시작된 경우 교환 및 환불이 불가할 수 있습니다.
+· 배송 중 파손·오배송 등 판매자 귀책 사유가 확인된 경우 교환 또는 환불이 가능합니다.
+· 교환·환불 문의는 고객센터 또는 마이페이지 주문내역을 통해 접수해 주세요.
+· 상담 예약 후 취소·변경은 안내드린 절차에 따라 처리됩니다.
+· 자세한 기준은 관련 법령 및 서비스 이용약관을 따릅니다.''',
                               );
                             },
-                            child: const Text(
+                            child: Text(
                               '교환환불 안내보기 >',
                               style: TextStyle(
-                                color: Color(0xFF898686),
-                                fontSize: 12,
+                                color: const Color(0xFF898686),
+                                fontSize: healthSp(context, 12),
                                 fontFamily: 'Gmarket Sans TTF',
                                 fontWeight: FontWeight.w500,
                               ),
@@ -700,49 +711,64 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              0,
+              healthDp(context, 27),
+              healthDp(context, 20),
+            ),
             color: Colors.white,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   '결제를 완료하셔야 예약이 확정됩니다.',
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: healthDp(context, 10)),
                 Row(
                   children: [
                     SizedBox(
-                      width: 100,
-                      height: 40,
+                      width: healthDp(context, 72),
+                      height: healthDp(context, 34),
                       child: FilledButton.tonal(
                         onPressed: () => Navigator.pop(context),
                         style: FilledButton.styleFrom(
+                          minimumSize: Size(
+                            healthDp(context, 72),
+                            healthDp(context, 34),
+                          ),
+                          maximumSize: Size(
+                            healthDp(context, 72),
+                            healthDp(context, 34),
+                          ),
+                          padding: EdgeInsets.zero,
                           backgroundColor: const Color(0x26D2D2D2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 7)),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           '이전',
                           style: TextStyle(
-                            color: Color(0xFF898686),
-                            fontSize: 20,
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 14),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: healthDp(context, 10)),
                     Expanded(
                       child: SizedBox(
-                        height: 40,
+                        height: healthDp(context, 34),
                         child: ElevatedButton(
                           onPressed: _isLoading
                               ? null
@@ -753,27 +779,37 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
                                   _submitBooking();
                                 },
                           style: ElevatedButton.styleFrom(
+                            minimumSize: Size(
+                              double.infinity,
+                              healthDp(context, 34),
+                            ),
+                            maximumSize: Size(
+                              double.infinity,
+                              healthDp(context, 34),
+                            ),
+                            padding: EdgeInsets.zero,
                             backgroundColor: const Color(0xFFFF5A8D),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 7)),
                             ),
                             disabledBackgroundColor: Colors.grey[300],
                           ),
                           child: _isLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
+                              ? SizedBox(
+                                  width: healthDp(context, 18),
+                                  height: healthDp(context, 18),
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    strokeWidth: healthDp(context, 2),
+                                    color: Colors.white,
                                   ),
                                 )
-                              : const Text(
+                              : Text(
                                   '다음',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 20,
+                                    fontSize: healthSp(context, 14),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),

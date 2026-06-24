@@ -7,12 +7,14 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../widgets/recommend_product.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
+
+const String _kGmarketSans = 'Gmarket Sans TTF';
 
 class TempCartScreen extends StatefulWidget {
   const TempCartScreen({super.key});
@@ -214,10 +216,6 @@ class _TempCartScreenState extends State<TempCartScreen> {
     }
   }
 
-  int get _totalPrice {
-    return _tempItems.fold<int>(0, (sum, item) => sum + item.ctPrice);
-  }
-
   String _imageUrl(CartItem item) {
     final normalized =
         ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId);
@@ -235,70 +233,101 @@ class _TempCartScreenState extends State<TempCartScreen> {
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(child: Text(_errorMessage!))
+              ? Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: TextStyle(fontSize: healthSp(context, 14)),
+                  ),
+                )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 20),
+                    healthDp(context, 27),
+                    healthDp(context, 20),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_tempItems.isEmpty)
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 36),
+                          padding: EdgeInsets.symmetric(
+                            vertical: healthDp(context, 10),
+                          ),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0x7FD2D2D2)),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 10)),
+                            border: Border.all(
+                              color: const Color(0x7FD2D2D2),
+                              width: healthDp(context, 1),
+                            ),
                           ),
                           child: Center(
                             child: Text(
                               '임시 장바구니가 비어 있습니다.',
                               style: TextStyle(
-                                fontSize: healthSp(context, 13),
+                                fontSize: healthSp(context, 12),
                                 color: const Color(0xFF666666),
+                                fontFamily: _kGmarketSans,
                               ),
                             ),
                           ),
                         ),
                       ..._tempItems.map(_buildTempItemCard),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting ? null : _commitToCart,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF5A8D),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                      if (_tempItems.isNotEmpty) ...[
+                        SizedBox(height: healthDp(context, 10)),
+                        SizedBox(
+                          width: double.infinity,
+                          height: healthDp(context, 40),
+                          child: ElevatedButton(
+                            onPressed: _isSubmitting ? null : _commitToCart,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: Size(
+                                double.infinity,
+                                healthDp(context, 40),
+                              ),
+                              maximumSize: Size(
+                                double.infinity,
+                                healthDp(context, 40),
+                              ),
+                              padding: EdgeInsets.zero,
+                              backgroundColor: const Color(0xFFFF5A8D),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(healthDp(context, 10)),
+                              ),
+                              disabledBackgroundColor: Colors.grey[300],
                             ),
+                            child: _isSubmitting
+                                ? SizedBox(
+                                    height: healthDp(context, 18),
+                                    width: healthDp(context, 18),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: healthDp(context, 2),
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    '처방 예약 하기',
+                                    style: TextStyle(
+                                      fontSize: healthSp(context, 16),
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: _kGmarketSans,
+                                    ),
+                                  ),
                           ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  '처방 예약 하기',
-                                  style: TextStyle(
-                                    fontSize: healthSp(context, 17.54),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
+                      ],
+                      SizedBox(height: healthDp(context, 10)),
                       RecommendProductSection(
                         excludedProductNames:
                             _tempItems.map((item) => item.itName).toList(),
                         products: _recommendedProducts,
                         hideWhenEmpty: true,
                         useGrid2: true,
-                        topSpacingBefore: 22,
+                        topSpacingBefore: healthDp(context, 22),
                         onProductTap: (product) async {
                           await Navigator.pushNamed(
                               context, '/product/${product.id}');
@@ -314,13 +343,18 @@ class _TempCartScreenState extends State<TempCartScreen> {
   }
 
   Widget _buildTempItemCard(CartItem item) {
+    final thumbSize = healthDp(context, 87);
+
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
+      margin: EdgeInsets.only(bottom: healthDp(context, 10)),
+      padding: EdgeInsets.all(healthDp(context, 10)),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0x7FD2D2D2)),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        border: Border.all(
+          color: const Color(0x7FD2D2D2),
+          width: healthDp(context, 1),
+        ),
       ),
       child: Column(
         children: [
@@ -329,7 +363,12 @@ class _TempCartScreenState extends State<TempCartScreen> {
             children: [
               InkWell(
                 onTap: () => _removeItem(item.ctId),
-                child: const Icon(Icons.close, size: 20),
+                borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                child: Icon(
+                  Icons.close,
+                  size: healthDp(context, 20),
+                  color: const Color(0xFF1A1A1A),
+                ),
               ),
             ],
           ),
@@ -337,21 +376,24 @@ class _TempCartScreenState extends State<TempCartScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(healthDp(context, 4)),
                 child: Image.network(
                   _imageUrl(item),
-                  width: 87,
-                  height: 87,
+                  width: thumbSize,
+                  height: thumbSize,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    width: 87,
-                    height: 87,
+                    width: thumbSize,
+                    height: thumbSize,
                     color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported),
+                    child: Icon(
+                      Icons.image_not_supported,
+                      size: healthDp(context, 24),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: healthDp(context, 14)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,6 +405,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
                           color: const Color(0xFF898686),
                           fontSize: healthSp(context, 8),
                           fontWeight: FontWeight.w500,
+                          fontFamily: _kGmarketSans,
                         ),
                       ),
                     Text(
@@ -373,10 +416,11 @@ class _TempCartScreenState extends State<TempCartScreen> {
                         color: const Color(0xFF1A1A1A),
                         fontSize: healthSp(context, 14),
                         fontWeight: FontWeight.w700,
+                        fontFamily: _kGmarketSans,
                       ),
                     ),
                     if (item.ctOption.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: healthDp(context, 4)),
                       Text(
                         item.ctOption,
                         maxLines: 1,
@@ -385,10 +429,11 @@ class _TempCartScreenState extends State<TempCartScreen> {
                           color: const Color(0xFF898383),
                           fontSize: healthSp(context, 10),
                           fontWeight: FontWeight.w500,
+                          fontFamily: _kGmarketSans,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 8),
+                    SizedBox(height: healthDp(context, 8)),
                     Row(
                       children: [
                         Text(
@@ -397,14 +442,16 @@ class _TempCartScreenState extends State<TempCartScreen> {
                             color: const Color(0xFF1A1A1A),
                             fontSize: healthSp(context, 14),
                             fontWeight: FontWeight.w500,
+                            fontFamily: _kGmarketSans,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: healthDp(context, 8)),
                         Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: EdgeInsets.all(healthDp(context, 4)),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF6F6F6),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 20)),
                           ),
                           child: Row(
                             children: [
@@ -416,13 +463,15 @@ class _TempCartScreenState extends State<TempCartScreen> {
                                     : null,
                               ),
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: healthDp(context, 6),
+                                ),
                                 child: Text(
                                   '${item.ctQty}',
                                   style: TextStyle(
                                     fontSize: healthSp(context, 12),
                                     fontWeight: FontWeight.w600,
+                                    fontFamily: _kGmarketSans,
                                   ),
                                 ),
                               ),
@@ -443,11 +492,14 @@ class _TempCartScreenState extends State<TempCartScreen> {
           ),
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.only(top: 12),
-            decoration: const BoxDecoration(
+            margin: EdgeInsets.only(top: healthDp(context, 12)),
+            padding: EdgeInsets.only(top: healthDp(context, 12)),
+            decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: Color(0x7FD2D2D2), width: 0.5),
+                top: BorderSide(
+                  color: const Color(0x7FD2D2D2),
+                  width: healthDp(context, 0.5),
+                ),
               ),
             ),
             child: Align(
@@ -458,6 +510,7 @@ class _TempCartScreenState extends State<TempCartScreen> {
                   color: const Color(0xFF1A1A1A),
                   fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w700,
+                  fontFamily: _kGmarketSans,
                 ),
               ),
             ),
@@ -468,26 +521,32 @@ class _TempCartScreenState extends State<TempCartScreen> {
   }
 
   Widget _qtyButton({required IconData icon, VoidCallback? onTap}) {
+    final buttonSize = healthDp(context, 20);
+    final buttonRadius = healthDp(context, 10);
+
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(buttonRadius),
       child: Container(
-        width: 20,
-        height: 20,
+        width: buttonSize,
+        height: buttonSize,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: const [
+          borderRadius: BorderRadius.circular(buttonRadius),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 1.07,
-              offset: Offset(0, 0.54),
-            )
+              color: const Color(0x0C000000),
+              blurRadius: healthDp(context, 1.07),
+              offset: Offset(0, healthDp(context, 0.54)),
+            ),
           ],
         ),
         child: Icon(
           icon,
-          size: 13,
-          color: const Color(0xFFFF5A8D),
+          size: healthDp(context, 13),
+          color: onTap == null
+              ? Colors.grey[300]
+              : const Color(0xFFFF5A8D),
         ),
       ),
     );

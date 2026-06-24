@@ -129,7 +129,9 @@ abstract final class AppAssets {
 
   static const String generalMainBanner = '${_img}general_main_banner1.png';
   static const String generalMainBanner2 = '${_img}general_main_banner2.png';
-
+ 
+  // 쇼핑몰 공유하기 아이콘
+  static const String shoppingShareIcon = '${_img}shopping_share_icon.svg';
   
   /* 6. 마이페이지 */
   // 마이페이지 - 설정 아이콘 및 포토프로필 아이콘

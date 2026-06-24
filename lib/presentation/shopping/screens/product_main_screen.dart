@@ -8,8 +8,15 @@ import '../../common/widgets/navi_bar.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/product_main/product_main_sections.dart';
 
-class ProductMainScreen extends StatelessWidget {
+class ProductMainScreen extends StatefulWidget {
   const ProductMainScreen({super.key});
+
+  @override
+  State<ProductMainScreen> createState() => _ProductMainScreenState();
+}
+
+class _ProductMainScreenState extends State<ProductMainScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
@@ -17,47 +24,35 @@ class ProductMainScreen extends StatelessWidget {
     final quoteToCheckpointGap = SizedBox(height: healthDp(context, 25));
 
     return MobileAppLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: Builder(
-            builder: (ctx) => AppBarMenu(
-              onMenuPressed: () {
-                if (!ctx.mounted) return;
-                Scaffold.of(ctx).openDrawer();
-              },
-            ),
+      scaffoldKey: _scaffoldKey,
+      appBar: AppBarMenu(
+        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
+      drawer: AppBarMenuTapDrawer(
+        onHealthDashboardTap: () {
+          Navigator.pop(context);
+          Navigator.pushNamed(context, '/health');
+        },
+      ),
+      bottomNavigationBar: const FooterBar(),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: SingleChildScrollView(
+          clipBehavior: Clip.none,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const ProductMainQuoteSection(),
+              quoteToCheckpointGap,
+              const ProductMainCheckpointSection(),
+              sectionGap,
+              const ProductMainTrustSection(),
+              const ProductMainPhotoBioSection(),
+              const AppFooter(),
+            ],
           ),
         ),
-        drawer: AppBarMenuTapDrawer(
-          onHealthDashboardTap: () {
-            if (!context.mounted) return;
-            Navigator.pop(context);
-            if (!context.mounted) return;
-            Navigator.pushNamed(context, '/health');
-          },
-        ),
-        body: SafeArea(
-          top: false,
-          bottom: false,
-          child: SingleChildScrollView(
-            clipBehavior: Clip.none,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const ProductMainQuoteSection(),
-                quoteToCheckpointGap,
-                const ProductMainCheckpointSection(),
-                sectionGap,
-                const ProductMainTrustSection(),
-                const ProductMainPhotoBioSection(),
-                const AppFooter(),
-              ],
-            ),
-          ),
-        ),
-        bottomNavigationBar: const FooterBar(),
       ),
     );
   }

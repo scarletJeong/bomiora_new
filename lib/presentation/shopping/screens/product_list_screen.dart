@@ -10,7 +10,6 @@ import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../utils/get_product.dart';
 import '../widgets/product_banner_slider.dart';
-import '../widgets/product_main/product_main_category_tap.dart';
 
 class ProductListScreen extends StatefulWidget {
   final String categoryId;
@@ -38,6 +37,8 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   List<Product> _products = [];
   bool _isLoading = true;
   bool _hasError = false;
@@ -49,19 +50,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final ScrollController _scrollController = ScrollController();
 
   late String _activeCategoryId;
-  late String _activeCategoryName;
 
-  late List<_CategoryTab> _tabs;
   late List<_CategoryTab> _baseTabOrder;
 
   static const String _gmarket = 'Gmarket Sans TTF';
+  static const Color _tabPink = Color(0xFFFF5B8C);
+  static const Color _tabMuted = Color(0xFF898686);
+
+  double _pageHPad(BuildContext context) => healthDp(context, 27);
 
   @override
   void initState() {
     super.initState();
 
     _activeCategoryId = widget.categoryId;
-    _activeCategoryName = widget.categoryName;
 
     if (widget.productKind == 'general') {
       _baseTabOrder = productGeneralCategoryList
@@ -72,8 +74,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
           .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
           .toList();
     }
-
-    _tabs = _buildInitialTabs();
 
     _loadProducts();
     _scrollController.addListener(_onScroll);
@@ -162,27 +162,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   Widget build(BuildContext context) {
     return MobileAppLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: Builder(
-            builder: (ctx) => AppBarMenu(
-              onMenuPressed: () => Scaffold.of(ctx).openDrawer(),
-            ),
-          ),
-        ),
-        drawer: AppBarMenuTapDrawer(
-          onHealthDashboardTap: () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/health');
-          },
-        ),
-        bottomNavigationBar: const FooterBar(),
-        body: DefaultTextStyle.merge(
-          style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-          child: _buildBody(),
-        ),
+      scaffoldKey: _scaffoldKey,
+      appBar: AppBarMenu(
+        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
+      drawer: AppBarMenuTapDrawer(
+        onHealthDashboardTap: () {
+          Navigator.pop(context);
+          Navigator.pushNamed(context, '/health');
+        },
+      ),
+      bottomNavigationBar: const FooterBar(),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+        child: _buildBody(),
       ),
     );
   }
@@ -237,34 +230,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: ProductBannerSlider(),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(height: healthDp(context, 10)),
-          ),
-          SliverToBoxAdapter(
-            child: ProductMainCategoryTap(
-              productKind: widget.productKind ?? 'prescription',
-              compact: true,
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(height: healthDp(context, 10)),
+            child: SizedBox(height: healthDp(context, 20)),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 18),
-                healthDp(context, 8),
-                healthDp(context, 18),
-                healthDp(context, 6),
-              ),
-              child: _buildScreenTitle(),
+              padding: EdgeInsets.symmetric(horizontal: _pageHPad(context)),
+              child: _buildCategoryTabs(),
             ),
           ),
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, 18),
-              healthDp(context, 8),
-              healthDp(context, 18),
-              healthDp(context, 20),
+              _pageHPad(context),
+              healthDp(context, 10),
+              _pageHPad(context),
+              healthDp(context, 48),
             ),
             sliver: _products.isEmpty
                 ? SliverToBoxAdapter(
@@ -293,10 +272,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 : SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      // Figma 카드(이미지+다줄 텍스트) 비율 — 세로 여유 확보
-                      childAspectRatio: 0.58,
-                      crossAxisSpacing: healthDp(context, 12),
-                      mainAxisSpacing: healthDp(context, 16),
+                      mainAxisExtent:
+                          ProductCatalogCard.preferredMainAxisExtent(context),
+                      crossAxisSpacing: healthDp(context, 9),
+                      mainAxisSpacing: healthDp(context, 20),
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -327,85 +306,101 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  Widget _buildCategoryTabs() {
-    final selected = _tabs.isNotEmpty ? _tabs.first : null;
-    final others = _tabs.length > 1 ? _tabs.sublist(1) : const <_CategoryTab>[];
+  String _tabDisplayLabel(String label) {
+    return label
+        .replaceAll(' 제품', '')
+        .replaceAll(' / ', '')
+        .replaceAll('/', '')
+        .replaceAll('환', '')
+        .trim();
+  }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (selected != null)
-          InkWell(
-            onTap: () => _onSelectTab(selected),
-            child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              style: TextStyle(
-                fontSize: healthSp(context, 22),
-                fontWeight: FontWeight.w800,
-                color: Colors.black,
-                fontFamily: _gmarket,
+  Widget _buildCategoryTabs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < _baseTabOrder.length; i++) ...[
+            if (i > 0)
+              SizedBox(
+                width: healthDp(
+                  context,
+                  _baseTabOrder[i - 1].id == _activeCategoryId ? 10 : 14,
+                ),
               ),
-              child: Text(selected.label),
-            ),
-          ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: others.map((tab) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: InkWell(
-                    onTap: () => _onSelectTab(tab),
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      style: TextStyle(
-                        fontSize: healthSp(context, 14),
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[500],
-                        fontFamily: _gmarket,
-                      ),
-                      child: Text(tab.label),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-      ],
+            _buildCategoryTabChip(_baseTabOrder[i]),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildScreenTitle() {
-    return Padding(
-      padding: EdgeInsets.only(left: healthDp(context, 6)),
-      child: Text(
-        '| $_activeCategoryName',
-        style: TextStyle(
-          fontSize: healthSp(context, 19.29),
-          fontWeight: FontWeight.w700,
-          color: Colors.black,
-          fontFamily: _gmarket,
+  Widget _buildCategoryTabChip(_CategoryTab tab) {
+    final selected = tab.id == _activeCategoryId;
+    final label = _tabDisplayLabel(tab.label);
+
+    if (selected) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onSelectTab(tab),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 10),
+              vertical: healthDp(context, 4),
+            ),
+            decoration: ShapeDecoration(
+              color: _tabPink,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 20)),
+              ),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: healthSp(context, 14),
+                fontFamily: _gmarket,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _onSelectTab(tab),
+        borderRadius: BorderRadius.circular(healthDp(context, 20)),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: healthDp(context, 3)),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _tabMuted,
+              fontSize: healthSp(context, 12),
+              fontFamily: _gmarket,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Future<void> _onSelectTab(_CategoryTab tab) async {
-    if (_tabs.isNotEmpty && _tabs.first.id == tab.id) return;
+    if (_activeCategoryId == tab.id) return;
 
     setState(() {
-      _tabs = _buildTabsForSelectedId(tab.id);
-
       _activeCategoryId = tab.id;
-      _activeCategoryName = tab.label;
 
       _products = [];
       _currentPage = 1;
@@ -424,29 +419,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
 
     await _loadProducts();
-  }
-
-  List<_CategoryTab> _buildInitialTabs() {
-    final initialId = _activeCategoryId;
-    final existsInBase = _baseTabOrder.any((t) => t.id == initialId);
-    if (!existsInBase) {
-      return [
-        _CategoryTab(id: initialId, label: _activeCategoryName),
-        ..._baseTabOrder,
-      ];
-    }
-
-    return _buildTabsForSelectedId(initialId);
-  }
-
-  List<_CategoryTab> _buildTabsForSelectedId(String selectedId) {
-    final selected = _baseTabOrder.firstWhere(
-      (t) => t.id == selectedId,
-      orElse: () => _CategoryTab(id: selectedId, label: _activeCategoryName),
-    );
-
-    final rest = _baseTabOrder.where((t) => t.id != selected.id).toList();
-    return [selected, ...rest];
   }
 
   Widget _buildProductCard(Product product) {

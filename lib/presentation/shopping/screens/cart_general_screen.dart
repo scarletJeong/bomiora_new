@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -323,7 +323,7 @@ class _CartScreenState extends State<CartScreen> {
                           errorMessage!,
                           style: const TextStyle(color: Colors.red),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: healthDp(context, 16)),
                         ElevatedButton(
                           onPressed: _loadCart,
                           child: const Text('다시 시도'),
@@ -336,12 +336,12 @@ class _CartScreenState extends State<CartScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.shopping_cart_outlined,
-                              size: 64,
+                              size: healthDp(context, 64),
                               color: Colors.grey,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: healthDp(context, 16)),
                             Text(
                               '장바구니가 비어있습니다.',
                               style: TextStyle(
@@ -362,25 +362,25 @@ class _CartScreenState extends State<CartScreen> {
                             children: [
                               // 컨텐츠에 padding 적용
                               Padding(
-                                padding: const EdgeInsets.all(16),
+                                padding: EdgeInsets.all(healthDp(context, 16)),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     // 전체 선택 및 삭제 버튼 영역 (스크롤되도록 본문 안으로 이동)
                                     _buildSelectAllRow(),
-                                    const SizedBox(height: 12),
+                                    SizedBox(height: healthDp(context, 12)),
 
                                     // 상품 목록
                                     ..._displayedCartItems.expand(
                                       (item) => [
                                         _buildCartItemCard(item),
-                                        const SizedBox(height: 12),
+                                        SizedBox(height: healthDp(context, 12)),
                                       ],
                                     ),
                                     if (_displayedCartItems.isEmpty)
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 40),
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: healthDp(context, 40)),
                                         child: Text(
                                           '선택한 탭에 상품이 없습니다.',
                                           style: TextStyle(
@@ -390,13 +390,13 @@ class _CartScreenState extends State<CartScreen> {
                                         ),
                                       ),
 
-                                    const SizedBox(height: 18),
+                                    SizedBox(height: healthDp(context, 18)),
 
                                     // 결제 요약(하단 고정 제거 → 본문으로 이동)
                                     _buildFigmaBottomSummary(
                                       inPage: true,
                                     ),
-                                    const SizedBox(height: 18),
+                                    SizedBox(height: healthDp(context, 18)),
 
                                   ],
                                 ),
@@ -419,32 +419,41 @@ class _CartScreenState extends State<CartScreen> {
     final content = Container(
       color: Colors.white,
       padding: inPage
-          ? const EdgeInsets.fromLTRB(10, 14, 0, 16)
-          : const EdgeInsets.fromLTRB(17, 14, 20, 20),
+          ? EdgeInsets.fromLTRB(
+              healthDp(context, 10), healthDp(context, 14), 0, healthDp(context, 16))
+          : EdgeInsets.fromLTRB(
+              healthDp(context, 17),
+              healthDp(context, 14),
+              healthDp(context, 20),
+              healthDp(context, 20)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _summaryRow('구매금액', '${PriceFormatter.format(selectedPrice)}원',
               fontSize: healthSp(context, 16), fontWeight: FontWeight.w500),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
           _summaryRow('배송비', '${PriceFormatter.format(selectedShipping)}원',
               fontSize: healthSp(context, 14), fontWeight: FontWeight.w500),
-          const SizedBox(height: 10),
-          const Divider(height: 1, thickness: 1, color: Color(0x7F1A1A1A)),
-          const SizedBox(height: 10),
+          SizedBox(height: healthDp(context, 10)),
+          Divider(
+            height: healthDp(context, 1),
+            thickness: healthDp(context, 1),
+            color: const Color(0x7F1A1A1A),
+          ),
+          SizedBox(height: healthDp(context, 10)),
           _summaryRow('결제 금액', '${PriceFormatter.format(payable)}원',
               fontSize: healthSp(context, 16), fontWeight: FontWeight.w700),
-          const SizedBox(height: 14),
+          SizedBox(height: healthDp(context, 14)),
           SizedBox(
             width: double.infinity,
-            height: 40,
+            height: healthDp(context, 40),
             child: ElevatedButton(
               onPressed: selected.isEmpty ? null : _openPaymentScreen,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF5A8D),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
               ),
               child: Text(
@@ -468,13 +477,13 @@ class _CartScreenState extends State<CartScreen> {
   Widget _buildSelectAllRow() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
           bottom: BorderSide(
             color: Colors.grey[300]!,
-            width: 1,
+            width: healthDp(context, 1),
           ),
         ),
       ),
@@ -499,7 +508,7 @@ class _CartScreenState extends State<CartScreen> {
                   });
                 },
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: healthDp(context, 4)),
               Text(
                 '전체선택',
                 style: TextStyle(
@@ -518,8 +527,9 @@ class _CartScreenState extends State<CartScreen> {
                     ? null
                     : () => _deleteSelectedItems(),
                 style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 8),
+                      vertical: healthDp(context, 4)),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -544,20 +554,38 @@ class _CartScreenState extends State<CartScreen> {
     required bool value,
     required ValueChanged<bool?> onChanged,
   }) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        checkboxTheme: CheckboxThemeData(
-          side: const BorderSide(color: Color(0xFFD2D2D2), width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    const double checkboxBase = 18;
+    final boxSize = healthDp(context, checkboxBase);
+    final scale = boxSize / checkboxBase;
+
+    return SizedBox(
+      width: boxSize,
+      height: boxSize,
+      child: Center(
+        child: Transform.scale(
+          scale: scale,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              checkboxTheme: CheckboxThemeData(
+                side: BorderSide(
+                  color: const Color(0xFFD2D2D2),
+                  width: healthDp(context, 1),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                ),
+              ),
+            ),
+            child: Checkbox(
+              value: value,
+              onChanged: onChanged,
+              activeColor: const Color(0xFFFF5A8D),
+              checkColor: Colors.white,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         ),
-      ),
-      child: Checkbox(
-        value: value,
-        onChanged: onChanged,
-        activeColor: const Color(0xFFFF5A8D),
-        checkColor: Colors.white,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
       ),
     );
   }
@@ -598,7 +626,7 @@ class _CartScreenState extends State<CartScreen> {
         fontSize: healthSp(context, 10),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
-        letterSpacing: -0.90,
+        letterSpacing: healthSp(context, -0.90),
       );
 
   bool _isPrescriptionKind(CartItem item) =>
@@ -622,11 +650,11 @@ class _CartScreenState extends State<CartScreen> {
           child: opt,
         ),
         Container(
-          width: 0.5,
-          height: 10,
+          width: healthDp(context, 0.5),
+          height: healthDp(context, 10),
           color: const Color(0xFF898686),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: healthDp(context, 5)),
         qtyText,
       ],
     );
@@ -665,11 +693,11 @@ class _CartScreenState extends State<CartScreen> {
           children: [
             Text('$left ', style: _cartOptionMutedStyle()),
             Container(
-              width: 0.5,
-              height: 10,
+              width: healthDp(context, 0.5),
+              height: healthDp(context, 10),
               color: const Color(0xFF898686),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: healthDp(context, 5)),
             Flexible(
               child: Text(
                 right,
@@ -695,11 +723,11 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           Container(
-            width: 0.5,
-            height: 10,
+            width: healthDp(context, 0.5),
+            height: healthDp(context, 10),
             color: const Color(0xFF898686),
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: healthDp(context, 5)),
           Flexible(
             child: Text(
               opt,
@@ -741,15 +769,15 @@ class _CartScreenState extends State<CartScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1,
-            color: Color(0x7FD2D2D2),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
@@ -759,8 +787,8 @@ class _CartScreenState extends State<CartScreen> {
           Row(
             children: [
               SizedBox(
-                width: 20,
-                height: 20,
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
                 child: Center(
                   child: _lightCheckbox(
                     value: isSelected,
@@ -781,26 +809,33 @@ class _CartScreenState extends State<CartScreen> {
               const Spacer(),
               InkWell(
                 onTap: () => _deleteCartItem(item.ctId),
-                borderRadius: BorderRadius.circular(10),
-                child: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: Icon(Icons.close, size: 18, color: Color(0xFF1A1A1A)),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                child: SizedBox(
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  child: Icon(
+                    Icons.close,
+                    size: healthDp(context, 18),
+                    color: const Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
                   onTap: () =>
                       Navigator.pushNamed(context, '/product/${item.itId}'),
-                  child: CartItemThumbnail(item: item, size: 87),
+                  child: CartItemThumbnail(
+                    item: item,
+                    size: healthDp(context, 87),
+                  ),
                 ),
-                const SizedBox(width: 20),
+                SizedBox(width: healthDp(context, 20)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -815,7 +850,7 @@ class _CartScreenState extends State<CartScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: healthDp(context, 2)),
                       ],
                       Text(
                         item.itName,
@@ -824,15 +859,15 @@ class _CartScreenState extends State<CartScreen> {
                           fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w700,
-                          letterSpacing: -1.26,
+                          letterSpacing: healthSp(context, -1.26),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (isPrescription) ...[
-                        const SizedBox(height: 5),
+                        SizedBox(height: healthDp(context, 5)),
                         _buildPrescriptionOptionRowWithQty(item),
-                        const SizedBox(height: 10),
+                        SizedBox(height: healthDp(context, 10)),
                         Text(
                           '${PriceFormatter.format(item.ctPrice)}원',
                           style: TextStyle(
@@ -842,33 +877,33 @@ class _CartScreenState extends State<CartScreen> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: healthDp(context, 10)),
                         Container(
                           width: double.infinity,
-                          height: 0.5,
+                          height: healthDp(context, 0.5),
                           color: const Color(0x7FD2D2D2),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: healthDp(context, 10)),
                         Text(
                           '담당 한의사 정대진',
                           style: _prescriptionMetaLineStyle(),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: healthDp(context, 4)),
                         Text(
                           '예약 일자 ${_formatCartReservationDate(item)}',
                           style: _prescriptionMetaLineStyle(),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: healthDp(context, 4)),
                         Text(
                           '예약 시간 ${item.reservationTime?.trim().isNotEmpty == true ? item.reservationTime!.trim() : '-'}',
                           style: _prescriptionMetaLineStyle(),
                         ),
                       ] else ...[
                         if (optionRow != null) ...[
-                          const SizedBox(height: 5),
+                          SizedBox(height: healthDp(context, 5)),
                           optionRow,
                         ],
-                        const SizedBox(height: 10),
+                        SizedBox(height: healthDp(context, 10)),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
@@ -881,7 +916,7 @@ class _CartScreenState extends State<CartScreen> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: healthDp(context, 10)),
                             _buildFigmaQtyControl(
                               quantity: item.ctQty,
                               onDecrease: item.ctQty > 1
@@ -903,12 +938,12 @@ class _CartScreenState extends State<CartScreen> {
           if (!isPrescription)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.only(top: 15),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.only(top: healthDp(context, 15)),
+              decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    width: 0.5,
-                    color: Color(0x7FD2D2D2),
+                    width: healthDp(context, 0.5),
+                    color: const Color(0x7FD2D2D2),
                   ),
                 ),
               ),
@@ -938,11 +973,11 @@ class _CartScreenState extends State<CartScreen> {
     required VoidCallback onIncrease,
   }) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(healthDp(context, 4)),
       decoration: ShapeDecoration(
         color: const Color(0xFFF6F6F6),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
       ),
       child: Row(
@@ -950,7 +985,7 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           _buildFigmaQtyButton(icon: Icons.remove, onTap: onDecrease),
           SizedBox(
-            width: 18,
+            width: healthDp(context, 18),
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
@@ -975,27 +1010,27 @@ class _CartScreenState extends State<CartScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(healthDp(context, 10)),
       child: Container(
-        width: 20,
-        height: 20,
+        width: healthDp(context, 20),
+        height: healthDp(context, 20),
         decoration: ShapeDecoration(
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
-          shadows: const [
+          shadows: [
             BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 1.07,
-              offset: Offset(0, 0.54),
+              color: const Color(0x0C000000),
+              blurRadius: healthDp(context, 1.07),
+              offset: Offset(0, healthDp(context, 0.54)),
               spreadRadius: 0,
             ),
           ],
         ),
         child: Icon(
           icon,
-          size: 14,
+          size: healthDp(context, 14),
           color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
         ),
       ),
@@ -1020,7 +1055,7 @@ class _CartScreenState extends State<CartScreen> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: healthDp(context, 8)),
         Flexible(
           child: Text(
             '$price원',

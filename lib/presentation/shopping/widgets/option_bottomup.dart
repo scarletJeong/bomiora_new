@@ -14,10 +14,13 @@ Future<void> showProductOptionBottomup({
   required int? userPoint,
   required void Function(Map<ProductOption, int>) onOptionsChanged,
   required VoidCallback onAddToCart,
+  required VoidCallback onAddToPrescriptionCart,
   required VoidCallback onReserve,
   required VoidCallback onBuyNow,
   required FutureOr<void> Function() onNoOptionGeneral,
   required FutureOr<void> Function() onNoOptionPrescription,
+  bool isFavorite = false,
+  VoidCallback? onToggleFavorite,
 }) async {
   if (options.isEmpty) {
     if (product.ctKind == 'general') {
@@ -78,7 +81,45 @@ Future<void> showProductOptionBottomup({
                 product.additionalInfo?['it_kind']?.toString(),
             onOptionsChanged: onOptionsChanged,
             onAddToCart: onAddToCart,
+            onAddToPrescriptionCart: onAddToPrescriptionCart,
             onReserve: onReserve,
+            onBuyNow: onBuyNow,
+            isFavorite: isFavorite,
+            onToggleFavorite: onToggleFavorite,
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<void> showGeneralQuantityBottomup({
+  required BuildContext context,
+  required String productName,
+  required int unitPrice,
+  required int? userPoint,
+  required bool isFavorite,
+  VoidCallback? onToggleFavorite,
+  required Future<void> Function(int quantity) onAddToCart,
+  required Future<void> Function(int quantity) onBuyNow,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      final screenWidth = MediaQuery.sizeOf(context).width;
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: SizedBox(
+          width: screenWidth,
+          child: GeneralQuantityBottomSheet(
+            productName: productName,
+            unitPrice: unitPrice,
+            userPoint: userPoint,
+            isFavorite: isFavorite,
+            onToggleFavorite: onToggleFavorite,
+            onAddToCart: onAddToCart,
             onBuyNow: onBuyNow,
           ),
         ),

@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
-import '../../common/widgets/app_bar.dart';
 import '../../common/widgets/confirm_dialog.dart';
-import '../../../data/models/product/product_model.dart';
-import '../../../data/repositories/product/product_repository.dart';
+import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/models/cart/cart_item_model.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'payment_screen.dart';
-import '../widgets/recommend_product.dart';
 import '../widgets/get_cartImage.dart';
 
 class CartScreen extends StatefulWidget {
@@ -31,7 +28,6 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   List<CartItem> cartItems = [];
-  List<Product> _recommendedProducts = [];
   bool isLoading = true;
   bool isRefreshing = false; // 새로고침 중인지 (캐시된 데이터 표시 중)
   String? errorMessage;
@@ -53,46 +49,32 @@ class _CartScreenState extends State<CartScreen> {
     return selectedItems.intersection(_displayedItemIds);
   }
 
+  /// API 재조회 후에도 기존 장바구니 표시 순서 유지
+  List<CartItem> _preserveCartItemOrder(
+    List<CartItem> previous,
+    List<CartItem> incoming,
+  ) {
+    if (previous.isEmpty) return incoming;
+
+    final incomingById = <int, CartItem>{
+      for (final item in incoming) item.ctId: item,
+    };
+
+    final ordered = <CartItem>[];
+    for (final item in previous) {
+      final updated = incomingById.remove(item.ctId);
+      if (updated != null) {
+        ordered.add(updated);
+      }
+    }
+    ordered.addAll(incomingById.values);
+    return ordered;
+  }
+
   @override
   void initState() {
     super.initState();
     _loadCart();
-    _loadRecommendedProductsForCart();
-  }
-
-  Future<void> _loadRecommendedProductsForCart() async {
-    try {
-      final results = await Future.wait([
-        ProductRepository.getProductsByCategory(
-          categoryId: '10',
-          productKind: 'prescription',
-          page: 1,
-          pageSize: 100,
-        ),
-        ProductRepository.getProductsByCategory(
-          categoryId: '20',
-          productKind: 'prescription',
-          page: 1,
-          pageSize: 100,
-        ),
-        ProductRepository.getProductsByCategory(
-          categoryId: '80',
-          productKind: 'prescription',
-          page: 1,
-          pageSize: 100,
-        ),
-      ]);
-      final merged = results.expand((e) => e).toList();
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = merged;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = [];
-      });
-    }
   }
 
   Future<bool> _ensureLoggedIn({
@@ -123,6 +105,7 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     try {
+      final previousItems = List<CartItem>.from(cartItems);
       final result = await CartService.getCart();
       if (!mounted) return;
 
@@ -140,13 +123,14 @@ class _CartScreenState extends State<CartScreen> {
             })
             .whereType<CartItem>() // null 제거
             .toList();
+        final orderedItems = _preserveCartItemOrder(previousItems, items);
         setState(() {
-          cartItems = items;
+          cartItems = orderedItems;
           shippingCost = (result['shipping_cost'] as int?) ?? 0;
           totalPrice = (result['total_price'] as int?) ?? 0;
 
           // 사라진 아이템의 선택 상태는 제거하고, 현재 탭 전체선택 상태면 현재 탭 아이템만 재선택
-          final existingIds = items.map((item) => item.ctId).toSet();
+          final existingIds = orderedItems.map((item) => item.ctId).toSet();
           selectedItems = selectedItems.where(existingIds.contains).toSet();
           if (selectAll) {
             selectedItems.addAll(_displayedItemIds);
@@ -363,7 +347,7 @@ class _CartScreenState extends State<CartScreen> {
                           errorMessage!,
                           style: const TextStyle(color: Colors.red),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: healthDp(context, 16)),
                         ElevatedButton(
                           onPressed: _loadCart,
                           child: const Text('다시 시도'),
@@ -376,12 +360,12 @@ class _CartScreenState extends State<CartScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.shopping_cart_outlined,
-                              size: 64,
+                              size: healthDp(context, 64),
                               color: Colors.grey,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: healthDp(context, 16)),
                             Text(
                               '장바구니가 비어있습니다.',
                               style: TextStyle(
@@ -392,274 +376,194 @@ class _CartScreenState extends State<CartScreen> {
                           ],
                         ),
                       )
-                    : RefreshIndicator(
-                        onRefresh: () => _loadCart(showCachedData: false),
-                        child: SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // 컨텐츠에 padding 적용
-                              Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    // 전체 선택 및 삭제 버튼 영역 (스크롤되도록 본문 안으로 이동)
-                                    _buildSelectAllRow(),
-                                    const SizedBox(height: 12),
-
-                                    // 상품 목록
-                                    ..._displayedCartItems.expand(
-                                      (item) => [
-                                        _buildCartItemCard(item),
-                                        const SizedBox(height: 12),
-                                      ],
-                                    ),
-                                    if (_displayedCartItems.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 40),
-                                        child: Text(
-                                          '선택한 탭에 상품이 없습니다.',
-                                          style: TextStyle(
-                                            fontSize: healthSp(context, 14),
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
-
-                                    const SizedBox(height: 16),
-
-                                    // 안내 문구
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            '*진료예약자와 시간을 다시 한번 확인해주세요.',
-                                            style: TextStyle(
-                                              fontSize: healthSp(context, 11),
-                                              color: Colors.black87,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '결제가 완료되셔야 예약이 확정됩니다.',
-                                            style: TextStyle(
-                                              fontSize: healthSp(context, 12),
-                                              color: const Color(0xFFFF3787),
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                    : Column(
+                    children: [
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () => _loadCart(showCachedData: false),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.only(
+                              bottom: healthDp(context, 16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    healthDp(context, 27),
+                                    healthDp(context, 16),
+                                    healthDp(context, 27),
+                                    healthDp(context, 16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      _buildSelectAllRow(),
+                                      SizedBox(height: healthDp(context, 12)),
+                                      ..._displayedCartItems.expand(
+                                        (item) => [
+                                          _buildCartItemCard(item),
+                                          SizedBox(
+                                              height: healthDp(context, 12)),
                                         ],
                                       ),
-                                    ),
-
-                                    const SizedBox(height: 18),
-
-                                    // 결제 요약(하단 고정 제거 → 본문으로 이동)
-                                    _buildFigmaBottomSummary(
-                                      inPage: true,
-                                    ),
-                                    const SizedBox(height: 18),
-
-                                    if ((() {
-                                      if (_recommendedProducts.isEmpty) return false;
-                                      bool containsGroup(String name, String keyword) =>
-                                          name.replaceAll(' ', '').contains(keyword);
-
-                                      final selectedGroups = <String>{};
-                                      for (final n in _displayedCartItems.map((e) => e.itName)) {
-                                        if (containsGroup(n, '다이어트')) selectedGroups.add('diet');
-                                        if (containsGroup(n, '디톡스')) selectedGroups.add('detox');
-                                        if (containsGroup(n, '심신안정')) selectedGroups.add('calm');
-                                      }
-
-                                      String? groupFromCategory(String? caId) {
-                                        if (caId == null || caId.isEmpty) return null;
-                                        if (caId.startsWith('10')) return 'diet';
-                                        if (caId.startsWith('20')) return 'detox';
-                                        if (caId.startsWith('80')) return 'calm';
-                                        return null;
-                                      }
-
-                                      String? groupFromName(String name) {
-                                        final normalized = name.replaceAll(' ', '');
-                                        if (normalized.contains('다이어트')) return 'diet';
-                                        if (normalized.contains('디톡스')) return 'detox';
-                                        if (normalized.contains('심신안정')) return 'calm';
-                                        return null;
-                                      }
-
-                                      for (final p in _recommendedProducts) {
-                                        final g = groupFromCategory(p.categoryId) ?? groupFromName(p.name);
-                                        if (g == null) continue;
-                                        if (selectedGroups.contains(g)) continue;
-                                        return true;
-                                      }
-                                      return false;
-                                    })()) ...[
-                                      // 추가 상품 구매하기 섹션 라벨
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                '|',
-                                                style: TextStyle(
-                                                  color: const Color(0xFF1A1A1A),
-                                                  fontSize: healthSp(context, 16),
-                                                  fontFamily: 'Gmarket Sans TTF',
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: -1.44,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                '추가 상품 구매하기',
-                                                style: TextStyle(
-                                                  color: const Color(0xFF1A1A1A),
-                                                  fontSize: healthSp(context, 16),
-                                                  fontFamily: 'Gmarket Sans TTF',
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: -1.44,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
+                                      if (_displayedCartItems.isEmpty)
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              vertical:
+                                                  healthDp(context, 40)),
                                           child: Text(
-                                            '함께 구매하면 좋은 상품을 확인해보세요 !',
+                                            '선택한 탭에 상품이 없습니다.',
                                             style: TextStyle(
-                                              color: const Color(0xFF898686),
-                                              fontSize: healthSp(context, 12),
-                                              fontFamily: 'Gmarket Sans TTF',
-                                              fontWeight: FontWeight.w500,
-                                              height: 1.32,
+                                              fontSize: healthSp(context, 14),
+                                              color: Colors.grey[600],
                                             ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: RecommendProductSection(
-                                          excludedProductNames:
-                                              _displayedCartItems
-                                                  .map((e) => e.itName)
-                                                  .toList(),
-                                          products: _recommendedProducts,
-                                          title: '',
-                                          showLeadingBar: false,
-                                          hideWhenEmpty: true,
-                                          onProductTap: (product) {
-                                            Navigator.pushNamed(
-                                              context,
-                                              '/product/${product.id}',
-                                            );
-                                          },
+                                      SizedBox(height: healthDp(context, 10)),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: healthDp(context, 0)),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              '*진료예약자와 시간을 다시 한번 확인해주세요.',
+                                              style: TextStyle(
+                                                fontSize: healthSp(context, 12),
+                                                fontFamily: 'Gmarket Sans TTF',
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.black87,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            SizedBox(
+                                                height: healthDp(context, 1)),
+                                            Text(
+                                              '결제가 완료되셔야 예약이 확정됩니다.',
+                                              style: TextStyle(
+                                                fontSize: healthSp(context, 12),
+                                                fontFamily: 'Gmarket Sans TTF',
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFFFF3787),
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
                                       ),
+                                      SizedBox(height: healthDp(context, 18)),
+                                      _summaryRow(
+                                        '구매금액',
+                                        '${PriceFormatter.format(selectedTotalPrice)}원',
+                                        fontSize: healthSp(context, 14),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      SizedBox(height: healthDp(context, 10)),
+                                      _summaryRow(
+                                        '배송비',
+                                        '${PriceFormatter.format(selectedShippingCost)}원',
+                                        fontSize: healthSp(context, 14),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      SizedBox(height: healthDp(context, 10)),
+                                      Divider(
+                                        height: healthDp(context, 1),
+                                        thickness: healthDp(context, 1),
+                                        color: Colors.grey[300]!,
+                                      ),
+                                      SizedBox(height: healthDp(context, 10)),
+                                      _summaryRow(
+                                        '총 결제 금액',
+                                        '${PriceFormatter.format(finalPrice)}원',
+                                        fontSize: healthSp(context, 17),
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ],
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
+                      _buildFigmaBottomSummary(),
+                    ],
+                  ),
       ),
     );
   }
 
-  Widget _buildFigmaBottomSummary({bool inPage = false}) {
-    // 기존 계산 로직/선택 로직을 재사용하면서, 하단 영역을 Figma 느낌으로 고정
+  Widget _buildFigmaBottomSummary() {
     final selected = _selectedDisplayedItemIds;
-    final selectedPrice = selectedTotalPrice;
-    final selectedShipping = selectedShippingCost;
-    final payable = finalPrice;
 
-    final content = Container(
-      color: Colors.white,
-      padding: inPage
-          ? const EdgeInsets.fromLTRB(10, 14, 0, 16)
-          : const EdgeInsets.fromLTRB(17, 14, 20, 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _summaryRow('구매금액', '${PriceFormatter.format(selectedPrice)}원',
-              fontSize: healthSp(context, 16), fontWeight: FontWeight.w500),
-          const SizedBox(height: 10),
-          _summaryRow('배송비', '${PriceFormatter.format(selectedShipping)}원',
-              fontSize: healthSp(context, 14), fontWeight: FontWeight.w500),
-          const SizedBox(height: 10),
-          const Divider(height: 1, thickness: 1, color: Color(0x7F1A1A1A)),
-          const SizedBox(height: 10),
-          _summaryRow('결제 금액', '${PriceFormatter.format(payable)}원',
-              fontSize: healthSp(context, 16), fontWeight: FontWeight.w700),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 40,
-            child: ElevatedButton(
-              onPressed: selected.isEmpty ? null : _openPaymentScreen,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5A8D),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+          healthDp(context, 27),
+          healthDp(context, 10),
+          healthDp(context, 27),
+          healthDp(context, 16),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: healthDp(context, 8),
+              offset: Offset(0, -healthDp(context, 2)),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: healthDp(context, 40),
+          child: ElevatedButton(
+            onPressed: selected.isEmpty ? null : _openPaymentScreen,
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(double.infinity, healthDp(context, 40)),
+              maximumSize: Size(double.infinity, healthDp(context, 40)),
+              padding: EdgeInsets.zero,
+              backgroundColor: const Color(0xFFFF5A8D),
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.grey[300],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
               ),
-              child: Text(
-                '결제하기',
-                style: TextStyle(
-                  fontSize: healthSp(context, 16),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+            ),
+            child: Text(
+              '결제하기',
+              style: TextStyle(
+                fontSize: healthSp(context, 16),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
-
-    if (inPage) return content;
-    return SafeArea(top: false, child: content);
   }
 
   Widget _buildSelectAllRow() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: healthDp(context, 8)),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
           bottom: BorderSide(
             color: Colors.grey[300]!,
-            width: 1,
+            width: healthDp(context, 1),
           ),
         ),
       ),
@@ -684,11 +588,13 @@ class _CartScreenState extends State<CartScreen> {
                   });
                 },
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: healthDp(context, 4)),
               Text(
                 '전체선택',
                 style: TextStyle(
                   fontSize: healthSp(context, 13),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
                   color: Colors.black87,
                 ),
               ),
@@ -703,8 +609,9 @@ class _CartScreenState extends State<CartScreen> {
                     ? null
                     : () => _deleteSelectedItems(),
                 style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 8),
+                      vertical: healthDp(context, 4)),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -712,9 +619,9 @@ class _CartScreenState extends State<CartScreen> {
                   '선택삭제',
                   style: TextStyle(
                     fontSize: healthSp(context, 12),
-                    color: _selectedDisplayedItemIds.isEmpty
-                        ? Colors.grey
-                        : Colors.red,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                    color: Colors.grey,
                   ),
                 ),
               ),
@@ -729,20 +636,38 @@ class _CartScreenState extends State<CartScreen> {
     required bool value,
     required ValueChanged<bool?> onChanged,
   }) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        checkboxTheme: CheckboxThemeData(
-          side: const BorderSide(color: Color(0xFFD2D2D2), width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    const double checkboxBase = 18;
+    final boxSize = healthDp(context, checkboxBase);
+    final scale = boxSize / checkboxBase;
+
+    return SizedBox(
+      width: boxSize,
+      height: boxSize,
+      child: Center(
+        child: Transform.scale(
+          scale: scale,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              checkboxTheme: CheckboxThemeData(
+                side: BorderSide(
+                  color: const Color(0xFFD2D2D2),
+                  width: healthDp(context, 1),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 4)),
+                ),
+              ),
+            ),
+            child: Checkbox(
+              value: value,
+              onChanged: onChanged,
+              activeColor: const Color(0xFFFF5A8D),
+              checkColor: Colors.white,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         ),
-      ),
-      child: Checkbox(
-        value: value,
-        onChanged: onChanged,
-        activeColor: const Color(0xFFFF5A8D),
-        checkColor: Colors.white,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
       ),
     );
   }
@@ -783,66 +708,46 @@ class _CartScreenState extends State<CartScreen> {
         fontSize: healthSp(context, 10),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
-        letterSpacing: -0.90,
+        letterSpacing: healthSp(context, -0.90),
       );
 
   bool _isPrescriptionKind(CartItem item) =>
       item.ctKind.trim().toLowerCase() == 'prescription';
 
-  /// 처방: 기존 옵션 줄 뒤에 `| 수량 : N개` (이미지 열은 그대로)
-  Widget _buildPrescriptionOptionRowWithQty(CartItem item) {
-    final opt = _buildCartItemOptionRow(item);
-    final qtyText = Text(
-      '수량 : ${item.ctQty}개',
-      style: _cartOptionMutedStyle(),
-    );
-    if (opt == null) {
-      return qtyText;
-    }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Flexible(
-          fit: FlexFit.loose,
-          child: opt,
-        ),
-        Container(
-          width: 0.5,
-          height: 10,
-          color: const Color(0xFF898686),
-        ),
-        const SizedBox(width: 5),
-        qtyText,
-      ],
-    );
-  }
-
-  TextStyle _prescriptionMetaLabelStyle() => TextStyle(
-        color: const Color(0xFF1A1A1A),
-        fontSize: healthSp(context, 12),
+  TextStyle _prescriptionScheduleLabelStyle() => TextStyle(
+        color: const Color(0xFF1A1A1E),
+        fontSize: healthSp(context, 10),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
-        height: 1.35,
       );
 
-  TextStyle _prescriptionMetaValueStyle() => TextStyle(
+  TextStyle _prescriptionScheduleValueStyle() => TextStyle(
         color: const Color(0xFFFF5A8D),
-        fontSize: healthSp(context, 12),
+        fontSize: healthSp(context, 10),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
-        height: 1.35,
       );
 
-  String _formatCartReservationDate(CartItem item) {
+  String _formatCartReservationSchedule(CartItem item) {
     final d = item.reservationDate;
-    if (d == null) return '-';
-    return DateDisplayFormatter.formatYmd(d);
-  }
+    final rawTime = item.reservationTime?.trim() ?? '';
+    final timePart = rawTime
+        .replaceAll(' ~ ', '~')
+        .replaceAll(' ~', '~')
+        .replaceAll('~ ', '~');
 
-  String _formatCartReservationTime(CartItem item) {
-    final raw = item.reservationTime?.trim() ?? '';
-    if (raw.isEmpty) return '-';
-    return raw;
+    if (d == null && timePart.isEmpty) return '-';
+
+    String datePart = '-';
+    if (d != null) {
+      const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+      final wd = weekdays[d.weekday - 1];
+      datePart = '${DateDisplayFormatter.formatYmd(d)}($wd)';
+    }
+
+    if (datePart == '-') return timePart.isEmpty ? '-' : timePart;
+    if (timePart.isEmpty) return datePart;
+    return '$datePart $timePart';
   }
 
   /// 옵션/규격 줄 — `ct_option`의 ` / ` 또는 `it_subject` + `ct_option` 조합
@@ -857,57 +762,20 @@ class _CartScreenState extends State<CartScreen> {
           .where((e) => e.isNotEmpty)
           .toList();
       if (parts.length >= 2) {
-        final left = parts.first;
-        final right = parts.sublist(1).join(' / ');
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('$left ', style: _cartOptionMutedStyle()),
-            Container(
-              width: 0.5,
-              height: 10,
-              color: const Color(0xFF898686),
-            ),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                right,
-                style: _cartOptionMutedStyle(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        return Text(
+          parts.join(' | '),
+          style: _cartOptionMutedStyle(),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         );
       }
     }
     if (sub.isNotEmpty && opt.isNotEmpty) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              '$sub ',
-              style: _cartOptionMutedStyle(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Container(
-            width: 0.5,
-            height: 10,
-            color: const Color(0xFF898686),
-          ),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              opt,
-              style: _cartOptionMutedStyle(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+      return Text(
+        '$sub | $opt',
+        style: _cartOptionMutedStyle(),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       );
     }
     if (opt.isNotEmpty) {
@@ -940,15 +808,15 @@ class _CartScreenState extends State<CartScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1,
-            color: Color(0x7FD2D2D2),
+          side: BorderSide(
+            width: healthDp(context, 1),
+            color: const Color(0x7FD2D2D2),
           ),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
       child: Column(
@@ -958,8 +826,8 @@ class _CartScreenState extends State<CartScreen> {
           Row(
             children: [
               SizedBox(
-                width: 20,
-                height: 20,
+                width: healthDp(context, 20),
+                height: healthDp(context, 20),
                 child: Center(
                   child: _lightCheckbox(
                     value: isSelected,
@@ -980,26 +848,33 @@ class _CartScreenState extends State<CartScreen> {
               const Spacer(),
               InkWell(
                 onTap: () => _deleteCartItem(item.ctId),
-                borderRadius: BorderRadius.circular(10),
-                child: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: Icon(Icons.close, size: 18, color: Color(0xFF1A1A1A)),
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                child: SizedBox(
+                  width: healthDp(context, 20),
+                  height: healthDp(context, 20),
+                  child: Icon(
+                    Icons.close,
+                    size: healthDp(context, 18),
+                    color: const Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
                   onTap: () =>
                       Navigator.pushNamed(context, '/product/${item.itId}'),
-                  child: CartItemThumbnail(item: item, size: 87),
+                  child: CartItemThumbnail(
+                    item: item,
+                    size: healthDp(context, 87),
+                  ),
                 ),
-                const SizedBox(width: 20),
+                SizedBox(width: healthDp(context, 20)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1014,90 +889,46 @@ class _CartScreenState extends State<CartScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: healthDp(context, 2)),
                       ],
                       Text(
                         item.itName,
                         style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
+                          color: const Color(0xFF1A1A1E),
                           fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1.26,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: healthSp(context, -1.26),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (isPrescription) ...[
-                        const SizedBox(height: 5),
-                        _buildPrescriptionOptionRowWithQty(item),
-                        const SizedBox(height: 10),
-                        Text(
-                          '${PriceFormatter.format(item.ctPrice)}원',
-                          style: TextStyle(
-                            color: const Color(0xFF1A1A1A),
-                            fontSize: healthSp(context, 16),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          height: 0.5,
-                          color: const Color(0x7FD2D2D2),
-                        ),
-                        const SizedBox(height: 10),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '담당 한의사 ',
-                                style: _prescriptionMetaLabelStyle(),
-                              ),
-                              TextSpan(
-                                text: '정대진',
-                                style: _prescriptionMetaValueStyle(),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '예약 일자 ',
-                                style: _prescriptionMetaLabelStyle(),
-                              ),
-                              TextSpan(
-                                text: _formatCartReservationDate(item),
-                                style: _prescriptionMetaValueStyle(),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '예약 시간 ',
-                                style: _prescriptionMetaLabelStyle(),
-                              ),
-                              TextSpan(
-                                text: _formatCartReservationTime(item),
-                                style: _prescriptionMetaValueStyle(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
                         if (optionRow != null) ...[
-                          const SizedBox(height: 5),
+                          SizedBox(height: healthDp(context, 4)),
                           optionRow,
                         ],
-                        const SizedBox(height: 10),
+                        SizedBox(height: healthDp(context, 4)),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '진료 예약 시간 :',
+                              style: _prescriptionScheduleLabelStyle(),
+                            ),
+                            Text(
+                              _formatCartReservationSchedule(item),
+                              style: _prescriptionScheduleValueStyle(),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: healthDp(context, 4)),
+                      ] else ...[
+                        if (optionRow != null) ...[
+                          SizedBox(height: healthDp(context, 5)),
+                          optionRow,
+                        ],
+                        SizedBox(height: healthDp(context, 10)),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
@@ -1110,7 +941,7 @@ class _CartScreenState extends State<CartScreen> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: healthDp(context, 10)),
                             _buildFigmaQtyControl(
                               quantity: item.ctQty,
                               onDecrease: item.ctQty > 1
@@ -1129,15 +960,56 @@ class _CartScreenState extends State<CartScreen> {
               ],
             ),
           ),
+          if (isPrescription)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 10),
+                healthDp(context, 12),
+                healthDp(context, 10),
+                healthDp(context, 10),
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    width: healthDp(context, 0.5),
+                    color: const Color(0x7FD2D2D2),
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildFigmaQtyControl(
+                    quantity: item.ctQty,
+                    onDecrease: item.ctQty > 1
+                        ? () => _updateQuantity(item.ctId, item.ctQty - 1)
+                        : null,
+                    onIncrease: () =>
+                        _updateQuantity(item.ctId, item.ctQty + 1),
+                  ),
+                  Text(
+                    '${PriceFormatter.format(item.ctPrice)}원',
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: healthSp(context, 16),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (!isPrescription)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.only(top: 15),
-              decoration: const BoxDecoration(
+              padding: EdgeInsets.only(top: healthDp(context, 15)),
+              decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    width: 0.5,
-                    color: Color(0x7FD2D2D2),
+                    width: healthDp(context, 0.5),
+                    color: const Color(0x7FD2D2D2),
                   ),
                 ),
               ),
@@ -1167,11 +1039,11 @@ class _CartScreenState extends State<CartScreen> {
     required VoidCallback onIncrease,
   }) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(healthDp(context, 4)),
       decoration: ShapeDecoration(
         color: const Color(0xFFF6F6F6),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
       ),
       child: Row(
@@ -1179,7 +1051,7 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           _buildFigmaQtyButton(icon: Icons.remove, onTap: onDecrease),
           SizedBox(
-            width: 18,
+            width: healthDp(context, 18),
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
@@ -1204,27 +1076,27 @@ class _CartScreenState extends State<CartScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(healthDp(context, 10)),
       child: Container(
-        width: 20,
-        height: 20,
+        width: healthDp(context, 20),
+        height: healthDp(context, 20),
         decoration: ShapeDecoration(
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
-          shadows: const [
+          shadows: [
             BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 1.07,
-              offset: Offset(0, 0.54),
+              color: const Color(0x0C000000),
+              blurRadius: healthDp(context, 1.07),
+              offset: Offset(0, healthDp(context, 0.54)),
               spreadRadius: 0,
             ),
           ],
         ),
         child: Icon(
           icon,
-          size: 14,
+          size: healthDp(context, 14),
           color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
         ),
       ),
@@ -1249,7 +1121,7 @@ class _CartScreenState extends State<CartScreen> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: healthDp(context, 8)),
         Flexible(
           child: Text(
             '$price원',

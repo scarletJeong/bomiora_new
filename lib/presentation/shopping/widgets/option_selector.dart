@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_option_model.dart';
+import '../../health/health_common/health_responsive_scale.dart';
 
 class OptionSelectorBottomSheet extends StatefulWidget {
   final List<ProductOption> options;
@@ -12,8 +13,11 @@ class OptionSelectorBottomSheet extends StatefulWidget {
   final String? productKind;
   final Function(Map<ProductOption, int>) onOptionsChanged;
   final VoidCallback onAddToCart;
+  final VoidCallback onAddToPrescriptionCart;
   final VoidCallback onReserve;
   final VoidCallback onBuyNow;
+  final bool isFavorite;
+  final VoidCallback? onToggleFavorite;
 
   const OptionSelectorBottomSheet({
     super.key,
@@ -26,8 +30,11 @@ class OptionSelectorBottomSheet extends StatefulWidget {
     this.productKind,
     required this.onOptionsChanged,
     required this.onAddToCart,
+    required this.onAddToPrescriptionCart,
     required this.onReserve,
     required this.onBuyNow,
+    this.isFavorite = false,
+    this.onToggleFavorite,
   });
 
   @override
@@ -39,20 +46,25 @@ enum _ExpandedType { step, months }
 
 const String _kGmarketSans = 'Gmarket Sans TTF';
 
-/// 펼친 옵션 행·선택 필드 본문
-const TextStyle _kOptionChoiceTextStyle = TextStyle(
-  color: Colors.black,
-  fontSize: 15.54,
-  fontFamily: _kGmarketSans,
-  fontWeight: FontWeight.w500,
-);
+TextStyle _optionLabelTextStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1E),
+      fontSize: healthSp(context, 16),
+      fontFamily: _kGmarketSans,
+      fontWeight: FontWeight.w500,
+    );
 
-/// 선택한 옵션 카드 내 제품명
-const TextStyle _kSelectedCardProductTextStyle = TextStyle(
-  fontSize: 11.65,
-  fontFamily: _kGmarketSans,
-  fontWeight: FontWeight.w500,
-);
+TextStyle _optionChoiceTextStyle(BuildContext context) => TextStyle(
+      color: Colors.black,
+      fontSize: healthSp(context, 15.54),
+      fontFamily: _kGmarketSans,
+      fontWeight: FontWeight.w500,
+    );
+
+TextStyle _selectedCardProductTextStyle(BuildContext context) => TextStyle(
+      fontSize: healthSp(context, 11.65),
+      fontFamily: _kGmarketSans,
+      fontWeight: FontWeight.w500,
+    );
 
 class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   final Map<String, List<ProductOption>> _groupedOptionsByStep = {};
@@ -64,11 +76,13 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   int? _selectedMonths;
   _ExpandedType? _expandedType;
   late Map<ProductOption, int> _selectedOptions;
+  late bool _isFavorite;
 
   @override
   void initState() {
     super.initState();
     _selectedOptions = Map<ProductOption, int>.from(widget.selectedOptions);
+    _isFavorite = widget.isFavorite;
     _initializeGroups();
   }
 
@@ -79,6 +93,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       setState(() {
         _selectedOptions = Map<ProductOption, int>.from(widget.selectedOptions);
       });
+    }
+    if (oldWidget.isFavorite != widget.isFavorite) {
+      setState(() => _isFavorite = widget.isFavorite);
     }
   }
 
@@ -179,68 +196,75 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     return SizedBox(
       width: double.infinity,
       child: ClipRRect(
-      borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(30),
-        topRight: Radius.circular(30),
-      ),
-      child: Container(
-        color: Colors.white,
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: DraggableScrollableSheet(
-            initialChildSize: 1.0,
-            minChildSize: 0.6,
-            maxChildSize: 1.0,
-            builder: (context, scrollController) {
-              return Column(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(healthDp(context, 30)),
+          topRight: Radius.circular(healthDp(context, 30)),
+        ),
+        child: Container(
+          color: Colors.white,
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: DraggableScrollableSheet(
+              initialChildSize: 1.0,
+              minChildSize: 0.6,
+              maxChildSize: 1.0,
+              builder: (context, scrollController) {
+                final sheetPadding = healthDp(context, 30);
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    sheetPadding,
+                    healthDp(context, 10),
+                    sheetPadding,
+                    sheetPadding,
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                  child: Column(
+                    children: [
+                      Center(
+                        child: Container(
+                          width: healthDp(context, 40),
+                          height: healthDp(context, 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 2)),
+                          ),
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildSelectionFields(),
-                          if (_expandedType != null) ...[
-                            const SizedBox(height: 6),
-                            _buildExpandedOptionsList(),
-                          ],
-                          if (_selectedOptions.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: Colors.grey[300],
-                            ),
-                            const SizedBox(height: 8),
-                            _buildSelectedOptionsList(),
-                          ],
-                        ],
+                      SizedBox(height: healthDp(context, 20)),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSelectionFields(),
+                              if (_expandedType != null) ...[
+                                SizedBox(height: healthDp(context, 6)),
+                                _buildExpandedOptionsList(),
+                              ],
+                              if (_selectedOptions.isNotEmpty) ...[
+                                SizedBox(height: healthDp(context, 20)),
+                                Divider(
+                                  height: healthDp(context, 1),
+                                  thickness: healthDp(context, 1),
+                                  color: Colors.grey[300],
+                                ),
+                                SizedBox(height: healthDp(context, 20)),
+                                _buildSelectedOptionsList(),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                      _buildBottomActions(),
+                    ],
                   ),
-                  _buildBottomActions(),
-                ],
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -263,7 +287,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               });
             },
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: healthDp(context, 2)),
         ],
         _buildSelectionLabel(widget.monthsLabel),
         _buildSelectionField(
@@ -288,14 +312,13 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   Widget _buildSelectionLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 4),
+      padding: EdgeInsets.only(
+        left: healthDp(context, 2),
+        bottom: healthDp(context, 4),
+      ),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-        ),
+        style: _optionLabelTextStyle(context),
       ),
     );
   }
@@ -307,15 +330,18 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     required VoidCallback? onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: EdgeInsets.only(bottom: healthDp(context, 6)),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 12),
+        vertical: healthDp(context, 8),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
           color: enabled ? Colors.grey[300]! : Colors.grey[200]!,
-          width: 1,
+          width: healthDp(context, 1),
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
       ),
       child: InkWell(
         onTap: onTap,
@@ -325,7 +351,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             Expanded(
               child: Text(
                 text,
-                style: _kOptionChoiceTextStyle.copyWith(
+                style: _optionChoiceTextStyle(context).copyWith(
                   color: enabled ? Colors.black : Colors.grey[400],
                 ),
               ),
@@ -333,7 +359,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             Icon(
               expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               color: enabled ? Colors.grey[700] : Colors.grey[350],
-              size: 20,
+              size: healthDp(context, 20),
             ),
           ],
         ),
@@ -356,15 +382,18 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               });
             },
             child: Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: EdgeInsets.only(bottom: healthDp(context, 6)),
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 12),
+                vertical: healthDp(context, 8),
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 border: Border.all(
                   color:
                       isSelected ? const Color(0xFFFF4081) : Colors.grey[300]!,
-                  width: 1,
+                  width: healthDp(context, 1),
                 ),
               ),
               child: Row(
@@ -372,13 +401,13 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 children: [
                   Text(
                     step,
-                    style: _kOptionChoiceTextStyle,
+                    style: _optionChoiceTextStyle(context),
                   ),
                   if (isSelected)
-                    const Icon(
+                    Icon(
                       Icons.check_circle,
-                      color: Color(0xFFFF4081),
-                      size: 18,
+                      color: const Color(0xFFFF4081),
+                      size: healthDp(context, 18),
                     ),
                 ],
               ),
@@ -401,41 +430,44 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             _addOption(optionForMonths);
           },
           child: Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: EdgeInsets.only(bottom: healthDp(context, 6)),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 12),
+              vertical: healthDp(context, 8),
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
               border: Border.all(
                 color: isSelected ? const Color(0xFFFF4081) : Colors.grey[300]!,
-                width: 1,
+                width: healthDp(context, 1),
               ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${months}개월',
-                  style: _kOptionChoiceTextStyle,
+                  '$months개월',
+                  style: _optionChoiceTextStyle(context),
                 ),
                 Row(
                   children: [
                     if (optionForMonths.price > 0)
                       Text(
                         '+${optionForMonths.formattedPrice.replaceAll('원', '')}',
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: TextStyle(
+                          fontSize: healthSp(context, 13),
                           fontFamily: _kGmarketSans,
                           fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
                       ),
                     if (isSelected) ...[
-                      const SizedBox(width: 6),
-                      const Icon(
+                      SizedBox(width: healthDp(context, 6)),
+                      Icon(
                         Icons.check_circle,
-                        color: Color(0xFFFF4081),
-                        size: 18,
+                        color: const Color(0xFFFF4081),
+                        size: healthDp(context, 18),
                       ),
                     ],
                   ],
@@ -450,42 +482,46 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   Widget _buildSelectedOptionsList() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 4)),
       child: Column(
         children: _selectedOptions.entries.map((entry) {
           final option = entry.key;
           final quantity = entry.value;
           final itemPrice = option.price * quantity;
           return Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            margin: EdgeInsets.only(bottom: healthDp(context, 6)),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
               border: Border.all(color: Colors.grey[300]!),
             ),
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 2, right: 22),
+                  padding: EdgeInsets.all(healthDp(context, 10)),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Text(
-                              option.displayText,
-                              style: _kSelectedCardProductTextStyle.copyWith(
-                                color: Colors.black87,
+                            Expanded(
+                              child: Text(
+                                option.displayText,
+                                style: _selectedCardProductTextStyle(context)
+                                    .copyWith(
+                                  color: Colors.black87,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(width: healthDp(context, 8)),
                             _buildQuantityControl(
                               quantity: quantity,
+                              compact: true,
                               onDecrease: quantity > 1
                                   ? () => _updateOptionQuantity(
                                       option, quantity - 1)
@@ -496,14 +532,14 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: healthDp(context, 8)),
                       Text(
                         '+${itemPrice.toString().replaceAllMapped(
                               RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                               (Match m) => '${m[1]},',
                             )}원',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: healthSp(context, 12),
                           color: Colors.grey[800],
                           fontWeight: FontWeight.w700,
                         ),
@@ -512,15 +548,19 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                   ),
                 ),
                 Positioned(
-                  top: 0,
-                  right: 0,
-                  child: IconButton(
-                    onPressed: () => _removeOption(option),
-                    icon: const Icon(Icons.close, size: 17),
-                    padding: const EdgeInsets.all(2),
-                    constraints: const BoxConstraints(
-                      minWidth: 24,
-                      minHeight: 24,
+                  top: healthDp(context, 4),
+                  right: healthDp(context, 4),
+                  child: InkWell(
+                    onTap: () => _removeOption(option),
+                    borderRadius:
+                        BorderRadius.circular(healthDp(context, 4)),
+                    child: Padding(
+                      padding: EdgeInsets.all(healthDp(context, 2)),
+                      child: Icon(
+                        Icons.close,
+                        size: healthDp(context, 16),
+                        color: Colors.black54,
+                      ),
                     ),
                   ),
                 ),
@@ -532,151 +572,216 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     );
   }
 
-  Widget _buildBottomActions() {
+  Widget _buildFavoriteButton() {
+    if (widget.onToggleFavorite == null) return const SizedBox.shrink();
     return Container(
+      width: healthDp(context, 40),
+      height: healthDp(context, 40),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
       ),
-      child: Column(
-        children: [
-          if (_selectedOptions.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '총 구매 금액',
-                    style: TextStyle(
-                      fontSize: 19.49,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    '${_calculateTotalPrice().toString().replaceAllMapped(
-                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                          (Match m) => '${m[1]},',
-                        )}원',
-                    style: const TextStyle(
-                      fontSize: 24.37,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFFFF5A8D),
-                    ),
-                  ),
-                ],
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        icon: Icon(
+          _isFavorite ? Icons.favorite : Icons.favorite_border,
+          color: _isFavorite ? const Color(0xFFFF4081) : Colors.grey[600],
+        ),
+        onPressed: () {
+          setState(() => _isFavorite = !_isFavorite);
+          widget.onToggleFavorite?.call();
+        },
+      ),
+    );
+  }
+
+  Widget _buildGeneralBottomActionRow({
+    required VoidCallback? onCart,
+    required VoidCallback? onBuy,
+  }) {
+    return Row(
+      children: [
+        if (widget.onToggleFavorite != null) ...[
+          _buildFavoriteButton(),
+          SizedBox(width: healthDp(context, 10)),
+        ],
+        Expanded(
+          child: OutlinedButton(
+            onPressed: onCart,
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                vertical: healthDp(context, 10),
+                horizontal: healthDp(context, 10),
+              ),
+              foregroundColor: const Color(0xFFFF5A8D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              ),
+              side: const BorderSide(color: Color(0xFFFF5A8D)),
+            ),
+            child: Text(
+              '장바구니',
+              style: TextStyle(
+                fontSize: healthSp(context, 16),
+                fontWeight: FontWeight.w500,
+                fontFamily: _kGmarketSans,
+                color: const Color(0xFFFF5A8D),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    '보유 포인트 ${(widget.userPoint ?? 0).toString().replaceAllMapped(
-                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                          (Match m) => '${m[1]},',
-                        )}P',
-                    style: TextStyle(
-                      fontSize: 11.70,
-                      fontFamily: 'Gmarket Sans TTF',
-                      color: Colors.black,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                ],
+          ),
+        ),
+        SizedBox(width: healthDp(context, 10)),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: onBuy,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF4081),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                vertical: healthDp(context, 10),
+                horizontal: healthDp(context, 10),
               ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
+              ),
+              disabledBackgroundColor: Colors.grey[300],
+            ),
+            child: Text(
+              '구매하기',
+              style: TextStyle(
+                fontSize: healthSp(context, 16),
+                fontWeight: FontWeight.w500,
+                fontFamily: _kGmarketSans,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomActions() {
+    return Column(
+      children: [
+          if (_selectedOptions.isNotEmpty) ...[
+            SizedBox(height: healthDp(context, 3)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '총 구매 금액',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 16),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  '${_calculateTotalPrice().toString().replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                        (Match m) => '${m[1]},',
+                      )}원',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 20),
+                    fontFamily: _kGmarketSans,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFFFF5A8D),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: healthDp(context, 5)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  '보유 포인트 ${(widget.userPoint ?? 0).toString().replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                        (Match m) => '${m[1]},',
+                      )}P',
+                  style: TextStyle(
+                    fontSize: healthSp(context, 12),
+                    fontFamily: _kGmarketSans,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: healthSp(context, -1.08),
+                  ),
+                ),
+              ],
             ),
           ],
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: widget.productKind == 'general'
-                ? Row(
+          if (_selectedOptions.isNotEmpty) SizedBox(height: healthDp(context, 10)),
+          widget.productKind == 'general'
+              ? _buildGeneralBottomActionRow(
+                  onCart:
+                      _selectedOptions.isEmpty ? null : widget.onAddToCart,
+                  onBuy: _selectedOptions.isEmpty ? null : widget.onBuyNow,
+                )
+                : Row(
                     children: [
+                      if (widget.onToggleFavorite != null) ...[
+                        _buildFavoriteButton(),
+                        SizedBox(width: healthDp(context, 10)),
+                      ],
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: _selectedOptions.isEmpty
-                              ? null
-                              : widget.onAddToCart,
+                          onPressed:
+                              _selectedOptions.isEmpty ? null : () {},
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                            padding: EdgeInsets.symmetric(
+                              vertical: healthDp(context, 10),
+                              horizontal: healthDp(context, 10),
                             ),
-                            side: BorderSide(color: Colors.grey[300]!),
+                            foregroundColor: const Color(0xFFFF5A8D),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 10)),
+                            ),
+                            side: const BorderSide(color: Color(0xFFFF5A8D)),
                           ),
-                          child: const Text(
-                            '장바구니',
+                          child: Text(
+                            '진료담기',
                             style: TextStyle(
-                              fontSize: 17.54,
-                              fontFamily: 'Gmarket Sans TTF',
+                              fontSize: healthSp(context, 16),
                               fontWeight: FontWeight.w500,
+                              fontFamily: _kGmarketSans,
+                              color: const Color(0xFFFF5A8D),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: healthDp(context, 10)),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed:
-                              _selectedOptions.isEmpty ? null : widget.onBuyNow,
+                          onPressed: _selectedOptions.isEmpty
+                              ? null
+                              : widget.onReserve,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF4081),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: EdgeInsets.symmetric(
+                              vertical: healthDp(context, 10),
+                              horizontal: healthDp(context, 10),
+                            ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 10)),
                             ),
                             disabledBackgroundColor: Colors.grey[300],
                           ),
-                          child: const Text(
-                            '구매하기',
+                          child: Text(
+                            '처방 예약 하기',
                             style: TextStyle(
-                              fontSize: 17.54,
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.bold,
+                              fontSize: healthSp(context, 16),
+                              fontWeight: FontWeight.w500,
+                              fontFamily: _kGmarketSans,
                             ),
                           ),
                         ),
                       ),
                     ],
-                  )
-                : ElevatedButton(
-                    onPressed:
-                        _selectedOptions.isEmpty ? null : widget.onReserve,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF4081),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      disabledBackgroundColor: Colors.grey[300],
-                    ),
-                    child: const SizedBox(
-                      width: double.infinity,
-                      child: Text(
-                        '처방예약하기',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 17.54,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
                   ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -684,34 +789,49 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     required int quantity,
     required VoidCallback? onDecrease,
     required VoidCallback onIncrease,
+    bool compact = false,
   }) {
+    final outerPadding = healthDp(context, compact ? 3 : 4);
+    final outerRadius = healthDp(context, compact ? 16 : 20);
+    final qtyWidth = healthDp(context, compact ? 14 : 16);
+    final qtyMargin = healthDp(context, compact ? 4 : 5);
+    final qtyFontSize = healthSp(context, compact ? 10 : 12);
+
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(outerPadding),
       decoration: ShapeDecoration(
         color: const Color(0xFFF6F6F6),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(outerRadius),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildRoundQtyButton(icon: Icons.remove, onTap: onDecrease),
+          _buildRoundQtyButton(
+            icon: Icons.remove,
+            onTap: onDecrease,
+            compact: compact,
+          ),
           Container(
-            width: 16,
+            width: qtyWidth,
             alignment: Alignment.center,
-            margin: const EdgeInsets.symmetric(horizontal: 5),
+            margin: EdgeInsets.symmetric(horizontal: qtyMargin),
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
-                fontSize: 12,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: qtyFontSize,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          _buildRoundQtyButton(icon: Icons.add, onTap: onIncrease),
+          _buildRoundQtyButton(
+            icon: Icons.add,
+            onTap: onIncrease,
+            compact: compact,
+          ),
         ],
       ),
     );
@@ -720,30 +840,363 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   Widget _buildRoundQtyButton({
     required IconData icon,
     required VoidCallback? onTap,
+    bool compact = false,
   }) {
+    final buttonSize = healthDp(context, compact ? 16 : 20);
+    final buttonRadius = healthDp(context, compact ? 8 : 10);
+    final iconSize = healthDp(context, compact ? 11 : 13);
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(buttonRadius),
       child: Container(
-        width: 20,
-        height: 20,
+        width: buttonSize,
+        height: buttonSize,
         decoration: ShapeDecoration(
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(buttonRadius),
           ),
-          shadows: const [
+          shadows: [
             BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 1.07,
-              offset: Offset(0, 0.54),
+              color: const Color(0x0C000000),
+              blurRadius: healthDp(context, 1.07),
+              offset: Offset(0, healthDp(context, 0.54)),
               spreadRadius: 0,
             ),
           ],
         ),
         child: Icon(
           icon,
-          size: 13,
+          size: iconSize,
+          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
+        ),
+      ),
+    );
+  }
+}
+
+/// 옵션 없는 일반 상품 — 수량만 선택하는 바텀시트 (비대면 옵션 시트와 동일 셸·버튼 스타일).
+class GeneralQuantityBottomSheet extends StatefulWidget {
+  final String productName;
+  final int unitPrice;
+  final int? userPoint;
+  final bool isFavorite;
+  final VoidCallback? onToggleFavorite;
+  final Future<void> Function(int quantity) onAddToCart;
+  final Future<void> Function(int quantity) onBuyNow;
+
+  const GeneralQuantityBottomSheet({
+    super.key,
+    required this.productName,
+    required this.unitPrice,
+    this.userPoint,
+    this.isFavorite = false,
+    this.onToggleFavorite,
+    required this.onAddToCart,
+    required this.onBuyNow,
+  });
+
+  @override
+  State<GeneralQuantityBottomSheet> createState() =>
+      _GeneralQuantityBottomSheetState();
+}
+
+class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet> {
+  int _quantity = 1;
+  late bool _isFavorite;
+
+  @override
+  void initState() {
+    super.initState();
+    _isFavorite = widget.isFavorite;
+  }
+
+  int get _totalPrice => widget.unitPrice * _quantity;
+
+  String _formatPrice(int value) {
+    return value.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sheetPadding = healthDp(context, 30);
+
+    return SizedBox(
+      width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(healthDp(context, 30)),
+          topRight: Radius.circular(healthDp(context, 30)),
+        ),
+        child: Container(
+          color: Colors.white,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                sheetPadding,
+                healthDp(context, 10),
+                sheetPadding,
+                sheetPadding,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: healthDp(context, 40),
+                      height: healthDp(context, 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 2)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 20)),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.productName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1E),
+                            fontSize: healthSp(context, 16),
+                            fontFamily: _kGmarketSans,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: healthDp(context, 12)),
+                      _GeneralQtyControl(
+                        quantity: _quantity,
+                        onDecrease: _quantity > 1
+                            ? () => setState(() => _quantity--)
+                            : null,
+                        onIncrease: () => setState(() => _quantity++),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: healthDp(context, 20)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '총 구매 금액',
+                        style: TextStyle(
+                          fontSize: healthSp(context, 16),
+                          fontFamily: _kGmarketSans,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '${_formatPrice(_totalPrice)}원',
+                        style: TextStyle(
+                          fontSize: healthSp(context, 20),
+                          fontFamily: _kGmarketSans,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFFFF5A8D),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: healthDp(context, 5)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        '보유 포인트 ${_formatPrice(widget.userPoint ?? 0)}P',
+                        style: TextStyle(
+                          fontSize: healthSp(context, 12),
+                          fontFamily: _kGmarketSans,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: healthSp(context, -1.08),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: healthDp(context, 10)),
+                  Row(
+                    children: [
+                      if (widget.onToggleFavorite != null) ...[
+                        Container(
+                          width: healthDp(context, 40),
+                          height: healthDp(context, 40),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 8)),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: Icon(
+                              _isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: _isFavorite
+                                  ? const Color(0xFFFF4081)
+                                  : Colors.grey[600],
+                            ),
+                            onPressed: () {
+                              setState(() => _isFavorite = !_isFavorite);
+                              widget.onToggleFavorite?.call();
+                            },
+                          ),
+                        ),
+                        SizedBox(width: healthDp(context, 10)),
+                      ],
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => widget.onAddToCart(_quantity),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                              vertical: healthDp(context, 10),
+                              horizontal: healthDp(context, 10),
+                            ),
+                            foregroundColor: const Color(0xFFFF5A8D),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 10)),
+                            ),
+                            side: const BorderSide(color: Color(0xFFFF5A8D)),
+                          ),
+                          child: Text(
+                            '장바구니',
+                            style: TextStyle(
+                              fontSize: healthSp(context, 16),
+                              fontWeight: FontWeight.w500,
+                              fontFamily: _kGmarketSans,
+                              color: const Color(0xFFFF5A8D),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: healthDp(context, 10)),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => widget.onBuyNow(_quantity),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF4081),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              vertical: healthDp(context, 10),
+                              horizontal: healthDp(context, 10),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 10)),
+                            ),
+                          ),
+                          child: Text(
+                            '구매하기',
+                            style: TextStyle(
+                              fontSize: healthSp(context, 16),
+                              fontWeight: FontWeight.w500,
+                              fontFamily: _kGmarketSans,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GeneralQtyControl extends StatelessWidget {
+  final int quantity;
+  final VoidCallback? onDecrease;
+  final VoidCallback onIncrease;
+
+  const _GeneralQtyControl({
+    required this.quantity,
+    required this.onDecrease,
+    required this.onIncrease,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(healthDp(context, 3)),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF6F6F6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 16)),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _GeneralQtyButton(icon: Icons.remove, onTap: onDecrease),
+          Container(
+            width: healthDp(context, 14),
+            alignment: Alignment.center,
+            margin: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
+            child: Text(
+              '$quantity',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 10),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          _GeneralQtyButton(icon: Icons.add, onTap: onIncrease),
+        ],
+      ),
+    );
+  }
+}
+
+class _GeneralQtyButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _GeneralQtyButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonSize = healthDp(context, 16);
+    final buttonRadius = healthDp(context, 8);
+    final iconSize = healthDp(context, 11);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(buttonRadius),
+      child: Container(
+        width: buttonSize,
+        height: buttonSize,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(buttonRadius),
+          ),
+          shadows: [
+            BoxShadow(
+              color: const Color(0x0C000000),
+              blurRadius: healthDp(context, 1.07),
+              offset: Offset(0, healthDp(context, 0.54)),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          size: iconSize,
           color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
         ),
       ),

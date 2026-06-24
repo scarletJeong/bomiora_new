@@ -14,7 +14,7 @@ import '../../health/health_common/health_responsive_scale.dart';
   final cellWidth = inner > crossGap
       ? (inner - crossGap) / 2
       : (inner * 0.45).clamp(80.0, 200.0);
-  final cellHeight = cellWidth / 0.58;
+  final cellHeight = ProductCatalogCard.preferredMainAxisExtent(context);
   return (
     cellWidth: cellWidth,
     cellHeight: cellHeight,
@@ -177,7 +177,8 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
                   crossAxisCount: 2,
                   crossAxisSpacing: m.crossGap,
                   mainAxisSpacing: healthDp(context, 16),
-                  childAspectRatio: 0.58,
+                  mainAxisExtent:
+                      ProductCatalogCard.preferredMainAxisExtent(context),
                 ),
                 itemBuilder: (context, index) => ProductCatalogCard(
                   product: recommended[index],

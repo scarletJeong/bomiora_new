@@ -9,7 +9,8 @@ import '../../../user/healthprofile/models/health_profile_model.dart';
 import '../../../user/healthprofile/health_profile_questionnaire_options.dart';
 import '../../../user/healthprofile/health_profile_payload.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../common/widgets/app_bar.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 import 'prescription_time_screen.dart';
 
 /// `HealthProfileFormScreen._Answer6MenuLine` 과 동일 스타일 (다이어트 기간 오버레이 메뉴)
@@ -28,16 +29,16 @@ class _PrescriptionDietPeriodMenuLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(healthDp(context, 4)),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         decoration: BoxDecoration(
           border: showBottomDivider
-              ? const Border(
+              ? Border(
                   bottom: BorderSide(
-                    width: 0.3,
-                    color: Color(0x7FD2D2D2),
+                    width: healthDp(context, 0.3),
+                    color: const Color(0x7FD2D2D2),
                   ),
                 )
               : null,
@@ -49,9 +50,9 @@ class _PrescriptionDietPeriodMenuLine extends StatelessWidget {
               child: Text(
                 label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.black,
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                   height: 1.2,
@@ -89,14 +90,12 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
   static const Color _kAccent = Color(0xFFFF5A8D);
   static const Color _kBorderGrey = Color(0x7FD2D2D2);
   static const Color _kMutedText = Color(0xFF898383);
-  static const TextStyle _kBasicInfoLabelStyle = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    fontFamily: 'Gmarket Sans TTF',
-  );
-  static const double _kTabTextSize = 15;
-  /// 기본정보 라벨 칸 폭 (작을수록 오른쪽 입력칸이 넓어짐)
-  static const double _kBasicInfoLabelWidth = 60;
+
+  TextStyle _basicInfoLabelStyle(BuildContext context) => TextStyle(
+        fontSize: healthSp(context, 14),
+        fontWeight: FontWeight.w500,
+        fontFamily: 'Gmarket Sans TTF',
+      );
 
   /// 선택 시 연한 핑크 배경 (피그마 0x0CFF3787 계열, 앱 악센트에 맞춤)
   static const Color _kSelectedFill = Color(0x0CFF5A8D);
@@ -447,7 +446,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     }
 
     return MobileAppLayoutWrapper(
-      appBar: const HealthAppBar(title: '02 문진표 작성하기', centerTitle: true),
+      appBar: const HealthAppBar(title: '02 문진표 작성하기', centerTitle: false),
       child: DefaultTextStyle.merge(
         style: const TextStyle(
           fontFamily: 'Gmarket Sans TTF',
@@ -457,15 +456,20 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(27, 16, 27, 8),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 27),
+                  healthDp(context, 16),
+                  healthDp(context, 27),
+                  healthDp(context, 8),
+                ),
                 children: [
-                  const SizedBox(height: 10),
+                  SizedBox(height: healthDp(context, 10)),
                   _sectionTitleWithIcon('기본 정보', AppAssets.profile1),
-                  const SizedBox(height: 12),
+                  SizedBox(height: healthDp(context, 12)),
                   _labeledRow(
                     Align(
                       alignment: Alignment.centerRight,
-                      child: Text('생년월일', style: _kBasicInfoLabelStyle),
+                      child: Text('생년월일', style: _basicInfoLabelStyle(context)),
                     ),
                     _numField(
                       controller: _birthDate,
@@ -481,12 +485,12 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                   _labeledRow(
                     Align(
                       alignment: Alignment.centerRight,
-                      child: Text('성별', style: _kBasicInfoLabelStyle),
+                      child: Text('성별', style: _basicInfoLabelStyle(context)),
                     ),
                     Row(
                       children: [
                         Expanded(child: _genderTile('M', '남')),
-                        const SizedBox(width: 10),
+                        SizedBox(width: healthDp(context, 10)),
                         Expanded(child: _genderTile('F', '여')),
                       ],
                     ),
@@ -497,8 +501,8 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('키/', style: _kBasicInfoLabelStyle),
-                        Text('몸무게', style: _kBasicInfoLabelStyle),
+                        Text('키/', style: _basicInfoLabelStyle(context)),
+                        Text('몸무게', style: _basicInfoLabelStyle(context)),
                       ],
                     ),
                     Row(
@@ -513,7 +517,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                             onChanged: (_) => setState(() {}),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: healthDp(context, 10)),
                         Expanded(
                           child: _numField(
                             controller: _currentWeight,
@@ -527,15 +531,15 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _labeledRow(
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('목표감량', style: _kBasicInfoLabelStyle),
-                        Text('체중', style: _kBasicInfoLabelStyle),
+                        Text('목표감량', style: _basicInfoLabelStyle(context)),
+                        Text('체중', style: _basicInfoLabelStyle(context)),
                       ],
                     ),
                     _numField(
@@ -553,30 +557,33 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('다이어트', style: _kBasicInfoLabelStyle),
-                        Text('예상 기간', style: _kBasicInfoLabelStyle),
+                        Text('다이어트', style: _basicInfoLabelStyle(context)),
+                        Text('예상 기간', style: _basicInfoLabelStyle(context)),
                       ],
                     ),
                     _buildDietPeriodDropdown(),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _sectionDivider(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _sectionTitleWithIcon('식습관', AppAssets.profile2),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: healthDp(context, 12)),
+                  Text(
                     '하루 끼니',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _mealsPerDayCards(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _mealTimeLabelRow(),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _mealTimeRow(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _labelWithHint('식습관', '*중복선택가능'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _multiGridFigma(
                     HealthProfileQuestionnaireOptions.eatingHabits,
                     List<String>.from(
@@ -587,9 +594,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                               _withExclusiveNone(next, '해당없음');
                         }),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _labelWithHint('자주 먹는 음식', '*중복선택가능'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _multiGridFigma(
                     HealthProfileQuestionnaireOptions.foodPreference,
                     List<String>.from(
@@ -598,24 +605,27 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                     (next) =>
                         setState(() => _formData['foodPreference'] = next),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _sectionDivider(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _sectionTitleWithIcon('운동', AppAssets.profile3),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: healthDp(context, 12)),
+                  Text(
                     '운동 습관',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _twoColumnSingleChoice(
                     HealthProfileQuestionnaireOptions.exerciseFrequency,
                     _formData['exerciseFrequency'] as String?,
                     (v) => setState(() => _formData['exerciseFrequency'] = v),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _labelWithHint('주로 하는 운동', '*중복선택가능'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _multiGridFigma(
                     HealthProfileQuestionnaireOptions.exerciseTypes,
                     List<String>.from(
@@ -623,13 +633,13 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                     null,
                     (next) => setState(() => _formData['exerciseTypes'] = next),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _sectionDivider(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _sectionTitleWithIcon('질병', AppAssets.profile4),
-                  const SizedBox(height: 12),
+                  SizedBox(height: healthDp(context, 12)),
                   _labelWithHint('질병', '*중복선택가능'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _multiGridFigma(
                     HealthProfileQuestionnaireOptions.diseases,
                     List<String>.from(_formData['diseases'] as List? ?? []),
@@ -639,9 +649,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                           _withExclusiveNone(next, '해당 없음');
                     }),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _labelWithHint('복용 중인 약', '*중복선택가능'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _multiGridFigma(
                     HealthProfileQuestionnaireOptions.medications,
                     List<String>.from(
@@ -654,124 +664,146 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                   ),
                   if (List<String>.from(_formData['medications'] as List? ?? [])
                       .contains('기타')) ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: healthDp(context, 12)),
                     SizedBox(
-                      height: 40,
+                      height: healthDp(context, 40),
                       child: TextField(
                         controller: _medicationsEtc,
                         decoration: _fieldDecoration('기타 복용약을 입력해주세요'),
                         maxLines: 1,
                         maxLength: 100,
                         buildCounter: _noCounter,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Gmarket Sans TTF',
-                          fontSize: 15,
+                          fontSize: healthSp(context, 15),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   _sectionDivider(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: healthDp(context, 16)),
                   _sectionTitleWithIcon('다이어트 약', AppAssets.profile5),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: healthDp(context, 12)),
+                  Text(
                     '다이어트약 복용 경험',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: healthSp(context, 14),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: healthDp(context, 8)),
                   Row(
                     children: [
                       Expanded(
-                        child: _expTile(
-                          label: '있음',
-                          selected: _formData['dietExperience'] == '있음',
-                          onTap: () => setState(
+                        child: _figmaChoiceCard(
+                          '있음',
+                          _formData['dietExperience'] == '있음',
+                          () => setState(
                               () => _formData['dietExperience'] = '있음'),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: healthDp(context, 10)),
                       Expanded(
-                        child: _expTile(
-                          label: '없음',
-                          selected: _formData['dietExperience'] == '없음',
-                          onTap: () => setState(
+                        child: _figmaChoiceCard(
+                          '없음',
+                          _formData['dietExperience'] == '없음',
+                          () => setState(
                               () => _formData['dietExperience'] = '없음'),
                         ),
                       ),
                     ],
                   ),
                   if (_formData['dietExperience'] == '있음') ...[
-                    const SizedBox(height: 16),
+                    SizedBox(height: healthDp(context, 16)),
                     _buildDietDrugDetailCard(),
                   ],
-                  const SizedBox(height: 24),
+                  SizedBox(height: healthDp(context, 24)),
                 ],
               ),
             ),
             SafeArea(
               child: Container(
                 color: Colors.white,
-                padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 27),
+                  0,
+                  healthDp(context, 27),
+                  healthDp(context, 20),
+                ),
                 child: Row(
                   children: [
                     SizedBox(
-                      width: 100,
-                      height: 40,
+                      width: healthDp(context, 72),
+                      height: healthDp(context, 34),
                       child: FilledButton.tonal(
                         onPressed: _saving ? null : () => Navigator.pop(context),
                         style: FilledButton.styleFrom(
-                          minimumSize: const Size(100, 40),
-                          maximumSize: const Size(100, 40),
+                          minimumSize: Size(
+                            healthDp(context, 72),
+                            healthDp(context, 34),
+                          ),
+                          maximumSize: Size(
+                            healthDp(context, 72),
+                            healthDp(context, 34),
+                          ),
                           padding: EdgeInsets.zero,
                           backgroundColor: const Color(0x26D2D2D2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 7)),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           '이전',
                           style: TextStyle(
-                            color: Color(0xFF898686),
-                            fontSize: 20,
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 14),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: healthDp(context, 10)),
                     Expanded(
                       child: SizedBox(
-                        height: 40,
+                        height: healthDp(context, 34),
                         child: ElevatedButton(
                           onPressed: _saving ? null : _onNext,
                           style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 40),
-                            maximumSize: const Size(double.infinity, 40),
+                            minimumSize: Size(
+                              double.infinity,
+                              healthDp(context, 34),
+                            ),
+                            maximumSize: Size(
+                              double.infinity,
+                              healthDp(context, 34),
+                            ),
                             padding: EdgeInsets.zero,
                             backgroundColor: _kAccent,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 7)),
                             ),
                             disabledBackgroundColor: Colors.grey[300],
                           ),
                           child: _saving
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
+                              ? SizedBox(
+                                  width: healthDp(context, 18),
+                                  height: healthDp(context, 18),
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                                    strokeWidth: healthDp(context, 2),
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text(
+                              : Text(
                                   '다음',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 20,
+                                    fontSize: healthSp(context, 14),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -810,18 +842,18 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       children: [
         SvgPicture.asset(
           assetPath,
-          width: 26,
-          height: 26,
+          width: healthDp(context, 26),
+          height: healthDp(context, 26),
           fit: BoxFit.contain,
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: healthDp(context, 8)),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 17,
+            style: TextStyle(
+              fontSize: healthSp(context, 17),
               fontWeight: FontWeight.w800,
-              color: Color(0xFF584045),
+              color: const Color(0xFF584045),
             ),
           ),
         ),
@@ -830,18 +862,18 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
   }
 
   Widget _sectionDivider() {
-    return Container(height: 1, color: _kBorderGrey);
+    return Container(height: healthDp(context, 1), color: _kBorderGrey);
   }
 
   /// 기본 정보: 라벨(고정폭) + 입력을 한 행에 배치
   Widget _labeledRow(Widget label, Widget field) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: healthDp(context, 12)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(width: _kBasicInfoLabelWidth, child: label),
-          const SizedBox(width: 20),
+          SizedBox(width: healthDp(context, 60), child: label),
+          SizedBox(width: healthDp(context, 20)),
           Expanded(child: field),
         ],
       ),
@@ -852,18 +884,21 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           '식사 시간',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: healthSp(context, 15),
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: healthDp(context, 8)),
         Expanded(
           child: Text(
             '*해당되는 입력란에만 입력하세요',
             style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              height: 1.25,
+              fontSize: healthSp(context, 11),
+              color: Colors.grey[500],
+              height: 1,
             ),
           ),
         ),
@@ -890,19 +925,23 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     if (box == null || !box.hasSize) return;
 
     final pos = box.localToGlobal(Offset.zero);
-    final top = pos.dy + box.size.height + 4;
+    final top = pos.dy + box.size.height + healthDp(context, 4);
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final menuWidth = box.size.width.clamp(160.0, screenWidth - 16.0);
+    final menuWidth = box.size.width.clamp(
+      healthDp(context, 160),
+      screenWidth - healthDp(context, 16),
+    );
 
     const visibleRowCap = _kDietPeriodMenuMaxVisibleRows;
+    final rowExtent = healthDp(context, _kDietPeriodMenuRowExtent);
+    final rowGapScaled = healthDp(context, _kDietPeriodMenuRowGap);
     final menuScrolls = options.length > visibleRowCap;
     final menuViewportHeight = menuScrolls
-        ? (visibleRowCap * _kDietPeriodMenuRowExtent +
-            (visibleRowCap - 1) * _kDietPeriodMenuRowGap)
+        ? (visibleRowCap * rowExtent + (visibleRowCap - 1) * rowGapScaled)
         : null;
 
     _dietPeriodMenuOverlay = OverlayEntry(
-      builder: (context) => Stack(
+      builder: (overlayContext) => Stack(
         children: [
           Positioned.fill(
             child: GestureDetector(
@@ -912,30 +951,35 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
             ),
           ),
           Positioned(
-            left: pos.dx
-                .clamp(8.0, MediaQuery.sizeOf(context).width - menuWidth - 8),
+            left: pos.dx.clamp(
+              healthDp(context, 8),
+              MediaQuery.sizeOf(overlayContext).width -
+                  menuWidth -
+                  healthDp(context, 8),
+            ),
             top: top,
             width: menuWidth,
             child: Material(
               color: Colors.transparent,
               child: DefaultTextStyle(
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
-                  fontSize: 16,
+                  fontSize: healthSp(context, 16),
                   fontWeight: FontWeight.w500,
                   color: Colors.black,
                   height: 1.2,
                 ),
                 child: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(healthDp(overlayContext, 10)),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
+                    borderRadius:
+                        BorderRadius.circular(healthDp(overlayContext, 10)),
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x19000000),
-                        blurRadius: 4,
-                        offset: Offset(0, 0),
+                        color: const Color(0x19000000),
+                        blurRadius: healthDp(overlayContext, 4),
+                        offset: Offset.zero,
                       ),
                     ],
                   ),
@@ -951,7 +995,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             for (var i = 0; i < options.length; i++) ...[
-                              if (i > 0) const SizedBox(height: 5),
+                              if (i > 0) SizedBox(height: rowGapScaled),
                               _PrescriptionDietPeriodMenuLine(
                                 label: options[i],
                                 showBottomDivider: i < options.length - 1,
@@ -989,19 +1033,19 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       children: [
         Container(
           key: _dietPeriodFieldKey,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: healthDp(context, 40),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
               side: const BorderSide(color: _kBorderGrey),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
-            shadows: const [
+            shadows: [
               BoxShadow(
-                color: Color(0x19000000),
-                blurRadius: 4,
-                offset: Offset(0, 0),
+                color: const Color(0x19000000),
+                blurRadius: healthDp(context, 4),
+                offset: Offset.zero,
                 spreadRadius: 0,
               ),
             ],
@@ -1010,14 +1054,14 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
           child: DefaultTextStyle(
             style: TextStyle(
               fontFamily: 'Gmarket Sans TTF',
-              fontSize: 16,
+              fontSize: healthSp(context, 16),
               fontWeight: FontWeight.w500,
               color: selected == null
                   ? const Color(0xFF898686)
                   : const Color(0xFF1A1A1A),
             ),
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
               onTap: () => _openDietPeriodMenu(
                 options: options,
                 onSelected: (v) {
@@ -1033,9 +1077,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Icon(
+                  Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    size: 18,
+                    size: healthDp(context, 18),
                     color: Colors.black87,
                   ),
                 ],
@@ -1062,7 +1106,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                 () => setState(() => _formData['mealsPerDay'] = opts[i]),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: i + 1 < opts.length
                   ? _figmaChoiceCard(
@@ -1071,13 +1115,13 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                       () => setState(
                           () => _formData['mealsPerDay'] = opts[i + 1]),
                     )
-                  : const SizedBox(height: 40),
+                  : SizedBox(height: healthDp(context, 40)),
             ),
           ],
         ),
       );
       if (i + 2 < opts.length) {
-        rows.add(const SizedBox(height: 10));
+        rows.add(SizedBox(height: healthDp(context, 10)));
       }
     }
     return Column(
@@ -1091,20 +1135,20 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         child: Container(
           width: double.infinity,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: healthDp(context, 40),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: selected ? _kSelectedFill : Colors.transparent,
             shape: RoundedRectangleBorder(
               side: BorderSide(
-                width: 1,
+                width: healthDp(context, 1),
                 color: selected ? _kAccent : _kBorderGrey,
               ),
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           alignment: Alignment.center,
@@ -1117,7 +1161,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
               color: selected
                   ? const Color(0xFF1A1A1A)
                   : _kMutedText,
-              fontSize: _kTabTextSize,
+              fontSize: healthSp(context, 15),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
@@ -1136,20 +1180,20 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         child: Container(
           width: double.infinity,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: healthDp(context, 40),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: selected ? _kSelectedFill : Colors.transparent,
             shape: RoundedRectangleBorder(
               side: BorderSide(
-                width: 1,
+                width: healthDp(context, 1),
                 color: selected ? _kAccent : _kBorderGrey,
               ),
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           alignment: Alignment.center,
@@ -1160,7 +1204,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
               color: selected
                   ? const Color(0xFF1A1A1A)
                   : _kMutedText,
-              fontSize: _kTabTextSize,
+              fontSize: healthSp(context, 15),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: FontWeight.w500,
             ),
@@ -1218,7 +1262,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: i + 1 < regular.length
                   ? _figmaChoiceCard(
@@ -1230,19 +1274,19 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                         onChanged,
                       ),
                     )
-                  : const SizedBox(height: 40),
+                  : SizedBox(height: healthDp(context, 40)),
             ),
           ],
         ),
       );
       if (i + 2 < regular.length) {
-        col.add(const SizedBox(height: 10));
+        col.add(SizedBox(height: healthDp(context, 10)));
       }
     }
 
     if (fullWidthNoneToken != null) {
       if (col.isNotEmpty) {
-        col.add(const SizedBox(height: 10));
+        col.add(SizedBox(height: healthDp(context, 10)));
       }
       col.add(
         _figmaChoiceCardFullWidth(
@@ -1280,7 +1324,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                 () => onSelect(options[i]),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
               child: i + 1 < options.length
                   ? _figmaChoiceCard(
@@ -1288,13 +1332,13 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                       options[i + 1] == selected,
                       () => onSelect(options[i + 1]),
                     )
-                  : const SizedBox(height: 40),
+                  : SizedBox(height: healthDp(context, 40)),
             ),
           ],
         ),
       );
       if (i + 2 < options.length) {
-        rows.add(const SizedBox(height: 10));
+        rows.add(SizedBox(height: healthDp(context, 10)));
       }
     }
     return Column(
@@ -1309,14 +1353,52 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: healthSp(context, 15),
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: healthDp(context, 8)),
         Text(
           hint,
-          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+          style: TextStyle(
+            fontSize: healthSp(context, 11),
+            color: Colors.grey[500],
+          ),
         ),
       ],
+    );
+  }
+
+  InputDecoration _compactFieldDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: Colors.grey[400],
+        fontFamily: 'Gmarket Sans TTF',
+        fontSize: healthSp(context, 14),
+        height: 1.0,
+      ),
+      isDense: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: const BorderSide(color: _kBorderGrey),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: const BorderSide(color: _kBorderGrey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: BorderSide(
+          color: _kAccent,
+          width: healthDp(context, 2),
+        ),
+      ),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 12),
+        vertical: healthDp(context, 0),
+      ),
     );
   }
 
@@ -1326,23 +1408,28 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       hintStyle: TextStyle(
         color: Colors.grey[400],
         fontFamily: 'Gmarket Sans TTF',
-        fontSize: 14,
+        fontSize: healthSp(context, 14),
       ),
       isDense: true,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         borderSide: const BorderSide(color: _kBorderGrey),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         borderSide: const BorderSide(color: _kBorderGrey),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: const BorderSide(color: _kAccent, width: 2),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: BorderSide(
+          color: _kAccent,
+          width: healthDp(context, 2),
+        ),
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 12),
+        vertical: healthDp(context, 14),
+      ),
     );
   }
 
@@ -1351,31 +1438,36 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       hintText: hint.isEmpty ? null : hint,
       hintStyle: TextStyle(
         color: Colors.grey[400],
-        fontSize: 14,
+        fontSize: healthSp(context, 14),
         fontFamily: 'Gmarket Sans TTF',
       ),
       suffixText: suffix,
-      suffixStyle: const TextStyle(
+      suffixStyle: TextStyle(
         fontFamily: 'Gmarket Sans TTF',
-        fontSize: 13,
+        fontSize: healthSp(context, 13),
         fontWeight: FontWeight.w500,
         color: _kMutedText,
       ),
       isDense: true,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         borderSide: const BorderSide(color: _kBorderGrey),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         borderSide: const BorderSide(color: _kBorderGrey),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: const BorderSide(color: _kAccent, width: 2),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderSide: BorderSide(
+          color: _kAccent,
+          width: healthDp(context, 2),
+        ),
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 10),
+        vertical: healthDp(context, 12),
+      ),
     );
   }
 
@@ -1393,8 +1485,8 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       maxLength: maxLen,
       buildCounter: _noCounter,
-      style: const TextStyle(
-        fontSize: 15,
+      style: TextStyle(
+        fontSize: healthSp(context, 15),
         fontFamily: 'Gmarket Sans TTF',
       ),
       decoration: dense
@@ -1403,7 +1495,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       onChanged: onChanged,
     );
     if (dense) {
-      return SizedBox(height: 40, child: field);
+      return SizedBox(height: healthDp(context, 40), child: field);
     }
     return field;
   }
@@ -1414,25 +1506,25 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => setState(() => _formData['gender'] = value),
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         child: Container(
-          height: 40,
+          height: healthDp(context, 40),
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 8)),
           decoration: ShapeDecoration(
             color: sel ? _kSelectedFill : Colors.transparent,
             shape: RoundedRectangleBorder(
               side: BorderSide(
-                width: 1,
+                width: healthDp(context, 1),
                 color: sel ? _kAccent : _kBorderGrey,
               ),
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(healthDp(context, 7)),
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              fontSize: _kTabTextSize,
+              fontSize: healthSp(context, 15),
               fontFamily: 'Gmarket Sans TTF',
               fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
               color: sel ? const Color(0xFF1A1A1A) : _kMutedText,
@@ -1443,45 +1535,13 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     );
   }
 
-  Widget _expTile({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFFFF0F5) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? _kAccent : Colors.grey[300]!,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: _kTabTextSize,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? _kAccent : Colors.black87,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildDietDrugDetailCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(healthDp(context, 15)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
           side: const BorderSide(color: _kBorderGrey),
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
         ),
       ),
       child: Column(
@@ -1490,12 +1550,12 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 '다이어트약 상세 정보',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: healthSp(context, 14),
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF1A1A1A),
+                  color: const Color(0xFF1A1A1A),
                   fontFamily: 'Gmarket Sans TTF',
                 ),
               ),
@@ -1511,15 +1571,17 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _kAccent,
                   side: const BorderSide(color: _kAccent),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 10),
+                    vertical: healthDp(context, 4),
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
+                child: Text(
                   '초기화',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: healthSp(context, 12),
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Gmarket Sans TTF',
                   ),
@@ -1528,7 +1590,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
             ],
           ),
           const Divider(color: _kBorderGrey),
-          const SizedBox(height: 8),
+          SizedBox(height: healthDp(context, 5)),
           _dietDrugDetailRow(
             label: '복용 약명',
             controller: _dietMedicine,
@@ -1565,35 +1627,37 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
     required int maxLength,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 60,
+            width: healthDp(context, 60),
             child: Text(
               label,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: healthSp(context, 14),
                 fontWeight: FontWeight.w500,
                 fontFamily: 'Gmarket Sans TTF',
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: healthDp(context, 8)),
           Expanded(
             child: SizedBox(
-              height: 40,
+              height: healthDp(context, 39),
               child: TextField(
                 controller: controller,
-                decoration: _fieldDecoration(hint),
+                textAlignVertical: TextAlignVertical.center,
+                decoration: _compactFieldDecoration(hint),
                 maxLines: 1,
                 maxLength: maxLength,
                 buildCounter: _noCounter,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Gmarket Sans TTF',
-                  fontSize: 15,
+                  fontSize: healthSp(context, 14),
+                  height: 1.0,
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -1606,9 +1670,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
 
   /// `HealthProfileFormScreen._buildFigmaMealtimeTable` 과 동일: 1행 헤더(1~4식) / 2행 입력 4열
   Widget _mealTimeRow() {
-    const headerStyle = TextStyle(
-      color: Color(0xFF1A1A1A),
-      fontSize: 13,
+    final headerStyle = TextStyle(
+      color: const Color(0xFF1A1A1A),
+      fontSize: healthSp(context, 13),
       fontWeight: FontWeight.w600,
       fontFamily: 'Gmarket Sans TTF',
     );
@@ -1617,7 +1681,7 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       return TableCell(
         verticalAlignment: TableCellVerticalAlignment.middle,
         child: SizedBox(
-          height: 36,
+          height: healthDp(context, 36),
           child: Center(
             child: Text(
               label,
@@ -1633,9 +1697,12 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
       return TableCell(
         verticalAlignment: TableCellVerticalAlignment.middle,
         child: SizedBox(
-          height: 40,
+          height: healthDp(context, 40),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 6),
+              vertical: healthDp(context, 4),
+            ),
             child: TextField(
               controller: _mealControllers[index],
               keyboardType: TextInputType.text,
@@ -1649,17 +1716,17 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
                 contentPadding: EdgeInsets.zero,
                 hintText: hint,
                 hintStyle: TextStyle(
-                  fontSize: 11,
+                  fontSize: healthSp(context, 11),
                   color: _kMutedText,
                   fontWeight: FontWeight.w500,
                   height: 1.3,
                   fontFamily: 'Gmarket Sans TTF',
                 ),
               ),
-              style: const TextStyle(
-                fontSize: 13,
+              style: TextStyle(
+                fontSize: healthSp(context, 13),
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF1A1A1A),
+                color: const Color(0xFF1A1A1A),
                 fontFamily: 'Gmarket Sans TTF',
               ),
               onChanged: (_) {
@@ -1674,12 +1741,15 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(healthDp(context, 7)),
         border: Border.all(color: _kBorderGrey),
       ),
       clipBehavior: Clip.antiAlias,
       child: Table(
-        border: TableBorder.all(color: _kBorderGrey, width: 1),
+        border: TableBorder.all(
+          color: _kBorderGrey,
+          width: healthDp(context, 1),
+        ),
         defaultColumnWidth: const FlexColumnWidth(1),
         children: [
           TableRow(
