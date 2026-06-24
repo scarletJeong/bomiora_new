@@ -154,7 +154,7 @@ class _DeliveryAddressChangePopupState
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        '배송지 변경',
+                        '배송지 선택',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: _kInk,
@@ -227,18 +227,8 @@ class _DeliveryAddressChangePopupState
                             ],
                           ),
                         ),
-                        SizedBox(height: healthDp(context, 12)),
+                        SizedBox(height: healthDp(context, 5)),
                       ],
-                      Text(
-                        '배송지 선택',
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: healthSp(context, 12),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 5)),
                       if (_isLoading)
                         Padding(
                           padding: EdgeInsets.symmetric(
@@ -327,7 +317,7 @@ class _DeliveryAddressChangePopupState
                   ),
                 ),
                 SizedBox(
-                  height: healthDp(context, 50),
+                  height: healthDp(context, 42),
                   child: Row(
                     children: [
                       Expanded(
@@ -340,7 +330,7 @@ class _DeliveryAddressChangePopupState
                                 '취소',
                                 style: TextStyle(
                                   color: _kMuted,
-                                  fontSize: healthSp(context, 16),
+                                  fontSize: healthSp(context, 14),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -357,8 +347,8 @@ class _DeliveryAddressChangePopupState
                             child: Center(
                               child: _isSubmitting
                                   ? SizedBox(
-                                      width: healthDp(context, 20),
-                                      height: healthDp(context, 20),
+                                      width: healthDp(context, 16),
+                                      height: healthDp(context, 16),
                                       child: CircularProgressIndicator(
                                         strokeWidth: healthDp(context, 2),
                                         color: Colors.white,
@@ -368,7 +358,7 @@ class _DeliveryAddressChangePopupState
                                       '확인',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: healthSp(context, 16),
+                                        fontSize: healthSp(context, 14),
                                         fontFamily: 'Gmarket Sans TTF',
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -427,17 +417,99 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
     final postalCode = (selected['postalCode'] ?? '').toString().trim();
     final roadAddress = (selected['roadAddress'] ?? '').toString().trim();
     final jibunAddress = (selected['jibunAddress'] ?? '').toString().trim();
-    final extraAddress = (selected['extraAddress'] ?? '').toString().trim();
 
     final baseAddress = roadAddress.isNotEmpty ? roadAddress : jibunAddress;
 
     setState(() {
       _zip.text = _formatPostalCodeDisplay(postalCode);
       _addr1.text = baseAddress;
-      if (_addr2.text.trim().isEmpty && extraAddress.isNotEmpty) {
-        _addr2.text = extraAddress;
-      }
     });
+  }
+
+  bool get _hasSearchedAddress => _addr1.text.trim().isNotEmpty;
+
+  Widget _buildAddressSearchSection(BuildContext context) {
+    final radius = healthDp(context, 10);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '주소',
+          style: TextStyle(
+            color: _kMuted,
+            fontSize: healthSp(context, 12),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: healthDp(context, 4)),
+        SizedBox(
+          width: double.infinity,
+          height: healthDp(context, 35),
+          child: ElevatedButton(
+            onPressed: _openAddressSearch,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kPink,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radius),
+              ),
+            ),
+            child: Text(
+              '주소 검색',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: healthSp(context, 14),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+        if (_hasSearchedAddress) ...[
+          SizedBox(height: healthDp(context, 8)),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 10),
+              vertical: healthDp(context, 10),
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F7F7),
+              borderRadius: BorderRadius.circular(radius),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_zip.text.trim().isNotEmpty)
+                  Text(
+                    _zip.text.trim(),
+                    style: TextStyle(
+                      color: _kMuted,
+                      fontSize: healthSp(context, 11),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                if (_zip.text.trim().isNotEmpty)
+                  SizedBox(height: healthDp(context, 4)),
+                Text(
+                  _addr1.text.trim(),
+                  style: TextStyle(
+                    color: _kInk,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   @override
@@ -453,7 +525,14 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _saving) return;
+    if (_saving) return;
+    if (!_hasSearchedAddress) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('주소 검색을 통해 주소를 선택해 주세요.')),
+      );
+      return;
+    }
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
     try {
@@ -494,7 +573,9 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
     final radius = healthDp(context, 20);
     final pad20 = healthDp(context, 20);
     final gap8 = healthDp(context, 8);
-    final fieldH = healthDp(context, 40);
+    final buttonH = healthDp(context, 42);
+    final maxScrollHeight =
+        MediaQuery.sizeOf(context).height * 0.88 - buttonH;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -522,77 +603,55 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    pad20,
-                    pad20,
-                    pad20,
-                    healthDp(context, 12),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: maxScrollHeight.clamp(0.0, double.infinity),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Text(
-                          '새 배송지 등록',
-                          style: TextStyle(
-                            color: _kInk,
-                            fontSize: healthSp(context, 20),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 14)),
-                      _field(context, '배송지 이름', _subject, '집'),
-                      SizedBox(height: gap8),
-                      _field(context, '받으시는 분', _name, '홍길동'),
-                      SizedBox(height: gap8),
-                      _field(context, '연락처', _phone, '010-0000-0000'),
-                      SizedBox(height: gap8),
-                      SizedBox(
-                        width: double.infinity,
-                        height: fieldH,
-                        child: ElevatedButton(
-                          onPressed: _openAddressSearch,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _kPink,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
-                          ),
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      pad20,
+                      pad20,
+                      pad20,
+                      healthDp(context, 12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
                           child: Text(
-                            '주소 검색',
+                            '새 배송지 등록',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: healthSp(context, 12),
+                              color: _kInk,
+                              fontSize: healthSp(context, 20),
                               fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: gap8),
-                      _field(context, '우편번호', _zip, '우편번호'),
-                      SizedBox(height: gap8),
-                      _field(context, '주소', _addr1, '기본 주소'),
-                      SizedBox(height: gap8),
-                      _field(context, '상세 주소', _addr2, '상세 주소'),
-                      SizedBox(height: gap8),
-                      _field(
-                        context,
-                        '배송 요청사항',
-                        _memo,
-                        '요청사항이 있으면 입력',
-                        required: false,
-                      ),
-                    ],
+                        SizedBox(height: healthDp(context, 14)),
+                        _field(context, '배송지 이름', _subject, '집'),
+                        SizedBox(height: gap8),
+                        _field(context, '받으시는 분', _name, '홍길동'),
+                        SizedBox(height: gap8),
+                        _field(context, '연락처', _phone, '010-0000-0000'),
+                        SizedBox(height: gap8),
+                        _buildAddressSearchSection(context),
+                        SizedBox(height: gap8),
+                        _field(context, '상세 주소', _addr2, '상세 주소'),
+                        SizedBox(height: gap8),
+                        _field(
+                          context,
+                          '배송 요청사항',
+                          _memo,
+                          '요청사항이 있으면 입력',
+                          required: false,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 SizedBox(
-                  height: healthDp(context, 50),
+                  height: buttonH,
                   child: Row(
                     children: [
                       Expanded(
@@ -607,7 +666,7 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
                                 '취소',
                                 style: TextStyle(
                                   color: _kMuted,
-                                  fontSize: healthSp(context, 16),
+                                  fontSize: healthSp(context, 14),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -624,8 +683,8 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
                             child: Center(
                               child: _saving
                                   ? SizedBox(
-                                      width: healthDp(context, 18),
-                                      height: healthDp(context, 18),
+                                      width: healthDp(context, 16),
+                                      height: healthDp(context, 16),
                                       child: CircularProgressIndicator(
                                         strokeWidth: healthDp(context, 2),
                                         valueColor:
@@ -634,10 +693,10 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
                                       ),
                                     )
                                   : Text(
-                                      '변경',
+                                      '등록',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: healthSp(context, 16),
+                                        fontSize: healthSp(context, 14),
                                         fontFamily: 'Gmarket Sans TTF',
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -676,12 +735,12 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
           label,
           style: TextStyle(
             color: _kMuted,
-            fontSize: healthSp(context, 12),
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: healthDp(context, 4)),
+        SizedBox(height: healthDp(context, 2)),
         TextFormField(
           controller: controller,
           validator: (v) {
@@ -700,7 +759,7 @@ class _AddressRegisterDialogState extends State<_AddressRegisterDialog> {
               color: _kMuted,
               fontSize: healthSp(context, 12),
               fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w300,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(radius),
