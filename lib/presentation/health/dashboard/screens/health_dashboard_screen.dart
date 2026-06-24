@@ -254,153 +254,141 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
           Navigator.pop(context);
         },
       ),
+      bottomNavigationBar: const FooterBar(),
       backgroundColor: Colors.white,
       child: MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(textScale),
         ),
-        child: Column(
-          children: [
-            Expanded(
-              child: isLoading
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+        child: isLoading
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFFFF5A8D)),
+                    SizedBox(height: 16),
+                    Text('Loading data...'),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                color: const Color(0xFFFF5A8D),
+                onRefresh: () => _loadData(showBlockingLoader: false),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.topCenter,
                         children: [
-                          CircularProgressIndicator(color: Color(0xFFFF5A8D)),
-                          SizedBox(height: 16),
-                          Text('Loading data...'),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      color: const Color(0xFFFF5A8D),
-                      onRefresh: () => _loadData(showBlockingLoader: false),
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: Column(
-                          children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              alignment: Alignment.topCenter,
-                              children: [
-                                // 흰 카드 상단 라운드 밖(투명)으로 비치는 영역이 스크롤 흰 배경이 되지 않도록
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  top: 0,
-                                  height: healthDp(context, 320),
-                                  child: const ColoredBox(
-                                    color: Color(0xFFFFACC6),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            height: healthDp(context, 320),
+                            child: const ColoredBox(
+                              color: Color(0xFFFFACC6),
+                            ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildHeaderSection(),
+                              SizedBox(
+                                  height: _headerToWhiteCardGap(context)),
+                              Transform.translate(
+                                offset: const Offset(0, -36),
+                                child: Container(
+                                  margin: const EdgeInsets.only(top: 0),
+                                  padding: EdgeInsets.fromLTRB(
+                                    healthDp(context, 18),
+                                    0,
+                                    healthDp(context, 18),
+                                    0,
                                   ),
-                                ),
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    _buildHeaderSection(),
-                                    SizedBox(
-                                        height: _headerToWhiteCardGap(context)),
-                                    Transform.translate(
-                                      offset: const Offset(0, -36),
-                                      child: Container(
-                                        margin: const EdgeInsets.only(top: 0),
-                                        padding: EdgeInsets.fromLTRB(
-                                          healthDp(context, 18),
-                                          0,
-                                          healthDp(context, 18),
-                                          0,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.all(
-                                            Radius.circular(
-                                              healthDp(context, 50),
-                                            ),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            HealthDateSelector(
-                                              selectedDate: selectedDate,
-                                              onDateChanged: (newDate) {
-                                                setState(() {
-                                                  selectedDate = newDate;
-                                                });
-                                                _loadData();
-                                              },
-                                              monthTextColor:
-                                                  const Color(0xFF898686),
-                                              selectedTextColor:
-                                                  const Color(0xFFFF5A8D),
-                                              unselectedTextColor:
-                                                  const Color(0xFFB7B7B7),
-                                              iconColor:
-                                                  const Color(0xFF898686),
-                                              topGapBase: 10,
-                                            ),
-                                            SizedBox(
-                                                height: healthDp(context, 14)),
-                                            _buildBodyMetricsSection(),
-                                            SizedBox(
-                                                height: healthDp(context, 14)),
-                                            TodayMealSection(
-                                              consumedCalories:
-                                                  consumedCalories,
-                                              targetCalories: targetCalories,
-                                              totalCarbs: totalCarbs,
-                                              totalProtein: totalProtein,
-                                              totalFat: totalFat,
-                                              totalOther: totalOther,
-                                              mealCalories: mealCalories,
-                                              mealImagePaths: mealImagePaths,
-                                              selectedDate: selectedDate,
-                                              isLoggedIn: currentUser != null,
-                                              onAfterDietReturn: () {
-                                                if (mounted) _loadData();
-                                              },
-                                            ),
-                                            SizedBox(
-                                                height: healthDp(context, 14)),
-                                            TodayHealthRecordSection(
-                                              isLoggedIn: currentUser != null,
-                                              selectedDate: selectedDate,
-                                              latestBloodSugarRecord:
-                                                  latestBloodSugarRecord,
-                                              latestBloodPressureRecord:
-                                                  latestBloodPressureRecord,
-                                              latestStepsRecord:
-                                                  latestStepsRecord,
-                                              latestHeartRateRecord:
-                                                  latestHeartRateRecord,
-                                              latestMenstrualCycleRecord:
-                                                  latestMenstrualCycleRecord,
-                                              latestHealthGoal:
-                                                  latestHealthGoal,
-                                              systolicBP: systolicBP,
-                                              diastolicBP: diastolicBP,
-                                              steps: steps,
-                                              heartRate: heartRate,
-                                            ),
-                                          ],
-                                        ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(
+                                        healthDp(context, 50),
                                       ),
                                     ),
-                                  ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      HealthDateSelector(
+                                        selectedDate: selectedDate,
+                                        onDateChanged: (newDate) {
+                                          setState(() {
+                                            selectedDate = newDate;
+                                          });
+                                          _loadData();
+                                        },
+                                        monthTextColor:
+                                            const Color(0xFF898686),
+                                        selectedTextColor:
+                                            const Color(0xFFFF5A8D),
+                                        unselectedTextColor:
+                                            const Color(0xFFB7B7B7),
+                                        iconColor: const Color(0xFF898686),
+                                        topGapBase: 10,
+                                      ),
+                                      SizedBox(
+                                          height: healthDp(context, 14)),
+                                      _buildBodyMetricsSection(),
+                                      SizedBox(
+                                          height: healthDp(context, 14)),
+                                      TodayMealSection(
+                                        consumedCalories: consumedCalories,
+                                        targetCalories: targetCalories,
+                                        totalCarbs: totalCarbs,
+                                        totalProtein: totalProtein,
+                                        totalFat: totalFat,
+                                        totalOther: totalOther,
+                                        mealCalories: mealCalories,
+                                        mealImagePaths: mealImagePaths,
+                                        selectedDate: selectedDate,
+                                        isLoggedIn: currentUser != null,
+                                        onAfterDietReturn: () {
+                                          if (mounted) _loadData();
+                                        },
+                                      ),
+                                      SizedBox(
+                                          height: healthDp(context, 14)),
+                                      TodayHealthRecordSection(
+                                        isLoggedIn: currentUser != null,
+                                        selectedDate: selectedDate,
+                                        latestBloodSugarRecord:
+                                            latestBloodSugarRecord,
+                                        latestBloodPressureRecord:
+                                            latestBloodPressureRecord,
+                                        latestStepsRecord: latestStepsRecord,
+                                        latestHeartRateRecord:
+                                            latestHeartRateRecord,
+                                        latestMenstrualCycleRecord:
+                                            latestMenstrualCycleRecord,
+                                        latestHealthGoal: latestHealthGoal,
+                                        systolicBP: systolicBP,
+                                        diastolicBP: diastolicBP,
+                                        steps: steps,
+                                        heartRate: heartRate,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
-            ),
-            const FooterBar(),
-          ],
-        ),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
   }
