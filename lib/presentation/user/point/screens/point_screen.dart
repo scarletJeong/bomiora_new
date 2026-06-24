@@ -21,7 +21,7 @@ class _PointScreenState extends State<PointScreen> {
   int? _currentPoint;
   List<PointHistory> _pointHistory = [];
   List<PointHistory> _displayedHistory = [];
-  int _displayCount = 10; // 처음에 보여줄 개수
+  int _displayCount = 5;
   bool _isLoading = true;
 
   static const Color _pink = Color(0xFFFF5A8D);
@@ -82,7 +82,7 @@ class _PointScreenState extends State<PointScreen> {
       final history = await PointService.getPointHistory(_currentUser!.id);
       setState(() {
         _pointHistory = history;
-        _displayCount = 10; // 새로 로드할 때 초기화
+        _displayCount = 5;
         _updateDisplayedHistory();
       });
     } catch (e) {}
@@ -96,7 +96,7 @@ class _PointScreenState extends State<PointScreen> {
 
   void _loadMore() {
     setState(() {
-      _displayCount += 10;
+      _displayCount += 5;
       _updateDisplayedHistory();
     });
   }
