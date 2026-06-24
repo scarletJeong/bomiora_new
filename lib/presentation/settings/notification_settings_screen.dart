@@ -156,7 +156,7 @@ class _NotificationSettingsScreenState
             ),
           ),
           if (_marketingAgree) ...[
-            SizedBox(height: healthDp(context, 10)),
+            SizedBox(height: healthDp(context, 0)),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
               child: Container(
@@ -164,11 +164,11 @@ class _NotificationSettingsScreenState
                 color: const Color(0x7FD2D2D2),
               ),
             ),
+            SizedBox(height: healthDp(context, 10)),
             SizedBox(
               height: healthDp(context, 36),
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                  vertical: healthDp(context, 10),
                   horizontal: healthDp(context, 10),
                 ),
                 child: _buildOptionRow(
