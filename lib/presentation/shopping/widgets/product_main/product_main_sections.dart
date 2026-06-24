@@ -198,12 +198,21 @@ class _ProductMainQuoteStack extends StatefulWidget {
 }
 
 class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
+  /// 375 기준: 히어로 이미지를 위로 당기는 오프셋
+  static const double _heroTopLiftBase = 0;
+
+  /// 375 기준: 히어로 이미지를 아래로 내리는 여백
+  static const double _heroImageTopInsetBase = 0;
+
+  /// 375 기준: 이미지 상단 → 인용문 첫 줄 (화면 폭에 비례해 스케일)
+  static const double _heroQuoteTextTopFromImageBase = 90;
+
   final GlobalKey _textColumnKey = GlobalKey();
   ImageStream? _imageStream;
   late final ImageStreamListener _imageListener;
 
   double? _heroDisplayHeight;
-  double _extraBottom = 0;
+  double _sectionLayoutHeight = 0;
 
   @override
   void initState() {
@@ -211,7 +220,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     _imageListener = ImageStreamListener(_onHeroImageLoaded);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _syncExtraBottom();
+      _syncSectionLayoutHeight();
     });
   }
 
@@ -232,6 +241,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.width != widget.width) {
       _listenHeroImage();
+      _scheduleSyncExtraBottom();
     }
   }
 
@@ -269,11 +279,22 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
   void _scheduleSyncExtraBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _syncExtraBottom();
+      _syncSectionLayoutHeight();
     });
   }
 
-  void _syncExtraBottom() {
+  double _heroImageTop(BuildContext context) {
+    return -widget.extend -
+        healthDp(context, _heroTopLiftBase) +
+        healthDp(context, _heroImageTopInsetBase);
+  }
+
+  double _heroTextTop(BuildContext context) {
+    return _heroImageTop(context) +
+        healthDp(context, _heroQuoteTextTopFromImageBase);
+  }
+
+  void _syncSectionLayoutHeight() {
     if (!mounted || _heroDisplayHeight == null) return;
     final ctx = _textColumnKey.currentContext;
     final box = ctx?.findRenderObject() as RenderBox?;
@@ -282,29 +303,161 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
       return;
     }
     final textH = box.size.height;
-    final extend = widget.extend;
-    final lift = healthDp(context, 20);
-    final topInset = healthDp(context, 60);
-    final extra = max(
-      0.0,
-      _heroDisplayHeight! -
-          2 * extend -
-          lift -
-          textH +
-          topInset,
-    );
-    if ((extra - _extraBottom).abs() > 0.5) {
-      setState(() => _extraBottom = extra);
+    final imageTop = _heroImageTop(context);
+    final textTop = _heroTextTop(context);
+    final heroBottom = imageTop + _heroDisplayHeight!;
+    final textBottom = textTop + textH;
+    final layoutHeight = max(heroBottom, textBottom);
+    if ((layoutHeight - _sectionLayoutHeight).abs() > 0.5) {
+      setState(() => _sectionLayoutHeight = layoutHeight);
     }
+  }
+
+  Widget _buildQuoteTextColumn(BuildContext context) {
+    return Column(
+      key: _textColumnKey,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '" 다이어트는 처음부터 쉬워야 합니다. " ',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -healthSp(context, 0.44),
+                ),
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        Text(
+          '정대진 │ 대표원장',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 12),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+            letterSpacing: -healthSp(context, 0.54),
+          ),
+        ),
+        SizedBox(height: healthDp(context, 20)),
+        Text(
+          '정대진 대표원장이 수년간 직접 몸을 관리하며',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+            letterSpacing: -healthSp(context, 1.26),
+          ),
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        Text(
+          '쌓은 다이어트 노하우와 다수의 임상례를 바탕으로',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+            letterSpacing: -healthSp(context, 1.26),
+          ),
+        ),
+        SizedBox(height: healthDp(context, 5)),
+        Text.rich(
+          TextSpan(
+            style: TextStyle(
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w300,
+              letterSpacing: -healthSp(context, 1.26),
+              color: Colors.black,
+            ),
+            children: [
+              const TextSpan(text: '마침내 만들어진 '),
+              TextSpan(
+                text: '[보미 다이어트 솔루션]',
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -healthSp(context, 1.26),
+                ),
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: healthDp(context, 20)),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '보미 다이어트 솔루션',
+                style: TextStyle(
+                  color: const Color(0xFFFF5A8D),
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -healthSp(context, 1.26),
+                ),
+              ),
+              TextSpan(
+                text: '으로',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -healthSp(context, 1.26),
+                ),
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          '당신의 아름다운 봄을',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            letterSpacing: -healthSp(context, 1.26),
+          ),
+        ),
+        Text(
+          '보미오라와 함께 만나보세요.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            letterSpacing: -healthSp(context, 1.26),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final w = widget.width;
-    final extend = widget.extend;
     final blendBg = widget.blendBg;
-    final heroTopLift = healthDp(context, 20);
-    final heroImageTopInset = healthDp(context, 60);
+    final imageTop = _heroImageTop(context);
+    final textTop = _heroTextTop(context);
+    final hPad = healthDp(context, 20);
+    final fallbackHeroH = w * 3454 / 2661;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -313,7 +466,7 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
         Positioned(
           left: 0,
           right: 0,
-          top: -extend - heroTopLift + heroImageTopInset,
+          top: imageTop,
           child: SizedBox(
             width: w,
             child: Stack(
@@ -366,158 +519,18 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
             ),
           ),
         ),
-        RepaintBoundary(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 20),
-                  extend,
-                  healthDp(context, 20),
-                  0,
-                ),
-                child: Column(
-                  key: _textColumnKey,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '" 다이어트는 처음부터 쉬워야 합니다. " ',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: healthSp(context, 16),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -healthSp(context, 0.44),
-                            ),
-                          ),
-                        ],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: healthDp(context, 5)),
-                    Text(
-                      '정대진 │ 대표원장',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: -healthSp(context, 0.54),
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 20)),
-                    Text(
-                      '정대진 대표원장이 수년간 직접 몸을 관리하며',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: -healthSp(context, 1.26),
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 5)),
-                    Text(
-                      '쌓은 다이어트 노하우와 다수의 임상례를 바탕으로',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: -healthSp(context, 1.26),
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 5)),
-                    Text.rich(
-                      TextSpan(
-                        style: TextStyle(
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: -healthSp(context, 1.26),
-                          color: Colors.black,
-                        ),
-                        children: [
-                          const TextSpan(text: '마침내 만들어진 '),
-                          TextSpan(
-                            text: '[보미 다이어트 솔루션]',
-                            style: TextStyle(
-                              fontSize: healthSp(context, 14),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -healthSp(context, 1.26),
-                            ),
-                          ),
-                        ],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: healthDp(context, 20)),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '보미 다이어트 솔루션',
-                            style: TextStyle(
-                              color: const Color(0xFFFF5A8D),
-                              fontSize: healthSp(context, 14),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -healthSp(context, 1.26),
-                            ),
-                          ),
-                          TextSpan(
-                            text: '으로',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: healthSp(context, 14),
-                              fontFamily: 'Gmarket Sans TTF',
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -healthSp(context, 1.26),
-                            ),
-                          ),
-                        ],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    //SizedBox(height: healthDp(context, 6)),
-                    Text(
-                      '당신의 아름다운 봄을',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: -healthSp(context, 1.26),
-                      ),
-                    ),
-                    //SizedBox(height: healthDp(context, 6)),
-                    Text(
-                      '보미오라와 함께 만나보세요.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: -healthSp(context, 1.26),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: _extraBottom),
-            ],
-          ),
+        Positioned(
+          top: textTop,
+          left: hPad,
+          right: hPad,
+          child: RepaintBoundary(child: _buildQuoteTextColumn(context)),
+        ),
+        SizedBox(
+          height: _sectionLayoutHeight > 0
+              ? _sectionLayoutHeight
+              : imageTop +
+                  (_heroDisplayHeight ?? fallbackHeroH) +
+                  healthDp(context, _heroQuoteTextTopFromImageBase),
         ),
       ],
     );
