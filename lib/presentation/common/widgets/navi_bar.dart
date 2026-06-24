@@ -136,7 +136,7 @@ class FooterBar extends StatelessWidget {
             context: context,
             label: '비대면 진료',
             iconAsset: AppAssets.naviIcon3,
-            onTap: null,
+            onTap: () => _go(context, '/product-main'),
           ),
           _sep(context),
           _item(
@@ -186,7 +186,7 @@ class SideNaviBar extends StatelessWidget {
     _SideNaviEntry(
       label: '비대면 진료',
       icon: AppAssets.naviIcon3,
-      route: null,
+      route: '/product-main',
     ),
     _SideNaviEntry(
       label: '문진표',
