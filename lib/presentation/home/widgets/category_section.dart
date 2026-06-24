@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
@@ -15,11 +17,15 @@ class CategorySection extends StatefulWidget {
 
 class _CategorySectionState extends State<CategorySection>
     with SingleTickerProviderStateMixin {
-  static final List<ProductCategoryItem> _tabs =
-      productHomeCategorySectionTabList;
+  static const int _initialVisibleCount = 5;
+  static const int _expandStep = 5;
+  static const int _maxCarouselProducts = 10;
+
+  static const List<ProductCategoryItem> _tabs = productGeneralCategoryList;
 
   late final TabController _tabController;
   final Map<String, List<Product>> _productsByCategory = {};
+  final Map<String, int> _visibleCountByCategory = {};
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -29,6 +35,12 @@ class _CategorySectionState extends State<CategorySection>
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
+      final cacheKey = _cacheKeyForTab(_tabs[_tabController.index]);
+      final products = _productsByCategory[cacheKey];
+      if (products != null) {
+        _visibleCountByCategory[cacheKey] =
+            _initialVisibleCountFor(products.length);
+      }
       setState(() {});
       _loadProductsForCurrentTab();
     });
@@ -41,9 +53,22 @@ class _CategorySectionState extends State<CategorySection>
     super.dispose();
   }
 
+  String _cacheKeyForTab(ProductCategoryItem tab) =>
+      '${tab.productKind}:${tab.categoryId}';
+
+  int _initialVisibleCountFor(int productCount) =>
+      math.min(_initialVisibleCount, productCount);
+
+  int _visibleCountFor(String cacheKey, List<Product> products) =>
+      _visibleCountByCategory[cacheKey] ??
+      _initialVisibleCountFor(products.length);
+
+  int _maxVisibleFor(List<Product> products) =>
+      math.min(products.length, _maxCarouselProducts);
+
   Future<void> _loadProductsForCurrentTab() async {
     final tab = _tabs[_tabController.index];
-    final cacheKey = '${tab.productKind}:${tab.categoryId}';
+    final cacheKey = _cacheKeyForTab(tab);
     if (_productsByCategory.containsKey(cacheKey)) return;
 
     setState(() {
@@ -61,6 +86,8 @@ class _CategorySectionState extends State<CategorySection>
       if (!mounted) return;
       setState(() {
         _productsByCategory[cacheKey] = products;
+        _visibleCountByCategory[cacheKey] =
+            _initialVisibleCountFor(products.length);
         _isLoading = false;
       });
     } catch (_) {
@@ -76,13 +103,31 @@ class _CategorySectionState extends State<CategorySection>
     final tab = _tabs[_tabController.index];
     Navigator.pushNamed(
       context,
-      '/product/',
+      '/product-general/',
       arguments: <String, dynamic>{
         'categoryId': tab.categoryId,
         'categoryName': tab.label,
-        'productKind': tab.productKind,
+        'productKind': 'general',
       },
     );
+  }
+
+  void _openProductDetail(Product product) {
+    Navigator.pushNamed(context, '/product-general/${product.id}');
+  }
+
+  void _onMoreTap(String cacheKey, List<Product> products) {
+    final visible = _visibleCountFor(cacheKey, products);
+    final maxVisible = _maxVisibleFor(products);
+
+    if (visible < maxVisible) {
+      setState(() {
+        _visibleCountByCategory[cacheKey] =
+            math.min(visible + _expandStep, maxVisible);
+      });
+      return;
+    }
+    _openCategoryProductList();
   }
 
   @override
@@ -90,10 +135,11 @@ class _CategorySectionState extends State<CategorySection>
     final w = MediaQuery.sizeOf(context).width;
     final m = _CategoryHomeLayout.fromWidth(w);
     final selectedCategory = _tabs[_tabController.index];
-    final cacheKey =
-        '${selectedCategory.productKind}:${selectedCategory.categoryId}';
+    final cacheKey = _cacheKeyForTab(selectedCategory);
     final products =
         _productsByCategory[cacheKey] ?? const <Product>[];
+    final visibleCount = _visibleCountFor(cacheKey, products);
+    final displayProducts = products.take(visibleCount).toList();
 
     return Container(
       width: double.infinity,
@@ -189,7 +235,9 @@ class _CategorySectionState extends State<CategorySection>
                   height: m.carouselHeight,
                   child: _buildCarouselBody(
                     context: context,
+                    cacheKey: cacheKey,
                     products: products,
+                    displayProducts: displayProducts,
                     layout: m,
                   ),
                 ),
@@ -203,7 +251,9 @@ class _CategorySectionState extends State<CategorySection>
 
   Widget _buildCarouselBody({
     required BuildContext context,
+    required String cacheKey,
     required List<Product> products,
+    required List<Product> displayProducts,
     required _CategoryHomeLayout layout,
   }) {
     if (_isLoading && products.isEmpty) {
@@ -248,19 +298,18 @@ class _CategorySectionState extends State<CategorySection>
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
-        itemCount: products.length,
+        itemCount: displayProducts.length,
         separatorBuilder: (_, __) => SizedBox(width: layout.cardSpacing),
         itemBuilder: (context, index) {
-          final product = products[index];
-          final isLast = index == products.length - 1;
+          final product = displayProducts[index];
+          final isLast = index == displayProducts.length - 1;
           return _CategoryProductCard(
             product: product,
             layout: layout,
             showMoreOverlay: isLast,
             onTap: isLast
-                ? _openCategoryProductList
-                : () =>
-                    Navigator.pushNamed(context, '/product/${product.id}'),
+                ? () => _onMoreTap(cacheKey, products)
+                : () => _openProductDetail(product),
           );
         },
       ),
