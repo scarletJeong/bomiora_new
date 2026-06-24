@@ -33,10 +33,6 @@ class DeliveryDetailScreen extends StatefulWidget {
 class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   OrderDetailModel? _orderDetail;
   bool _isLoading = true;
-  /// `test@naver.com` 로그인 시에만 주문번호 복사 버튼 노출
-  bool _showOrderIdCopy = false;
-
-  static const String _kOrderIdCopyEmail = 'test@naver.com';
 
   static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kBorder = Color(0x7FD2D2D2);
@@ -67,9 +63,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         return;
       }
 
-      final showOrderIdCopy =
-          user.email.trim().toLowerCase() == _kOrderIdCopyEmail;
-
       // API 호출 (orderNumber는 이미 String이므로 그대로 사용)
       final result = await OrderService.getOrderDetail(
         odId: widget.orderNumber,
@@ -87,13 +80,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         );
         setState(() {
           _orderDetail = order;
-          _showOrderIdCopy = showOrderIdCopy;
           _isLoading = false;
         });
       } else {
         if (mounted) {
           setState(() {
-            _showOrderIdCopy = showOrderIdCopy;
             _isLoading = false;
           });
         }
@@ -272,8 +263,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     style: _detailMetaTextStyle(context),
                   ),
                 ),
-                if (_showOrderIdCopy)
-                  Material(
+                Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
