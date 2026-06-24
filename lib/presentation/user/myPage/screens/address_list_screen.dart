@@ -163,15 +163,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     final isDefault = address['adDefault'] == 1;
     if (isDefault) return;
 
-    final confirmed = await ConfirmDialog.show(
-      context,
-      title: '기본 주소 설정',
-      message: '해당 주소로 기본 주소가 변경됩니다.',
-      width: _confirmDialogWidth,
-      showDivider: false,
-    );
-    if (!confirmed || !mounted) return;
-
     // UI 즉시 반영 (기존 기본 배송지 해제 + 선택 배송지 기본으로)
     final prevAddresses = List<Map<String, dynamic>>.from(_addresses);
     setState(() {
@@ -186,6 +177,21 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     await AddressService.updateAddress(
       adId,
       _buildUpdatePayload(address, isDefault: 1),
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '기본주소가 변경되었습니다.',
+          style: TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            fontSize: healthSp(context, 14),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
 
     // 서버가 기본 배송지 해제까지 처리하지 않는 경우를 대비해 목록 새로고침
