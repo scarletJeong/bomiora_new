@@ -15,11 +15,11 @@ class AppFooter extends StatelessWidget {
     final t = healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
     return TextStyle(
       color: _text,
-      fontSize: healthSp(context, 12),
+      fontSize: healthSp(context, 10),
       fontFamily: _font,
       fontWeight: FontWeight.w500,
       height: 1.5,
-      letterSpacing: -0.36 * t,
+      letterSpacing: -0.5 * t,
     );
   }
 
