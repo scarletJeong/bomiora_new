@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
-import '../common/widgets/confirm_dialog.dart';
 import 'notification_center_screen.dart';
 import 'policy/screens/terms_of_service_screen.dart';
 import 'policy/screens/privacy_policy_screen.dart';
-import '../customer_service/screens/contact_list_screen.dart';
-import '../../data/services/auth_service.dart';
+import '../user/myPage/screens/cancel_member_screen.dart';
 import '../health/health_common/health_responsive_scale.dart';
 
 /// 설정 화면
@@ -111,7 +108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: '앱정보',
                 icon: Icons.info_outline_rounded,
                 onTap: _showAppInfoDialog,
-                isLast: false,
+                isLast: true,
                 trailing: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: healthDp(context, 5),
@@ -135,48 +132,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-              _buildRowItem(
-                context,
-                title: 'FAQ',
-                icon: Icons.help_outline_rounded,
-                onTap: () => Navigator.pushNamed(context, '/faq'),
-              ),
-              _buildRowItem(
-                context,
-                title: '1:1 문의',
-                icon: Icons.support_agent_outlined,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ContactListScreen()),
-                ),
-              ),
-              _buildRowItem(
-                context,
-                title: '카카오톡 상담',
-                icon: Icons.chat_bubble_outline_rounded,
-                onTap: _openKakaoChannel,
-                isLast: true,
-              ),
             ],
           ),
-          SizedBox(height: healthDp(context, 24)),
-          SizedBox(
-            height: healthDp(context, 40),
-            child: ElevatedButton(
-              onPressed: _handleLogout,
-              style: ElevatedButton.styleFrom(
-                elevation: 0,
-                backgroundColor: _kPink,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 10)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: InkWell(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CancelMemberScreen(),
                 ),
               ),
-              child: Text(
-                '로그아웃',
-                style: TextStyle(
-                  fontSize: healthSp(context, 16),
-                  fontWeight: FontWeight.w500,
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 6),
+                  vertical: healthDp(context, 6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '회원탈퇴',
+                      style: TextStyle(
+                        color: _kMuted,
+                        fontSize: healthSp(context, 12),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(width: healthDp(context, 2)),
+                    Icon(
+                      Icons.chevron_right,
+                      size: healthDp(context, 18),
+                      color: _kMuted,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -304,34 +295,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _openKakaoChannel() async {
-    final uri = Uri.parse('https://pf.kakao.com/_NdxgAG');
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  /// 로그아웃 처리
-  Future<void> _handleLogout() async {
-    final confirmed = await ConfirmDialog.show(
-      context,
-      title: '로그아웃',
-      message: '정말 로그아웃하시겠습니까?',
-      confirmText: '로그아웃',
-    );
-
-    if (confirmed) {
-      try {
-        await AuthService.logout();
-
-        if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/login',
-            (route) => false,
-          );
-        }
-      } catch (e) {}
-    }
   }
 }
