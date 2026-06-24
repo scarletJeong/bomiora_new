@@ -27,6 +27,14 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _etcController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _etcController.dispose();
     super.dispose();
@@ -34,11 +42,14 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
 
   bool get _isEtcSelected => _selectedIndex == _reasons.length - 1;
 
+  bool get _canWithdraw {
+    if (_selectedIndex == null || _isSubmitting) return false;
+    if (_isEtcSelected && _etcController.text.trim().isEmpty) return false;
+    return true;
+  }
+
   Future<void> _onWithdraw() async {
-    if (_selectedIndex == null || _isSubmitting) return;
-    if (_isEtcSelected && _etcController.text.trim().isEmpty) {
-      return;
-    }
+    if (!_canWithdraw) return;
 
     final user = await AuthService.getUser();
     if (user == null) {
@@ -147,7 +158,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                       decoration: InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
-                        hintText: '기타 의견을 입력해주세요. (선택사항)',
+                        hintText: '기타 의견을 입력해주세요.',
                         hintStyle: TextStyle(
                           color: const Color(0xFF898686),
                           fontSize: healthSp(context, 12),
@@ -201,9 +212,7 @@ class _Cancel2MemberScreenState extends State<Cancel2MemberScreen> {
                       child: SizedBox(
                         height: healthDp(context, 40),
                         child: ElevatedButton(
-                          onPressed: (_selectedIndex == null || _isSubmitting)
-                              ? null
-                              : _onWithdraw,
+                          onPressed: _canWithdraw ? _onWithdraw : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF5A8D),
                             disabledBackgroundColor:

@@ -127,16 +127,15 @@ class _CancelMemberScreenState extends State<CancelMemberScreen> {
                         height: 1.78,
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 10)),
                     Text(
-                      '그동안 서비스를 이용해 주셔서 감사합니다.\n탈퇴 시 아래의 혜택들이 사라집니다.',
+                      '탈퇴 시 아래의 혜택들이 사라집니다.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: const Color(0xFF898686),
                         fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
-                        height: 1.67,
+                        height: 1.5,
                       ),
                     ),
                   ],
