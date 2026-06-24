@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../../data/services/category_service.dart';
@@ -160,9 +162,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
                     children: [
                       Padding(
                         padding: EdgeInsets.symmetric(
-                            horizontal: healthDp(context, 27)),
+                          horizontal: healthDp(context, 27),
+                        ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _buildCategoryChips(_categories),
                             SizedBox(height: healthDp(context, 10)),
@@ -185,22 +188,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
                                 ),
                               )
                             else if (_posts.isEmpty)
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                    vertical: healthDp(context, 24)),
-                                child: Center(
-                                  child: Text(
-                                    '게시글이 없습니다.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: _textMuted,
-                                      fontSize: healthSp(context, 14),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              )
+                              _buildEmptySearchResult(context)
                             else
                               ..._posts.map((e) => Padding(
                                     padding: EdgeInsets.only(
@@ -208,10 +196,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
                                     child: _buildListCard(context, e),
                                   )),
                             SizedBox(height: healthDp(context, 24)),
+                            SizedBox(height: healthDp(context, 100)),
                           ],
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 100)),
                       const AppFooter(),
                     ],
                   ),
@@ -227,50 +215,132 @@ class _ContentListScreenState extends State<ContentListScreen> {
 
   Widget _buildCategoryChips(List<String> categories) {
     final tabs = ['전체', ...categories];
+
     return SizedBox(
-      height: healthDp(context, 36),
-      child: ListView.separated(
+      height: healthDp(context, 30),
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
-        separatorBuilder: (_, __) => SizedBox(width: healthDp(context, 5)),
-        itemBuilder: (context, i) {
-          final selected = i == _tabIndex;
-          return GestureDetector(
-            onTap: () async {
-              setState(() => _tabIndex = i);
-              await _loadPosts();
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 10),
-                vertical: healthDp(context, 4),
-              ),
-              decoration: ShapeDecoration(
-                color: selected ? _pink : Colors.transparent,
-                shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 20))),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                tabs[i],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: selected ? Colors.white : _chipInactive,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  height: 1.5,
+        child: Padding(
+          padding: EdgeInsets.only(top: healthDp(context, 3)),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (var i = 0; i < tabs.length; i++) ...[
+                if (i > 0)
+                  SizedBox(width: healthDp(context, i == 1 ? 10 : 14)),
+                _buildTabChip(
+                  label: tabs[i],
+                  selected: i == _tabIndex,
+                  onTap: () async {
+                    setState(() => _tabIndex = i);
+                    await _loadPosts();
+                  },
                 ),
-              ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    if (selected) {
+      return GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 2),
+          ),
+          decoration: ShapeDecoration(
+            color: _pink,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(healthDp(context, 20)),
             ),
-          );
-        },
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: healthDp(context, 3)),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _chipInactive,
+            fontSize: healthSp(context, 12),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptySearchResult(BuildContext context) {
+    final iconSz = healthDp(context, 80);
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            AppAssets.searchEmptyIcon,
+            width: iconSz,
+            height: iconSz,
+            fit: BoxFit.contain,
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          Text(
+            '검색 결과가 없습니다.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 16),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 5)),
+          Text(
+            '검색어를 다시 입력해주세요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSearchBox() {
+    final iconSz = healthDp(context, 18);
     return Container(
       width: double.infinity,
       height: healthDp(context, 38),
@@ -278,7 +348,9 @@ class _ContentListScreenState extends State<ContentListScreen> {
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
           side: BorderSide(
-              width: healthDp(context, 1), color: const Color(0xFFD2D2D2)),
+            width: healthDp(context, 1),
+            color: const Color(0xFFD2D2D2),
+          ),
           borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
       ),
@@ -297,6 +369,9 @@ class _ContentListScreenState extends State<ContentListScreen> {
                   fontWeight: FontWeight.w300,
                 ),
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                hoverColor: Colors.transparent,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -309,17 +384,17 @@ class _ContentListScreenState extends State<ContentListScreen> {
               textInputAction: TextInputAction.search,
             ),
           ),
-          IconButton(
-            onPressed: _onSearchSubmitted,
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(
-              minWidth: healthDp(context, 28),
-              minHeight: healthDp(context, 28),
-            ),
-            icon: Icon(
-              Icons.search,
-              size: healthDp(context, 18),
-              color: _textMuted,
+          GestureDetector(
+            onTap: _onSearchSubmitted,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: EdgeInsets.all(healthDp(context, 4)),
+              child: SvgPicture.asset(
+                AppAssets.searchIcon,
+                width: iconSz,
+                height: iconSz,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ],
@@ -371,7 +446,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
       thumbnail: item['thumbnail_url'],
       contentHtml: item['content_html'],
     );
-    return InkWell(
+    return GestureDetector(
       onTap: () {
         if (contentId == null) return;
         final cat = (item['category'] ?? '').toString().trim();
@@ -384,6 +459,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
           },
         );
       },
+      behavior: HitTestBehavior.opaque,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -413,11 +489,11 @@ class _ContentListScreenState extends State<ContentListScreen> {
               title,
               style: TextStyle(
                 color: _textDark,
-                fontSize: healthSp(context, 16),
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
                 height: 0.94,
-                letterSpacing: -1.44,
+                letterSpacing: -1.26,
               ),
             ),
           ),

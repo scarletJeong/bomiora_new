@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/services/wish_service.dart';
-import '../../../common/widgets/app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../health/health_common/widgets/health_app_bar.dart';
 
 /// 콘텐츠 상세 (본문, 이전/다음 글, 찜·추천·목록) — 본문·제목 등은 API로만 표시
 class ContentDetailScreen extends StatefulWidget {
@@ -45,7 +48,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   bool? _isWished;
   int _recommendCount = 0;
-  /// 서버 `user_recommended` — 로그인·문진 기준(프로필당 글 1회)
   bool? _userRecommended;
   int _recommendPfNo = 0;
   bool _wishBusy = false;
@@ -212,11 +214,14 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         appBar: HealthAppBar(
           title: _appBarTitle,
           centerTitle: false,
-          leadingType: HealthAppBarLeadingType.back,
         ),
         backgroundColor: Colors.white,
-        child: const Center(
-          child: Icon(Icons.error_outline, size: 48, color: _textMuted),
+        child: Center(
+          child: Icon(
+            Icons.error_outline,
+            size: healthDp(context, 48),
+            color: _textMuted,
+          ),
         ),
       );
     }
@@ -226,18 +231,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         appBar: HealthAppBar(
           title: _appBarTitle,
           centerTitle: false,
-          leadingType: HealthAppBarLeadingType.back,
         ),
         backgroundColor: Colors.white,
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
             child: Text(
               _fetchError!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _textDark,
-                fontSize: 14,
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -251,7 +255,6 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       appBar: HealthAppBar(
         title: _appBarTitle,
         centerTitle: false,
-        leadingType: HealthAppBarLeadingType.back,
       ),
       backgroundColor: Colors.white,
       child: Column(
@@ -259,25 +262,36 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 10),
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 27),
+                healthDp(context, 10),
+                healthDp(context, 27),
+                healthDp(context, 16),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildArticleHeader(),
-                  const SizedBox(height: 20),
-                  Container(height: 1, color: const Color(0x7FD2D2D2)),
-                  const SizedBox(height: 20),
+                  _buildArticleHeader(context),
+                  SizedBox(height: healthDp(context, 20)),
+                  Container(
+                    height: healthDp(context, 1),
+                    color: const Color(0x7FD2D2D2),
+                  ),
+                  SizedBox(height: healthDp(context, 20)),
                   if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: CircularProgressIndicator(
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: healthDp(context, 24),
+                      ),
+                      child: const CircularProgressIndicator(
                         color: Color(0xFFFF5A8D),
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  _buildBodyContent(),
-                  const SizedBox(height: 100),
-                  if (_prevId != null && (_prevTitle?.trim().isNotEmpty ?? false))
+                  SizedBox(height: healthDp(context, 16)),
+                  _buildBodyContent(context),
+                  SizedBox(height: healthDp(context, 24)),
+                  if (_prevId != null &&
+                      (_prevTitle?.trim().isNotEmpty ?? false))
                     _buildPrevNextRow(
                       context: context,
                       label: '이전글',
@@ -285,9 +299,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                       icon: Icons.keyboard_arrow_up,
                       targetId: _prevId!,
                     ),
-                  if (_prevId != null && (_prevTitle?.trim().isNotEmpty ?? false))
-                    const SizedBox(height: 10),
-                  if (_nextId != null && (_nextTitle?.trim().isNotEmpty ?? false))
+                  if (_prevId != null &&
+                      (_prevTitle?.trim().isNotEmpty ?? false))
+                    SizedBox(height: healthDp(context, 10)),
+                  if (_nextId != null &&
+                      (_nextTitle?.trim().isNotEmpty ?? false))
                     _buildPrevNextRow(
                       context: context,
                       label: '다음글',
@@ -295,96 +311,128 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                       icon: Icons.keyboard_arrow_down,
                       targetId: _nextId!,
                     ),
-                  if (_currentContentId != null) ...[
-                    const SizedBox(height: 20),
-                    _buildDetailPostNavActions(context),
-                  ],
-                  const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-          
+          if (_currentContentId != null)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  height: healthDp(context, 1),
+                  color: const Color(0x33E0BEC4),
+                ),
+                Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+                  child: _buildDetailPostNavActions(context),
+                ),
+              ],
+            ),
         ],
       ),
     );
   }
 
   Widget _buildDetailPostNavActions(BuildContext context) {
+    final iconSz = healthDp(context, 24);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(width: 1, color: Color(0x33E0BEC4))),
-      ),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
+      color: Colors.white,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            tooltip: '찜',
-            icon: Icon(
-              _isWished == true ? Icons.favorite : Icons.favorite_border,
-              size: 24,
-              color: _isWished == true ? _pink : _textDark,
-            ),
-            onPressed: (_wishBusy || _currentContentId == null) ? null : _toggleWish,
-          ),
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            tooltip: '이 글 추천',
-            icon: _recommendBusy
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: _pink,
-                    ),
-                  )
-                : Icon(
-                    _userRecommended == true
-                        ? Icons.thumb_up
-                        : Icons.thumb_up_outlined,
-                    size: 24,
-                    color: _userRecommended == true ? _pink : _textDark,
-                  ),
-            onPressed: (_recommendBusy ||
-                    _currentContentId == null ||
-                    _userRecommended == true)
+          GestureDetector(
+            onTap: (_wishBusy || _currentContentId == null)
                 ? null
-                : _onRecommend,
+                : _toggleWish,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: EdgeInsets.all(healthDp(context, 0)),
+              child: SvgPicture.asset(
+                AppAssets.heartIcon,
+                width: iconSz,
+                height: iconSz,
+                fit: BoxFit.contain,
+                colorFilter: ColorFilter.mode(
+                  _isWished == true ? _pink : _textDark,
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
           ),
-          if (_recommendCount > 0)
+          SizedBox(width: healthDp(context, 10)),
+          IgnorePointer(
+            ignoring: _userRecommended == true,
+            child: GestureDetector(
+              onTap: (_recommendBusy ||
+                      _currentContentId == null ||
+                      _userRecommended == true)
+                  ? null
+                  : _onRecommend,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.all(healthDp(context, 0)),
+                child: (_recommendBusy && _userRecommended != true)
+                    ? SizedBox(
+                        width: iconSz,
+                        height: iconSz,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 1,
+                          color: _pink,
+                        ),
+                      )
+                    : SvgPicture.asset(
+                        AppAssets.thumbUpIcon,
+                        width: iconSz,
+                        height: iconSz,
+                        fit: BoxFit.contain,
+                        colorFilter: ColorFilter.mode(
+                          _userRecommended == true ? _pink : _textDark,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          if (_recommendCount > 0) ...[
+            SizedBox(width: healthDp(context, 3)),
             Text(
               '$_recommendCount',
-              style: const TextStyle(
-                fontSize: 13,
+              style: TextStyle(
+                fontSize: healthSp(context, 14),
                 color: _textMuted,
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
             ),
+          ],
           const Spacer(),
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: _pink,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            onPressed: () =>
+          GestureDetector(
+            onTap: () =>
                 Navigator.pushReplacementNamed(context, '/content/list'),
-            child: const Text(
-              '목록',
-              style: TextStyle(
-                fontSize: 14,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 15),
+                vertical: healthDp(context, 6),
+              ),
+              decoration: BoxDecoration(
+                color: _pink,
+                borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              ),
+              child: Text(
+                '목록',
+                style: TextStyle(
+                  fontSize: healthSp(context, 14),
+                  color: Colors.white,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
@@ -393,17 +441,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     );
   }
 
-  Widget _buildArticleHeader() {
+  Widget _buildArticleHeader(BuildContext context) {
     if (_title.isEmpty) return const SizedBox.shrink();
     return Text(
       _title,
       textAlign: TextAlign.start,
-      style: const TextStyle(
-        color: _textDark,
-        fontSize: 16,
+      style: TextStyle(
+        color: const Color(0xFF1A1A1A),
+        fontSize: healthSp(context, 16),
         fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w700,
-        letterSpacing: -1.44,
+        fontWeight: FontWeight.w500,
+        letterSpacing: healthSp(context, -1.44),
       ),
     );
   }
@@ -430,28 +478,28 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: _textMuted),
-              const SizedBox(width: 2),
+              Icon(icon, size: healthDp(context, 16), color: _textMuted),
+              SizedBox(width: healthDp(context, 2)),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _textMuted,
-                  fontSize: 12,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: healthDp(context, 5)),
           Expanded(
             child: Text(
               articleTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.black,
-                fontSize: 12,
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -462,7 +510,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     );
   }
 
-  Widget _buildBodyContent() {
+  Widget _buildBodyContent(BuildContext context) {
     if (_isLoading) return const SizedBox.shrink();
     final processedHtml = ContentService.prepareContentHtmlForRender(_bodyHtml);
     if (processedHtml.trim().isEmpty) {
@@ -473,22 +521,25 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       return Text(
         bodyText,
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           color: _textDark,
-          fontSize: 12,
+          fontSize: healthSp(context, 12),
           fontFamily: 'Gmarket Sans TTF',
           fontWeight: FontWeight.w500,
           height: 2.08,
-          letterSpacing: -1.08,
+          letterSpacing: healthSp(context, -1.08),
         ),
       );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final hPad = healthDp(context, 27);
         final maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
-            : MediaQuery.of(context).size.width - 54;
+            : MediaQuery.of(context).size.width - hPad * 2;
+        final bodyFontSize = healthSp(context, 12);
+
         return SizedBox(
           width: maxWidth,
           child: Html(
@@ -499,21 +550,21 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 margin: Margins.zero,
                 padding: HtmlPaddings.zero,
                 fontFamily: 'Gmarket Sans TTF',
-                fontSize: FontSize(12),
+                fontSize: FontSize(bodyFontSize),
                 fontWeight: FontWeight.w500,
                 lineHeight: const LineHeight(1.8),
                 textAlign: TextAlign.center,
                 color: _textDark,
               ),
               'p': Style(
-                margin: Margins.only(bottom: 10),
+                margin: Margins.only(bottom: healthDp(context, 10)),
                 padding: HtmlPaddings.zero,
                 textAlign: TextAlign.center,
               ),
               'img': Style(
                 width: Width(maxWidth),
                 display: Display.block,
-                margin: Margins.symmetric(vertical: 8),
+                margin: Margins.symmetric(vertical: healthDp(context, 8)),
               ),
               'div': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
               'span': Style(fontFamily: 'Gmarket Sans TTF'),

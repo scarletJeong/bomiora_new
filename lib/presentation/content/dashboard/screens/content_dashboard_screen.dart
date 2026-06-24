@@ -8,6 +8,7 @@ import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../../data/services/category_service.dart';
 import '../../../common/widgets/navi_bar.dart';
 import '../../../common/widgets/app_footer.dart';
+import '../../../health/health_common/health_responsive_scale.dart';
 
 /// 건강 콘텐츠 대시보드 (Figma 기반 UI)
 class ContentDashboardScreen extends StatefulWidget {
@@ -87,25 +88,29 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
               builder: (context, snapshot) {
                 final categories = snapshot.data ?? const <String>[];
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: EdgeInsets.only(top: healthDp(context, 10)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 27),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 27),
+                        ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _buildFeaturedCarousel(),
-                            const SizedBox(height: 10),
+                            _buildFeaturedCarousel(context),
+                            SizedBox(height: healthDp(context, 10)),
                             if (categories.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 24),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: healthDp(context, 24),
+                                ),
                                 child: Text(
                                   '노출할 콘텐츠 카테고리가 없습니다.',
                                   style: TextStyle(
-                                    color: Color(0xFF898686),
-                                    fontSize: 14,
+                                    color: const Color(0xFF898686),
+                                    fontSize: healthSp(context, 14),
                                     fontFamily: 'Gmarket Sans TTF',
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -117,13 +122,13 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
                                   context,
                                   category: category,
                                 ),
-                                const SizedBox(height: 10),
+                                SizedBox(height: healthDp(context, 10)),
                               ],
-                            const SizedBox(height: 20),
+                            SizedBox(height: healthDp(context, 20)),
+                            SizedBox(height: healthDp(context, 100)),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 100),
                       const AppFooter(),
                     ],
                   ),
@@ -137,7 +142,11 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
     );
   }
 
-  Widget _buildFeaturedCarousel() {
+  Widget _buildFeaturedCarousel(BuildContext context) {
+    final cardW = healthDp(context, 321);
+    final cardH = healthDp(context, 248);
+    final imageH = healthDp(context, 172);
+
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _featuredFuture,
       builder: (context, snapshot) {
@@ -146,20 +155,25 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
           return const SizedBox.shrink();
         }
         return SizedBox(
-          height: 248,
+          height: cardH,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: posts.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            separatorBuilder: (_, __) =>
+                SizedBox(width: healthDp(context, 10)),
             itemBuilder: (context, index) {
               final post = posts[index];
               return SizedBox(
-                width: 321,
+                width: cardW,
                 child: _FeaturedCard(
+                  imageHeight: imageH,
                   imageUrl: _resolveContentImageUrl(
                     thumbnail: post['thumbnail_url'],
                     contentHtml: post['content_html'],
-                    fallback: ImageUrlHelper.placeholdCo(321, 172),
+                    fallback: ImageUrlHelper.placeholdCo(
+                      cardW.round(),
+                      imageH.round(),
+                    ),
                   ),
                   title: _safeText(post['title']) ?? '',
                   subtitle: _safeText(post['summary']) ?? '',
@@ -183,15 +197,30 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                '| $category',
-                style: const TextStyle(
-                  color: _textDark,
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1.44,
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    '|',
+                    style: TextStyle(
+                      color: _textDark,
+                      fontSize: healthSp(context, 16),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                  SizedBox(width: healthDp(context, 10)),
+                  Expanded(
+                    child: Text(
+                      category,
+                      style: TextStyle(
+                        color: _textDark,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             GestureDetector(
@@ -201,21 +230,22 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
                 arguments: {'category': category},
               ),
               child: Container(
-                width: 42,
-                height: 17,
-                padding: const EdgeInsets.all(3),
+                width: healthDp(context, 47),
+                height: healthDp(context, 20),
+                padding: EdgeInsets.all(healthDp(context, 4)),
                 decoration: ShapeDecoration(
                   color: _pink,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius:
+                        BorderRadius.circular(healthDp(context, 16)),
                   ),
                 ),
                 alignment: Alignment.center,
-                child: const Text(
-                  'More',
+                child: Text(
+                  '+More',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 8,
+                    fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -224,23 +254,23 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: healthDp(context, 10)),
         FutureBuilder<List<Map<String, dynamic>>>(
           future: _loadCategoryPosts(category),
           builder: (context, snapshot) {
             final items = snapshot.data ?? const <Map<String, dynamic>>[];
             if (items.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
                 child: Center(
                   child: Text(
                     '게시글이 없습니다.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 13,
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w300,
                     ),
                   ),
                 ),
@@ -257,6 +287,7 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
     BuildContext context,
     List<Map<String, dynamic>> items,
   ) {
+    final thumbSize = healthDp(context, 150).round();
     final rows = <List<Map<String, dynamic>>>[];
     for (var i = 0; i < items.length; i += 2) {
       rows.add(
@@ -268,7 +299,9 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
       children: List.generate(rows.length, (rowIndex) {
         final rowItems = rows[rowIndex];
         return Padding(
-          padding: EdgeInsets.only(bottom: rowIndex == rows.length - 1 ? 0 : 10),
+          padding: EdgeInsets.only(
+            bottom: rowIndex == rows.length - 1 ? 0 : healthDp(context, 10),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -277,20 +310,21 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
                   imageUrl: _resolveContentImageUrl(
                     thumbnail: rowItems[0]['thumbnail_url'],
                     contentHtml: rowItems[0]['content_html'],
-                    fallback: ImageUrlHelper.placeholdCo(150, 150),
+                    fallback: ImageUrlHelper.placeholdCo(thumbSize, thumbSize),
                   ),
                   label: _safeText(rowItems[0]['title']) ?? '',
                   onTap: () => _openDetail(context, rowItems[0]),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: healthDp(context, 10)),
               Expanded(
                 child: rowItems.length > 1
                     ? _SmallTile(
                         imageUrl: _resolveContentImageUrl(
                           thumbnail: rowItems[1]['thumbnail_url'],
                           contentHtml: rowItems[1]['content_html'],
-                          fallback: ImageUrlHelper.placeholdCo(150, 150),
+                          fallback:
+                              ImageUrlHelper.placeholdCo(thumbSize, thumbSize),
                         ),
                         label: _safeText(rowItems[1]['title']) ?? '',
                         onTap: () => _openDetail(context, rowItems[1]),
@@ -340,12 +374,14 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
 
 class _FeaturedCard extends StatelessWidget {
   const _FeaturedCard({
+    required this.imageHeight,
     required this.imageUrl,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
+  final double imageHeight;
   final String imageUrl;
   final String title;
   final String subtitle;
@@ -356,18 +392,20 @@ class _FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Column(
+    final radius = healthDp(context, 10);
+
+
+    // 맨 위 콘텐츠 카드 (고정 콘텐츠 카드)
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(radius),
               child: SizedBox(
-                height: 172,
+                height: imageHeight,
                 width: double.infinity,
                 child: Image.network(
                   imageUrl,
@@ -375,9 +413,10 @@ class _FeaturedCard extends StatelessWidget {
                   errorBuilder: (_, __, ___) => Container(
                     color: const Color(0xFFF2F2F2),
                     alignment: Alignment.center,
-                    child: const Icon(
+                    child: Icon(
                       Icons.broken_image_outlined,
-                      color: Color(0xFFBDBDBD),
+                      size: healthDp(context, 32),
+                      color: const Color(0xFFBDBDBD),
                     ),
                   ),
                 ),
@@ -385,7 +424,7 @@ class _FeaturedCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: EdgeInsets.symmetric(vertical: healthDp(context, 5)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -393,22 +432,22 @@ class _FeaturedCard extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _textDark,
-                        fontSize: 16,
+                        fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -1.44,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: healthSp(context, -1.26),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: healthDp(context, 3)),
                     Text(
                       subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _textMuted,
-                        fontSize: 12,
+                        fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
@@ -419,7 +458,6 @@ class _FeaturedCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -439,50 +477,48 @@ class _SmallTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
+    final radius = healthDp(context, 5);
+    final thumbSize = healthDp(context, 150);
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AspectRatio(
-              aspectRatio: 1,
+            SizedBox(
+              width: thumbSize,
+              height: thumbSize,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(radius),
                 child: Image.network(
                   imageUrl,
+                  width: thumbSize,
+                  height: thumbSize,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: const Color(0xFFF2F2F2),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.broken_image_outlined,
-                      color: Color(0xFFBDBDBD),
-                    ),
                   ),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
+              padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
               child: Text(
                 label,
-                maxLines: 3,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _textDark,
-                  fontSize: 10,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: healthSp(context, 12),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
-                  height: 1.50,
-                  letterSpacing: -0.90,
+                  letterSpacing: healthSp(context, -1.08),
                 ),
               ),
             ),
           ],
         ),
-      ),
     );
   }
 }

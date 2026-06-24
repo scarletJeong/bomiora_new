@@ -17,6 +17,9 @@ abstract final class AppAssets {
   static const String appbarAlarmIcon = '${_img}appbar_menu_alarm.svg';
   static const String appbarCartIcon = '${_img}appbar_menu_cart.svg';
 
+  // 햄버거 메뉴 아이콘
+  static const String menuIcon = '${_img}menu_icon.svg';
+
   // 네비게이션 아이콘
   static const String naviIcon1 = '${_img}navi_icon1.svg'; // 홈
   static const String naviIcon2 = '${_img}navi_icon2.svg'; // 건강대시보드
@@ -198,4 +201,10 @@ abstract final class AppAssets {
   static const String KIcon = '${_img}bankIcon_K.svg';
   static const String TOSSIcon = '${_img}bankIcon_TOSS.svg';
 
+  /* 10. 건강콘텐츠 */
+  // 엄지척 아이콘 - 콘텐츠 추천천
+  static const String thumbUpIcon = '${_img}thumb_up_icon.svg';
+
+  // 하트트 아이콘 - 콘텐츠 찜 
+  static const String heartIcon = '${_img}content_heart_icon.svg';
 }
