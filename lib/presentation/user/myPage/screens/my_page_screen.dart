@@ -11,8 +11,6 @@ import '../../../customer_service/screens/contact_list_screen.dart';
 import 'address_list_screen.dart';
 import '../../../shopping/wish/screens/wish_list_screen.dart';
 import 'refund_account_screen.dart';
-import 'cancel_member_screen.dart';
-import '../../healthprofile/screens/health_profile_list_screen.dart';
 import '../widgets/my_page_common.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../settings/settings_screen.dart';
@@ -86,277 +84,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  Future<void> _showPasswordConfirmDialog() async {
-    if (_currentUser == null) return;
-
-    final controller = TextEditingController();
-    bool mismatch = false;
-    bool submitting = false;
-
-    Future<void> submit(StateSetter setLocalState) async {
-      final pw = controller.text;
-      if (pw.isEmpty) {
-        setLocalState(() => mismatch = true);
-        return;
-      }
-
-      setLocalState(() {
-        submitting = true;
-        mismatch = false;
-      });
-
-      final ok = await AuthService.verifyPassword(
-        mbId: _currentUser!.id,
-        password: pw,
-      );
-
+  Future<void> _handleLogout() async {
+    try {
+      await AuthService.logout();
       if (!mounted) return;
-
-      if (!ok) {
-        setLocalState(() {
-          submitting = false;
-          mismatch = true;
-        });
-        return;
-      }
-
-      Navigator.of(context).pop(); // close dialog
-      Navigator.push(
+      Navigator.pushNamedAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (context) => const ProfileSettingsScreen(),
-        ),
-      ).then((_) => _loadCurrentUser());
-    }
-
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        final baseTheme = Theme.of(dialogContext);
-        final gmarketTheme = baseTheme.copyWith(
-          textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
-          primaryTextTheme:
-              baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
-        );
-        return Theme(
-          data: gmarketTheme,
-          child: StatefulBuilder(
-            builder: (ctx, setLocalState) {
-              final dialogRadius = healthDp(ctx, 20);
-              return Dialog(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                child: Container(
-                  width: healthDp(ctx, 272),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.all(Radius.circular(dialogRadius)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0x19000000),
-                        blurRadius: healthDp(ctx, 8.14),
-                        offset: Offset.zero,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          healthDp(ctx, 20),
-                          healthDp(ctx, 20),
-                          healthDp(ctx, 20),
-                          0,
-                        ),
-                        child: DefaultTextStyle.merge(
-                          style: const TextStyle(
-                              fontFamily: 'Gmarket Sans TTF'),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                '비밀번호 확인',
-                                style: TextStyle(
-                                  color: const Color(0xFF1A1A1A),
-                                  fontSize: healthSp(ctx, 20),
-                                  fontWeight: FontWeight.w700,
-                                  height: 1,
-                                ),
-                              ),
-                              SizedBox(height: healthDp(ctx, 20)),
-                              Text(
-                                '***',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFFD2D2D2),
-                                  fontSize: healthSp(ctx, 14),
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.57,
-                                  letterSpacing: healthDp(ctx, 4.90),
-                                ),
-                              ),
-                              SizedBox(height: healthDp(ctx, 20)),
-                              Text(
-                                '안전한 정보 변경을 위해,\n비밀번호를 한 번 더 입력해 주세요.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF898686),
-                                  fontSize: healthSp(ctx, 14),
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.57,
-                                ),
-                              ),
-                              SizedBox(height: healthDp(ctx, 20)),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: double.infinity,
-                                    height: healthDp(ctx, 40),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: healthDp(ctx, 10),
-                                    ),
-                                    decoration: ShapeDecoration(
-                                      shape: RoundedRectangleBorder(
-                                        side: BorderSide(
-                                          width: healthDp(ctx, 1),
-                                          color: mismatch
-                                              ? const Color(0xFFEF4444)
-                                              : const Color(0xFFD2D2D2),
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                            healthDp(ctx, 10)),
-                                      ),
-                                    ),
-                                    alignment: Alignment.centerLeft,
-                                    child: TextField(
-                                      controller: controller,
-                                      obscureText: true,
-                                      autofocus: true,
-                                      textInputAction: TextInputAction.done,
-                                      onSubmitted: submitting
-                                          ? null
-                                          : (_) => submit(setLocalState),
-                                      onChanged: (_) {
-                                        if (mismatch) {
-                                          setLocalState(
-                                              () => mismatch = false);
-                                        }
-                                      },
-                                      decoration: InputDecoration(
-                                        border: InputBorder.none,
-                                        isCollapsed: true,
-                                        contentPadding: EdgeInsets.zero,
-                                        hintText: '비밀번호를 입력해 주세요',
-                                        hintStyle: TextStyle(
-                                          color: const Color(0xFF898686),
-                                          fontSize: healthSp(ctx, 12),
-                                          fontWeight: FontWeight.w500,
-                                          height: 1,
-                                        ),
-                                      ),
-                                      style: TextStyle(
-                                        color: const Color(0xFF1A1A1A),
-                                        fontSize: healthSp(ctx, 12),
-                                        fontWeight: FontWeight.w500,
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ),
-                                  if (mismatch) ...[
-                                    SizedBox(height: healthDp(ctx, 4)),
-                                    Text(
-                                      '비밀번호가 일치하지 않습니다.',
-                                      style: TextStyle(
-                                        color: const Color(0xFFEF4444),
-                                        fontSize: healthSp(ctx, 10),
-                                        fontWeight: FontWeight.w300,
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: healthDp(ctx, 20)),
-                      SizedBox(
-                        height: healthDp(ctx, 50),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: Material(
-                                color: const Color(0xFFF7F7F7),
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(dialogRadius),
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: InkWell(
-                                  onTap: submitting
-                                      ? null
-                                      : () => Navigator.of(ctx).pop(),
-                                  child: Center(
-                                    child: Text(
-                                      '취소',
-                                      style: TextStyle(
-                                        color: const Color(0xFF898686),
-                                        fontSize: healthSp(ctx, 16),
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Material(
-                                color: const Color(0xFFFF5A8D),
-                                borderRadius: BorderRadius.only(
-                                  bottomRight: Radius.circular(dialogRadius),
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: InkWell(
-                                  onTap: submitting
-                                      ? null
-                                      : () => submit(setLocalState),
-                                  child: Center(
-                                    child: Text(
-                                      submitting ? '확인 중...' : '확인',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: healthSp(ctx, 16),
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'Gmarket Sans TTF',
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
+        '/login',
+        (route) => false,
+      );
+    } catch (_) {}
   }
 
   @override
@@ -413,8 +150,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildPageTitleBar(),
-                          SizedBox(height: healthDp(context, 20)),
                           if (_currentUser == null)
                             _buildGuestHeader()
                           else
@@ -466,6 +201,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           SizedBox(height: healthDp(context, 20)),
                           MyPageLineMenuItem(
                             title: '1:1 문의',
+                            isLast: true,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -475,28 +211,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               );
                             },
                           ),
-                          SizedBox(height: healthDp(context, 20)),
-                          MyPageLineMenuItem(
-                            title: '문진표 관리',
-                            isLast: true,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const HealthProfileListScreen()),
-                            ),
-                          ),
                           if (_currentUser != null) ...[
                             SizedBox(height: healthDp(context, 20)),
                             Align(
                               alignment: Alignment.centerRight,
                               child: InkWell(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          const CancelMemberScreen()),
-                                ),
+                                onTap: _handleLogout,
                                 borderRadius: BorderRadius.circular(
                                     healthDp(context, 8)),
                                 child: Padding(
@@ -508,7 +228,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        '회원탈퇴',
+                                        '로그아웃',
                                         style: TextStyle(
                                           color: const Color(0xFF898686),
                                           fontSize: healthSp(context, 12),
@@ -539,54 +259,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  Widget _buildPageTitleBar() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        InkWell(
-          onTap: () => Navigator.maybePop(context),
-          borderRadius: BorderRadius.circular(healthDp(context, 4)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.chevron_left,
-                color: const Color(0xFF1A1A1E),
-                size: healthDp(context, 24),
-              ),
-              Text(
-                '마이페이지',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: const Color(0xFF1A1A1E),
-                  fontSize: healthSp(context, 16),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-        InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            );
-          },
-          borderRadius: BorderRadius.circular(healthDp(context, 8)),
-          child: SvgPicture.asset(
-            AppAssets.mypageSettingsIcon,
-            width: healthDp(context, 30),
-            height: healthDp(context, 30),
-            fit: BoxFit.contain,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildProfilePhotoIcon() {
     return SvgPicture.asset(
       AppAssets.mypagePhotoProfileIcon,
@@ -604,7 +276,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
 
     return InkWell(
-      onTap: _showPasswordConfirmDialog,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfileSettingsScreen(),
+          ),
+        ).then((_) => _loadCurrentUser());
+      },
       borderRadius: BorderRadius.circular(healthDp(context, 8)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
