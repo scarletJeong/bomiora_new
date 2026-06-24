@@ -12,7 +12,6 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/coupon_service.dart';
 import 'review_write_general_screen.dart';
 import 'review_write_screen.dart';
 
@@ -34,7 +33,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   ReviewModel? _activeReview;
   /// 방금 접힌 리뷰는 '이전 리뷰 내역' 맨 위로
   int? _historyHeadId;
-  int? _downloadingCouponReviewId;
   String _productNameQuery = '';
   final TextEditingController _productNameFilterController =
       TextEditingController();
@@ -619,190 +617,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 
-  ReviewModel _reviewWithCzDownload(ReviewModel r, int downloadCount) {
-    return ReviewModel(
-      isId: r.isId,
-      itId: r.itId,
-      itName: r.itName,
-      itKind: r.itKind,
-      mbId: r.mbId,
-      isName: r.isName,
-      isTime: r.isTime,
-      isConfirm: r.isConfirm,
-      isScore1: r.isScore1,
-      isScore2: r.isScore2,
-      isScore3: r.isScore3,
-      isScore4: r.isScore4,
-      totalIsScore: r.totalIsScore,
-      averageScore: r.averageScore,
-      isRvkind: r.isRvkind,
-      isRecommend: r.isRecommend,
-      isGood: r.isGood,
-      czDownload: downloadCount,
-      isPositiveReviewText: r.isPositiveReviewText,
-      isNegativeReviewText: r.isNegativeReviewText,
-      isMoreReviewText: r.isMoreReviewText,
-      images: r.images,
-      productImage: r.productImage,
-      isBirthday: r.isBirthday,
-      isWeight: r.isWeight,
-      isHeight: r.isHeight,
-      isPayMthod: r.isPayMthod,
-      isOutageNum: r.isOutageNum,
-      odId: r.odId,
-    );
-  }
-
-  void _replaceReviewInState(ReviewModel updated) {
-    setState(() {
-      _reviews = _reviews
-          .map((x) => x.isId == updated.isId ? updated : x)
-          .toList();
-      if (_activeReview?.isId == updated.isId) {
-        _activeReview = updated;
-      }
-    });
-  }
-
-  Future<void> _downloadHelpCoupon(ReviewModel r) async {
-    if (r.isId == null || _downloadingCouponReviewId != null) return;
-
-    setState(() => _downloadingCouponReviewId = r.isId);
-
-    try {
-      final user = await AuthService.getUser();
-      if (user == null) return;
-
-      final result = await CouponService.downloadHelpCoupon(
-        mbId: user.id,
-        itId: r.itId,
-        isId: r.isId!,
-      );
-
-      if (!mounted) return;
-
-      if (result['success'] == true) {
-        final count = result['downloadCount'] is int
-            ? result['downloadCount'] as int
-            : (r.czDownload ?? 0) + 1;
-        _replaceReviewInState(_reviewWithCzDownload(r, count));
-      }
-    } catch (_) {
-    } finally {
-      if (mounted) {
-        setState(() => _downloadingCouponReviewId = null);
-      }
-    }
-  }
-
-  Widget _couponBanner(ReviewModel r) {
-    final n = r.czDownload ?? 0;
-    final isDownloading = _downloadingCouponReviewId == r.isId;
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 20),
-        vertical: healthDp(context, 5),
-      ),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: healthDp(context, 1), color: _kPink),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    SvgPicture.asset(
-                      AppAssets.myReviewCouponIcon,
-                      width: healthDp(context, 20),
-                      height: healthDp(context, 20),
-                      fit: BoxFit.contain,
-                    ),
-                    SizedBox(width: healthDp(context, 5)),
-                    Text(
-                      '5% 할인 도움 쿠폰',
-                      style: TextStyle(
-                        color: _kPink,
-                        fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: healthDp(context, 6)),
-                Text.rich(
-                  TextSpan(
-                    style: TextStyle(
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      fontSize: healthSp(context, 10),
-                    ),
-                    children: [
-                      TextSpan(
-                          text: '$n',
-                          style: const TextStyle(color: _kPink)),
-                      const TextSpan(
-                        text: '명이 받았어요!',
-                        style: TextStyle(color: _kMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: healthDp(context, 4)),
-                Text(
-                  '유효기간 : 발급일로부터 7일',
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 8),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: isDownloading ? null : () => _downloadHelpCoupon(r),
-            child: Container(
-              width: healthDp(context, 40),
-              height: healthDp(context, 40),
-              decoration: ShapeDecoration(
-                color: const Color(0x19FF5A8D),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: isDownloading
-                  ? SizedBox(
-                      width: healthDp(context, 20),
-                      height: healthDp(context, 20),
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: _kPink,
-                      ),
-                    )
-                  : SvgPicture.asset(
-                      AppAssets.myReviewCouponCardDownload,
-                      width: healthDp(context, 40),
-                      height: healthDp(context, 40),
-                      fit: BoxFit.contain,
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _reviewPhotosGallery(ReviewModel r) {
     final urls = _reviewAttachImageUrls(r);
     if (urls.isEmpty) return const SizedBox.shrink();
@@ -870,7 +684,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     if (_reviewAttachImageUrls(r).isEmpty) {
       children.add(SizedBox(height: healthDp(context, 20)));
     }
-    children.add(_couponBanner(r));
 
     return Container(
       width: double.infinity,

@@ -14,7 +14,6 @@ import '../../../data/services/review_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
-import '../../common/widgets/photo_limit_popup.dart';
 
 /// 리뷰 첨부 사진 슬롯 (기존 URL 또는 새로 고른 파일)
 class _ReviewDraftImage {
@@ -161,9 +160,25 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
+  void _showPhotoLimitSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '사진등록은 최대 3장까지 가능합니다.',
+          style: TextStyle(
+            fontFamily: 'Gmarket Sans TTF',
+            fontSize: healthSp(context, 14),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _openPhotoSourceDropdown(BuildContext anchorContext) {
     if (_draftImages.length >= _maxImages) {
-      PhotoLimitPopup.show(context);
+      _showPhotoLimitSnackBar();
       return;
     }
     ImagePickerUtils.showPhotoSourceDropdown(
@@ -176,7 +191,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   Future<void> _applyPickedImage(XFile? image) async {
     if (image == null || !mounted) return;
     if (_draftImages.length >= _maxImages) {
-      await PhotoLimitPopup.show(context);
+      _showPhotoLimitSnackBar();
       return;
     }
     try {
