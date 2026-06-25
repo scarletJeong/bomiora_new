@@ -1,9 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
-import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/product/product_model.dart';
+import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
@@ -11,37 +13,18 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/product_card.dart';
-import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../utils/get_product.dart';
 
-/// 카테고리 칩 라벨 — [productGeneralCategoryList] 순서와 동일
-const List<String> _kHealthcareChipShortLabels = [
-  '다이어트',
-  '디톡스',
-  '건강/면역',
-  '뷰티/코스메틱',
-  '헤어/탈모',
-];
-
-/// [productGeneralCategoryList] 순서와 동일한 원형 칩 아이콘 (SVG)
-const List<String> _kGeneralMainCategoryIcons = [
-  AppAssets.generalMainIcon1,
-  AppAssets.generalMainIcon2,
-  AppAssets.generalMainIcon3,
-  AppAssets.generalMainIcon4,
-  AppAssets.generalMainIcon5,
-];
-
-/// 헬스케어 스토어 메인 중간 배너 (가로 스와이프)
-const List<String> _kMidBannerAssets = [
-  AppAssets.generalMainBanner,
-  AppAssets.generalMainBanner2,
-];
+/// 헬스케어 스토어 메인 중간 이미지 (카테고리 칩 아래)
+const String _kMidBannerAsset = AppAssets.generalMainBanner;
 
 const int _kMaxCategoryProducts = 4;
+const int _kMdPickLimit = 4;
 
-/// 헬스케어 스토어(일반 상품) 메인 — 카테고리별 API 상품 + MD's Pick만 정적 구성.
+double _contentHorizontalPad(BuildContext context) => healthDp(context, 27);
+
+/// 헬스케어 스토어(일반 상품) 메인 — 카테고리별 API 상품 + MD's Pick(API).
 ///
 /// 본문 스크롤 구성은 [_buildHealthcareStoreMainSlivers] 한곳에서 순서를 본다
 /// (`ProductMainScreen`의 `Column(children: [...])`와 같은 역할).
@@ -57,6 +40,10 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
 
   final GlobalKey<ScaffoldState> _pageScaffoldKey = GlobalKey<ScaffoldState>();
   final Map<String, List<Product>> _byCategory = {};
+  List<ProductCategoryItem> _categories =
+      List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
+  List<Product> _mdPickProducts = [];
+  Product? _weekDealProduct;
   bool _loading = true;
   String? _error;
 
@@ -72,8 +59,13 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       _error = null;
     });
     try {
-      final results = await Future.wait(
-        productGeneralCategoryList.map(
+      final categories = await ProductCategoryCatalog.generalCategories();
+      final mdPick = await ProductRepository.getMdPickProducts(
+        limit: _kMdPickLimit,
+        productKind: 'general',
+      );
+      final categoryResults = await Future.wait(
+        categories.map(
           (c) => ProductRepository.getProductsByCategory(
             categoryId: c.categoryId,
             productKind: 'general',
@@ -84,10 +76,13 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       );
       if (!mounted) return;
       setState(() {
+        _categories = categories;
+        _mdPickProducts = mdPick;
         _byCategory.clear();
-        for (var i = 0; i < productGeneralCategoryList.length; i++) {
-          _byCategory[productGeneralCategoryList[i].categoryId] = results[i];
+        for (var i = 0; i < categories.length; i++) {
+          _byCategory[categories[i].categoryId] = categoryResults[i];
         }
+        _weekDealProduct = _resolveWeekDealProduct();
         _loading = false;
       });
     } catch (e) {
@@ -103,6 +98,41 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
     Navigator.pushNamed(context, '/product-general/${p.id}');
   }
 
+  /// 카테고리별 로드 상품 중 할인율 최대 1건 (동률·할인 없음이면 첫 상품)
+  Product? _resolveWeekDealProduct() {
+    final all = _byCategory.values.expand((list) => list).toList();
+    if (all.isEmpty) return null;
+
+    Product? best;
+    var bestRate = -1.0;
+    for (final product in all) {
+      final rate = product.discountRate ?? 0;
+      if (rate > bestRate) {
+        bestRate = rate;
+        best = product;
+      }
+    }
+    return best ?? all.first;
+  }
+
+  String _weekDealCategoryLabel(Product product) {
+    for (final cat in _categories) {
+      if (cat.categoryId == product.categoryId) {
+        return productGeneralCategoryChipLabel(cat.label);
+      }
+    }
+    final name = stripProductCatalogHtml(product.categoryName);
+    if (name.isNotEmpty && name != '기타') return name;
+    return '헬스케어';
+  }
+
+  String? _weekDealBrandLabel(Product product) {
+    final subject = stripProductCatalogHtml(product.itSubject);
+    if (subject.isEmpty) return null;
+    if (isBomioraHospitalProductSubject(subject)) return null;
+    return subject;
+  }
+
   void _openCategoryList(ProductCategoryItem item) {
     Navigator.pushNamed(
       context,
@@ -115,10 +145,39 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
     );
   }
 
+  // 일반 제품 카테고리 제목 스타일 - | 제목목
+  TextStyle _sectionTitleStyle(BuildContext context) => TextStyle(
+        color: Colors.black,
+        fontSize: healthSp(context, 16),
+        fontFamily: _font,
+        fontWeight: FontWeight.w700,
+        letterSpacing: healthSp(context, -1.44),
+      );
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: healthDp(context, 1),
+          height: healthDp(context, 16),
+          color: Colors.black,
+        ),
+        SizedBox(width: healthDp(context, 10)),
+        Flexible(
+          child: Text(
+            title,
+            style: _sectionTitleStyle(context),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
-    final scale = (w / 375.0).clamp(0.85, 1.15);
+    final heroScale = (w / 375.0).clamp(0.85, 1.15);
 
     return MobileAppLayoutWrapper(
       scaffoldKey: _pageScaffoldKey,
@@ -139,7 +198,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
             : _error != null
                 ? Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(healthDp(context, 24)),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -151,7 +210,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
                               color: Colors.grey[800],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: healthDp(context, 16)),
                           FilledButton(
                             onPressed: _load,
                             child: const Text('다시 시도'),
@@ -164,7 +223,7 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
                     onRefresh: _load,
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: _buildHealthcareStoreMainSlivers(context, scale),
+                      slivers: _buildHealthcareStoreMainSlivers(context, heroScale),
                     ),
                   ),
       ),
@@ -174,70 +233,86 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
   /// 메인 스크롤에 쌓이는 섹션 순서 (상단 → 하단).
   List<Widget> _buildHealthcareStoreMainSlivers(
     BuildContext context,
-    double scale,
+    double heroScale,
   ) {
     return [
-      // 히어로: 상단 타이틀/이미지 블록
-      SliverToBoxAdapter(child: _HeroBlock(scale: scale)),
-      // MD's Pick 제목 + 정적 상품 슬라이더
       SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-          child: Text(
-            "MD's Pick",
-            style: TextStyle(
-              fontSize: healthSp(context, 19.29),
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-          ),
+        child: _HeroWithWeeklyDeal(
+          heroScale: heroScale,
+          weekDealProduct: _weekDealProduct,
+          categoryLabel: _weekDealProduct == null
+              ? null
+              : _weekDealCategoryLabel(_weekDealProduct!),
+          brandLabel: _weekDealProduct == null
+              ? null
+              : _weekDealBrandLabel(_weekDealProduct!),
+          onDealTap: _weekDealProduct == null
+              ? null
+              : () => _openProductDetail(_weekDealProduct!),
         ),
       ),
-      SliverToBoxAdapter(child: _MdPickSection(scale: scale)),
-      // 구분선 + 카테고리 원형 칩 (칩 너비에 맞춘 Divider)
+      if (_mdPickProducts.isNotEmpty) ...[
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              _contentHorizontalPad(context),
+              healthDp(context, 12),
+              _contentHorizontalPad(context),
+              healthDp(context, 8),
+            ),
+            child: _buildSectionTitle(context, "MD's Pick"),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: _MdPickSection(
+            products: _mdPickProducts,
+            onProductTap: _openProductDetail,
+          ),
+        ),
+        SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 8))),
+      ],
       SliverToBoxAdapter(
         child: _HealthcareCategoryHeader(
-          scale: scale,
+          categories: _categories,
           onChipTap: _openCategoryList,
         ),
       ),
-      // 중간 배너 캐러셀
       SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 20),
-          child: const _MidBannerCarousel(),
+          padding: EdgeInsets.only(bottom: healthDp(context, 20)),
+          child: const _MidBannerImage(),
         ),
       ),
-      // 카테고리별 API 상품 그리드(각 섹션: 제목 + 2열 그리드)
-      ..._buildCategorySectionSlivers(scale),
-      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+      ..._buildCategorySectionSlivers(context),
+      SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 32))),
       const SliverToBoxAdapter(child: AppFooter()),
     ];
   }
 
-  List<Widget> _buildCategorySectionSlivers(double scale) {
+  List<Widget> _buildCategorySectionSlivers(BuildContext context) {
     final out = <Widget>[];
-    for (var idx = 0; idx < productGeneralCategoryList.length; idx++) {
-      final cat = productGeneralCategoryList[idx];
+    for (var idx = 0; idx < _categories.length; idx++) {
+      final cat = _categories[idx];
       final all = _byCategory[cat.categoryId] ?? const <Product>[];
       final products = all.take(_kMaxCategoryProducts).toList();
       if (idx > 0) {
-        out.add(const SliverToBoxAdapter(child: SizedBox(height: 36)));
+        out.add(SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 36))));
       }
       out.add(
         SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, idx == 0 ? 8 : 0, 20, 14),
+            padding: EdgeInsets.fromLTRB(
+              _contentHorizontalPad(context),
+              idx == 0 ? healthDp(context, 8) : 0,
+              _contentHorizontalPad(context),
+              healthDp(context, 8),
+            ),
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '| ${cat.label.replaceAll(' 제품', '')}',
-                    style: TextStyle(
-                      fontSize: healthSp(context, 19.29),
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
+                  child: _buildSectionTitle(
+                    context,
+                    cat.label.replaceAll(' 제품', ''),
                   ),
                 ),
                 _PinkMoreButton(
@@ -251,9 +326,9 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       out.add(
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
-            healthDp(context, 18),
+            _contentHorizontalPad(context),
             0,
-            healthDp(context, 18),
+            _contentHorizontalPad(context),
             healthDp(context, 8),
           ),
           sliver: products.isEmpty
@@ -274,9 +349,10 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
               : SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    mainAxisSpacing: healthDp(context, 16),
+                    mainAxisSpacing: healthDp(context, 5),
                     crossAxisSpacing: healthDp(context, 12),
-                    childAspectRatio: 0.58,
+                    mainAxisExtent:
+                        ProductCatalogCard.preferredMainAxisExtent(context),
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (ctx, index) {
@@ -304,49 +380,30 @@ class _HeroBlock extends StatelessWidget {
 
   const _HeroBlock({required this.scale});
 
+  static double heightFor(double scale) => 216 * scale;
+
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
       child: SizedBox(
-        height: 216 * scale,
+        height: heightFor(scale),
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              ImageUrlHelper.placeholdCoAsPng(
-                'https://placehold.co/800x450/E8E0D5/6D5F47?text=Healthcare+Store',
-              ),
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              errorBuilder: (_, __, ___) => Container(
-                color: const Color(0xFFE8E0D5),
-              ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.15),
-                    Colors.black.withValues(alpha: 0.35),
-                  ],
-                ),
-              ),
-            ),
+            const ColoredBox(color: Color(0xFFE8E0D5)),
             Positioned(
               left: 0,
               right: 0,
-              top: 56 * scale,
+              top: 60 * scale,
               child: Column(
                 children: [
                   Text(
                     '당신의 일상에 건강을 더하다.',
                     style: TextStyle(
                       color: const Color(0xFF6D5F47),
-                      fontSize: healthSp(context, 11.7),
+                      fontSize: healthSp(context, 12),
                       fontWeight: FontWeight.w300,
                       shadows: const [
                         Shadow(
@@ -356,12 +413,11 @@ class _HeroBlock extends StatelessWidget {
                       ],
                     ),
                   ),
-                  SizedBox(height: 4 * scale),
                   Text(
                     '헬스케어 스토어',
                     style: TextStyle(
                       color: const Color(0xFF6D5F47),
-                      fontSize: healthSp(context, 25.8),
+                      fontSize: healthSp(context, 24),
                       fontWeight: FontWeight.w700,
                       shadows: const [
                         Shadow(
@@ -381,84 +437,75 @@ class _HeroBlock extends StatelessWidget {
   }
 }
 
-class _MidBannerCarousel extends StatefulWidget {
-  const _MidBannerCarousel();
+/// 히어로 하단에 이주의 DEAL 카드가 겹쳐 보이도록 묶은 블록
+class _HeroWithWeeklyDeal extends StatelessWidget {
+  final double heroScale;
+  final Product? weekDealProduct;
+  final String? categoryLabel;
+  final String? brandLabel;
+  final VoidCallback? onDealTap;
 
-  @override
-  State<_MidBannerCarousel> createState() => _MidBannerCarouselState();
-}
-
-class _MidBannerCarouselState extends State<_MidBannerCarousel> {
-  late final PageController _pageController;
-  int _pageIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
+  const _HeroWithWeeklyDeal({
+    required this.heroScale,
+    required this.weekDealProduct,
+    required this.categoryLabel,
+    required this.brandLabel,
+    required this.onDealTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        WebDragScrollConfiguration(
-          child: AspectRatio(
-            aspectRatio: 374 / 234,
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: _kMidBannerAssets.length,
-              onPageChanged: (i) => setState(() => _pageIndex = i),
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      _kMidBannerAssets[index],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFF0F0F0),
-                        alignment: Alignment.center,
-                        child:
-                            Icon(Icons.image_outlined, color: Colors.grey[400]),
-                      ),
-                    ),
-                  ),
-                );
-              },
+    final heroH = _HeroBlock.heightFor(heroScale);
+    final product = weekDealProduct;
+
+    if (product == null || categoryLabel == null || onDealTap == null) {
+      return _HeroBlock(scale: heroScale);
+    }
+
+    final overlap = _WeeklyDealCard.heroOverlap(context);
+    final extentBelow = _WeeklyDealCard.extentBelowHero(context);
+
+    return SizedBox(
+      height: heroH + extentBelow,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          _HeroBlock(scale: heroScale),
+          Positioned(
+            top: heroH - overlap,
+            left: _contentHorizontalPad(context),
+            right: _contentHorizontalPad(context),
+            child: _WeeklyDealCard(
+              product: product,
+              categoryLabel: categoryLabel!,
+              brandLabel: brandLabel,
+              onTap: onDealTap!,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MidBannerImage extends StatelessWidget {
+  const _MidBannerImage();
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 374 / 234,
+      child: Image.asset(
+        _kMidBannerAsset,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => Container(
+          color: const Color(0xFFF0F0F0),
+          alignment: Alignment.center,
+          child: Icon(Icons.image_outlined, color: Colors.grey[400]),
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            _kMidBannerAssets.length,
-            (i) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: _pageIndex == i ? 8 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  color: _pageIndex == i
-                      ? const Color(0xFFFF5A8D)
-                      : const Color(0xFFE0E0E0),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -480,7 +527,10 @@ class _PinkMoreButton extends StatelessWidget {
         splashColor: const Color(0x33FF5A8D),
         highlightColor: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 8),
+            vertical: healthDp(context, 2),
+          ),
           decoration: ShapeDecoration(
             color: const Color(0xFFFF5A8D),
             shape: RoundedRectangleBorder(
@@ -488,14 +538,13 @@ class _PinkMoreButton extends StatelessWidget {
             ),
           ),
           child: Text(
-            'More',
+            '+More',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
               fontSize: healthSp(context, 10),
               fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w700,
-              height: 1.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -506,68 +555,68 @@ class _PinkMoreButton extends StatelessWidget {
 
 /// MD's Pick 아래: 상단 여백 → 칩 행 너비에 맞춘 구분선 → 칩 → 하단 여백
 class _HealthcareCategoryHeader extends StatelessWidget {
-  final double scale;
+  final List<ProductCategoryItem> categories;
   final void Function(ProductCategoryItem) onChipTap;
 
   const _HealthcareCategoryHeader({
-    required this.scale,
+    required this.categories,
     required this.onChipTap,
   });
 
-  static double _chipDiameter(double scale) =>
-      (76 * scale).clamp(64.0, 88.0);
+  static double chipDiameter(BuildContext context) =>
+      healthDp(context, 76).clamp(64.0, 88.0);
 
-  /// 첫 칩 왼쪽 ~ 마지막 칩 오른쪽까지의 가로 길이 (구분선 너비)
-  static double chipTrackWidth(double scale) {
-    final d = _chipDiameter(scale);
-    final gap = 12 * scale;
-    final n = productGeneralCategoryList.length;
+  static double chipTrackWidth(BuildContext context, int categoryCount) {
+    final d = chipDiameter(context);
+    final gap = healthDp(context, 12);
+    final n = categoryCount;
+    if (n <= 0) return d;
     return n * d + (n - 1) * gap;
   }
 
   @override
   Widget build(BuildContext context) {
-    final trackW = chipTrackWidth(scale);
+    final trackW = chipTrackWidth(context, categories.length);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 20)),
         Center(
           child: SizedBox(
             width: trackW,
-            child: const Divider(
-              height: 1,
-              thickness: 1,
-              color: Color(0xFFE8E8E8),
+            child: Divider(
+              height: healthDp(context, 1),
+              thickness: healthDp(context, 1),
+              color: const Color(0xFFE8E8E8),
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 20)),
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+          padding: EdgeInsets.symmetric(horizontal: _contentHorizontalPad(context)),
           child: _CategoryChipsRow(
-            scale: scale,
+            categories: categories,
             onChipTap: onChipTap,
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: healthDp(context, 20)),
       ],
     );
   }
 }
 
 class _CategoryChipsRow extends StatelessWidget {
-  final double scale;
+  final List<ProductCategoryItem> categories;
   final void Function(ProductCategoryItem) onChipTap;
 
   const _CategoryChipsRow({
-    required this.scale,
+    required this.categories,
     required this.onChipTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final diameter = _HealthcareCategoryHeader._chipDiameter(scale);
+    final diameter = _HealthcareCategoryHeader.chipDiameter(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -578,14 +627,14 @@ class _CategoryChipsRow extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (var i = 0; i < productGeneralCategoryList.length; i++) ...[
-                  if (i > 0) SizedBox(width: 12 * scale),
+                for (var i = 0; i < categories.length; i++) ...[
+                  if (i > 0) SizedBox(width: healthDp(context, 12)),
                   _CategoryIconChip(
                     diameter: diameter,
-                    iconAsset: _kGeneralMainCategoryIcons[i],
-                    label: _kHealthcareChipShortLabels[i],
-                    scale: scale,
-                    onTap: () => onChipTap(productGeneralCategoryList[i]),
+                    iconAsset:
+                        productGeneralCategoryIconAsset(categories[i].categoryId),
+                    label: productGeneralCategoryChipLabel(categories[i].label),
+                    onTap: () => onChipTap(categories[i]),
                   ),
                 ],
               ],
@@ -601,14 +650,12 @@ class _CategoryIconChip extends StatelessWidget {
   final double diameter;
   final String iconAsset;
   final String label;
-  final double scale;
   final VoidCallback onTap;
 
   const _CategoryIconChip({
     required this.diameter,
     required this.iconAsset,
     required this.label,
-    required this.scale,
     required this.onTap,
   });
 
@@ -629,13 +676,18 @@ class _CategoryIconChip extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                blurRadius: healthDp(context, 8),
+                offset: Offset(0, healthDp(context, 2)),
               ),
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(6 * scale, 8 * scale, 6 * scale, 6 * scale),
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 6),
+              healthDp(context, 8),
+              healthDp(context, 6),
+              healthDp(context, 6),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -670,247 +722,300 @@ class _CategoryIconChip extends StatelessWidget {
   }
 }
 
-/// MD's Pick — 디자인용 정적 카드 3개 (API 비연동)
-class _MdPickSection extends StatelessWidget {
-  final double scale;
+/// 이주의 DEAL — 히어로와 MD's Pick 사이 단일 프로모 카드
+class _WeeklyDealCard extends StatelessWidget {
+  static const Color _brandPink = Color(0xFFFF5A8D);
+  static const Color _textDark = Color(0xFF1A1A1E);
+  static const Color _metaMuted = Color(0xFF898686);
+  static const String _font = 'Gmarket Sans TTF';
 
-  const _MdPickSection({required this.scale});
+  final Product product;
+  final String categoryLabel;
+  final String? brandLabel;
+  final VoidCallback onTap;
+
+  const _WeeklyDealCard({
+    required this.product,
+    required this.categoryLabel,
+    required this.brandLabel,
+    required this.onTap,
+  });
+
+  /// 히어로 위로 겹치는 카드 높이 (리본·본문 포함)
+  static double totalHeight(BuildContext context) {
+    final ribbonTop = healthDp(context, 6);
+    final innerPad = healthDp(context, 12) * 2;
+    final imageSize = healthDp(context, 96);
+    final textBlock = healthDp(context, 112);
+    return ribbonTop + innerPad + math.max(imageSize, textBlock);
+  }
+
+  /// 히어로 하단에 걸치는 겹침 높이
+  static double heroOverlap(BuildContext context) => healthDp(context, 80);
+
+  /// 히어로 아래로 내려오는 카드 영역 높이
+  static double extentBelowHero(BuildContext context) =>
+      totalHeight(context) - heroOverlap(context);
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      _MdPickData(
-        imageUrl:
-            'https://placehold.co/204x204/FFE4EC/FF5A8D/png?text=MD+1',
-        brand: '닥터스칼프',
-        title: '7, 8, 9단계_보미 다이어트환',
-        promo: '[신제품 프로모션]',
-        line1: '다이어트의 시작! 보미 다이어트 스텐다드 라',
-        line2: '인업으로 쉬워지는 다이어트를 경험하세요.',
-        discountPercent: 26,
-        priceLabel: '8,888,000원',
-        rating: '4.8',
-        reviews: '(491)',
-      ),
-      _MdPickData(
-        imageUrl:
-            'https://placehold.co/204x204/E8F4FF/231F20/png?text=MD+2',
-        brand: '닥터스칼프',
-        title: '7, 8, 9단계_보미 다이어트환',
-        promo: '[신제품 프로모션]',
-        line1: '다이어트의 시작! 보미 다이어트 스텐다드 라',
-        line2: '인업으로 쉬워지는 다이어트를 경험하세요.',
-        discountPercent: 26,
-        priceLabel: '8,888,000원',
-        rating: '4.8',
-        reviews: '(491)',
-      ),
-      _MdPickData(
-        imageUrl:
-            'https://placehold.co/204x204/F0FFF4/6D5F47/png?text=MD+3',
-        brand: '닥터스칼프',
-        title: '7, 8, 9단계_보미 다이어트환',
-        promo: '[신제품 프로모션]',
-        line1: '다이어트의 시작! 보미 다이어트 스텐다드 라',
-        line2: '인업으로 쉬워지는 다이어트를 경험하세요.',
-        discountPercent: 26,
-        priceLabel: '8,888,000원',
-        rating: '4.8',
-        reviews: '(491)',
-      ),
-    ];
+    final imageSize = healthDp(context, 96);
+    final title = stripProductCatalogHtml(product.name);
+    final discount = (product.discountRate ?? 0).round();
+    final rating = product.rating;
+    final reviewCount = product.reviewCount ?? 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: LayoutBuilder(
-        builder: (context, c) {
-          final w = (c.maxWidth - 16) / 3;
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final d in items)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _MdPickCard(data: d, scale: scale, imageWidth: w),
-                  ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.only(top: healthDp(context, 6)),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(healthDp(context, 12)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(healthDp(context, 12)),
+                border: Border.all(
+                  color: const Color(0xFFE8E8E8),
+                  width: healthDp(context, 1),
                 ),
-            ],
-          );
-        },
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: healthDp(context, 10),
+                    offset: Offset(0, healthDp(context, 3)),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                    child: SizedBox(
+                      width: imageSize,
+                      height: imageSize,
+                      child: ColoredBox(
+                        color: const Color(0xFFF3F3F3),
+                        child: product.displayImageUrl.isNotEmpty
+                            ? Image.network(
+                                product.displayImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.image_not_supported_outlined,
+                                  color: Colors.grey[400],
+                                  size: healthDp(context, 28),
+                                ),
+                              )
+                            : Icon(
+                                Icons.image_outlined,
+                                color: Colors.grey[400],
+                                size: healthDp(context, 28),
+                              ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: healthDp(context, 12)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 카테고리 라벨
+                        Text(
+                          categoryLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: healthSp(context, 9),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        // 브랜드 라벨
+                        if (brandLabel != null) ...[
+                          SizedBox(height: healthDp(context, 4)),
+                          Text(
+                            brandLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _metaMuted,
+                              fontSize: healthSp(context, 9),
+                              fontFamily: _font,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        SizedBox(height: healthDp(context, 2)),
+                        // 제품 이름
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _textDark,
+                            fontSize: healthSp(context, 14),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: healthSp(context, -1.26),
+                          ),
+                        ),
+                        SizedBox(height: healthDp(context, 8)),
+                        Row(
+                          children: [
+                            Text(
+                              '$discount%',
+                              style: TextStyle(
+                                color: _brandPink,
+                                fontSize: healthSp(context, 12),
+                                fontFamily: _font,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(width: healthDp(context, 4)),
+                            Expanded(
+                              child: Text(
+                                product.formattedPrice,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: _textDark,
+                                  fontSize: healthSp(context, 12),
+                                  fontFamily: _font,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (rating != null && rating > 0) ...[
+                          SizedBox(height: healthDp(context, 6)),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.star_rounded,
+                                size: healthDp(context, 14),
+                                color: const Color(0xFFFFC107),
+                              ),
+                              SizedBox(width: healthDp(context, 2)),
+                              Text(
+                                '${rating.toStringAsFixed(1)}($reviewCount)',
+                                style: TextStyle(
+                                  color: _metaMuted,
+                                  fontSize: healthSp(context, 10),
+                                  fontFamily: _font,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: healthDp(context, 10),
+              top: -healthDp(context, 2),
+              child: const _WeeklyDealRibbon(),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _MdPickData {
-  final String imageUrl;
-  final String brand;
-  final String title;
-  final String promo;
-  final String line1;
-  final String line2;
-  final int discountPercent;
-  final String priceLabel;
-  final String rating;
-  final String reviews;
+class _WeeklyDealRibbon extends StatelessWidget {
+  const _WeeklyDealRibbon();
 
-  const _MdPickData({
-    required this.imageUrl,
-    required this.brand,
-    required this.title,
-    required this.promo,
-    required this.line1,
-    required this.line2,
-    required this.discountPercent,
-    required this.priceLabel,
-    required this.rating,
-    required this.reviews,
-  });
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 8),
+        healthDp(context, 4),
+        healthDp(context, 7),
+        healthDp(context, 4),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF5A8D),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(healthDp(context, 3)),
+          topRight: Radius.circular(healthDp(context, 2)),
+          bottomRight: Radius.circular(healthDp(context, 2)),
+          bottomLeft: Radius.circular(healthDp(context, 2)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: healthDp(context, 4),
+            offset: Offset(0, healthDp(context, 2)),
+          ),
+        ],
+      ),
+      child: Text(
+        '이주의 DEAL',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: healthSp(context, 9),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w300,
+          height: 1.1,
+          letterSpacing: healthSp(context, -0.36),
+        ),
+      ),
+    );
+  }
 }
 
-class _MdPickCard extends StatelessWidget {
-  final _MdPickData data;
-  final double scale;
-  final double imageWidth;
+/// MD's Pick — 가로 스크롤 (약 2.1개 노출), [ProductCatalogCard] 사용
+class _MdPickSection extends StatelessWidget {
+  final List<Product> products;
+  final ValueChanged<Product> onProductTap;
 
-  const _MdPickCard({
-    required this.data,
-    required this.scale,
-    required this.imageWidth,
+  const _MdPickSection({
+    required this.products,
+    required this.onProductTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: Image.network(
-              data.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: const Color(0xFFE8E8E8),
-                alignment: Alignment.center,
-                child: Icon(Icons.image_outlined, color: Colors.grey[400]),
-              ),
+    final items = products.take(_kMdPickLimit).toList();
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final hPad = _contentHorizontalPad(context);
+    final gap = healthDp(context, 5);
+    final viewportW = MediaQuery.sizeOf(context).width - hPad * 2;
+    final cardW = viewportW / 2.1;
+    final listH = ProductCatalogCard.preferredMainAxisExtent(context);
+
+    return SizedBox(
+      height: listH,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: hPad),
+        physics: const BouncingScrollPhysics(),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => SizedBox(width: gap),
+        itemBuilder: (context, index) {
+          final product = items[index];
+          return SizedBox(
+            width: cardW,
+            child: ProductCatalogCard(
+              product: product,
+              onTap: () => onProductTap(product),
             ),
-          ),
-        ),
-        SizedBox(height: 8 * scale),
-        Text(
-          data.brand,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: const Color(0xFFD2D2D2),
-            fontSize: healthSp(context, 8.77),
-            fontWeight: FontWeight.w300,
-          ),
-        ),
-        SizedBox(height: 2 * scale),
-        Text(
-          data.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: const Color(0xFF231F20),
-            fontSize: healthSp(context, 11),
-            fontWeight: FontWeight.w700,
-            height: 1.2,
-          ),
-        ),
-        SizedBox(height: 2 * scale),
-        Text(
-          data.promo,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: const Color(0xFF231F20),
-            fontSize: healthSp(context, 10.5),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: 4 * scale),
-        Text(
-          data.line1,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: const Color(0xFF231F20),
-            fontSize: healthSp(context, 8.77),
-            fontWeight: FontWeight.w300,
-          ),
-        ),
-        Text(
-          data.line2,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: const Color(0xFF231F20),
-            fontSize: healthSp(context, 8.77),
-            fontWeight: FontWeight.w300,
-          ),
-        ),
-        SizedBox(height: 6 * scale),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: '${data.discountPercent}',
-                style: TextStyle(
-                  color: const Color(0xFFFF5A8D),
-                  fontSize: healthSp(context, 11.7),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              TextSpan(
-                text: '%  ',
-                style: TextStyle(
-                  color: const Color(0xFFFF5A8D),
-                  fontSize: healthSp(context, 12),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              TextSpan(
-                text: data.priceLabel,
-                style: TextStyle(
-                  color: const Color(0xFF231F20),
-                  fontSize: healthSp(context, 10),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: 4 * scale),
-        Row(
-          children: [
-            Text(
-              data.rating,
-              style: TextStyle(
-                color: const Color(0xFF999999),
-                fontSize: healthSp(context, 7.8),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(width: 4 * scale),
-            Expanded(
-              child: Text(
-                data.reviews,
-                style: TextStyle(
-                  color: const Color(0xFF999999),
-                  fontSize: healthSp(context, 7.8),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 }
