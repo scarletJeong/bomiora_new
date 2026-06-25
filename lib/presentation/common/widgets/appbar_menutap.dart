@@ -10,6 +10,7 @@ import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/recent_view_service.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
+import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../settings/settings_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -44,12 +45,28 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   bool _isContentExpanded = false;
   List<Map<String, dynamic>> _recentProducts = [];
   bool _isLoadingRecent = false;
-  bool _drawerOpenTracked = false;
+  List<ProductCategoryItem> _generalCategories =
+      List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
+  List<ProductCategoryItem> _prescriptionCategories =
+      List<ProductCategoryItem>.from(productPrescriptionCategoryListFallback);
 
   @override
   void initState() {
     super.initState();
     _refreshUser().then((_) => _loadRecentProducts());
+    _loadShopCategories();
+  }
+
+  Future<void> _loadShopCategories() async {
+    final results = await Future.wait([
+      ProductCategoryCatalog.generalCategories(),
+      ProductCategoryCatalog.prescriptionCategories(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _generalCategories = results[0];
+      _prescriptionCategories = results[1];
+    });
   }
 
   Future<void> _refreshUser() async {
@@ -65,21 +82,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     setState(() {
       _recentProducts = items;
       _isLoadingRecent = false;
-    });
-  }
-
-  void _trackDrawerOpen(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final scaffold = Scaffold.maybeOf(context);
-      if (scaffold == null) return;
-      final isOpen = scaffold.isDrawerOpen;
-      if (isOpen && !_drawerOpenTracked) {
-        _drawerOpenTracked = true;
-        _refreshUser().then((_) => _loadRecentProducts());
-      } else if (!isOpen) {
-        _drawerOpenTracked = false;
-      }
     });
   }
 
@@ -244,7 +246,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    _trackDrawerOpen(context);
     final theme = Theme.of(context);
     return Theme(
       data: theme.copyWith(
@@ -334,9 +335,11 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  ...productPrescriptionCategoryList.map(
+                                  ..._prescriptionCategories.map(
                                     (item) => _SubLink(
-                                      label: item.label.replaceAll('환', ''),
+                                      label: productPrescriptionCategoryMenuLabel(
+                                        item.label,
+                                      ),
                                       onTap: () => _popAndPushNamed(
                                         context,
                                         '/product/',
@@ -406,7 +409,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: productGeneralCategoryList
+                                children: _generalCategories
                                     .map(
                                       (item) => _SubLink(
                                         label: item.label,
@@ -948,6 +951,16 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
   void dispose() {
     _closeCartDropdown();
     super.dispose();
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cartDropdownEntry?.remove();
+      _cartDropdownEntry = null;
+      _showCartDropdown = false;
+    });
   }
 
   @override
