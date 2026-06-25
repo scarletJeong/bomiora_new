@@ -2,10 +2,91 @@ import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/models/cart/cart_item_model.dart';
 import '../../data/models/product/product_model.dart';
 import '../../data/models/product/product_option_model.dart';
 
 class CartService {
+  static List<CartItem> parseShoppingCartItems(Map<String, dynamic> cart) {
+    final rawItems = (cart['items'] as List?) ?? const [];
+    return rawItems
+        .whereType<Map>()
+        .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
+        .where((e) => !e.isPrescription)
+        .toList();
+  }
+
+  static CartItem? findMatchingShoppingItem({
+    required List<CartItem> items,
+    required String productId,
+    String? optionId,
+    String? optionText,
+  }) {
+    final targetOption = (optionText ?? '').trim();
+    for (final item in items) {
+      if (item.itId != productId) continue;
+
+      if (optionId != null && optionId.isNotEmpty) {
+        if (item.ioId == optionId) return item;
+        if ((item.ioId ?? '').isEmpty &&
+            item.ctOption.trim() == targetOption &&
+            targetOption.isNotEmpty) {
+          return item;
+        }
+        continue;
+      }
+
+      if (item.ctOption.trim().isEmpty && targetOption.isEmpty) {
+        return item;
+      }
+    }
+    return null;
+  }
+  /// 장바구니에 상품 추가 (동일 상품·옵션이 있으면 수량 합산)
+  static Future<Map<String, dynamic>> addOrMergeToCart({
+    required String productId,
+    required int quantity,
+    required int price,
+    String? optionId,
+    String? optionText,
+    int? optionPrice,
+    String? odId,
+    String? ctKind,
+    String? ctStatus,
+    bool mergeIfExists = true,
+  }) async {
+    if (mergeIfExists) {
+      final cart = await getCart();
+      if (cart['success'] == true) {
+        final items = parseShoppingCartItems(cart);
+        final existing = findMatchingShoppingItem(
+          items: items,
+          productId: productId,
+          optionId: optionId,
+          optionText: optionText,
+        );
+        if (existing != null) {
+          return updateCartQuantity(
+            ctId: existing.ctId,
+            quantity: existing.ctQty + quantity,
+          );
+        }
+      }
+    }
+
+    return addToCart(
+      productId: productId,
+      quantity: quantity,
+      price: price,
+      optionId: optionId,
+      optionText: optionText,
+      optionPrice: optionPrice,
+      odId: odId,
+      ctKind: ctKind,
+      ctStatus: ctStatus,
+    );
+  }
+
   /// 장바구니에 상품 추가
   static Future<Map<String, dynamic>> addToCart({
     required String productId,
@@ -87,6 +168,7 @@ class CartService {
     required Map<ProductOption, int> selectedOptions,
     String? odId, // 처방 예약 플로우의 경우 od_id 전달
     String? ctStatus,
+    bool mergeIfExists = false,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -117,7 +199,7 @@ class CartService {
           ctOptionText = option.step;
         }
 
-        final result = await addToCart(
+        final result = await addOrMergeToCart(
           productId: product.id,
           quantity: quantity,
           price: totalPrice,
@@ -127,6 +209,7 @@ class CartService {
           odId: odId, // 처방 예약 플로우의 경우 od_id 전달
           ctKind: product.ctKind, // 상품 종류 전달
           ctStatus: ctStatus,
+          mergeIfExists: mergeIfExists,
         );
 
         if (result['success'] == true) {
