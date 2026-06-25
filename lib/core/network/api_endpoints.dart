@@ -17,6 +17,9 @@ class ApiEndpoints {
   // 상품 관련 (기존 Cafe24 서버)
   static const String popularProducts = '/api/products/popular';
   static const String newProducts = '/api/products/new';
+  static const String mdPickProducts = '/api/products/md-pick';
+  static String categoriesWithProducts(String productKind) =>
+      '/api/products/categories-with-products?it_kind=${Uri.encodeComponent(productKind)}';
   static const String productDetail = '/api/products/detail';
   static String productListByCategory(String categoryId,
       {String? productKind}) {

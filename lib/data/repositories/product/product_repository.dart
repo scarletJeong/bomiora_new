@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../presentation/shopping/utils/get_product.dart';
 import '../../models/product/product_model.dart';
 import '../../services/auth_service.dart';
 
@@ -253,6 +254,87 @@ class ProductRepository {
       return [];
     } catch (e) {
       print('❌ 신상품 조회 오류: $e');
+      return [];
+    }
+  }
+
+  /// MD pick (it_type5 = 1) — 웹 get_new_product()와 동일
+  static Future<List<Product>> getMdPickProducts({
+    int limit = 4,
+    String? productKind,
+  }) async {
+    try {
+      var endpoint = '${ApiEndpoints.mdPickProducts}?limit=$limit';
+      if (productKind != null && productKind.isNotEmpty) {
+        endpoint += '&it_kind=${Uri.encodeComponent(productKind)}';
+      }
+
+      final response = await ApiClient.get(endpoint);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data is Map && data['success'] == true && data['data'] != null) {
+          final List<dynamic> products = data['data'];
+          return products
+              .whereType<Map>()
+              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
+        } else if (data is List) {
+          return data
+              .whereType<Map>()
+              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+              .toList();
+        }
+      }
+
+      return [];
+    } catch (e) {
+      print('❌ MD pick 조회 오류: $e');
+      return [];
+    }
+  }
+
+  /// 웹 get_categories_with_products — 판매 중 상품이 있는 1단계 카테고리
+  static Future<List<ProductCategoryItem>> getCategoriesWithProducts({
+    required String productKind,
+  }) async {
+    try {
+      final response = await ApiClient.get(
+        ApiEndpoints.categoriesWithProducts(productKind),
+      );
+
+      if (response.statusCode != 200) return [];
+
+      final data = json.decode(response.body);
+      if (data is! Map || data['success'] != true || data['data'] == null) {
+        return [];
+      }
+
+      final raw = data['data'];
+      if (raw is! List) return [];
+
+      final out = <ProductCategoryItem>[];
+      for (final item in raw) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        final id = (map['categoryId'] ?? map['ca_id'])?.toString().trim() ?? '';
+        final name =
+            (map['categoryName'] ?? map['ca_name'])?.toString().trim() ?? '';
+        final kind =
+            (map['productKind'] ?? map['it_kind'] ?? productKind).toString();
+        if (id.isEmpty || name.isEmpty) continue;
+        out.add(
+          ProductCategoryItem(
+            label: name,
+            categoryId: id,
+            productKind: kind,
+          ),
+        );
+      }
+      return out;
+    } catch (e) {
+      print('❌ 카테고리(상품있음) 조회 오류: $e');
       return [];
     }
   }

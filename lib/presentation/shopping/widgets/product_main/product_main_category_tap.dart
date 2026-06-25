@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../core/constants/app_assets.dart';
+import '../../../../data/repositories/product/product_category_catalog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../utils/get_product.dart';
 
 /// 상품 리스트 상단 카테고리 바로가기
-class ProductMainCategoryTap extends StatelessWidget {
+class ProductMainCategoryTap extends StatefulWidget {
   /// 'prescription' | 'general'
   final String productKind;
 
@@ -19,33 +19,74 @@ class ProductMainCategoryTap extends StatelessWidget {
     this.compact = false,
   });
 
+  @override
+  State<ProductMainCategoryTap> createState() => _ProductMainCategoryTapState();
+}
+
+class _ProductMainCategoryTapState extends State<ProductMainCategoryTap> {
   static const _lineColor = Color(0xFFD9D9D9);
 
-  static const List<String> _prescriptionSvgAssets = [
-    AppAssets.generalMainIcon1, // 다이어트
-    AppAssets.generalMainIcon2, // 디톡스
-    AppAssets.generalMainIcon4, // 심신안정
-    AppAssets.generalMainIcon3, // 건강/면역
-  ];
+  List<ProductCategoryItem> _generalCategories =
+      List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
+  List<ProductCategoryItem> _prescriptionCategories =
+      List<ProductCategoryItem>.from(productPrescriptionCategoryListFallback);
+  bool _categoriesReady = false;
 
-  static const List<String> _generalSvgAssets = [
-    AppAssets.generalMainIcon1, // 다이어트
-    AppAssets.generalMainIcon2, // 디톡스
-    AppAssets.generalMainIcon3, // 건강/면역
-    AppAssets.generalMainIcon5, // 뷰티/코스메틱
-    AppAssets.generalMainIcon6, // 헤어/탈모
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    if (widget.productKind == 'general') {
+      final categories = await ProductCategoryCatalog.generalCategories();
+      if (!mounted) return;
+      setState(() {
+        _generalCategories = categories;
+        _categoriesReady = true;
+      });
+      return;
+    }
+
+    if (widget.productKind == 'prescription') {
+      final categories = await ProductCategoryCatalog.prescriptionCategories();
+      if (!mounted) return;
+      setState(() {
+        _prescriptionCategories = categories;
+        _categoriesReady = true;
+      });
+      return;
+    }
+
+    if (mounted) setState(() => _categoriesReady = true);
+  }
+
+  List<ProductCategoryItem> get _categories => widget.productKind == 'general'
+      ? _generalCategories
+      : _prescriptionCategories;
+
+  String _iconAssetFor(ProductCategoryItem category, int index) {
+    if (widget.productKind == 'general') {
+      return productGeneralCategoryIconAsset(category.categoryId);
+    }
+    return productPrescriptionCategoryIconAsset(category.categoryId);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final circleDiameter = healthDp(context, compact ? 56 : 80);
-    final svgSize = healthDp(context, compact ? 17 : 24);
-    final hGap = healthDp(context, compact ? 16 : 22);
+    if (!_categoriesReady) {
+      return SizedBox(
+        height: healthDp(context, widget.compact ? 72 : 100),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
 
-    final isGeneral = productKind == 'general';
-    final categories =
-        isGeneral ? productGeneralCategoryList : productPrescriptionCategoryList;
-    final svgAssets = isGeneral ? _generalSvgAssets : _prescriptionSvgAssets;
+    final circleDiameter = healthDp(context, widget.compact ? 56 : 80);
+    final svgSize = healthDp(context, widget.compact ? 17 : 24);
+    final hGap = healthDp(context, widget.compact ? 16 : 22);
+    final isGeneral = widget.productKind == 'general';
+    final categories = _categories;
 
     void goToCategory({
       required String categoryId,
@@ -91,10 +132,10 @@ class ProductMainCategoryTap extends StatelessWidget {
               ],
             ),
             padding: EdgeInsets.fromLTRB(
-              healthDp(context, compact ? 4 : 6),
-              healthDp(context, compact ? 6 : 10),
-              healthDp(context, compact ? 4 : 6),
-              healthDp(context, compact ? 5 : 8),
+              healthDp(context, widget.compact ? 4 : 6),
+              healthDp(context, widget.compact ? 6 : 10),
+              healthDp(context, widget.compact ? 4 : 6),
+              healthDp(context, widget.compact ? 5 : 8),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -106,15 +147,17 @@ class ProductMainCategoryTap extends StatelessWidget {
                   height: svgSize,
                   fit: BoxFit.contain,
                 ),
-                SizedBox(height: healthDp(context, compact ? 2 : 4)),
+                SizedBox(height: healthDp(context, widget.compact ? 2 : 4)),
                 Text(
-                  label,
+                  isGeneral
+                      ? productGeneralCategoryChipLabel(label)
+                      : productPrescriptionCategoryMenuLabel(label),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: const Color(0xFF676767),
-                    fontSize: healthSp(context, compact ? 7.5 : 8),
+                    fontSize: healthSp(context, widget.compact ? 7.5 : 8),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                     height: 1.15,
@@ -151,13 +194,12 @@ class ProductMainCategoryTap extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(categories.length, (i) {
                         final c = categories[i];
-                        final asset = svgAssets[i.clamp(0, svgAssets.length - 1)];
                         return Padding(
                           padding: EdgeInsets.only(
                             right: i == categories.length - 1 ? 0 : hGap,
                           ),
                           child: item(
-                            svgAsset: asset,
+                            svgAsset: _iconAssetFor(c, i),
                             label: c.label,
                             onTap: () => goToCategory(
                               categoryId: c.categoryId,
