@@ -6,6 +6,25 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import 'option_selector.dart';
 
+/// 배경(딤 영역) 탭 시 바텀시트 닫기 — 시트 본문 탭은 전파 차단
+Widget _dismissibleBottomSheetShell({
+  required BuildContext context,
+  required Widget child,
+}) {
+  return GestureDetector(
+    onTap: () => Navigator.of(context).pop(),
+    behavior: HitTestBehavior.opaque,
+    child: Align(
+      alignment: Alignment.bottomCenter,
+      child: GestureDetector(
+        onTap: () {},
+        behavior: HitTestBehavior.deferToChild,
+        child: child,
+      ),
+    ),
+  );
+}
+
 Future<void> showProductOptionBottomup({
   required BuildContext context,
   required Product product,
@@ -57,7 +76,10 @@ Future<void> showProductOptionBottomup({
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    isDismissible: true,
+    enableDrag: true,
     backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withValues(alpha: 0.45),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(50),
@@ -66,8 +88,8 @@ Future<void> showProductOptionBottomup({
     ),
     builder: (context) {
       final screenWidth = MediaQuery.sizeOf(context).width;
-      return Align(
-        alignment: Alignment.bottomCenter,
+      return _dismissibleBottomSheetShell(
+        context: context,
         child: SizedBox(
           width: screenWidth,
           child: OptionSelectorBottomSheet(
@@ -106,11 +128,14 @@ Future<void> showGeneralQuantityBottomup({
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    isDismissible: true,
+    enableDrag: true,
     backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withValues(alpha: 0.45),
     builder: (context) {
       final screenWidth = MediaQuery.sizeOf(context).width;
-      return Align(
-        alignment: Alignment.bottomCenter,
+      return _dismissibleBottomSheetShell(
+        context: context,
         child: SizedBox(
           width: screenWidth,
           child: GeneralQuantityBottomSheet(
@@ -127,4 +152,3 @@ Future<void> showGeneralQuantityBottomup({
     },
   );
 }
-
