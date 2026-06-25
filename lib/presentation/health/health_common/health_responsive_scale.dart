@@ -22,11 +22,11 @@ double healthDp(BuildContext context, double base) {
   return base * healthTextScaleByWidth(width);
 }
 
-/// AppBar 콘텐츠 영역 높이 (375 기준 48, [healthAppBarTotalHeightBase]와 동일).
-const double healthAppBarToolbarHeightBase = 48;
+/// AppBar 콘텐츠 영역 높이 (375 기준 52, [healthAppBarTotalHeightBase]와 동일).
+const double healthAppBarToolbarHeightBase = 52;
 
-/// AppBar 전체 높이 (375 기준 48).
-const double healthAppBarTotalHeightBase = 48;
+/// AppBar 전체 높이 (375 기준 52).
+const double healthAppBarTotalHeightBase = 52;
 
 /// 레거시 상단 여백 (미사용, 총 높이는 [healthAppBarTotalHeightBase]만 사용).
 const double healthAppBarTopGapBase = 0;
@@ -34,14 +34,14 @@ const double healthAppBarTopGapBase = 0;
 double healthAppBarTopGap(BuildContext context) =>
     healthDp(context, healthAppBarTopGapBase);
 
-/// AppBar 콘텐츠 영역 높이 (375 기준 48).
+/// AppBar 콘텐츠 영역 높이 (375 기준 52).
 double healthAppBarHeight(BuildContext context) =>
     healthDp(context, healthAppBarToolbarHeightBase);
 
 /// 건강 AppBar 제목 위·아래 패딩 (375 기준 5).
 double healthAppBarTitlePaddingV(BuildContext context) => healthDp(context, 5);
 
-/// AppBar 전체 높이 (375 기준 48).
+/// AppBar 전체 높이 (375 기준 52).
 double healthAppBarTotalHeight(BuildContext context) =>
     healthDp(context, healthAppBarTotalHeightBase);
 
