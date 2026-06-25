@@ -23,11 +23,13 @@ class _WishListScreenState extends State<WishListScreen> {
   static const Color _textSub = Color(0xFF898383);
   static const Color _chipFill = Color(0x0CFF5A8D);
 
+  static const int _pageSize = 5;
+
   List<Map<String, dynamic>> _wishList = [];
   bool _isLoading = true;
   String? _errorMessage;
   bool _requiresLogin = false;
-  int _visibleCount = 10;
+  int _visibleCount = _pageSize;
   /// 0: 비대면 진료, 1: 스토어, 2: 콘텐츠
   int _selectedTabIndex = 0;
 
@@ -101,7 +103,7 @@ class _WishListScreenState extends State<WishListScreen> {
 
   void _syncVisibleCount() {
     final n = _currentTabList.length;
-    _visibleCount = n < 10 ? n : 10;
+    _visibleCount = n < _pageSize ? n : _pageSize;
   }
 
   Future<void> _loadWishList() async {
@@ -140,7 +142,7 @@ class _WishListScreenState extends State<WishListScreen> {
 
   void _loadMore() {
     setState(() {
-      _visibleCount += 10;
+      _visibleCount += _pageSize;
       final len = _currentTabList.length;
       if (_visibleCount > len) {
         _visibleCount = len;
@@ -305,7 +307,7 @@ class _WishListScreenState extends State<WishListScreen> {
               if (i > 0) SizedBox(height: healthDp(context, 20)),
               _buildWishCard(_visibleItems[i]),
             ],
-            if (hasMore && list.length >= 10) ...[
+            if (hasMore) ...[
               SizedBox(height: healthDp(context, 20)),
               _buildLoadMoreButton(),
             ],
