@@ -286,7 +286,8 @@ class _CartScreenState extends State<CartScreen> {
   void _handleBackNavigation() {
     final backToProductId = widget.backToProductId;
     if (backToProductId != null && backToProductId.isNotEmpty) {
-      Navigator.of(context).pushReplacementNamed('/product/$backToProductId');
+      Navigator.of(context)
+          .pushReplacementNamed('/product-general/$backToProductId');
       return;
     }
 
@@ -824,8 +825,7 @@ class _CartScreenState extends State<CartScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
-                  onTap: () =>
-                      Navigator.pushNamed(context, '/product/${item.itId}'),
+                  onTap: () => _openGeneralProductDetail(item.itId),
                   child: CartItemThumbnail(
                     item: item,
                     size: healthDp(context, 87),
@@ -848,17 +848,20 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                         SizedBox(height: healthDp(context, 2)),
                       ],
-                      Text(
-                        item.itName,
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1A),
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: healthSp(context, -1.26),
+                      GestureDetector(
+                        onTap: () => _openGeneralProductDetail(item.itId),
+                        child: Text(
+                          item.itName,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(context, 14),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: healthSp(context, -1.26),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       if (isPrescription) ...[
                         SizedBox(height: healthDp(context, 5)),
@@ -961,6 +964,10 @@ class _CartScreenState extends State<CartScreen> {
         ],
       ),
     );
+  }
+
+  void _openGeneralProductDetail(String productId) {
+    Navigator.pushNamed(context, '/product-general/$productId');
   }
 
   Widget _buildFigmaQtyControl({
