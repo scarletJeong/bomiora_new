@@ -609,7 +609,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       animation: _tabController,
       builder: (context, _) {
         return Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 34)),
           child: SizedBox(
             height: _productTabBarHeight(context),
             width: double.infinity,
@@ -1488,6 +1488,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         excludedProductNames: [_product?.name ?? ''],
         products: _recommendedProducts,
         title: '추천상품',
+        titleStyle: shoppingSectionTitleStyle(context),
         showLeadingBar: true,
         onProductTap: (product) {
           Navigator.pushNamed(context, '/product/${product.id}');
