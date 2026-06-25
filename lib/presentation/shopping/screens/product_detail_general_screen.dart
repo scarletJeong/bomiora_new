@@ -90,7 +90,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       }
     });
     _loadProductDetail().then((_) {
-      // 제품 정보 로드 후 리뷰 로드 (it_org_id 확인을 위해)
       _loadReviews();
     });
     _loadUserPoint();
@@ -409,34 +408,47 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Widget _buildProductDetail() {
     final generalReviewCount = _generalReviews.length;
 
-    return NestedScrollView(
-      headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-        return [
-          // 제품 정보 섹션
-          SliverToBoxAdapter(
-            child: _buildProductInfoSection(),
-          ),
-
-          // 탭바
-          SliverPersistentHeader(
-            pinned: false,
-            delegate: _SliverTabBarDelegate(
-              _buildProductTabBar(
-                context,
-                generalReviewCount: generalReviewCount,
-              ),
-              height: _productTabBarHeight(context),
+    return AnimatedBuilder(
+      animation: _tabController,
+      builder: (context, _) {
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: _buildProductInfoSection(),
             ),
-          ),
-        ];
+            SliverPersistentHeader(
+              pinned: false,
+              delegate: _SliverTabBarDelegate(
+                _buildProductTabBar(
+                  context,
+                  generalReviewCount: generalReviewCount,
+                ),
+                height: _productTabBarHeight(context),
+              ),
+            ),
+            if (_tabController.index == 0) ...[
+              SliverToBoxAdapter(child: _buildDetailPreviewSection()),
+              SliverToBoxAdapter(
+                child: ProductTailInfoSection(
+                  showCertification: false,
+                  showWarning: false,
+                  showPrescriptionProcess: false,
+                  deliveryText: _product
+                      ?.additionalInfo?['it_baesong_content']
+                      ?.toString(),
+                  changeContentText: _product
+                      ?.additionalInfo?['it_change_content']
+                      ?.toString(),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: SizedBox(height: healthDp(context, 40)),
+              ),
+            ] else
+              SliverToBoxAdapter(child: _buildNormalReviewTab()),
+          ],
+        );
       },
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildProductInfoTab(),
-          _buildNormalReviewTab(),
-        ],
-      ),
     );
   }
 
@@ -549,14 +561,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             height: _productTabBarHeight(context),
             width: double.infinity,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 buildTabItem(
                   0,
                   '상품 소개',
-                  indicatorAlign: Alignment.centerLeft,
-                  textAlign: TextAlign.left,
                 ),
                 SizedBox(width: healthDp(context, 12)),
                 Padding(
@@ -567,8 +577,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 buildTabItem(
                   1,
                   '일반 리뷰 ($generalReviewCount)',
-                  indicatorAlign: Alignment.centerLeft,
-                  textAlign: TextAlign.left,
                 ),
               ],
             ),
@@ -638,31 +646,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
-  /// 상품정보 탭
-  Widget _buildProductInfoTab() {
-    return SingleChildScrollView(
-      key: const PageStorageKey<String>('product_info_tab'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 상세페이지 HTML 미리보기 + 자세히 보기
-          _buildDetailPreviewSection(),
-
-          // 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
-          ProductTailInfoSection(
-            showCertification: false,
-            showWarning: false,
-            showPrescriptionProcess: false,
-            deliveryText: _product?.additionalInfo?['it_baesong_content']?.toString(),
-            changeContentText:
-                _product?.additionalInfo?['it_change_content']?.toString(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildNormalReviewTab() {
     return ProductNormalReview(
       reviews: _generalReviews,
@@ -670,7 +653,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       visibleCount: _visibleNormalReviewCount,
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
-      showCategoryScores: false,
+      embedInParentScroll: true,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;
@@ -1236,17 +1219,15 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     final processedHtml = _getProcessedDetailHtml();
     if (processedHtml.isEmpty) return const SizedBox.shrink();
     final screenWidth = MediaQuery.of(context).size.width;
-    final imageWidth = (screenWidth - healthDp(context, 32))
-        .clamp(healthDp(context, 200), healthDp(context, 600));
+    final hPad = healthDp(context, 27);
+    final imageWidth =
+        (screenWidth - hPad * 2).clamp(healthDp(context, 200), healthDp(context, 600));
     final collapsedPreviewHeight = healthDp(context, 320);
     final isExpanded = _isDetailExpanded == true;
 
     return Container(
-      margin: EdgeInsets.only(
-        top: healthDp(context, 24),
-        bottom: healthDp(context, 24),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 16)),
+      margin: EdgeInsets.only(top: healthDp(context, 24)),
+      padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
         children: [
           if (isExpanded) ...[
@@ -1336,7 +1317,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Widget _buildBottomActionBar() {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 16),
+        horizontal: healthDp(context, 27),
         vertical: healthDp(context, 12),
       ),
       decoration: BoxDecoration(
@@ -1436,6 +1417,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         final result = await CartService.addOptionsToCart(
           product: _product!,
           selectedOptions: _selectedOptions,
+          mergeIfExists: true,
         );
 
         if (!mounted) return;
@@ -1461,25 +1443,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           return;
         }
 
+        final options = Map<ProductOption, int>.from(_selectedOptions);
         Navigator.of(context).pop();
-
-        final result = await CartService.addOptionsToCart(
-          product: _product!,
-          selectedOptions: _selectedOptions,
-        );
-
         if (!mounted) return;
-        if (result['success'] == true) {
-          setState(() {
-            _selectedOptions.clear();
-          });
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const cart_general.CartScreen(),
-            ),
-          );
-        }
+
+        await _buySelectedGeneralProductNow(selectedOptions: options);
       },
     );
   }
@@ -1495,7 +1463,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       );
       return false;
     }
-    final result = await CartService.addToCart(
+    final result = await CartService.addOrMergeToCart(
       productId: _product!.id,
       quantity: quantity,
       price: _product!.price * quantity,
@@ -1508,28 +1476,113 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     return success;
   }
 
-  Future<void> _goToGeneralPaymentScreen() async {
-    final cart = await CartService.getCart();
-    if (cart['success'] != true) return;
-
+  List<CartItem> _parseGeneralCartItems(Map<String, dynamic> cart) {
     final rawItems = (cart['items'] as List?) ?? const [];
-    final List<CartItem> items = rawItems
+    return rawItems
         .whereType<Map>()
         .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
         .where((e) => !e.isPrescription)
         .toList();
-    if (!mounted || items.isEmpty) return;
+  }
 
-    final shippingCost = (cart['shipping_cost'] as num?)?.toInt() ?? 0;
-    Navigator.push(
+  Future<Set<int>> _snapshotGeneralCartIds() async {
+    final cart = await CartService.getCart();
+    if (cart['success'] != true) return {};
+    return _parseGeneralCartItems(cart).map((e) => e.ctId).toSet();
+  }
+
+  Future<List<CartItem>> _resolveBuyNowCartItems(Set<int> beforeIds) async {
+    final cart = await CartService.getCart();
+    if (cart['success'] != true) return [];
+    return _parseGeneralCartItems(cart)
+        .where((item) => !beforeIds.contains(item.ctId))
+        .toList();
+  }
+
+  int _resolveBuyNowShippingCost({
+    required List<CartItem> payItems,
+    required List<CartItem> allGeneralItems,
+    required int cartShippingCost,
+  }) {
+    if (payItems.isEmpty) return 0;
+    if (payItems.length == allGeneralItems.length &&
+        payItems.every(
+          (item) => allGeneralItems.any((all) => all.ctId == item.ctId),
+        )) {
+      return cartShippingCost;
+    }
+    return 0;
+  }
+
+  Future<void> _openGeneralPaymentScreen({
+    required List<CartItem> payItems,
+    required int shippingCost,
+  }) async {
+    if (!mounted || payItems.isEmpty) return;
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: '/pay'),
         builder: (_) => PaymentScreen(
-          cartItems: items,
+          cartItems: payItems,
           shippingCost: shippingCost,
           sourceTitle: '일반상품 결제',
         ),
       ),
+    );
+  }
+
+  Future<void> _buySelectedGeneralProductNow({
+    Map<ProductOption, int>? selectedOptions,
+    int? quantity,
+  }) async {
+    if (_product == null) return;
+
+    final hasOptions =
+        selectedOptions != null && selectedOptions.isNotEmpty;
+    if (!hasOptions && (quantity == null || quantity <= 0)) return;
+
+    final beforeIds = await _snapshotGeneralCartIds();
+
+    final Map<String, dynamic> result;
+    if (hasOptions) {
+      result = await CartService.addOptionsToCart(
+        product: _product!,
+        selectedOptions: selectedOptions!,
+      );
+    } else {
+      result = await CartService.addToCart(
+        productId: _product!.id,
+        quantity: quantity!,
+        price: _product!.price * quantity,
+        ctKind: _product!.ctKind,
+      );
+    }
+
+    if (!mounted || result['success'] != true) return;
+
+    _safeSetState(() {
+      _selectedOptions.clear();
+    });
+
+    final payItems = await _resolveBuyNowCartItems(beforeIds);
+    if (!mounted || payItems.isEmpty) return;
+
+    final cart = await CartService.getCart();
+    if (!mounted || cart['success'] != true) return;
+
+    final allGeneralItems = _parseGeneralCartItems(cart);
+    final cartShippingCost = (cart['shipping_cost'] as num?)?.toInt() ?? 0;
+    final shippingCost = _resolveBuyNowShippingCost(
+      payItems: payItems,
+      allGeneralItems: allGeneralItems,
+      cartShippingCost: cartShippingCost,
+    );
+
+    await _openGeneralPaymentScreen(
+      payItems: payItems,
+      shippingCost: shippingCost,
     );
   }
 
@@ -1556,9 +1609,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       },
       onBuyNow: (quantity) async {
         Navigator.of(context).pop();
-        final success = await _addGeneralProductToCart(quantity: quantity);
-        if (!mounted || !success) return;
-        await _goToGeneralPaymentScreen();
+        if (!mounted) return;
+        await _buySelectedGeneralProductNow(quantity: quantity);
       },
     );
   }
