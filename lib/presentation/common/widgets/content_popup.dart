@@ -22,14 +22,14 @@ class ContentPopup extends StatelessWidget {
   static const Color _kDivider = Color(0x7FD2D2D2);
   static const String _kFontFamily = 'Gmarket Sans TTF';
 
-  static Future<void> show(
+  static Future<bool> show(
     BuildContext context, {
     required String title,
     String? subtitle,
     required String body,
     String confirmLabel = '확인',
-  }) {
-    return showDialog<void>(
+  }) async {
+    final result = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) => ContentPopup(
@@ -39,6 +39,7 @@ class ContentPopup extends StatelessWidget {
         confirmLabel: confirmLabel,
       ),
     );
+    return result == true;
   }
 
   @override
@@ -84,7 +85,7 @@ class ContentPopup extends StatelessWidget {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
+                  onTap: () => Navigator.of(context).pop(false),
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: EdgeInsets.only(left: healthDp(context, 8)),
@@ -149,7 +150,7 @@ class ContentPopup extends StatelessWidget {
               width: double.infinity,
               height: healthDp(context, 40),
               child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(context).pop(true),
                 style: TextButton.styleFrom(
                   backgroundColor: _kPink,
                   foregroundColor: Colors.white,
