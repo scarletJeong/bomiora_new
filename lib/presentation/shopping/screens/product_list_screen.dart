@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -48,10 +49,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _hasMore = true;
   bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _tabScrollController = ScrollController();
+  late List<GlobalKey> _tabKeys;
 
   late String _activeCategoryId;
 
-  late List<_CategoryTab> _baseTabOrder;
+  List<_CategoryTab> _baseTabOrder = [];
+  bool _tabsReady = false;
+  int _tabsRequestToken = 0;
 
   static const String _gmarket = 'Gmarket Sans TTF';
   static const Color _tabPink = Color(0xFFFF5B8C);
@@ -65,24 +70,54 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     _activeCategoryId = widget.categoryId;
 
+    _initTabsAndLoad();
+    _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _initTabsAndLoad() async {
+    final requestToken = ++_tabsRequestToken;
+    final List<ProductCategoryItem> source;
     if (widget.productKind == 'general') {
-      _baseTabOrder = productGeneralCategoryList
-          .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
-          .toList();
+      source = await ProductCategoryCatalog.generalCategories();
     } else {
-      _baseTabOrder = productPrescriptionCategoryList
-          .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
-          .toList();
+      source = await ProductCategoryCatalog.prescriptionCategories();
     }
 
-    _loadProducts();
-    _scrollController.addListener(_onScroll);
+    if (!mounted || requestToken != _tabsRequestToken) return;
+
+    _baseTabOrder = source
+        .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
+        .toList();
+    _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+
+    setState(() => _tabsReady = true);
+
+    await _loadProducts();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _tabScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollActiveTabIntoView({bool animate = true}) {
+    if (!_tabsReady || _baseTabOrder.isEmpty) return;
+
+    final index =
+        _baseTabOrder.indexWhere((tab) => tab.id == _activeCategoryId);
+    if (index < 0) return;
+
+    final tabContext = _tabKeys[index].currentContext;
+    if (tabContext == null) return;
+
+    Scrollable.ensureVisible(
+      tabContext,
+      alignment: 0.5,
+      duration: animate ? const Duration(milliseconds: 280) : Duration.zero,
+      curve: Curves.easeInOut,
+    );
   }
 
   void _onScroll() {
@@ -115,13 +150,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _hasMore = products.length >= _pageSize;
         _currentPage = 1;
       });
+      _scheduleActiveTabScroll();
     } catch (e) {
       setState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = '상품 목록을 불러오는데 실패했습니다: $e';
       });
+      _scheduleActiveTabScroll();
     }
+  }
+
+  void _scheduleActiveTabScroll({bool animate = false}) {
+    if (!_tabsReady || _baseTabOrder.isEmpty) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_tabsReady) return;
+      _scrollActiveTabIntoView(animate: animate);
+    });
   }
 
   Future<void> _loadMoreProducts() async {
@@ -181,7 +227,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildBody() {
-    if (_isLoading && _products.isEmpty) {
+    if (!_tabsReady || (_isLoading && _products.isEmpty)) {
       return Center(
         child: SizedBox(
           width: healthDp(context, 36),
@@ -317,6 +363,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Widget _buildCategoryTabs() {
     return SingleChildScrollView(
+      controller: _tabScrollController,
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
       child: Row(
@@ -339,34 +386,38 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildCategoryTabChip(_CategoryTab tab) {
+    final index = _baseTabOrder.indexOf(tab);
     final selected = tab.id == _activeCategoryId;
     final label = _tabDisplayLabel(tab.label);
 
     if (selected) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _onSelectTab(tab),
-          borderRadius: BorderRadius.circular(healthDp(context, 20)),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 10),
-              vertical: healthDp(context, 4),
-            ),
-            decoration: ShapeDecoration(
-              color: _tabPink,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 20)),
+      return KeyedSubtree(
+        key: _tabKeys[index],
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _onSelectTab(tab),
+            borderRadius: BorderRadius.circular(healthDp(context, 20)),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 10),
+                vertical: healthDp(context, 4),
               ),
-            ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: healthSp(context, 14),
-                fontFamily: _gmarket,
-                fontWeight: FontWeight.w700,
+              decoration: ShapeDecoration(
+                color: _tabPink,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 20)),
+                ),
+              ),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: healthSp(context, 14),
+                  fontFamily: _gmarket,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -374,21 +425,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _onSelectTab(tab),
-        borderRadius: BorderRadius.circular(healthDp(context, 20)),
-        child: Padding(
-          padding: EdgeInsets.only(bottom: healthDp(context, 3)),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _tabMuted,
-              fontSize: healthSp(context, 12),
-              fontFamily: _gmarket,
-              fontWeight: FontWeight.w500,
+    return KeyedSubtree(
+      key: _tabKeys[index],
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onSelectTab(tab),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: healthDp(context, 3)),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _tabMuted,
+                fontSize: healthSp(context, 12),
+                fontFamily: _gmarket,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
