@@ -5,6 +5,15 @@ import '../../../data/models/product/product_model.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
+/// 상품 상세 tail·추천상품 등 섹션 제목 공통 스타일
+TextStyle shoppingSectionTitleStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1A),
+      fontSize: healthSp(context, 16),
+      fontFamily: 'Gmarket Sans TTF',
+      fontWeight: FontWeight.w300,
+      letterSpacing: healthSp(context, -1.44),
+    );
+
 /// [ProductListScreen] 그리드와 동일 비율: 열 간격 `healthDp(12)`, `childAspectRatio: 0.58`.
 /// 부모가 이미 좌우 패딩을 두었으므로 여기서는 `maxWidth` 전체로 2열 폭을 맞춤.
 ({double cellWidth, double cellHeight, double crossGap})
@@ -30,6 +39,7 @@ class RecommendProductSection extends StatefulWidget {
   final ValueChanged<Product> onProductTap;
   final String title;
   final bool showLeadingBar;
+  final TextStyle? titleStyle;
   /// true이면 정렬·제외 후 노출할 상품이 없을 때 제목·리스트 전체를 그리지 않음
   final bool hideWhenEmpty;
   /// 섹션 표시 시 상단 여백 (hideWhenEmpty로 숨길 때는 적용 안 함)
@@ -43,6 +53,7 @@ class RecommendProductSection extends StatefulWidget {
     required this.onProductTap,
     this.title = '추가 상품 구매하기',
     this.showLeadingBar = true,
+    this.titleStyle,
     this.hideWhenEmpty = false,
     this.topSpacingBefore = 0,
     this.useGrid2 = false,
@@ -139,12 +150,8 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
               if (widget.title.trim().isNotEmpty)
                 Text(
                   widget.title,
-                  style: const TextStyle(
-                    fontSize: 15.43,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Gmarket Sans TTF',
-                    color: Color(0xFF1A1A1A),
-                  ),
+                  style:
+                      widget.titleStyle ?? shoppingSectionTitleStyle(context),
                 ),
             ],
           ),

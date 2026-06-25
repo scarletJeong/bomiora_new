@@ -6,14 +6,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'recommend_product.dart';
 
-TextStyle _tailSectionTitleStyle(BuildContext context) => TextStyle(
-      color: const Color(0xFF1A1A1E),
-      fontSize: healthSp(context, 16),
-      fontFamily: 'Gmarket Sans TTF',
-      fontWeight: FontWeight.w300,
-      letterSpacing: healthSp(context, -1.44),
-    );
+TextStyle _tailSectionTitleStyle(BuildContext context) =>
+    shoppingSectionTitleStyle(context);
 
 TextStyle _tailBodyStyle(BuildContext context) => TextStyle(
       fontSize: healthSp(context, 12),
@@ -44,8 +40,8 @@ double _tailHorizontalPad(BuildContext context) => healthDp(context, 27);
 
 Widget _tailSectionDivider(BuildContext context) => Divider(
       height: healthDp(context, 1),
-      thickness: healthDp(context, 1),
-      color: Colors.grey.shade300,
+      thickness: healthDp(context, 0.5),
+      color: Colors.black,
     );
 
 /// 접이식 섹션 제목 앞 세로 구분 표시 (`| 배송` 형태)
@@ -679,7 +675,6 @@ class _ExchangeRefundSectionState extends State<_ExchangeRefundSection> {
       onToggle: () => setState(() => _isExpanded = !_isExpanded),
       title: _expandableSectionTitle(context, '교환/환불'),
       expandedChild: _buildNoticeList(context, widget.changeContentText),
-      showTrailingDivider: false,
     );
   }
 }
