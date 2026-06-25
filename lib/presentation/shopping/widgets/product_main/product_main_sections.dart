@@ -213,6 +213,9 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
 
   double? _heroDisplayHeight;
   double _sectionLayoutHeight = 0;
+  int _layoutSyncAttempts = 0;
+  static const int _maxLayoutSyncAttempts = 8;
+  bool _layoutSyncScheduled = false;
 
   @override
   void initState() {
@@ -269,7 +272,9 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     if (iw <= 0) return;
     final h = widget.width * ih / iw;
     if (_heroDisplayHeight == h) {
-      _scheduleSyncExtraBottom();
+      if (_sectionLayoutHeight <= 0) {
+        _scheduleSyncExtraBottom();
+      }
       return;
     }
     setState(() => _heroDisplayHeight = h);
@@ -277,7 +282,10 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
   }
 
   void _scheduleSyncExtraBottom() {
+    if (_layoutSyncScheduled) return;
+    _layoutSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _layoutSyncScheduled = false;
       if (!mounted) return;
       _syncSectionLayoutHeight();
     });
@@ -299,9 +307,13 @@ class _ProductMainQuoteStackState extends State<_ProductMainQuoteStack> {
     final ctx = _textColumnKey.currentContext;
     final box = ctx?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) {
-      _scheduleSyncExtraBottom();
+      if (_layoutSyncAttempts < _maxLayoutSyncAttempts) {
+        _layoutSyncAttempts++;
+        _scheduleSyncExtraBottom();
+      }
       return;
     }
+    _layoutSyncAttempts = 0;
     final textH = box.size.height;
     final imageTop = _heroImageTop(context);
     final textTop = _heroTextTop(context);

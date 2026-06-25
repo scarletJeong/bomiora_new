@@ -71,9 +71,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 }
               ''';
             // CORS 정책으로 인해 직접 접근이 제한될 수 있음
-            print('iframe 스타일 주입 시도: ${widget.url}');
           } catch (e) {
-            print('iframe 스타일 주입 실패: $e');
           }
         
         return iframe;

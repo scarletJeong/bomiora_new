@@ -35,7 +35,6 @@ class StepsRepository {
       }
       return null;
     } catch (e) {
-      print('오늘의 걸음수 기록 가져오기 오류: $e');
       return null;
     }
   }
@@ -67,7 +66,6 @@ class StepsRepository {
 
       return null;
     } catch (e) {
-      print('걸음수 기록 가져오기 오류: $e');
       return null;
     }
   }
@@ -110,7 +108,6 @@ class StepsRepository {
       }
       return out;
     } catch (e) {
-      print('기간별 걸음 조회 오류: $e');
       return {};
     }
   }
@@ -141,7 +138,6 @@ class StepsRepository {
       }
       return out;
     } catch (e) {
-      print('월별 걸음 조회 오류: $e');
       return List<int>.filled(12, 0);
     }
   }
@@ -157,7 +153,6 @@ class StepsRepository {
 
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('걸음수 기록 저장 오류: $e');
       return false;
     }
   }
@@ -173,7 +168,6 @@ class StepsRepository {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('걸음수 기록 업데이트 오류: $e');
       return false;
     }
   }
@@ -209,7 +203,6 @@ class StepsRepository {
 
       return StepsStatistics.fromJson(data);
     } catch (e) {
-      print('걸음수 통계 가져오기 오류: $e');
       return null;
     }
   }
@@ -234,7 +227,6 @@ class StepsRepository {
       }
       return [];
     } catch (e) {
-      print('주간 걸음수 데이터 가져오기 오류: $e');
       return [];
     }
   }
@@ -260,7 +252,6 @@ class StepsRepository {
       }
       return [];
     } catch (e) {
-      print('월간 걸음수 데이터 가져오기 오류: $e');
       return [];
     }
   }
@@ -275,7 +266,6 @@ class StepsRepository {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('걸음수 기록 삭제 오류: $e');
       return false;
     }
   }
@@ -294,7 +284,6 @@ class StepsRepository {
 
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('목표 걸음수 설정 오류: $e');
       return false;
     }
   }
@@ -318,7 +307,6 @@ class StepsRepository {
       }
       return null;
     } catch (e) {
-      print('목표 걸음수 가져오기 오류: $e');
       return null;
     }
   }

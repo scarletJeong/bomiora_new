@@ -199,25 +199,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
         _loadExistingData(existingProfile);
       } else {
-        print('기존 건강프로필 없음 - 새로 작성');
         final u = _currentUser!;
-        final digitsBirth =
-            (u.birthDate ?? '').trim().replaceAll(RegExp(r'\D'), '');
-        print(
-          '[HealthProfileForm] 로컬 UserModel — birthDate=${u.birthDate} (digits=$digitsBirth), sex=${u.sex}',
-        );
         // 최초 작성: 회원 테이블(bomiora_member) 값은 "프리필"만 (저장 시 member 테이블은 갱신하지 않음)
         _prefillMemberBasicsFromUser(u);
-        print(
-          '[HealthProfileForm] 프리필 후 폼 — answer_1=${_formData['answer_1']}, '
-          'birth_year=${_formData['birth_year']}, birth_month=${_formData['birth_month']}, '
-          'birth_day=${_formData['birth_day']}, answer_2=${_formData['answer_2']}',
-        );
       }
     } catch (e) {
-      if (mounted) {
-        print('기존 건강프로필 확인 중 오류: $e');
-      }
+      // 프로필 로드 실패 시 무시
     }
   }
 

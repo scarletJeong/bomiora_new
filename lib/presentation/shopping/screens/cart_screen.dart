@@ -117,7 +117,6 @@ class _CartScreenState extends State<CartScreen> {
               try {
                 return CartItem.fromJson(item as Map<String, dynamic>);
               } catch (e) {
-                print('⚠️ [장바구니 아이템 파싱 오류]: $e');
                 return null;
               }
             })

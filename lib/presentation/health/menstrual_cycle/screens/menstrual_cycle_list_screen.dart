@@ -77,7 +77,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       });
       _maybeAutoCreateNextCycleForDate(selectedDate);
     } catch (e) {
-      print('생리주기 데이터 로딩 오류: $e');
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -823,7 +822,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
 
       return MenstrualCycleRecordSelector.pickForDay(records, selectedDate);
     } catch (e) {
-      print('레코드 조회 중 오류: $e');
       return _currentRecord;
     }
   }
@@ -881,7 +879,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             _loadMenstrualCycleData();
           }
         } catch (e) {
-          print('다음 생리주기 생성 중 오류: $e');
         }
       }
     }

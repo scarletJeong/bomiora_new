@@ -74,7 +74,6 @@ class DeliveryTracker {
     }
     
     if (companyInfo == null) {
-      print('⚠️ [배송 조회] 지원하지 않는 택배사: $companyName');
       return null;
     }
     
@@ -89,8 +88,6 @@ class DeliveryTracker {
     // URL 생성
     final url = companyInfo.url + processedTracking;
     
-    print('📦 [배송 조회] URL 생성: $url');
-    
     return url;
   }
   
@@ -104,7 +101,6 @@ class DeliveryTracker {
     final url = getTrackingUrl(companyName, trackingNumber);
     
     if (url == null) {
-      print('❌ [배송 조회] URL 생성 실패');
       return false;
     }
     
@@ -118,11 +114,9 @@ class DeliveryTracker {
         );
         return true;
       } else {
-        print('❌ [배송 조회] URL 열기 실패: $url');
         return false;
       }
     } catch (e) {
-      print('❌ [배송 조회] 에러: $e');
       return false;
     }
   }

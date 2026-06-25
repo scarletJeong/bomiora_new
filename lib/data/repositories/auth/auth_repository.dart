@@ -504,9 +504,6 @@ class AuthRepository {
   }) async {
     try {
       // 평문 비밀번호를 전송 (Spring Boot에서 PBKDF2로 해싱)
-      print('🔐 [REGISTER] 이메일: $email');
-      print('🔐 [REGISTER] 비밀번호: [보호됨]');
-      
       final mbDup = (certInfo?['mb_dupinfo'] ?? certInfo?['mbDupinfo'])
           ?.toString()
           .trim();

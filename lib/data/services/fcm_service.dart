@@ -31,8 +31,6 @@ class FCMService {
         sound: true,
       );
 
-      print('📱 FCM 권한 상태: ${settings.authorizationStatus}');
-
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
         // FCM 토큰 가져오기
@@ -53,12 +51,9 @@ class FCMService {
         // 알림 클릭 이벤트 처리
         _handleNotificationInteraction();
 
-        print('✅ FCM 초기화 완료');
       } else {
-        print('⚠️ 알림 권한이 거부되었습니다.');
       }
     } catch (e) {
-      print('❌ FCM 초기화 실패: $e');
     }
   }
 
@@ -66,8 +61,6 @@ class FCMService {
   Future<String?> _getToken() async {
     try {
       _fcmToken = await _firebaseMessaging.getToken();
-      print('🔑 FCM 토큰: $_fcmToken');
-
       // 토큰을 로컬 저장소에 저장
       if (_fcmToken != null) {
         final prefs = await SharedPreferences.getInstance();
@@ -76,14 +69,12 @@ class FCMService {
 
       return _fcmToken;
     } catch (e) {
-      print('❌ FCM 토큰 가져오기 실패: $e');
       return null;
     }
   }
 
   /// 토큰 갱신 처리
   Future<void> _handleTokenRefresh(String newToken) async {
-    print('🔄 FCM 토큰 갱신: $newToken');
     _fcmToken = newToken;
 
     // 토큰을 로컬 저장소에 저장
@@ -103,9 +94,7 @@ class FCMService {
       //   headers: {'Content-Type': 'application/json'},
       //   body: jsonEncode({'fcm_token': token}),
       // );
-      print('📤 서버에 FCM 토큰 전송: $token');
     } catch (e) {
-      print('❌ 토큰 전송 실패: $e');
     }
   }
 
@@ -181,11 +170,6 @@ class FCMService {
   /// 포그라운드 메시지 수신 설정
   void _configureForegroundNotification() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('📩 포그라운드 메시지 수신: ${message.messageId}');
-      print('제목: ${message.notification?.title}');
-      print('내용: ${message.notification?.body}');
-      print('데이터: ${message.data}');
-
       // 포그라운드에서도 알림 표시
       if (message.notification != null) {
         _showLocalNotification(message);
@@ -263,8 +247,6 @@ class FCMService {
 
   /// 알림 데이터 기반 화면 이동
   void _handleNotificationNavigation(Map<String, dynamic> data) {
-    print('🔔 알림 클릭 데이터: $data');
-
     final type = data['type'];
     final id = data['id'];
 
@@ -272,31 +254,25 @@ class FCMService {
     switch (type) {
       case 'order':
         // 주문 상세 화면으로 이동
-        print('주문 상세로 이동: $id');
         // Navigator.pushNamed(context, '/order-detail', arguments: id);
         break;
       case 'delivery':
         // 배송 조회 화면으로 이동
-        print('배송 조회로 이동: $id');
         // Navigator.pushNamed(context, '/delivery-list');
         break;
       case 'health':
         // 건강 관리 화면으로 이동
-        print('건강 관리로 이동');
         // Navigator.pushNamed(context, '/health-profile');
         break;
       case 'coupon':
         // 쿠폰 화면으로 이동
-        print('쿠폰 화면으로 이동');
         // Navigator.pushNamed(context, '/coupon');
         break;
       case 'event':
         // 이벤트 상세 화면으로 이동
-        print('이벤트 상세로 이동: $id');
         // Navigator.pushNamed(context, '/event-detail', arguments: id);
         break;
       default:
-        print('알 수 없는 알림 타입: $type');
     }
   }
 
@@ -306,16 +282,13 @@ class FCMService {
     // await _firebaseMessaging.setApplicationIconBadgeNumber(0);
     // 최신 firebase_messaging에서는 이 메서드가 제거되었습니다.
     // flutter_app_badger 패키지를 사용하거나 플랫폼별 구현이 필요합니다.
-    print('⚠️ 배지 초기화 기능은 추후 구현 예정입니다.');
   }
 
   /// 구독 (특정 토픽)
   Future<void> subscribeToTopic(String topic) async {
     try {
       await _firebaseMessaging.subscribeToTopic(topic);
-      print('✅ 토픽 구독: $topic');
     } catch (e) {
-      print('❌ 토픽 구독 실패: $e');
     }
   }
 
@@ -323,9 +296,7 @@ class FCMService {
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _firebaseMessaging.unsubscribeFromTopic(topic);
-      print('✅ 토픽 구독 해제: $topic');
     } catch (e) {
-      print('❌ 토픽 구독 해제 실패: $e');
     }
   }
 }
@@ -333,11 +304,6 @@ class FCMService {
 /// 백그라운드 메시지 핸들러 (최상위 함수여야 함)
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  print('🌙 백그라운드 메시지 수신: ${message.messageId}');
-  print('제목: ${message.notification?.title}');
-  print('내용: ${message.notification?.body}');
-  print('데이터: ${message.data}');
-
   // 백그라운드에서도 필요한 처리 수행
   // 예: 로컬 데이터베이스 업데이트, 알림 카운트 증가 등
 }

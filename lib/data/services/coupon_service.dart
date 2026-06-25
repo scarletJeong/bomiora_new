@@ -8,8 +8,6 @@ class CouponService {
   /// 사용자의 모든 쿠폰 조회
   static Future<List<Coupon>> getUserCoupons(String userId) async {
     try {
-      print('🎫 쿠폰 목록 조회 시작 - userId: $userId');
-      
       final response = await ApiClient.get(ApiEndpoints.userCoupons(userId));
       
       if (response.statusCode == 200) {
@@ -21,15 +19,12 @@ class CouponService {
               .map((json) => Coupon.fromJson(json))
               .toList();
           
-          print('✅ 쿠폰 목록 조회 완료: ${coupons.length}개');
           return coupons;
         }
       }
       
-      print('⚠️ 쿠폰 목록 조회 실패: ${response.statusCode}');
       return [];
     } catch (e) {
-      print('❌ 쿠폰 목록 조회 오류: $e');
       return [];
     }
   }
@@ -52,7 +47,6 @@ class CouponService {
       
       return [];
     } catch (e) {
-      print('❌ 사용가능한 쿠폰 조회 오류: $e');
       return [];
     }
   }
@@ -75,7 +69,6 @@ class CouponService {
       
       return [];
     } catch (e) {
-      print('❌ 사용한 쿠폰 조회 오류: $e');
       return [];
     }
   }
@@ -98,7 +91,6 @@ class CouponService {
       
       return [];
     } catch (e) {
-      print('❌ 만료된 쿠폰 조회 오류: $e');
       return [];
     }
   }
@@ -106,8 +98,6 @@ class CouponService {
   /// 쿠폰 등록
   static Future<Map<String, dynamic>> registerCoupon(String userId, String couponCode) async {
     try {
-      print('🎫 쿠폰 등록 시작 - userId: $userId, code: $couponCode');
-      
       final response = await ApiClient.post(
         ApiEndpoints.registerCoupon,
         {
@@ -129,7 +119,6 @@ class CouponService {
         'message': '쿠폰 등록에 실패했습니다.',
       };
     } catch (e) {
-      print('❌ 쿠폰 등록 오류: $e');
       return {
         'success': false,
         'message': '쿠폰 등록 중 오류가 발생했습니다: $e',
@@ -144,8 +133,6 @@ class CouponService {
     required int isId,
   }) async {
     try {
-      print('🎫 도움쿠폰 다운로드 시작 - mbId: $mbId, itId: $itId, isId: $isId');
-      
       final response = await ApiClient.post(
         ApiEndpoints.downloadHelpCoupon,
         {
@@ -159,7 +146,6 @@ class CouponService {
         final data = json.decode(response.body);
         
         if (data['success'] == true) {
-          print('✅ 도움쿠폰 다운로드 완료');
           return {
             'success': true,
             'message': data['message'],
@@ -167,7 +153,6 @@ class CouponService {
             'cpId': data['cpId'],
           };
         } else {
-          print('❌ 도움쿠폰 다운로드 실패: ${data['message']}');
           return {
             'success': false,
             'message': data['message'] ?? '쿠폰 다운로드에 실패했습니다.',
@@ -180,7 +165,6 @@ class CouponService {
         'message': '쿠폰 다운로드에 실패했습니다.',
       };
     } catch (e) {
-      print('❌ 도움쿠폰 다운로드 오류: $e');
       return {
         'success': false,
         'message': '쿠폰 다운로드 중 오류가 발생했습니다.',

@@ -71,13 +71,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (!mounted) return;
 
     // 콘솔에 현재 사용자 정보 출력
-    print('📱 [프로필 설정] 현재 사용자 정보:');
-    print('   - ID: ${user?.id}');
-    print('   - 이메일: ${user?.email}');
-    print('   - 이름: ${user?.name}');
-    print('   - 닉네임: ${user?.nickname}');
-    print('   - 전화번호: ${user?.phone}');
-
     final phone = (user?.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
     setState(() {
       _currentUser = user;
@@ -512,7 +505,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         await _loadCurrentUser();
       }
     } catch (e) {
-      print('❌ 프로필 저장 에러: $e');
     }
   }
 

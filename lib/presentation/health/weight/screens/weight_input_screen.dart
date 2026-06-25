@@ -96,7 +96,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         });
       }
     } catch (e) {
-      print('최신 키 정보 로드 오류: $e');
       // 에러가 나도 계속 진행 (키는 선택 사항)
     }
   }
@@ -196,11 +195,9 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
       if (widget.record == null) {
         // 새 기록 추가
         success = await WeightRepository.addWeightRecord(record);
-        print('새 기록 추가 결과: $success');
       } else {
         // 기록 수정
         success = await WeightRepository.updateWeightRecord(record);
-        print('기록 수정 결과: $success');
       }
 
       if (mounted) {
@@ -790,7 +787,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
             try {
               imagePath = await WeightRepository.uploadImage(image);
             } catch (e) {
-              print('웹 이미지 업로드 실패: $e');
               // 업로드 실패 시 blob URL 사용 (임시)
               imagePath = image.path;
             }
@@ -819,7 +815,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
         }
       });
     } catch (e) {
-      print('이미지 선택 오류: $e');
     }
   }
 
@@ -859,7 +854,6 @@ class _WeightInputScreenState extends State<WeightInputScreen> {
 
       }
     } catch (e) {
-      print('이미지 삭제 오류: $e');
     }
   }
 

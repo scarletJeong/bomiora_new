@@ -70,7 +70,6 @@ class ImagePickerUtils {
         imageQuality: 80,
       );
     } catch (e) {
-      print('카메라 이미지 선택 오류: $e');
       return null;
     }
   }
@@ -204,7 +203,6 @@ class ImagePickerUtils {
         imageQuality: 80,
       );
     } catch (e) {
-      print('갤러리 이미지 선택 오류: $e');
       return null;
     }
   }
@@ -243,7 +241,6 @@ class ImagePickerUtils {
         }
         return false;
       } catch (e) {
-        print('이미지 파일 삭제 오류: $e');
         return false;
       }
     }

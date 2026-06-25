@@ -50,7 +50,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
         allRecords = records;
       });
     } catch (e) {
-      print('혈당 데이터 로딩 오류: $e');
     } finally {
       setState(() {
         isLoading = false;

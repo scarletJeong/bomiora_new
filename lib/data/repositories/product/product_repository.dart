@@ -24,14 +24,9 @@ class ProductRepository {
       Map<String, String>? headers;
       if (token != null && token.isNotEmpty) {
         headers = {'Authorization': 'Bearer $token'};
-        print('🔑 인증 토큰 사용: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
-      } else {
-        print('⚠️ 인증 토큰 없음 - 인증이 필요할 수 있음');
       }
       
       final response = await ApiClient.get(endpoint, additionalHeaders: headers);
-      
-      print('📡 응답 상태 코드: ${response.statusCode}');
       
       // Spring Boot API가 성공하면 처리
       if (response.statusCode == 200) {
@@ -58,7 +53,6 @@ class ProductRepository {
                 .toList();
           }
         } catch (e) {
-          print('⚠️ Spring Boot API 응답 파싱 실패: $e');
         }
       }
       
@@ -67,7 +61,6 @@ class ProductRepository {
         productKind: productKind,
       );
     } catch (e) {
-      print('❌ 상품 목록 조회 오류: $e');
       // 폴백: PHP 서버로 시도
       try {
         return await _getProductsFromPhpServer(
@@ -75,7 +68,6 @@ class ProductRepository {
           productKind: productKind,
         );
       } catch (fallbackError) {
-        print('❌ PHP 서버 폴백도 실패: $fallbackError');
         return [];
       }
     }
@@ -87,8 +79,6 @@ class ProductRepository {
     String? productKind,
   }) async {
     try {
-      print('🌐 PHP 서버에서 상품 조회 시도: bomiora.kr');
-      
       // bomiora.kr의 API 엔드포인트를 확인해야 함
       // 만약 JSON API가 없다면, Spring Boot 서버가 중간에서 PHP 서버를 호출하는 구조일 수 있음
       // 일단 빈 리스트 반환 (나중에 실제 API 구조를 파악하면 수정)
@@ -96,10 +86,8 @@ class ProductRepository {
       // TODO: 실제 bomiora.kr API 엔드포인트 확인 후 구현
       // 예: 'https://bomiora.kr/api/products/list.php?ca_id=$categoryId&it_kind=$productKind'
       
-      print('⚠️ PHP 서버 API 엔드포인트 미구현. Spring Boot 서버 API 구현 필요.');
       return [];
     } catch (e) {
-      print('❌ PHP 서버 조회 오류: $e');
       return [];
     }
   }
@@ -107,8 +95,6 @@ class ProductRepository {
   // 상품 상세 정보 가져오기
   static Future<Product?> getProductDetail(String productId) async {
     try {
-      print('🔍 상품 상세 조회 시작 - productId: $productId');
-      
       final response = await ApiClient.get('${ApiEndpoints.productDetail}?id=$productId');
       
       if (response.statusCode == 200) {
@@ -138,19 +124,7 @@ class ProductRepository {
               itKindStr = itKind?.toString();
             }
             
-            print('📦 [상품 상세 조회] 원본 데이터 (bomiora_shop_item_new):');
-            print('  - it_id (원본): $itId');
-            print('  - it_id (문자열): $itIdStr');
-            print('  - it_kind (원본): $itKind');
-            print('  - it_kind (문자열): $itKindStr');
-            print('  - ct_kind: $ctKind');
-            print('  - productKind: $productKind');
-            
             productObj = Product.fromJson(Map<String, dynamic>.from(product));
-            if (productObj != null) {
-              print('  - 파싱된 productKind: ${productObj.productKind}');
-              print('  - 파싱된 ctKind (getter): ${productObj.ctKind}');
-            }
           }
         } else if (data is Map && data['product'] != null) {
           final product = data['product'];
@@ -175,19 +149,7 @@ class ProductRepository {
               itKindStr = itKind?.toString();
             }
             
-            print('📦 [상품 상세 조회] 원본 데이터 (bomiora_shop_item_new):');
-            print('  - it_id (원본): $itId');
-            print('  - it_id (문자열): $itIdStr');
-            print('  - it_kind (원본): $itKind');
-            print('  - it_kind (문자열): $itKindStr');
-            print('  - ct_kind: $ctKind');
-            print('  - productKind: $productKind');
-            
             productObj = Product.fromJson(Map<String, dynamic>.from(product));
-            if (productObj != null) {
-              print('  - 파싱된 productKind: ${productObj.productKind}');
-              print('  - 파싱된 ctKind (getter): ${productObj.ctKind}');
-            }
           }
         }
         return productObj;
@@ -195,7 +157,6 @@ class ProductRepository {
       
       return null;
     } catch (e) {
-      print('❌ 상품 상세 조회 오류: $e');
       return null;
     }
   }
@@ -224,7 +185,6 @@ class ProductRepository {
       
       return [];
     } catch (e) {
-      print('❌ 인기 상품 조회 오류: $e');
       return [];
     }
   }
@@ -253,7 +213,6 @@ class ProductRepository {
       
       return [];
     } catch (e) {
-      print('❌ 신상품 조회 오류: $e');
       return [];
     }
   }
@@ -290,7 +249,6 @@ class ProductRepository {
 
       return [];
     } catch (e) {
-      print('❌ MD pick 조회 오류: $e');
       return [];
     }
   }
@@ -334,7 +292,6 @@ class ProductRepository {
       }
       return out;
     } catch (e) {
-      print('❌ 카테고리(상품있음) 조회 오류: $e');
       return [];
     }
   }

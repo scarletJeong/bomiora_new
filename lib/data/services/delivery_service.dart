@@ -173,27 +173,18 @@ class OrderService {
     required String mbId,
   }) async {
     try {
-      print('📦 [구매 확정] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-
       final response = await ApiClient.post(
         '/api/orders/$odId/confirm',
         {'mbId': mbId},
       );
 
-      print('📡 [구매 확정] 응답 상태: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
-        print('✅ [구매 확정] 성공');
-        
         return {
           'success': true,
           'message': data['message'] ?? '구매가 확정되었습니다.',
         };
       } else {
-        print('❌ [구매 확정] 실패: ${response.statusCode}');
         final errorData = _decodeBody(response);
         return {
           'success': false,
@@ -201,7 +192,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [구매 확정] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -222,12 +212,6 @@ class OrderService {
     required String reservationTime,
   }) async {
     try {
-      print('📦 [예약 시간 변경] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-      print('  - reservationDate: $reservationDate');
-      print('  - reservationTime: $reservationTime');
-
       final response = await ApiClient.put(
         '/api/orders/$odId/reservation',
         {
@@ -237,18 +221,13 @@ class OrderService {
         },
       );
 
-      print('📡 [예약 시간 변경] 응답 상태: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
-        print('✅ [예약 시간 변경] 성공');
-        
         return {
           'success': true,
           'message': data['message'] ?? '예약 시간이 변경되었습니다.',
         };
       } else {
-        print('❌ [예약 시간 변경] 실패: ${response.statusCode}');
         final errorData = _decodeBody(response);
         return {
           'success': false,
@@ -256,7 +235,6 @@ class OrderService {
         };
       }
     } catch (e) {
-      print('❌ [예약 시간 변경] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -275,11 +253,6 @@ class OrderService {
     required int addressId,
   }) async {
     try {
-      print('📦 [배송지 변경] 요청');
-      print('  - odId: $odId');
-      print('  - mbId: $mbId');
-      print('  - addressId: $addressId');
-
       final payload = {
         'mbId': mbId,
         'addressId': addressId,
@@ -297,8 +270,6 @@ class OrderService {
         response = await ApiClient.put('/api/user/orders/$odId/delivery-address', payload);
       }
 
-      print('📡 [배송지 변경] 응답 상태: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = _decodeBody(response);
         return {
@@ -313,7 +284,6 @@ class OrderService {
         'message': errorData['error'] ?? errorData['message'] ?? '배송지 변경에 실패했습니다.',
       };
     } catch (e) {
-      print('❌ [배송지 변경] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',

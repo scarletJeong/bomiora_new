@@ -1031,11 +1031,11 @@ class _GeneralQtyControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(healthDp(context, 3)),
+      padding: EdgeInsets.all(healthDp(context, 4)),
       decoration: ShapeDecoration(
         color: const Color(0xFFF6F6F6),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(healthDp(context, 16)),
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
       ),
       child: Row(
@@ -1043,15 +1043,15 @@ class _GeneralQtyControl extends StatelessWidget {
         children: [
           _GeneralQtyButton(icon: Icons.remove, onTap: onDecrease),
           Container(
-            width: healthDp(context, 14),
+            width: healthDp(context, 22),
             alignment: Alignment.center,
-            margin: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
+            margin: EdgeInsets.symmetric(horizontal: healthDp(context, 6)),
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: const Color(0xFF1A1A1A),
-                fontSize: healthSp(context, 10),
+                fontSize: healthSp(context, 14),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1071,9 +1071,9 @@ class _GeneralQtyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonSize = healthDp(context, 16);
-    final buttonRadius = healthDp(context, 8);
-    final iconSize = healthDp(context, 11);
+    final buttonSize = healthDp(context, 22);
+    final buttonRadius = healthDp(context, 14);
+    final iconSize = healthDp(context, 16);
 
     return InkWell(
       onTap: onTap,

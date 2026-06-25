@@ -103,7 +103,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         _syncDeliveryFeesFromDetail(userId);
       }
     } catch (e) {
-      print('❌ 주문 목록 로드 에러: $e');
     } finally {
       if (mounted) {
         setState(() {

@@ -1813,7 +1813,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
             try {
               imageUrl = await WeightRepository.uploadImage(image);
             } catch (e) {
-              print('웹 이미지 업로드 실패: $e');
               // 업로드 실패 시 blob URL 사용 (임시)
               imageUrl = image.path;
             }
@@ -1862,7 +1861,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
         }
       });
     } catch (e) {
-      print('이미지 선택 오류: $e');
     }
   }
 
@@ -1906,7 +1904,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
         _loadData(); // 데이터 새로고침
       }
     } catch (e) {
-      print('이미지 삭제 오류: $e');
     }
   }
 

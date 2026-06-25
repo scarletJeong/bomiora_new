@@ -8,7 +8,6 @@ class KakaoAuthService {
     try {
       // 웹 환경에서는 JavaScript SDK를 사용하므로 별도 초기화 불필요
       if (kIsWeb) {
-        print('✅ [KakaoAuth] 웹 환경 - 카카오 JavaScript SDK 사용');
         return;
       }
 
@@ -17,9 +16,7 @@ class KakaoAuthService {
       // 실제 앱 키는 AndroidManifest.xml의 <meta-data android:name="com.kakao.sdk.AppKey" android:value="YOUR_APP_KEY" />
       // 또는 Info.plist의 KAKAO_APP_KEY에 설정되어 있어야 함
       KakaoSdk.init();
-      print('✅ [KakaoAuth] 카카오 SDK 초기화 완료');
     } catch (e) {
-      print('❌ [KakaoAuth] 카카오 SDK 초기화 실패: $e');
     }
   }
 
@@ -37,12 +34,9 @@ class KakaoAuthService {
       try {
         // 카카오톡 앱이 설치되어 있으면 카카오톡으로 로그인 시도
         token = await UserApi.instance.loginWithKakaoTalk();
-        print('✅ [KakaoAuth] 카카오톡으로 로그인 성공');
       } catch (e) {
         // 카카오톡 앱이 없거나 로그인 실패 시 카카오계정으로 로그인
-        print('⚠️ [KakaoAuth] 카카오톡 로그인 실패, 카카오계정으로 시도: $e');
         token = await UserApi.instance.loginWithKakaoAccount();
-        print('✅ [KakaoAuth] 카카오계정으로 로그인 성공');
       }
 
       if (token == null) {
@@ -55,12 +49,6 @@ class KakaoAuthService {
       // 사용자 정보 가져오기
       User user = await UserApi.instance.me();
       
-      print('👤 [KakaoAuth] 사용자 정보:');
-      print('   - ID: ${user.id}');
-      print('   - 닉네임: ${user.kakaoAccount?.profile?.nickname}');
-      print('   - 이메일: ${user.kakaoAccount?.email}');
-      print('   - 프로필 이미지: ${user.kakaoAccount?.profile?.profileImageUrl}');
-
       return {
         'success': true,
         'data': {
@@ -73,13 +61,11 @@ class KakaoAuthService {
         },
       };
     } on KakaoException catch (e) {
-      print('❌ [KakaoAuth] 카카오 로그인 오류: $e');
       return {
         'success': false,
         'error': _getErrorMessage(e),
       };
     } catch (e) {
-      print('❌ [KakaoAuth] 예외 발생: $e');
       return {
         'success': false,
         'error': '카카오 로그인 중 오류가 발생했습니다: $e',
@@ -91,14 +77,11 @@ class KakaoAuthService {
   static Future<void> logout() async {
     try {
       if (kIsWeb) {
-        print('⚠️ [KakaoAuth] 웹 환경에서는 카카오 로그아웃을 사용할 수 없습니다.');
         return;
       }
 
       await UserApi.instance.logout();
-      print('✅ [KakaoAuth] 카카오 로그아웃 완료');
     } catch (e) {
-      print('❌ [KakaoAuth] 카카오 로그아웃 오류: $e');
     }
   }
 
@@ -106,14 +89,11 @@ class KakaoAuthService {
   static Future<void> unlink() async {
     try {
       if (kIsWeb) {
-        print('⚠️ [KakaoAuth] 웹 환경에서는 카카오 계정 연결 해제를 사용할 수 없습니다.');
         return;
       }
 
       await UserApi.instance.unlink();
-      print('✅ [KakaoAuth] 카카오 계정 연결 해제 완료');
     } catch (e) {
-      print('❌ [KakaoAuth] 카카오 계정 연결 해제 오류: $e');
     }
   }
 
@@ -137,7 +117,6 @@ class KakaoAuthService {
         'needsServerAuth': true,
       };
     } catch (e) {
-      print('❌ [KakaoAuth] 웹 카카오 로그인 오류: $e');
       return {
         'success': false,
         'error': '카카오 로그인 중 오류가 발생했습니다: $e',

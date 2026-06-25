@@ -231,9 +231,7 @@ class ContactService {
       String phoneNumber = '';
       if (user.phone != null && user.phone!.isNotEmpty) {
         phoneNumber = user.phone!.replaceAll(RegExp(r'[^0-9]'), ''); // 숫자만 추출
-        print('   - 추출된 번호: $phoneNumber');
       } else {
-        print('   - ⚠️ 전화번호가 없습니다! 재로그인이 필요할 수 있습니다.');
       }
 
       final response = await ApiClient.post(

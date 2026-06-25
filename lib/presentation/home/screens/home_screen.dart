@@ -10,7 +10,6 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
 import '../../common/widgets/app_bar_menu.dart';
-import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/app_footer.dart';  
@@ -92,41 +91,27 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         isLoading = false;
       });
-      print('데이터 로드 실패: $e');
     }
   }
   
   // 3 메뉴판
   @override
   Widget build(BuildContext context) {
-    final isMyPage = _currentIndex == 1;
-
-    return MobileAppLayoutWrapper(
-      child: Scaffold(
+    return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: false,
-      appBar: isMyPage
-          ? null
-          : AppBarMenu(
-              onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
-      drawer: isMyPage
-          ? null
-          : AppBarMenuTapDrawer(
-              onHealthDashboardTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/health');
-              },
-            ),
+      appBar: AppBarMenu(
+        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
+      drawer: AppBarMenuTapDrawer(
+        onHealthDashboardTap: () {
+          Navigator.pop(context);
+          Navigator.pushNamed(context, '/health');
+        },
+      ),
       body: _getCurrentPage(),
       bottomNavigationBar: const FooterBar(),
-      // 하단 탭 임시 비활성화
-      // bottomNavigationBar: SizedBox(
-      //   height: kBottomNavigationBarHeight + 2.0,
-      //   child: ...,
-      // ),
-    ),
     );
   }
 

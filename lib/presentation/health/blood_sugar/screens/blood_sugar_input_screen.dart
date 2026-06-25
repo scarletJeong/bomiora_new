@@ -125,11 +125,9 @@ class _BloodSugarInputScreenState extends State<BloodSugarInputScreen> {
       if (widget.record == null) {
         // 새 기록 추가
         success = await BloodSugarRepository.addBloodSugarRecord(record);
-        print('새 기록 추가 결과: $success');
       } else {
         // 기록 수정
         success = await BloodSugarRepository.updateBloodSugarRecord(record);
-        print('기록 수정 결과: $success');
       }
 
       if (mounted) {

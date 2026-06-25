@@ -22,11 +22,8 @@ class FoodLensService {
       );
       return result ?? false;
     } on PlatformException catch (e) {
-      print('❌ FoodLens 초기화 오류: ${e.message}');
-      print('   코드: ${e.code}, 상세: ${e.details}');
       return false;
     } catch (e) {
-      print('❌ FoodLens 초기화 예외: $e');
       return false;
     }
   }
@@ -50,11 +47,8 @@ class FoodLensService {
       }
       return null;
     } on PlatformException catch (e) {
-      print('❌ FoodLens 인식 오류: ${e.message}');
-      print('   코드: ${e.code}, 상세: ${e.details}');
       throw Exception('음식 인식 실패: ${e.message}');
     } catch (e) {
-      print('❌ FoodLens 인식 예외: $e');
       throw Exception('음식 인식 실패: $e');
     }
   }
@@ -73,11 +67,8 @@ class FoodLensService {
       }
       return null;
     } on PlatformException catch (e) {
-      print('❌ FoodLens 촬영/인식 오류: ${e.message}');
-      print('   코드: ${e.code}, 상세: ${e.details}');
       throw Exception('음식 촬영/인식 실패: ${e.message}');
     } catch (e) {
-      print('❌ FoodLens 촬영/인식 예외: $e');
       throw Exception('음식 촬영/인식 실패: $e');
     }
   }

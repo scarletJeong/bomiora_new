@@ -90,7 +90,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         }
       }
     } catch (e) {
-      print('❌ 주문 상세 로드 에러: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

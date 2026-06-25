@@ -349,36 +349,23 @@ class _ReviewCardImage extends StatefulWidget {
 }
 
 class _ReviewCardImageState extends State<_ReviewCardImage> {
-  late String _activeUrl = widget.primaryUrl;
-  bool _didFallback = false;
-
   @override
   Widget build(BuildContext context) {
     return Image.network(
-      _activeUrl,
+      widget.primaryUrl,
       fit: widget.fit,
       alignment: Alignment.center,
       errorBuilder: (_, __, ___) {
         final fallback = widget.fallbackUrl;
-        if (!_didFallback &&
-            fallback != null &&
+        if (fallback != null &&
             fallback.isNotEmpty &&
-            fallback != _activeUrl) {
-          _didFallback = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            setState(() {
-              _activeUrl = fallback;
-            });
-          });
-          return Container(
-            color: const Color(0xFFE8E8E8),
+            fallback != widget.primaryUrl) {
+          return Image.network(
+            fallback,
+            fit: widget.fit,
             alignment: Alignment.center,
-            child: const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+            errorBuilder: (_, __, ___) =>
+                Container(color: const Color(0xFFE0E0E0)),
           );
         }
         return Container(color: const Color(0xFFE0E0E0));

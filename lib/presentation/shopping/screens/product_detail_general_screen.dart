@@ -180,11 +180,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       _safeSetState(() {
         _isFavorite = isFavorite;
       });
-
-      print(
-          '📌 [찜하기] 상태 확인 완료 - 상품 ID: ${widget.productId}, 찜 상태: $_isFavorite');
     } catch (e) {
-      print('⚠️ [찜하기] 상태 확인 실패: $e');
       // 에러 발생 시 기본값(false) 유지
     }
   }
@@ -266,7 +262,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         _productOptions = options;
       });
     } catch (e) {
-      print('⚠️ [옵션] 로드 실패: $e');
       // 옵션 로드 실패 시 무시
     }
   }
@@ -1426,6 +1421,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _safeSetState(() {
             _selectedOptions.clear();
           });
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const cart_general.CartScreen(),
+            ),
+          );
         }
       },
       onAddToPrescriptionCart: () async {},

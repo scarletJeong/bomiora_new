@@ -63,7 +63,6 @@ class _StepsTodayScreenState extends State<StepsTodayScreen> {
         isLoading = false;
       });
     } catch (e) {
-      print('걸음수 데이터 로딩 오류: $e');
       setState(() => isLoading = false);
     }
   }

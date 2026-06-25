@@ -7,27 +7,18 @@ class MenstrualCycleRepository {
   // 생리주기 기록 추가
   static Future<bool> addMenstrualCycleRecord(MenstrualCycleRecord record) async {
     try {
-      print('🔍 [DEBUG] 생리주기 기록 추가 시작');
-      print('📤 [DEBUG] 요청 데이터: ${record.toJson()}');
-      
       final response = await ApiClient.post(
         ApiEndpoints.menstrualCycleRecords,
         record.toJson(),
       );
       
-      print('📡 [DEBUG] 응답 상태: ${response.statusCode}');
-      print('📦 [DEBUG] 응답 본문: ${response.body}');
-      
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        print('✅ [DEBUG] 성공 여부: ${data['success']}');
         return data['success'] == true;
       }
       
-      print('생리주기 기록 추가 실패: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('생리주기 기록 추가 오류: $e');
       return false;
     }
   }
@@ -49,10 +40,8 @@ class MenstrualCycleRepository {
         return data['success'] == true;
       }
       
-      print('생리주기 기록 수정 실패: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('생리주기 기록 수정 오류: $e');
       return false;
     }
   }
@@ -70,10 +59,8 @@ class MenstrualCycleRepository {
         }
       }
       
-      print('생리주기 기록 조회 실패: ${response.statusCode}');
       return [];
     } catch (e) {
-      print('생리주기 기록 조회 오류: $e');
       return [];
     }
   }
@@ -88,10 +75,8 @@ class MenstrualCycleRepository {
         return data['success'] == true;
       }
       
-      print('생리주기 기록 삭제 실패: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('생리주기 기록 삭제 오류: $e');
       return false;
     }
   }
@@ -109,10 +94,8 @@ class MenstrualCycleRepository {
         }
       }
       
-      print('최신 생리주기 기록 조회 실패: ${response.statusCode}');
       return null;
     } catch (e) {
-      print('최신 생리주기 기록 조회 오류: $e');
       return null;
     }
   }
@@ -129,10 +112,8 @@ class MenstrualCycleRepository {
         }
       }
       
-      print('생리주기 통계 조회 실패: ${response.statusCode}');
       return null;
     } catch (e) {
-      print('생리주기 통계 조회 오류: $e');
       return null;
     }
   }

@@ -38,8 +38,6 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
     setState(() {
       _authToken = token;
     });
-    print('🔑 인증 토큰 로드: ${token != null ? "성공" : "없음"}');
-    print('👤 사용자 정보: ${user?.name ?? "없음"}');
   }
 
   // 웹에서는 토큰을 URL 파라미터로 전달
@@ -93,7 +91,6 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
                 controller.addJavaScriptHandler(
                   handlerName: 'getAuthToken',
                   callback: (args) {
-                    print('🌐 웹에서 인증 토큰 요청');
                     return _authToken ?? '';
                   },
                 );
@@ -101,7 +98,6 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
                 controller.addJavaScriptHandler(
                   handlerName: 'getUserInfo',
                   callback: (args) async {
-                    print('🌐 웹에서 사용자 정보 요청');
                     final user = await AuthService.getUser();
                     if (user != null) {
                       return {
@@ -119,7 +115,6 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
                 controller.addJavaScriptHandler(
                   handlerName: 'handleWebLogout',
                   callback: (args) async {
-                    print('🔓 웹뷰에서 로그아웃 요청');
                     // 앱의 로그인 상태도 삭제
                     await AuthService.logout();
                     // 앱 메인 화면으로 이동
@@ -134,7 +129,6 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
                 controller.addJavaScriptHandler(
                   handlerName: 'handleWebLogin',
                   callback: (args) async {
-                    print('🔐 웹뷰에서 로그인 발생');
                     if (args.isNotEmpty && args[0] is Map) {
                       final loginData = args[0] as Map;
                       final token = loginData['token'] as String?;
@@ -155,10 +149,8 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
                 controller.addJavaScriptHandler(
                   handlerName: 'handleCartUpdate',
                   callback: (args) {
-                    print('🛒 웹뷰에서 장바구니 업데이트');
                     if (args.isNotEmpty) {
                       final cartCount = args[0];
-                      print('📦 장바구니 아이템 수: $cartCount');
                       // 앱의 장바구니 아이콘에 뱃지 추가하는 등의 UI 업데이트 가능
                     }
                     return {'received': true};
@@ -167,13 +159,11 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
               }
             },
             onLoadStart: (controller, url) {
-              print('📱 페이지 로딩 시작: $url');
               setState(() {
                 _isLoading = true;
               });
             },
             onLoadStop: (controller, url) async {
-              print('✅ 페이지 로딩 완료: $url');
               setState(() {
                 _isLoading = false;
               });
@@ -212,9 +202,7 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
                     }
                   ''');
                   
-                  print('🔐 인증 정보를 웹페이지에 주입했습니다');
                 } catch (e) {
-                  print('⚠️ JavaScript 실행 실패: $e');
                 }
 
                 // 쿠키 설정 (도메인이 같을 경우에만 작동)
@@ -232,13 +220,10 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
                     isSecure: false,
                     isHttpOnly: false,
                   );
-                  print('🍪 쿠키 설정 완료');
                 } catch (e) {
-                  print('⚠️ 쿠키 설정 실패: $e');
                 }
               } else if (kIsWeb) {
                 // 웹에서는 URL 파라미터로 토큰이 전달됨
-                print('🌐 웹 환경: URL 파라미터로 인증 정보 전달됨');
               }
             },
             onProgressChanged: (controller, progress) {
@@ -248,7 +233,6 @@ class _TelemedicineWebViewScreenState extends State<TelemedicineWebViewScreen> {
             },
             onConsoleMessage: (controller, consoleMessage) {
               // 웹 콘솔 로그를 Flutter 콘솔에 출력
-              print('🌐 웹 콘솔: ${consoleMessage.message}');
             },
             shouldOverrideUrlLoading: (controller, navigationAction) async {
               final url = navigationAction.request.url.toString();

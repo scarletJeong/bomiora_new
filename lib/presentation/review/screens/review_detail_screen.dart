@@ -56,7 +56,6 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
         }
       }
     } catch (e) {
-      print('❌ 추천 여부 확인 에러: $e');
     }
   }
 
@@ -668,7 +667,6 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
         });
       }
     } catch (e) {
-      print('❌ 도움쿠폰 다운로드 에러: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

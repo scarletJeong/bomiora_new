@@ -201,7 +201,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _isLoadingMore = false;
         _hasMore = false;
       });
-      print('더 많은 상품 로드 실패: $e');
     }
   }
 
@@ -484,70 +483,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
             : '/product/${product.id}';
         Navigator.pushNamed(context, detailRoute);
       },
-    );
-  }
-
-  void _showImageInfo(Product product) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('이미지 정보'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '제품 ID (it_id):',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SelectableText(
-                product.id,
-                style: TextStyle(fontSize: healthSp(context, 14)),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '이미지 URL:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              SelectableText(
-                product.imageUrl ?? '(없음)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color:
-                      product.imageUrl != null ? Colors.black87 : Colors.grey,
-                ),
-              ),
-              if (product.imageUrl != null) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  '제품명:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SelectableText(
-                  product.name,
-                  style: TextStyle(fontSize: healthSp(context, 14)),
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('닫기'),
-          ),
-          if (product.imageUrl != null)
-            TextButton(
-              onPressed: () {
-
-                Navigator.of(context).pop();
-              },
-              child: const Text('콘솔 출력'),
-            ),
-        ],
-      ),
     );
   }
 }
