@@ -130,6 +130,15 @@ class _PointScreenState extends State<PointScreen> {
               title: '포인트',
               titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
+              actions: [
+                healthAppBarAction(
+                  context: context,
+                  icon: Icons.info_outline,
+                  tooltip: '포인트 이용 안내',
+                  iconColor: _textSub,
+                  onPressed: _showPointUsageInfoSheet,
+                ),
+              ],
             ),
             child: _isLoading
                 ? const Center(
@@ -154,13 +163,7 @@ class _PointScreenState extends State<PointScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: EdgeInsets.only(
-                top: healthDp(context, 12),
-                right: healthDp(context, 12),
-              ),
-              child: _buildCurrentPointCard(),
-            ),
+            _buildCurrentPointCard(),
             SizedBox(height: healthDp(context, 20)),
             if (_displayedHistory.isEmpty)
               Padding(
@@ -184,119 +187,65 @@ class _PointScreenState extends State<PointScreen> {
 
   Widget _buildCurrentPointCard() {
     final pointText = PointService.formatPoint(_currentPoint ?? 0);
-    final tapSize = healthDp(context, 32);
-    final cornerInset = tapSize / 2;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.only(
-            top: healthDp(context, 0),
-            bottom: healthDp(context, 10),
-          ),
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              side: BorderSide(width: healthDp(context, 1), color: _border),
-              borderRadius: BorderRadius.circular(healthDp(context, 7)),
-            ),
-          ),
-          child: Column(
-            children: [
-              Opacity(
-                opacity: 0.80,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: healthDp(context, 106),
-                        child: Center(
-                          child: SvgPicture.asset(
-                            AppAssets.pointIcon,
-                            width: healthDp(context, 80),
-                            height: healthDp(context, 80),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Row(
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: healthDp(context, 0),
+        bottom: healthDp(context, 10),
+      ),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _border),
+          borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        ),
+      ),
+      child: Column(
+        children: [
+          Opacity(
+            opacity: 0.80,
+            child: SizedBox(
+              width: double.infinity,
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    '포인트',
-                    style: TextStyle(
-                      color: _textMain,
-                      fontSize: healthSp(context, 14),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(width: healthDp(context, 2)),
-                  Text(
-                    pointText,
-                    style: TextStyle(
-                      color: _pink,
-                      fontSize: healthSp(context, 14),
-                      fontWeight: FontWeight.w700,
+                  SizedBox(
+                    width: healthDp(context, 106),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        AppAssets.pointIcon,
+                        width: healthDp(context, 80),
+                        height: healthDp(context, 80),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        Positioned(
-          top: -cornerInset,
-          right: -cornerInset,
-          child: _buildInfoIconButton(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoIconButton() {
-    final iconSize = healthDp(context, 18);
-    final tapSize = healthDp(context, 32);
-
-    return SizedBox(
-      width: tapSize,
-      height: tapSize,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _showPointUsageInfoSheet,
-          borderRadius: BorderRadius.circular(tapSize / 2),
-          child: Center(
-            child: Container(
-              width: iconSize,
-              height: iconSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(
-                  color: _textSub,
-                  width: healthDp(context, 1),
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  'i',
-                  style: TextStyle(
-                    color: _textSub,
-                    fontSize: healthSp(context, 10),
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                  ),
-                ),
-              ),
             ),
           ),
-        ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '포인트',
+                style: TextStyle(
+                  color: _textMain,
+                  fontSize: healthSp(context, 14),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(width: healthDp(context, 2)),
+              Text(
+                pointText,
+                style: TextStyle(
+                  color: _pink,
+                  fontSize: healthSp(context, 14),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
