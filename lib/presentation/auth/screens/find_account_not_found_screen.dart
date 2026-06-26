@@ -121,7 +121,7 @@ class FindAccountNotFoundScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 12,
+                          fontSize: 14,
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w300,
                         ),

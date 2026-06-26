@@ -539,11 +539,11 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                                   letterSpacing: -1.44,
                                 ),
                               ),
-                              SizedBox(height: healthDp(context, 5)),
+                              SizedBox(height: healthDp(context, 2)),
                               Text(
                                 '소셜 로그인 계정은 각 플랫폼의 계정 찾기 기능을 이용해 주세요.',
                                 style: TextStyle(
-                                  color: const Color(0xFF898686),
+                                  color: const Color(0xFFFF5A8D),
                                   fontSize: healthSp(context, 12),
                                   fontFamily: 'Gmarket Sans TTF',
                                   fontWeight: FontWeight.w300,
@@ -1035,7 +1035,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                   '발송',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 14,
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
                   ),
@@ -1386,7 +1386,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
                           '본인인증 바로가기',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: healthSp(context, 16),
+                            fontSize: healthSp(context, 14),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),

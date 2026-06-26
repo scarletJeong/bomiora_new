@@ -88,6 +88,9 @@ class _SignupScreenState extends State<SignupScreen> {
       _applyCertFromMap(initial);
     } else {
       _rawCertInfo = {};
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openCertOverlay();
+      });
     }
   }
 
@@ -146,7 +149,6 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!mounted) return;
 
     if (cert == null) {
-      // 취소/닫힘: 회원가입 화면에서 본인인증 버튼 페이지로 유지
       setState(() {
         _rawCertInfo = {};
         _certName = null;
@@ -154,6 +156,9 @@ class _SignupScreenState extends State<SignupScreen> {
         _certBirthday = null;
         _certGender = null;
       });
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
       return;
     }
 
@@ -440,75 +445,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Widget _buildFormStep() {
     if (!_hasCert) {
-      return Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '환영합니다.',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -1.8,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    '회원정보를 입력해주세요.\n만 14세 미만은 가입이 불가합니다.',
-                    style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 16,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: -1.44,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '휴대폰 본인인증을 완료해야 다음 단계로 진행할 수 있습니다.\n인증을 취소하면 로그인 화면으로 돌아갑니다.',
-                    style: TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 14,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w400,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _openCertOverlay,
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: const Color(0xFFFF5A8D),
-                        disabledBackgroundColor: const Color(0xFFD2D2D2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        '휴대폰 본인인증',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+      return Center(
+        child: SizedBox(
+          width: healthDp(context, 36),
+          height: healthDp(context, 36),
+          child: const CircularProgressIndicator(strokeWidth: 2),
+        ),
       );
     }
 
