@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
+import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -15,15 +16,15 @@ class CategorySection extends StatefulWidget {
   State<CategorySection> createState() => _CategorySectionState();
 }
 
-class _CategorySectionState extends State<CategorySection>
-    with SingleTickerProviderStateMixin {
+class _CategorySectionState extends State<CategorySection> {
   static const int _initialVisibleCount = 5;
   static const int _expandStep = 5;
   static const int _maxCarouselProducts = 10;
 
-  static const List<ProductCategoryItem> _tabs = productGeneralCategoryList;
-
-  late final TabController _tabController;
+  List<ProductCategoryItem> _tabs =
+      List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
+  int _selectedTabIndex = 0;
+  int _tabsRequestToken = 0;
   final Map<String, List<Product>> _productsByCategory = {};
   final Map<String, int> _visibleCountByCategory = {};
   bool _isLoading = false;
@@ -32,24 +33,41 @@ class _CategorySectionState extends State<CategorySection>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) return;
-      final cacheKey = _cacheKeyForTab(_tabs[_tabController.index]);
-      final products = _productsByCategory[cacheKey];
-      if (products != null) {
-        _visibleCountByCategory[cacheKey] =
-            _initialVisibleCountFor(products.length);
-      }
-      setState(() {});
-      _loadProductsForCurrentTab();
+    _loadProductsForCurrentTab();
+    _refreshTabsFromApi();
+  }
+
+  void _selectTab(int index) {
+    if (index < 0 || index >= _tabs.length || index == _selectedTabIndex) {
+      return;
+    }
+    final cacheKey = _cacheKeyForTab(_tabs[index]);
+    final products = _productsByCategory[cacheKey];
+    if (products != null) {
+      _visibleCountByCategory[cacheKey] =
+          _initialVisibleCountFor(products.length);
+    }
+    setState(() => _selectedTabIndex = index);
+    _loadProductsForCurrentTab();
+  }
+
+  Future<void> _refreshTabsFromApi() async {
+    final requestToken = ++_tabsRequestToken;
+    final tabs = await ProductCategoryCatalog.generalCategories();
+    if (!mounted || requestToken != _tabsRequestToken) return;
+    if (tabs.isEmpty) return;
+
+    final previousIndex = _selectedTabIndex;
+    setState(() {
+      _tabs = tabs;
+      _selectedTabIndex = previousIndex.clamp(0, tabs.length - 1);
     });
     _loadProductsForCurrentTab();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabsRequestToken++;
     super.dispose();
   }
 
@@ -67,7 +85,9 @@ class _CategorySectionState extends State<CategorySection>
       math.min(products.length, _maxCarouselProducts);
 
   Future<void> _loadProductsForCurrentTab() async {
-    final tab = _tabs[_tabController.index];
+    if (_tabs.isEmpty) return;
+
+    final tab = _tabs[_selectedTabIndex];
     final cacheKey = _cacheKeyForTab(tab);
     if (_productsByCategory.containsKey(cacheKey)) return;
 
@@ -100,7 +120,9 @@ class _CategorySectionState extends State<CategorySection>
   }
 
   void _openCategoryProductList() {
-    final tab = _tabs[_tabController.index];
+    if (_tabs.isEmpty) return;
+
+    final tab = _tabs[_selectedTabIndex];
     Navigator.pushNamed(
       context,
       '/product-general/',
@@ -132,9 +154,16 @@ class _CategorySectionState extends State<CategorySection>
 
   @override
   Widget build(BuildContext context) {
+    if (_tabs.isEmpty) {
+      return SizedBox(
+        height: healthDp(context, 280),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
     final w = MediaQuery.sizeOf(context).width;
     final m = _CategoryHomeLayout.fromWidth(w);
-    final selectedCategory = _tabs[_tabController.index];
+    final selectedCategory = _tabs[_selectedTabIndex];
     final cacheKey = _cacheKeyForTab(selectedCategory);
     final products =
         _productsByCategory[cacheKey] ?? const <Product>[];
@@ -217,13 +246,9 @@ class _CategorySectionState extends State<CategorySection>
                           ],
                           _CategoryTabChip(
                             label: _tabs[i].label,
-                            selected: _tabController.index == i,
+                            selected: _selectedTabIndex == i,
                             layout: m,
-                            onTap: () {
-                              if (_tabController.index != i) {
-                                _tabController.animateTo(i);
-                              }
-                            },
+                            onTap: () => _selectTab(i),
                           ),
                         ],
                       ],
@@ -387,7 +412,12 @@ class _CategoryHomeLayout {
     final titleLineGap = sc(1.15);
     final accentH = titleSubFs * 1.2 + titleLineGap + titleMainFs * 1.2;
 
-    final cardW = sc(154.62);
+    final cardSpacing = sc(12);
+    final horizontalPad = sc(24);
+    final viewportW = math.max(w - horizontalPad * 2, sc(200));
+    final cardW = viewportW / 2.1;
+    final baseCardW = sc(154.62);
+    final ratio = cardW / baseCardW;
 
     return _CategoryHomeLayout(
       headerTitleBarW: sc(0.58),
@@ -399,23 +429,23 @@ class _CategoryHomeLayout {
       headerToBodyGap: sc(20),
       tabsToCarouselGap: sc(12),
       tabFontSize: sc(12),
-      carouselHeight: sc(277.5),
-      cardSpacing: sc(12),
+      carouselHeight: sc(277.5) * ratio,
+      cardSpacing: cardSpacing,
       cardW: cardW,
-      imageW: sc(150),
-      imageH: sc(170),
-      radius: sc(11.54),
-      gapImageText: sc(12),
-      titleDescGap: sc(4),
-      titleFs: sc(14),
-      descFs: sc(10),
-      priceFs: sc(14),
+      imageW: sc(150) * ratio,
+      imageH: sc(170) * ratio,
+      radius: sc(11.54) * ratio,
+      gapImageText: sc(12) * ratio,
+      titleDescGap: sc(4) * ratio,
+      titleFs: sc(14) * ratio,
+      descFs: sc(10) * ratio,
+      priceFs: sc(14) * ratio,
       descMaxW: cardW,
-      titleMaxW: sc(150),
-      moreIconBox: sc(46.02),
-      moreIconPadding: sc(5.77),
-      moreTextGap: sc(6),
-      moreFontSize: sc(12),
+      titleMaxW: sc(150) * ratio,
+      moreIconBox: sc(46.02) * ratio,
+      moreIconPadding: sc(5.77) * ratio,
+      moreTextGap: sc(6) * ratio,
+      moreFontSize: sc(12) * ratio,
     );
   }
 }
