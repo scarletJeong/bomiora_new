@@ -233,7 +233,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
 
   void _continueShopping(OrderDetailModel order) {
     final route =
-        order.isPrescriptionOrder ? '/product-main' : '/healthcare-store';
+        order.isPrescriptionOrder ? '/bomiora-introduce' : '/healthcare-store';
     Navigator.pushNamedAndRemoveUntil(
       context,
       route,

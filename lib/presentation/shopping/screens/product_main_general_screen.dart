@@ -27,7 +27,7 @@ double _contentHorizontalPad(BuildContext context) => healthDp(context, 27);
 /// 헬스케어 스토어(일반 상품) 메인 — 카테고리별 API 상품 + MD's Pick(API).
 ///
 /// 본문 스크롤 구성은 [_buildHealthcareStoreMainSlivers] 한곳에서 순서를 본다
-/// (`ProductMainScreen`의 `Column(children: [...])`와 같은 역할).
+/// (`BomioraIntroduceScreen`의 `Column(children: [...])`와 같은 역할).
 class ProductMainGeneralScreen extends StatefulWidget {
   const ProductMainGeneralScreen({super.key});
 
