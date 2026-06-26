@@ -196,21 +196,24 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (_isCompletedStageDetail(order)) return 3;
     if (_isDeliveringStageDetail(order)) return 2;
     if (_isPreparingStageDetail(order)) return 1;
-    // 결제 완료 후에는 단계바 상 '배송준비중' 구간으로 진행
+    // 결제 완료·입금·준비 단계는 단계바 상 '결제완료' 구간으로 진행
     if (order.displayStatus == '결제완료') return 1;
     if (_isPaymentStageDetail(order)) return 0;
     return 0;
   }
 
   Widget _buildDetailProgressCard(OrderDetailModel order) {
-    const labels = ['결제대기중', '배송준비중', '배송중', '배송완료'];
+    final isCancelled = _isCancelledStageDetail(order);
+    const labels = ['결제대기중', '결제완료', '배송중', '배송완료'];
     final step = _detailProgressStep(order).clamp(0, 3);
-    final statusTitle = labels[step];
+    final statusTitle = isCancelled ? '취소' : labels[step];
     // 현재 단계 라벨 **가운데**까지 채움 (구간 끝이 아님)
     final fill = (step + 0.5) / 4.0;
 
     return Container(
-      constraints: BoxConstraints(minHeight: healthDp(context, 146)),
+      constraints: BoxConstraints(
+        minHeight: healthDp(context, isCancelled ? 90 : 146),
+      ),
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -281,53 +284,56 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   ),
               ],
             ),
-            SizedBox(height: healthDp(context, 10)),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(healthDp(context, 9999)),
-              child: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: healthDp(context, 8),
-                    color: const Color(0xFFF6F6F6),
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: fill,
-                    child: Container(
+            if (!isCancelled) ...[
+              SizedBox(height: healthDp(context, 10)),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: double.infinity,
                       height: healthDp(context, 8),
-                      decoration: BoxDecoration(
-                        color: _kPink,
-                        borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+                      color: const Color(0xFFF6F6F6),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: fill,
+                      child: Container(
+                        height: healthDp(context, 8),
+                        decoration: BoxDecoration(
+                          color: _kPink,
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 9999)),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            SizedBox(height: healthDp(context, 12)),
-            Row(
-              children: List.generate(4, (i) {
-                final active = i == step;
-                return Expanded(
-                  child: Opacity(
-                    opacity: active ? 1.0 : 0.8,
-                    child: Text(
-                      labels[i],
-                      textAlign: i == 0 ? TextAlign.left : TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: active ? _kPink : _kMuted,
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
+              SizedBox(height: healthDp(context, 12)),
+              Row(
+                children: List.generate(4, (i) {
+                  final active = i == step;
+                  return Expanded(
+                    child: Opacity(
+                      opacity: active ? 1.0 : 0.8,
+                      child: Text(
+                        labels[i],
+                        textAlign: i == 0 ? TextAlign.left : TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: active ? _kPink : _kMuted,
+                          fontSize: healthSp(context, 10),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ),
+                  );
+                }),
+              ),
+            ],
           ],
         ),
       ),
@@ -609,6 +615,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             _detailVirtualBankRow(
               bankName: bankName.isEmpty ? '-' : bankName,
               accountNo: accountNo.isEmpty ? '-' : accountNo,
+              showAccountCopy: !_isCancelledStageDetail(order),
             ),
             SizedBox(height: healthDp(context, 10)),
             _detailKvLine('입금기한 :', deadlineLabel),
@@ -689,6 +696,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   Widget _detailVirtualBankRow({
     required String bankName,
     required String accountNo,
+    bool showAccountCopy = true,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -714,7 +722,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   fontWeight: FontWeight.w300,
                 ),
               ),
-              if (accountNo.isNotEmpty && accountNo != '-')
+              if (showAccountCopy && accountNo.isNotEmpty && accountNo != '-')
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -908,11 +916,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       specs.add((label: '수령확인', onTap: _confirmPurchase));
     } else if (_isCompletedStageDetail(order)) {
       specs.add((label: '리뷰쓰기', onTap: _writeReviewFromDetail));
-      specs.add((label: '교환/환불', onTap: _openRefundApply));
-    } else if (_isExchangeStageDetail(order)) {
-      specs.add((label: '교환취소', onTap: null));
-    } else if (_isRefundStageDetail(order)) {
-      specs.add((label: '환불취소', onTap: null));
     }
 
     if (specs.isEmpty) return null;
@@ -1050,6 +1053,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     );
   }
 
+  bool _isCancelledStageDetail(OrderDetailModel order) {
+    return order.displayStatus.contains('취소') ||
+        order.odStatus.contains('취소') ||
+        order.displayStatus == '주문 취소';
+  }
+
   bool _isPaymentStageDetail(OrderDetailModel order) {
     return order.displayStatus == '결제완료' ||
         order.displayStatus == '결제대기중' ||
@@ -1068,16 +1077,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   bool _isCompletedStageDetail(OrderDetailModel order) {
     return order.displayStatus == '배송완료' || order.odStatus == '완료';
-  }
-
-  bool _isExchangeStageDetail(OrderDetailModel order) {
-    return order.displayStatus.contains('교환') ||
-        order.odStatus.contains('교환');
-  }
-
-  bool _isRefundStageDetail(OrderDetailModel order) {
-    return order.displayStatus.contains('환불') ||
-        order.odStatus.contains('환불');
   }
 
   /// 예약 시간 변경 다이얼로그 표시
@@ -1179,17 +1178,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (result == true && mounted) {
       _loadOrderDetail();
     }
-  }
-
-  Future<void> _openRefundApply() async {
-    if (_orderDetail == null) return;
-    final odId = widget.orderNumber.isNotEmpty ? widget.orderNumber : _orderDetail!.odId;
-    final route = _orderDetail!.isPrescriptionOrder ? '/refund' : '/refund-general';
-    await Navigator.pushNamed(
-      context,
-      route,
-      arguments: {'orderNumber': odId},
-    );
   }
 
   Future<void> _writeReviewFromDetail() async {

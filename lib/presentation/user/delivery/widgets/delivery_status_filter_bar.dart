@@ -16,13 +16,11 @@ class DeliveryStatusFilterBar extends StatelessWidget {
 
   static const List<MapEntry<String, String>> statusEntries = [
     MapEntry('all', '전체'),
-    MapEntry('payment_waiting', '결제대기중'),
-    MapEntry('preparing', '배송준비중'),
+    MapEntry('preparing', '결제완료'),
     MapEntry('delivering', '배송중'),
     MapEntry('completed', '배송완료'),
-    MapEntry('exchange', '교환'),
-    MapEntry('refund', '환불'),
-    MapEntry('cancelled', '주문 취소'),
+    MapEntry('cancelled', '취소'),
+    MapEntry('payment_waiting', '결제대기중'),
   ];
 
   static const Color _kPink = Color(0xFFFF5A8D);

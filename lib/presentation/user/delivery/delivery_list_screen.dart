@@ -186,10 +186,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
             return displayStatus == '배송중' || order.odStatus == '배송';
           case 'completed':
             return displayStatus == '배송완료' || order.odStatus == '완료';
-          case 'exchange':
-            return displayStatus.contains('교환') || order.odStatus.contains('교환');
-          case 'refund':
-            return displayStatus.contains('환불') || order.odStatus.contains('환불');
           case 'cancelled':
             return displayStatus.contains('취소') ||
                 order.odStatus.contains('취소') ||
@@ -626,14 +622,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       specs.add((label: '수령확인', onTap: () => _confirmPurchase(order.odId)));
     } else if (_isCompletedStage(order)) {
       specs.add((label: '리뷰쓰기', onTap: () => _writeReview(order.odId)));
-      specs.add((
-        label: '교환/환불',
-        onTap: () => _openRefundApply(order.odId, isPrescription: order.isPrescriptionOrder),
-      ));
-    } else if (_isExchangeStage(order)) {
-      specs.add((label: '교환취소', onTap: null));
-    } else if (_isRefundStage(order)) {
-      specs.add((label: '환불취소', onTap: null));
     }
 
     if (specs.isEmpty) return null;
@@ -775,17 +763,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       case 'payment_waiting':
         return '결제대기중';
       case 'preparing':
-        return '배송준비중';
+        return '결제완료';
       case 'delivering':
         return '배송중';
       case 'completed':
         return '배송완료';
-      case 'exchange':
-        return '교환중';
-      case 'refund':
-        return '환불중';
       case 'cancelled':
-        return '주문 취소';
+        return '취소';
       default:
         return '주문';
     }
@@ -794,7 +778,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   String _getOrderStatusText(OrderListModel order) {
     if (_isCompletedStage(order)) return '배송완료';
     if (_isDeliveringStage(order)) return '배송중';
-    if (_isPreparingStage(order)) return '배송준비중';
+    if (_isPreparingStage(order)) return '결제완료';
     if (_isPaymentStage(order)) return '결제대기중';
     return order.displayStatus;
   }
@@ -817,14 +801,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   bool _isCompletedStage(OrderListModel order) {
     return order.displayStatus == '배송완료' || order.odStatus == '완료';
-  }
-
-  bool _isExchangeStage(OrderListModel order) {
-    return order.displayStatus.contains('교환') || order.odStatus.contains('교환');
-  }
-
-  bool _isRefundStage(OrderListModel order) {
-    return order.displayStatus.contains('환불') || order.odStatus.contains('환불');
   }
 
   /// 주문 상세 화면으로 이동
@@ -912,14 +888,6 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (result['success'] == true) {
       _loadOrders();
     }
-  }
-
-  Future<void> _openRefundApply(String odId, {required bool isPrescription}) async {
-    await Navigator.pushNamed(
-      context,
-      isPrescription ? '/refund' : '/refund-general',
-      arguments: {'orderNumber': odId},
-    );
   }
 
   /// 리뷰 쓰기
