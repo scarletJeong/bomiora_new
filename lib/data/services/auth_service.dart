@@ -2,8 +2,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/user/user_model.dart';
+import '../repositories/auth/auth_repository.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/utils/node_value_parser.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -116,8 +118,6 @@ class AuthService {
     String? phone,
   }) async {
     try {
-      print('✏️ [프로필 수정] 요청 - mbId: $mbId');
-      
       final requestData = {
         'mbId': mbId,
         if (name != null) 'name': name,
@@ -134,13 +134,9 @@ class AuthService {
         body: json.encode(requestData),
       );
       
-      print('📡 [프로필 수정] 응답 상태: ${response.statusCode}');
-
       final data = json.decode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 && data['success'] == true) {
-        print('✅ [프로필 수정] 성공');
-
         if (data['user'] != null) {
           final updatedUser = UserModel.fromJson(data['user']);
           await updateUser(updatedUser);
@@ -152,7 +148,6 @@ class AuthService {
         };
       }
 
-      print('❌ [프로필 수정] 실패');
       return {
         'success': false,
         'message': data['message']?.toString() ?? '프로필 수정에 실패했습니다.',
@@ -160,7 +155,6 @@ class AuthService {
         'nextChangeDate': data['nextChangeDate']?.toString(),
       };
     } catch (e) {
-      print('❌ [프로필 수정] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',
@@ -198,7 +192,6 @@ class AuthService {
 
       return false;
     } catch (e) {
-      print('❌ [비밀번호 확인] 에러: $e');
       return false;
     }
   }
@@ -239,7 +232,6 @@ class AuthService {
         'data': data,
       };
     } catch (e) {
-      print('❌ [비밀번호 변경] 에러: $e');
       return {
         'success': false,
         'message': '네트워크 오류가 발생했습니다.',

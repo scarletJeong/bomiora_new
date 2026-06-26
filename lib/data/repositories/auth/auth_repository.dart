@@ -191,46 +191,173 @@ class AuthRepository {
     }
   }
 
-  // 카카오 로그인/회원가입 API 호출
+  // 카카오 로그인 — social/login 과 동일 응답 (needRegister 지원)
   static Future<Map<String, dynamic>> loginWithKakao({
     required String kakaoId,
     required String? email,
     required String? nickname,
     String? profileImageUrl,
     String? accessToken,
+  }) {
+    return loginWithSocial(
+      provider: 'kakao',
+      identifier: kakaoId,
+      email: email,
+      nickname: nickname,
+      profileImageUrl: profileImageUrl,
+      accessToken: accessToken,
+    );
+  }
+
+  /// 네이버 로그인 (네이버 SDK 연동 후 identifier 전달)
+  static Future<Map<String, dynamic>> loginWithNaver({
+    required String naverId,
+    String? email,
+    String? nickname,
+    String? name,
+    String? profileImageUrl,
+    String? gender,
+    String? birthday,
+    String? accessToken,
+  }) {
+    return loginWithSocial(
+      provider: 'naver',
+      identifier: naverId,
+      email: email,
+      nickname: nickname,
+      name: name,
+      profileImageUrl: profileImageUrl,
+      gender: gender,
+      birthday: birthday,
+      accessToken: accessToken,
+    );
+  }
+
+  static Future<Map<String, dynamic>> loginWithSocial({
+    required String provider,
+    required String identifier,
+    String? email,
+    String? nickname,
+    String? name,
+    String? profileImageUrl,
+    String? accessToken,
+    String? gender,
+    String? birthday,
   }) async {
     try {
-      final response = await ApiClient.post('/api/auth/kakao/login', {
-        'kakaoId': kakaoId,
-        'email': email,
-        'nickname': nickname,
-        'profileImageUrl': profileImageUrl,
-        'accessToken': accessToken,
+      final endpoint = provider == 'naver'
+          ? ApiEndpoints.naverLogin
+          : provider == 'kakao'
+              ? ApiEndpoints.kakaoLogin
+              : ApiEndpoints.socialLogin;
+
+      final response = await ApiClient.post(endpoint, {
+        'provider': provider,
+        'identifier': identifier,
+        if (provider == 'kakao') 'kakaoId': identifier,
+        if (provider == 'naver') 'naverId': identifier,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (profileImageUrl != null && profileImageUrl.isNotEmpty)
+          'profileImageUrl': profileImageUrl,
+        if (accessToken != null && accessToken.isNotEmpty)
+          'accessToken': accessToken,
+        if (gender != null && gender.isNotEmpty) 'gender': gender,
+        if (birthday != null && birthday.isNotEmpty) 'birthday': birthday,
       });
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final data = decoded is Map<String, dynamic>
-            ? decoded
-            : <String, dynamic>{};
-        return {
-          'success': data['success'] ?? true,
-          'data': data,
-          'error': _asErrorMessage(data['message']),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': '서버 오류: ${response.statusCode}',
-        };
-      }
+      return _parseSocialAuthResponse(response);
     } catch (e) {
       return {
         'success': false,
-        'error': '카카오 로그인 중 오류가 발생했습니다: $e',
+        'error': '소셜 로그인 중 오류가 발생했습니다: $e',
       };
     }
   }
+
+  static Future<Map<String, dynamic>> registerWithSocial({
+    required String provider,
+    required String identifier,
+    required String phone,
+    required String email,
+    required String name,
+    String? nickname,
+    String? gender,
+    String? birthday,
+    String? profileImageUrl,
+    Map<String, bool>? agreements,
+  }) async {
+    try {
+      final response = await ApiClient.post(ApiEndpoints.socialRegister, {
+        'provider': provider,
+        'identifier': identifier,
+        if (provider == 'kakao') 'kakaoId': identifier,
+        if (provider == 'naver') 'naverId': identifier,
+        'phone': phone,
+        'email': email,
+        'name': name,
+        if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
+        if (gender != null && gender.isNotEmpty) 'gender': gender,
+        if (birthday != null && birthday.isNotEmpty) 'birthday': birthday,
+        if (profileImageUrl != null && profileImageUrl.isNotEmpty)
+          'profileImageUrl': profileImageUrl,
+        'agreements': agreements ??
+            const {
+              'terms': true,
+              'privacy': true,
+            },
+      });
+
+      return _parseSocialAuthResponse(response);
+    } catch (e) {
+      return {
+        'success': false,
+        'error': '소셜 회원가입 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
+  static Map<String, dynamic> _parseSocialAuthResponse(dynamic response) {
+    if (response.statusCode != 200) {
+      String errorMessage = '서버 오류: ${response.statusCode}';
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = _asErrorMessage(
+            errorData['message'] ?? errorData['error'],
+            fallback: errorMessage,
+          );
+        }
+      } catch (_) {}
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
+    }
+
+    final decoded = json.decode(response.body);
+    final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final success = data['success'] == true;
+    final needRegister = data['needRegister'] == true;
+
+    return {
+      'success': success,
+      'needRegister': needRegister,
+      'data': data,
+      'prefill': data['prefill'],
+      'error': success
+          ? null
+          : needRegister
+              ? null
+              : _asErrorMessage(
+                  data['message'],
+                  fallback: '소셜 인증에 실패했습니다.',
+                ),
+    };
+  }
+
+  // (구) 카카오 전용 구현 제거 — loginWithSocial 사용
 
   // 아이디/비밀번호호 찾기 API 호출
   ///

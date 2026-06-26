@@ -3,11 +3,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/kakao_auth_service.dart';
+import '../../../data/services/naver_auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../widgets/kcp_cert.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -253,38 +255,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      _buildSocialButton(
-                                        backgroundColor:
-                                            const Color(0xFF03C75A),
+                                      _buildSocialIconButton(
                                         imagePath: AppAssets.loginNaver,
-                                        onTap: null,
-                                        imageSize: 42,
+                                        onTap: _isLoading ? null : _handleNaverLogin,
                                       ),
                                       SizedBox(width: healthDp(context, 10)),
-                                      _buildSocialButton(
-                                        backgroundColor:
-                                            const Color(0xFFFFE812),
+                                      _buildSocialIconButton(
                                         imagePath: AppAssets.loginKakao,
                                         onTap: _isLoading
                                             ? null
                                             : _handleKakaoLogin,
-                                        imageSize: 42,
-                                      ),
-                                      SizedBox(width: healthDp(context, 10)),
-                                      _buildSocialButton(
-                                        backgroundColor: Colors.white,
-                                        imagePath: AppAssets.loginGoogle,
-                                        onTap: null,
-                                        // Google 로고는 원본 자산 여백이 커서 다른 소셜과 시각 크기가 달라 보임
-                                        imageSize: 44,
-                                        imageScale: 1.25,
-                                      ),
-                                      SizedBox(width: healthDp(context, 10)),
-                                      _buildSocialButton(
-                                        backgroundColor: Colors.black,
-                                        imagePath: AppAssets.loginApple,
-                                        onTap: null,
-                                        imageSize: 42,
                                       ),
                                     ],
                                   ),
@@ -569,7 +549,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 '로그인',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: healthSp(context, 18),
+                  fontSize: healthSp(context, 16),
                   fontFamily: 'Gmarket Sans TTF',
                   fontWeight: FontWeight.w500,
                 ),
@@ -591,7 +571,7 @@ class _LoginScreenState extends State<LoginScreen> {
               '아이디/비밀번호 찾기',
               style: TextStyle(
                 color: Color(0xFF898383),
-                fontSize: healthSp(context, 16),
+                fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
                 fontWeight: FontWeight.w500,
               ),
@@ -604,12 +584,7 @@ class _LoginScreenState extends State<LoginScreen> {
             color: const Color(0xFF898383),
           ),
           TextButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (context) => const SignupScreen(),
-              ),
-            ),
+            onPressed: _isLoading ? null : _openSignup,
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
             child: Text(
               '회원가입',
@@ -626,54 +601,161 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialButton({
-    required Color backgroundColor,
+  Future<void> _openSignup() async {
+    final cert = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      PageRouteBuilder<Map<String, dynamic>?>(
+        opaque: false,
+        barrierDismissible: false,
+        barrierColor: const Color(0x991A1A1A),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return const KcpCertWebViewScreen(
+            flow: 'signup',
+            popResultToParent: true,
+          );
+        },
+      ),
+    );
+    if (!mounted || cert == null) return;
+
+    if (cert['popupBlocked'] == true) return;
+
+    if (cert['duplicate'] == true) {
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    if (cert['cert_completed'] != true) return;
+
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => SignupScreen(certInfo: cert),
+      ),
+    );
+  }
+
+  Widget _buildSocialIconButton({
     required String imagePath,
     required VoidCallback? onTap,
-    Color? borderColor,
-    double imageSize = 24,
-    double imageScale = 1.0,
-    EdgeInsets imagePadding = EdgeInsets.zero,
   }) {
+    final size = healthDp(context, 54);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 45)),
-      child: Container(
-        width: healthDp(context, 54),
-        height: healthDp(context, 54),
-        padding: EdgeInsets.all(healthDp(context, 6.43)),
-        decoration: ShapeDecoration(
-          color: backgroundColor,
-          shape: RoundedRectangleBorder(
-            side: borderColor != null
-                ? BorderSide(width: healthDp(context, 1), color: borderColor)
-                : BorderSide.none,
-            borderRadius: BorderRadius.circular(healthDp(context, 45)),
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: imagePadding,
-            child: Transform.scale(
-              scale: imageScale,
-              child: imagePath.toLowerCase().endsWith('.svg')
-                  ? SvgPicture.asset(
-                      imagePath,
-                      width: healthDp(context, imageSize),
-                      height: healthDp(context, imageSize),
-                      fit: BoxFit.contain,
-                    )
-                  : Image.asset(
-                      imagePath,
-                      width: healthDp(context, imageSize),
-                      height: healthDp(context, imageSize),
-                      fit: BoxFit.contain,
-                    ),
-            ),
-          ),
+      borderRadius: BorderRadius.circular(size / 2),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: SvgPicture.asset(
+          imagePath,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
         ),
       ),
     );
+  }
+
+  Future<void> _completeSocialLogin(Map<String, dynamic> result) async {
+    final resultData = result['data'];
+    if (resultData is! Map) {
+      throw const FormatException('소셜 로그인 응답 형식이 올바르지 않습니다.');
+    }
+    final userData = NodeValueParser.normalizeMap(
+      Map<String, dynamic>.from(resultData),
+    );
+    final userRaw = userData['user'];
+    final userJson = NodeValueParser.normalizeMap(
+      userRaw is Map
+          ? Map<String, dynamic>.from(userRaw)
+          : Map<String, dynamic>.from(userData),
+    );
+
+    final userId =
+        NodeValueParser.asString(userJson['mb_id']) ??
+        NodeValueParser.asString(userJson['id']) ??
+        '';
+    userJson['id'] = userId;
+
+    final user = UserModel.fromJson(userJson);
+    final token = NodeValueParser.asString(userData['token']);
+
+    await AuthService.saveLoginData(user: user, token: token);
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
+  }
+
+  Future<void> _openSocialSignup({
+    required String provider,
+    required String identifier,
+    String? email,
+    String? nickname,
+    String? name,
+    String? gender,
+    String? birthday,
+    String? profileImageUrl,
+    Map<String, dynamic>? prefill,
+  }) async {
+    final p = prefill != null ? NodeValueParser.normalizeMap(prefill) : null;
+    await Navigator.pushNamed(
+      context,
+      '/social-signup',
+      arguments: {
+        'provider': provider,
+        'identifier': identifier,
+        'email': email ?? p?['email']?.toString(),
+        'nickname': nickname ?? p?['nickname']?.toString(),
+        'name': name ?? p?['name']?.toString(),
+        'gender': gender ?? p?['gender']?.toString(),
+        'birthday': birthday ?? p?['birthday']?.toString(),
+        'profileImageUrl':
+            profileImageUrl ?? p?['profileImageUrl']?.toString(),
+      },
+    );
+  }
+
+  Future<void> _handleSocialAuthResult(
+    Map<String, dynamic> result, {
+    required String provider,
+    required String identifier,
+    String? email,
+    String? nickname,
+    String? name,
+    String? profileImageUrl,
+    String? gender,
+    String? birthday,
+  }) async {
+    if (result['success'] == true) {
+      await _completeSocialLogin(result);
+      return;
+    }
+
+    if (result['needRegister'] == true) {
+      await _openSocialSignup(
+        provider: provider,
+        identifier: identifier,
+        email: email,
+        nickname: nickname,
+        name: name,
+        gender: gender,
+        birthday: birthday,
+        profileImageUrl: profileImageUrl,
+        prefill: result['prefill'] is Map
+            ? Map<String, dynamic>.from(result['prefill'] as Map)
+            : null,
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final msg = result['error']?.toString();
+    if (msg != null && msg.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    }
   }
 
   // 카카오 로그인 처리
@@ -683,28 +765,33 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // 카카오 로그인
       final kakaoResult = await KakaoAuthService.login();
 
       if (!kakaoResult['success']) {
         if (!mounted) return;
         if (kakaoResult['needsServerAuth'] == true) {
-          return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('웹 환경에서는 카카오 로그인을 지원하지 않습니다.'),
+            ),
+          );
         }
         return;
       }
 
-      final kakaoData = kakaoResult['data'];
+      final kakaoData = kakaoResult['data'] as Map<String, dynamic>;
       final kakaoId = kakaoData['kakaoId']?.toString() ?? '';
       final email = kakaoData['email']?.toString();
       final nickname = kakaoData['nickname']?.toString();
 
       if (kakaoId.isEmpty) {
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('카카오 사용자 정보를 가져오지 못했습니다.')),
+        );
         return;
       }
 
-      // 서버에 카카오 로그인 요청
       final result = await AuthRepository.loginWithKakao(
         kakaoId: kakaoId,
         email: email,
@@ -713,46 +800,96 @@ class _LoginScreenState extends State<LoginScreen> {
         accessToken: kakaoData['accessToken']?.toString(),
       );
 
-      if (result['success']) {
-        final resultData = result['data'];
-        if (resultData is! Map) {
-          throw const FormatException('카카오 로그인 응답 형식이 올바르지 않습니다.');
-        }
-        final userData = NodeValueParser.normalizeMap(
-          Map<String, dynamic>.from(resultData),
-        );
-        final userRaw = userData['user'];
-        final userJson = NodeValueParser.normalizeMap(
-          userRaw is Map
-              ? Map<String, dynamic>.from(userRaw)
-              : Map<String, dynamic>.from(userData),
-        );
-        
-        // mb_id를 id로 매핑
-        final userId =
-            NodeValueParser.asString(userJson['mb_id']) ??
-            NodeValueParser.asString(userJson['id']) ??
-            '';
-        userJson['id'] = userId;
-
-        final user = UserModel.fromJson(userJson);
-        final token = NodeValueParser.asString(userData['token']);
-
-        await AuthService.saveLoginData(user: user, token: token);
-
-        if (!mounted) return;
-
-        Future.microtask(() {
-          if (!mounted) return;
-          try {
-            Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
-          } catch (_) {}
-        });
-      } else {
-        if (!mounted) return;
-      }
-    } catch (_) {
+      await _handleSocialAuthResult(
+        result,
+        provider: 'kakao',
+        identifier: kakaoId,
+        email: email,
+        nickname: nickname,
+        profileImageUrl: kakaoData['profileImageUrl']?.toString(),
+      );
+    } catch (e) {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('카카오 로그인 오류: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleNaverLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final naverResult = await NaverAuthService.login();
+
+      if (!naverResult['success']) {
+        if (!mounted) return;
+        if (naverResult['needsServerAuth'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('웹 환경에서는 네이버 로그인을 지원하지 않습니다.'),
+            ),
+          );
+        } else if (naverResult['cancelled'] != true) {
+          final msg = naverResult['error']?.toString();
+          if (msg != null && msg.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(msg)),
+            );
+          }
+        }
+        return;
+      }
+
+      final naverData = naverResult['data'] as Map<String, dynamic>;
+      final naverId = naverData['naverId']?.toString() ?? '';
+      final email = naverData['email']?.toString();
+      final nickname = naverData['nickname']?.toString();
+      final name = naverData['name']?.toString();
+
+      if (naverId.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('네이버 사용자 정보를 가져오지 못했습니다.')),
+        );
+        return;
+      }
+
+      final result = await AuthRepository.loginWithNaver(
+        naverId: naverId,
+        email: email,
+        nickname: nickname,
+        name: name,
+        profileImageUrl: naverData['profileImageUrl']?.toString(),
+        gender: naverData['gender']?.toString(),
+        birthday: naverData['birthday']?.toString(),
+        accessToken: naverData['accessToken']?.toString(),
+      );
+
+      await _handleSocialAuthResult(
+        result,
+        provider: 'naver',
+        identifier: naverId,
+        email: email,
+        nickname: nickname,
+        name: name,
+        gender: naverData['gender']?.toString(),
+        birthday: naverData['birthday']?.toString(),
+        profileImageUrl: naverData['profileImageUrl']?.toString(),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('네이버 로그인 오류: $e')),
+      );
     } finally {
       if (mounted) {
         setState(() {

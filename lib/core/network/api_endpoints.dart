@@ -13,6 +13,11 @@ class ApiEndpoints {
   static const String verifyToken = '/api/auth/verify';
   static const String otpSend = '/api/auth/otp/send';
   static const String otpVerify = '/api/auth/otp/verify';
+  static const String kakaoLogin = '/api/auth/kakao/login';
+  static const String naverLogin = '/api/auth/naver/login';
+  static const String socialLogin = '/api/auth/social/login';
+  static const String socialRegister = '/api/auth/social/register';
+  static const String authSession = '/api/auth/session';
 
   // 상품 관련 (기존 Cafe24 서버)
   static const String popularProducts = '/api/products/popular';
