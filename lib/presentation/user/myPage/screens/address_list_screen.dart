@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/confirm_dialog.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../../data/services/auth_service.dart';
@@ -232,26 +233,9 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     ),
                   )
                 : _currentUser == null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.location_off_outlined,
-                              size: healthDp(context, 56),
-                              color: Colors.grey[400],
-                            ),
-                            SizedBox(height: healthDp(context, 12)),
-                            Text(
-                              '로그인 후 이용 가능합니다.',
-                              style: TextStyle(
-                                fontSize: healthSp(context, 12),
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                    ? const CenteredEmptyState(
+                        icon: Icons.location_off_outlined,
+                        message: '로그인 후 이용 가능합니다.',
                       )
                     : SingleChildScrollView(
                         padding: EdgeInsets.only(

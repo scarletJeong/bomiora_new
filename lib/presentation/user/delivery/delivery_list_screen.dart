@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import 'widgets/delivery_status_filter_bar.dart';
 import 'widgets/reservation_time_change_popup.dart';
@@ -762,27 +763,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     final statusText = _selectedStatus == 'all'
         ? '주문'
         : _getStatusText(_selectedStatus);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: healthDp(context, 64),
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '$statusText 내역이 없습니다',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
+    return CenteredEmptyState(
+      icon: Icons.inbox_outlined,
+      message: '$statusText 내역이 없습니다',
     );
   }
 

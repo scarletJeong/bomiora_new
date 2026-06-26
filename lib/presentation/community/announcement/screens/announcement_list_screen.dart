@@ -6,6 +6,7 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/announcement/announcement_model.dart';
 import '../../../../data/services/announcement_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import 'announcement_detail_screen.dart';
@@ -415,16 +416,9 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   Widget _buildEmpty(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: Center(
-        child: Text(
-          '공지사항이 없습니다.',
-          style: TextStyle(
-            color: _kMuted,
-            fontSize: healthSp(context, 14),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+      child: const CenteredEmptyState(
+        icon: Icons.campaign_outlined,
+        message: '공지사항이 없습니다.',
       ),
     );
   }

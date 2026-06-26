@@ -7,6 +7,7 @@ import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/coupon/coupon_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 
@@ -254,23 +255,10 @@ class _CouponScreenState extends State<CouponScreen> {
             ),
           ),
           if (filtered.isEmpty)
-            SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
-              sliver: SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
-                  child: Center(
-                    child: Text(
-                      _emptyMessage,
-                      textAlign: TextAlign.center,
-                      style: _couponText(
-                        context,
-                        size: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ),
-                ),
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: CenteredEmptyState(
+                message: _emptyMessage,
               ),
             )
           else

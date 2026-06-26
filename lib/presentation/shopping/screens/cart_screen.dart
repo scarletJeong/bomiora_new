@@ -4,6 +4,7 @@ import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/confirm_dialog.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -351,25 +352,9 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   )
                 : _displayedCartItems.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.shopping_cart_outlined,
-                              size: healthDp(context, 64),
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: healthDp(context, 16)),
-                            Text(
-                              '장바구니가 비어있습니다.',
-                              style: TextStyle(
-                                fontSize: healthSp(context, 16),
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
+                    ? const CenteredEmptyState(
+                        icon: Icons.shopping_cart_outlined,
+                        message: '장바구니가 비어있습니다.',
                       )
                     : Column(
                     children: [

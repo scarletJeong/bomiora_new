@@ -5,6 +5,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../utils/bank_icon_resolver.dart';
@@ -265,26 +266,9 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                           ],
                         ),
                       )
-                : Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.account_balance_wallet_outlined,
-                          size: healthDp(context, 64),
-                          color: Colors.grey[400],
-                        ),
-                        SizedBox(height: healthDp(context, 16)),
-                        Text(
-                          '로그인 후 이용 가능합니다.',
-                          style: TextStyle(
-                            fontSize: healthSp(context, 16),
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+                : const CenteredEmptyState(
+                    icon: Icons.account_balance_wallet_outlined,
+                    message: '로그인 후 이용 가능합니다.',
                   ),
         ),
       ),

@@ -7,6 +7,7 @@ import '../models/health_profile_model.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 
@@ -108,72 +109,52 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   Widget _buildContent() {
-    if (_currentUser == null || _healthProfile == null) {
-      return _buildEmptyState();
+    if (_currentUser == null) {
+      return const CenteredEmptyState(
+        icon: Icons.assignment_outlined,
+        message: '로그인 후 이용 가능합니다.',
+        fillAvailable: true,
+      );
+    }
+    if (_healthProfile == null) {
+      return _buildNoProfileState();
     }
 
     return _buildProfileCard();
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildNoProfileState() {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.assignment_outlined,
-                      size: healthDp(context, 80),
-                      color: Colors.grey[400],
-                    ),
-                    SizedBox(height: healthDp(context, 24)),
-                    Text(
-                      '문진표가 없습니다',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 8)),
-                    Text(
-                      '다이어트 상담을 위해\n문진표를 작성해주세요',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 32)),
-                    ElevatedButton.icon(
-                      onPressed: _navigateToForm,
-                      icon: Icon(Icons.add, size: healthDp(context, 22)),
-                      label: const Text('문진표 작성하기'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF5A8D),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 24),
-                          vertical: healthDp(context, 12),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 8)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+      child: CenteredEmptyState(
+        icon: Icons.assignment_outlined,
+        message: '다이어트 상담을 위해\n문진표를 작성해주세요',
+        messageStyle: TextStyle(
+          fontSize: healthSp(context, 16),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w400,
+          color: Colors.black,
+          height: 1.4,
+        ),
+        fillAvailable: true,
+        trailing: [
+          ElevatedButton.icon(
+            onPressed: _navigateToForm,
+            icon: Icon(Icons.add, size: healthDp(context, 22)),
+            label: const Text('문진표 작성하기'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5A8D),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 24),
+                vertical: healthDp(context, 12),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 8)),
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

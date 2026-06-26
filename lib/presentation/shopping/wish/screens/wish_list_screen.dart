@@ -4,6 +4,7 @@ import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/services/wish_service.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 
@@ -231,25 +232,9 @@ class _WishListScreenState extends State<WishListScreen> {
   }
 
   Widget _buildLoginMessage() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.favorite_border,
-            size: healthDp(context, 64),
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '로그인 후 이용 가능합니다.',
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
+    return const CenteredEmptyState(
+      icon: Icons.favorite_border,
+      message: '로그인 후 이용 가능합니다.',
     );
   }
 
@@ -270,50 +255,58 @@ class _WishListScreenState extends State<WishListScreen> {
     final list = _currentTabList;
     final hasMore = _visibleCount < list.length;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        left: healthDp(context, 27),
-        right: healthDp(context, 27),
-        bottom: healthDp(context, 20),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(height: healthDp(context, 15)),
-          _buildTabs(),
-          SizedBox(height: healthDp(context, 10)),
-          _buildHeader(),
-          if (list.isEmpty) ...[
-            SizedBox(height: healthDp(context, 40)),
-            Icon(
-              Icons.favorite_border,
-              size: healthDp(context, 64),
-              color: Colors.grey[400],
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            left: healthDp(context, 27),
+            right: healthDp(context, 27),
+            bottom: healthDp(context, 20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(height: healthDp(context, 15)),
+              _buildTabs(),
+              SizedBox(height: healthDp(context, 10)),
+              _buildHeader(),
+            ],
+          ),
+        ),
+        if (list.isEmpty)
+          Expanded(
+            child: CenteredEmptyState(
+              icon: Icons.favorite_border,
+              message: _emptyMessageForTab(),
             ),
-            SizedBox(height: healthDp(context, 16)),
-            Text(
-              _emptyMessageForTab(),
-              style: TextStyle(
-                fontSize: healthSp(context, 16),
-                color: Colors.grey[600],
+          )
+        else
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: healthDp(context, 27),
+                right: healthDp(context, 27),
+                bottom: healthDp(context, 20),
               ),
-              textAlign: TextAlign.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: healthDp(context, 10)),
+                  for (var i = 0; i < _visibleItems.length; i++) ...[
+                    if (i > 0) SizedBox(height: healthDp(context, 20)),
+                    _buildWishCard(_visibleItems[i]),
+                  ],
+                  if (hasMore) ...[
+                    SizedBox(height: healthDp(context, 20)),
+                    _buildLoadMoreButton(),
+                  ],
+                ],
+              ),
             ),
-            SizedBox(height: healthDp(context, 40)),
-          ] else ...[
-            SizedBox(height: healthDp(context, 10)),
-            for (var i = 0; i < _visibleItems.length; i++) ...[
-              if (i > 0) SizedBox(height: healthDp(context, 20)),
-              _buildWishCard(_visibleItems[i]),
-            ],
-            if (hasMore) ...[
-              SizedBox(height: healthDp(context, 20)),
-              _buildLoadMoreButton(),
-            ],
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 

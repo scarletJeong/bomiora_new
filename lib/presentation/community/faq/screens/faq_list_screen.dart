@@ -8,6 +8,7 @@ import '../../../../data/services/faq_service.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/dropdown_btn.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 
 class FaqListScreen extends StatefulWidget {
@@ -466,17 +467,10 @@ class _FaqListScreenState extends State<FaqListScreen> {
 
   Widget _buildEmpty() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 50)),
-      child: Center(
-        child: Text(
-          '조건에 맞는 FAQ가 없습니다.',
-          style: TextStyle(
-            color: _kMuted,
-            fontSize: healthSp(context, 14),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
+      child: const CenteredEmptyState(
+        icon: Icons.help_outline,
+        message: '조건에 맞는 FAQ가 없습니다.',
       ),
     );
   }

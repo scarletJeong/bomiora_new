@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/confirm_dialog.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -1191,50 +1192,16 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.rate_review_outlined,
-            size: healthDp(context, 64),
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '작성한 리뷰가 없습니다',
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              color: Colors.grey[600],
-              fontFamily: 'Gmarket Sans TTF',
-            ),
-          ),
-        ],
-      ),
+    return const CenteredEmptyState(
+      icon: Icons.rate_review_outlined,
+      message: '작성한 리뷰가 없습니다',
     );
   }
 
   Widget _buildLoginMessage() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.rate_review_outlined,
-            size: healthDp(context, 64),
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '로그인 후 이용 가능합니다.',
-            style: TextStyle(
-              fontSize: healthSp(context, 16),
-              color: Colors.grey[600],
-              fontFamily: 'Gmarket Sans TTF',
-            ),
-          ),
-        ],
-      ),
+    return const CenteredEmptyState(
+      icon: Icons.rate_review_outlined,
+      message: '로그인 후 이용 가능합니다.',
     );
   }
 }

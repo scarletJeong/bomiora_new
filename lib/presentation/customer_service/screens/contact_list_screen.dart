@@ -3,6 +3,7 @@ import '../widget/contact_inquiry_type_filters.dart';
 import 'contact_form_screen.dart';
 import 'contact_detail_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../../data/models/contact/contact_model.dart';
@@ -444,30 +445,9 @@ class ContactListScreenState extends State<ContactListScreen> {
   }
 
   Widget _buildLoginMessage() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: healthDp(context, 64),
-              color: Colors.grey[400],
-            ),
-            SizedBox(height: healthDp(context, 16)),
-            Text(
-              '로그인 후 이용 가능합니다.',
-              style: _contactText(
-                context,
-                size: 16,
-                color: Colors.grey.shade600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return const CenteredEmptyState(
+      icon: Icons.inbox_outlined,
+      message: '로그인 후 이용 가능합니다.',
     );
   }
 }
