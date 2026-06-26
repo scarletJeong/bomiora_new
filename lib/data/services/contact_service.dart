@@ -154,7 +154,6 @@ class ContactService {
           if (kDebugMode) {
             final wr7 = map['wr_7'];
             final wrReply = map['wr_reply'];
-            debugPrint('[ContactDetail] wr_id=$wrId wr_7=$wr7 (type=${wr7.runtimeType}) wr_reply=$wrReply');
           }
           final nested = _repliesFromDetailData(map);
           final threadRaw = responseData['thread'];
