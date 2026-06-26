@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 // import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
@@ -11,11 +10,10 @@ import 'presentation/auth/screens/find_password_reset_screen.dart';
 import 'core/navigation/app_navigator_key.dart';
 import 'presentation/auth/widgets/kcp_cert.dart';
 import 'presentation/auth/screens/signup_screen.dart';
+import 'presentation/auth/screens/social_signup_screen.dart';
 import 'data/services/auth_service.dart';
 import 'data/services/kakao_auth_service.dart';
-import 'data/repositories/auth/auth_repository.dart';
-import 'data/models/user/user_model.dart';
-import 'core/utils/node_value_parser.dart';
+import 'data/services/naver_auth_service.dart';
 // 조건부 임포트: 웹과 모바일에서 다른 FCM 서비스 사용
 // import 'data/services/fcm_service_stub.dart'
 //   if (dart.library.io) 'data/services/fcm_service.dart';
@@ -24,7 +22,7 @@ import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_detail_general_screen.dart';
 import 'presentation/shopping/screens/product_list_screen.dart';
 import 'presentation/shopping/screens/product_main_general_screen.dart';
-import 'presentation/shopping/screens/product_main_screen.dart';
+import 'presentation/shopping/screens/bomiora_introduce_screen.dart';
 import 'presentation/shopping/screens/kcp_pay_webview_screen.dart';
 import 'presentation/shopping/screens/payment_complete_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
@@ -52,8 +50,8 @@ import 'presentation/content/dashboard/screens/content_detail_screen.dart';
 import 'presentation/home/search/search_list_screen.dart';
 import 'presentation/common/widgets/dropdown_btn.dart';
 
-/// 개발용: 앱 시작 시 로그인 화면을 먼저 표시 (원복 시 false)
-const bool kDevForceLoginScreenFirst = true;
+/// 개발용: 앱 시작 시 로그인 화면을 먼저 표시
+const bool kDevForceLoginScreenFirst = false;
 
 void main() async {
   // Flutter 바인딩 초기화
@@ -65,29 +63,18 @@ void main() async {
   //   try {
   //     // Firebase 초기화
   //     await Firebase.initializeApp();
-  //     print('✅ Firebase 초기화 완료');
   //
   //     // FCM 서비스 초기화
   //     await FCMService().initialize();
-  //     print('✅ FCM 서비스 초기화 완료');
   //   } catch (e) {
-  //     print('❌ Firebase/FCM 초기화 실패: $e');
   //     // 에러가 발생해도 앱은 실행되도록 함
   //   }
   // } else {
-  //   print('⚠️ 웹 환경에서는 Firebase를 초기화하지 않습니다.');
   // }
 
-  print('⚠️ Firebase/FCM은 현재 비활성화되어 있습니다. (웹 개발 중)');
-  // 실행 환경 판별
-  if (kIsWeb) {
-    print('🌐 [플랫폼] 웹(Web) 환경으로 실행 중');
-  } else {
-    print('📱 [플랫폼] 앱(Native) 환경으로 실행 중');
-  }
-
-  // 카카오 SDK 초기화
+  // 카카오·네이버 SDK 초기화
   await KakaoAuthService.initialize();
+  await NaverAuthService.initialize();
 
   runApp(const BomioraApp());
 }
@@ -103,7 +90,9 @@ class _BomioraAppState extends State<BomioraApp> {
   @override
   void reassemble() {
     super.reassemble();
-    DropdownBtn.closeMenu();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      DropdownBtn.closeMenu();
+    });
   }
 
   @override
@@ -166,7 +155,7 @@ class _BomioraAppState extends State<BomioraApp> {
         // (임시) 장바구니 페이지 접근 차단
         '/cart': (context) => const CartScreen(),
         '/temp-cart': (context) => const TempCartScreen(),
-        '/product-main': (context) => const ProductMainScreen(),
+        '/bomiora-introduce': (context) => const BomioraIntroduceScreen(),
         '/healthcare-store': (context) => const ProductMainGeneralScreen(),
         '/coupon': (context) => const CouponScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
@@ -238,6 +227,20 @@ class _BomioraAppState extends State<BomioraApp> {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
           return SignupScreen(certInfo: args);
+        },
+        '/social-signup': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return SocialSignupScreen(
+            provider: (args?['provider'] ?? 'kakao').toString(),
+            identifier: (args?['identifier'] ?? '').toString(),
+            email: args?['email']?.toString(),
+            nickname: args?['nickname']?.toString(),
+            name: args?['name']?.toString(),
+            gender: args?['gender']?.toString(),
+            birthday: args?['birthday']?.toString(),
+            profileImageUrl: args?['profileImageUrl']?.toString(),
+          );
         },
       },
       onGenerateRoute: (settings) {
@@ -405,7 +408,6 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
   bool _isLoggedIn = false;
-  bool _autoLoginTried = false;
 
   @override
   void initState() {
@@ -413,50 +415,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _checkLoginStatus();
   }
 
-  Future<bool> _tryAutoLoginForLocalhost() async {
-    if (!kIsWeb) return false;
-    if (_autoLoginTried) return false;
-    _autoLoginTried = true;
-
-    final host = Uri.base.host.toLowerCase();
-    final isLocal = host == 'localhost' || host == '127.0.0.1';
-    if (!isLocal) return false;
-
-    // 이미 로그인 데이터가 있으면 스킵
-    final already = await AuthService.isLoggedIn();
-    if (already) return true;
-
-    final result = await AuthRepository.login(
-      email: AuthRepository.devAllowedLoginEmail,
-      password: AuthRepository.devAllowedLoginPassword,
-    );
-    if (result['success'] != true) return false;
-
-    final resultData = result['data'];
-    if (resultData is! Map) return false;
-    final userData = NodeValueParser.normalizeMap(Map<String, dynamic>.from(resultData));
-
-    final userRaw = userData['user'];
-    final userJson = NodeValueParser.normalizeMap(
-      userRaw is Map ? Map<String, dynamic>.from(userRaw) : Map<String, dynamic>.from(userData),
-    );
-
-    final userId =
-        NodeValueParser.asString(userJson['mb_id']) ?? NodeValueParser.asString(userJson['id']) ?? '';
-    userJson['id'] = userId;
-    userJson['password'] = AuthRepository.devAllowedLoginPassword;
-
-    final user = UserModel.fromJson(userJson);
-    final token = NodeValueParser.asString(userData['token']);
-    await AuthService.saveLoginData(user: user, token: token);
-    return true;
-  }
-
   Future<void> _checkLoginStatus() async {
     var loggedIn = await AuthService.isLoggedIn();
-    if (!loggedIn) {
-      loggedIn = await _tryAutoLoginForLocalhost();
-    }
     // 탈퇴/차단 시 다른 탭/세션도 다음 진입에서 강제 로그아웃
     if (loggedIn) {
       final active = await AuthService.isSessionActive();

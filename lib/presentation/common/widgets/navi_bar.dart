@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../shopping/utils/get_product.dart';
 
 /// 하단 가로 바 ↔ 오른쪽 세로 바 전환 기준 (px).
 const double kFooterBarWideBreakpoint = 950;
@@ -34,10 +35,18 @@ class FooterBar extends StatelessWidget {
     );
   }
 
-  void _go(BuildContext context, String routeName) {
+  void _go(BuildContext context, String routeName, {Object? arguments}) {
     final current = ModalRoute.of(context)?.settings.name;
-    if (current == routeName) return;
-    Navigator.pushNamed(context, routeName);
+    if (current == routeName && arguments == null) return;
+    Navigator.pushNamed(context, routeName, arguments: arguments);
+  }
+
+  void _goPrescriptionDiet(BuildContext context) {
+    _go(
+      context,
+      '/product/',
+      arguments: kPrescriptionDietProductListArguments,
+    );
   }
 
   Widget _item({
@@ -136,7 +145,7 @@ class FooterBar extends StatelessWidget {
             context: context,
             label: '비대면 진료',
             iconAsset: AppAssets.naviIcon3,
-            onTap: () => _go(context, '/product-main'),
+            onTap: () => _goPrescriptionDiet(context),
           ),
           _sep(context),
           _item(
@@ -186,7 +195,8 @@ class SideNaviBar extends StatelessWidget {
     _SideNaviEntry(
       label: '비대면 진료',
       icon: AppAssets.naviIcon3,
-      route: '/product-main',
+      route: '/product/',
+      routeArguments: kPrescriptionDietProductListArguments,
     ),
     _SideNaviEntry(
       label: '문진표',
@@ -200,10 +210,18 @@ class SideNaviBar extends StatelessWidget {
     ),
   ];
 
-  void _go(BuildContext context, String routeName) {
+  void _go(BuildContext context, String routeName, {Object? arguments}) {
     final current = ModalRoute.of(context)?.settings.name;
-    if (current == routeName) return;
-    Navigator.pushNamed(context, routeName);
+    if (current == routeName && arguments == null) return;
+    Navigator.pushNamed(context, routeName, arguments: arguments);
+  }
+
+  void _goPrescriptionDiet(BuildContext context) {
+    _go(
+      context,
+      '/product/',
+      arguments: kPrescriptionDietProductListArguments,
+    );
   }
 
   @override
@@ -226,7 +244,11 @@ class SideNaviBar extends StatelessWidget {
               entry: _items[i],
               onTap: _items[i].route == null
                   ? null
-                  : () => _go(context, _items[i].route!),
+                  : () => _go(
+                        context,
+                        _items[i].route!,
+                        arguments: _items[i].routeArguments,
+                      ),
             ),
           ],
         ],
@@ -293,10 +315,12 @@ class _SideNaviEntry {
   final String label;
   final String icon;
   final String? route;
+  final Object? routeArguments;
 
   const _SideNaviEntry({
     required this.label,
     required this.icon,
     required this.route,
+    this.routeArguments,
   });
 }

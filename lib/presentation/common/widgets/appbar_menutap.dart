@@ -15,7 +15,6 @@ import '../../shopping/utils/get_product.dart';
 import '../../settings/settings_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'cart_dropdown_menu.dart';
-import 'confirm_dialog.dart';
 
 /// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
 class AppBarMenuTapDrawer extends StatefulWidget {
@@ -36,7 +35,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   static const Color _inkTitle = Color(0xFF1A1A1A);
   static const Color _inkMuted = Color(0xFF898686);
   static const Color _divider = Color(0x7FD2D2D2);
-  static const Color _logoutBorder = Color(0xFFD2D2D2);
   static const Color _brandPink = Color(0xFFFF5A8D);
 
   UserModel? _user;
@@ -112,27 +110,30 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     return n.isEmpty ? '회원' : n;
   }
 
-  Future<void> _onLogoutPressed(BuildContext context) async {
-    final confirmed = await ConfirmDialog.show(
-      context,
-      title: '로그아웃',
-      message: '정말 로그아웃하시겠습니까?',
-      confirmText: '로그아웃',
-    );
-
-    if (confirmed) {
-      await AuthService.logout();
-      if (context.mounted) {
-        Navigator.pop(context);
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    }
-  }
-
   void _popAndPushNamed(BuildContext context, String route,
       {Object? arguments}) {
     Navigator.pop(context);
     Navigator.pushNamed(context, route, arguments: arguments);
+  }
+
+  ProductCategoryItem _prescriptionDietCategory() {
+    return _prescriptionCategories.firstWhere(
+      (item) => item.categoryId == '10',
+      orElse: () => productPrescriptionCategoryListFallback.first,
+    );
+  }
+
+  void _openPrescriptionDietList(BuildContext context) {
+    final diet = _prescriptionDietCategory();
+    _popAndPushNamed(
+      context,
+      '/product/',
+      arguments: {
+        'categoryId': diet.categoryId,
+        'categoryName': diet.label,
+        'productKind': 'prescription',
+      },
+    );
   }
 
   TextStyle _mainMenuTitleStyle(BuildContext context) => TextStyle(
@@ -281,6 +282,13 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               ),
               SizedBox(height: healthDp(context, 20)),
               _SectionRow(
+                title: '보미오라소개',
+                titleStyle: _mainMenuTitleStyle(context),
+                titlePadding: _mainMenuTitlePadding(context),
+                onTap: () => _popAndPushNamed(context, '/bomiora-introduce'),
+              ),
+              SizedBox(height: healthDp(context, 10)),
+              _SectionRow(
                 title: '건강 대시보드',
                 titleStyle: _mainMenuTitleStyle(context),
                 titlePadding: _mainMenuTitlePadding(context),
@@ -300,8 +308,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                           children: [
                             Expanded(
                               child: InkWell(
-                                onTap: () =>
-                                    _popAndPushNamed(context, '/product-main'),
+                                onTap: () => _openPrescriptionDietList(context),
                                 child: Padding(
                                   padding: _mainMenuTitlePadding(context),
                                   child: Text(
@@ -699,44 +706,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             ),
             _DrawerSettingsIcon(context),
           ],
-        ),
-        SizedBox(height: healthDp(context, 5)),
-        SizedBox(
-          width: healthDp(context, 70),
-          height: healthDp(context, 22),
-          child: OutlinedButton(
-            onPressed: () => _onLogoutPressed(context),
-            style: OutlinedButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: Size(
-                healthDp(context, 70),
-                healthDp(context, 22),
-              ),
-              fixedSize: Size(
-                healthDp(context, 70),
-                healthDp(context, 22),
-              ),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              side: BorderSide(
-                color: _logoutBorder,
-                width: healthDp(context, 1),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 4)),
-              ),
-              foregroundColor: const Color(0xFF898686),
-            ),
-            child: Text(
-              '로그아웃',
-              style: TextStyle(
-                fontSize: healthSp(context, 10),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF898686),
-                height: 1.2,
-              ),
-            ),
-          ),
         ),
       ],
     );
