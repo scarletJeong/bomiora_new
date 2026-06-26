@@ -210,7 +210,7 @@ class _CouponScreenState extends State<CouponScreen> {
           child: MobileAppLayoutWrapper(
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
-              title: '내 쿠폰',
+              title: '쿠폰',
               titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
@@ -340,7 +340,7 @@ class _CouponScreenState extends State<CouponScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  '내 쿠폰',
+                  '쿠폰',
                   style: _couponText(context, size: 14, color: _textMain, weight: FontWeight.w500),
                 ),
                 SizedBox(width: healthDp(context, 2)),

@@ -578,7 +578,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           iconHeight375: 21.84,
           value: couponVal,
           unit: '장',
-          label: '내쿠폰',
+          label: '쿠폰',
           onTap: () => Navigator.pushNamed(context, '/coupon'),
         ),
         SizedBox(width: healthDp(context, 14)),
