@@ -18,13 +18,18 @@ String stripProductCatalogHtml(String? raw) {
   return s;
 }
 
-/// `it_subject`에 붙는 병원명·브레드크럼(예: 보미오라 한의원 >)만 카드 2줄로 쓰지 않음
+/// `it_subject`가 병원명·브레드크럼(보미오라 한의원)인지
+bool isBomioraHospitalProductSubject(String strippedSubject) {
+  final t = strippedSubject.trim();
+  if (t.isEmpty) return false;
+  return RegExp(r'보미오라\s*한의원', caseSensitive: false).hasMatch(t);
+}
+
+/// `it_subject`를 카드 상단 1줄 라벨로 쓸 수 있는지 (병원 브레드크럼 제외)
 bool shouldShowProductCardSubject(String strippedSubject) {
   final t = strippedSubject.trim();
   if (t.isEmpty) return false;
-  if (RegExp(r'보미오라\s*한의원', caseSensitive: false).hasMatch(t)) {
-    return false;
-  }
+  if (isBomioraHospitalProductSubject(t)) return false;
   return true;
 }
 
@@ -75,11 +80,26 @@ class ProductCatalogCard extends StatelessWidget {
     return cellWidth / extent;
   }
 
+  static const String _bomioraHospitalLabel = '보미오라 한의원';
+
+  bool get _isPrescriptionProduct =>
+      product.productKind != null && product.productKind != 'general';
+
   String _categoryLabel() {
+    final subject = stripProductCatalogHtml(product.itSubject ?? '');
+
+    if (isBomioraHospitalProductSubject(subject)) {
+      return _bomioraHospitalLabel;
+    }
+    if (shouldShowProductCardSubject(subject)) {
+      return subject;
+    }
+    if (_isPrescriptionProduct) {
+      return _bomioraHospitalLabel;
+    }
     final name = stripProductCatalogHtml(product.categoryName);
-    if (name.isNotEmpty) return name;
-    if (product.productKind == 'general') return '헬스케어';
-    return '한의약품';
+    if (name.isNotEmpty && name != '기타') return name;
+    return '헬스케어';
   }
 
   @override
@@ -144,25 +164,31 @@ class ProductCatalogCard extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               height: imageH,
-              child: product.displayImageUrl.isNotEmpty
-                  ? Image.network(
-                      product.displayImageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholder(context),
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Center(
-                          child: SizedBox(
-                            width: healthDp(context, 28),
-                            height: healthDp(context, 28),
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
+              child: ColoredBox(
+                color: const Color(0xFFF3F3F3),
+                child: product.displayImageUrl.isNotEmpty
+                    ? Image.network(
+                        product.displayImageUrl,
+                        width: double.infinity,
+                        height: imageH,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.center,
+                        errorBuilder: (_, __, ___) => _placeholder(context),
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Center(
+                            child: SizedBox(
+                              width: healthDp(context, 28),
+                              height: healthDp(context, 28),
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    )
-                  : _placeholder(context),
+                          );
+                        },
+                      )
+                    : _placeholder(context),
+              ),
             ),
           ),
           SizedBox(height: imageGap),
@@ -172,7 +198,12 @@ class ProductCatalogCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(category, style: categoryStyle),
+                  Text(
+                    category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: categoryStyle,
+                  ),
                   SizedBox(height: catTitleGap),
                   SizedBox(
                     height: titleAreaH,
@@ -185,7 +216,7 @@ class ProductCatalogCard extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: blockGap),
+              SizedBox(height: healthDp(context, 1)),
               Row(
                 children: [
                   Text(
