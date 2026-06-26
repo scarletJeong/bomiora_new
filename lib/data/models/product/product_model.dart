@@ -91,8 +91,11 @@ class Product {
       stock: NodeValueParser.asInt(normalized['stock'] ?? normalized['it_stock_qty']),
       rating:
           NodeValueParser.asDouble(normalized['rating']) ??
-          NodeValueParser.asDouble(normalized['it_rating']),
-      reviewCount: NodeValueParser.asInt(normalized['reviewCount'] ?? normalized['it_review_cnt']),
+          NodeValueParser.asDouble(normalized['it_rating']) ??
+          NodeValueParser.asDouble(normalized['it_use_avg']),
+      reviewCount: NodeValueParser.asInt(normalized['reviewCount'] ??
+          normalized['it_review_cnt'] ??
+          normalized['it_use_cnt']),
       additionalInfo: mergedAdditionalInfo,
     );
   }

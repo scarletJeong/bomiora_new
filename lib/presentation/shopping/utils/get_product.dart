@@ -74,6 +74,23 @@ String productPrescriptionCategoryIconAsset(String categoryId) {
   }
 }
 
+/// 비대면 진료 > 다이어트(다이어트환) 상품 목록 라우트 인자
+const Map<String, dynamic> kPrescriptionDietProductListArguments = {
+  'categoryId': '10',
+  'categoryName': '다이어트환',
+  'productKind': 'prescription',
+};
+
+Map<String, dynamic> prescriptionDietProductListArguments({
+  String categoryId = '10',
+  String categoryName = '다이어트환',
+}) =>
+    {
+      'categoryId': categoryId,
+      'categoryName': categoryName,
+      'productKind': 'prescription',
+    };
+
 /// 드로어·메뉴용 짧은 라벨
 String productPrescriptionCategoryMenuLabel(String categoryName) {
   return categoryName.replaceAll('환', '').trim();
