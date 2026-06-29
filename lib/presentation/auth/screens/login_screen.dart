@@ -286,6 +286,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _submitLoginFromKeyboard() {
+    if (_isLoading) return;
+    _handleLogin();
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -382,7 +387,15 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        textInputAction: TextInputAction.next,
         validator: validator,
+        onFieldSubmitted: (_) {
+          if (_passwordController.text.trim().isNotEmpty) {
+            _submitLoginFromKeyboard();
+          } else {
+            FocusScope.of(context).nextFocus();
+          }
+        },
         onChanged: (_) {
           if (_loginErrorText != null) {
             setState(() => _loginErrorText = null);
@@ -447,12 +460,14 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextFormField(
         controller: _passwordController,
         obscureText: _obscurePassword,
+        textInputAction: TextInputAction.done,
         validator: (value) {
           if (value == null || value.isEmpty) {
             return '비밀번호를 입력해주세요';
           }
           return null;
         },
+        onFieldSubmitted: (_) => _submitLoginFromKeyboard(),
         onChanged: (_) {
           if (_loginErrorText != null) {
             setState(() => _loginErrorText = null);
