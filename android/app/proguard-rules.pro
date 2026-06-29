@@ -20,10 +20,7 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# FoodLens SDK ProGuard 설정
--keep public class com.doinglab.foodlens.sdk.** {
-    *;
-}
--keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
--keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+# Naver Login SDK
+-keep class com.navercorp.nid.** { *; }
+-keep class com.nhn.android.naverlogin.** { *; }
 

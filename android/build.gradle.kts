@@ -2,7 +2,6 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        jcenter()  // FoodLens SDK가 jcenter에 있음
     }
 }
 
