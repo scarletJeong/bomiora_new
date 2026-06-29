@@ -29,7 +29,7 @@ class CenteredEmptyState extends StatelessWidget {
   final bool fillAvailable;
 
   static TextStyle defaultMessageStyle(BuildContext context) => TextStyle(
-        fontSize: healthSp(context, 16),
+        fontSize: healthSp(context, 14),
         fontFamily: 'Gmarket Sans TTF',
         fontWeight: FontWeight.w500,
         color: const Color(0xFFBDBDBD),
@@ -37,7 +37,7 @@ class CenteredEmptyState extends StatelessWidget {
       );
 
   Widget _buildContent(BuildContext context) {
-    final iconSize = healthDp(context, 80);
+    final iconSize = healthDp(context, 70);
     final spacing = gap ?? healthDp(context, 15);
 
     return Column(
