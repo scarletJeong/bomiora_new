@@ -51,6 +51,15 @@ class _AppBarMenuState extends State<AppBarMenu> {
     super.dispose();
   }
 
+  @override
+  void reassemble() {
+    super.reassemble();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cartOverlay?.remove();
+      _cartOverlay = null;
+    });
+  }
+
   void _removeCartOverlay() {
     _cartOverlay?.remove();
     _cartOverlay = null;
