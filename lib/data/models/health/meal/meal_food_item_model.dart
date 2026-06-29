@@ -3,16 +3,16 @@ class MealFoodItem {
   final int? id;
   final int? mealRecordId; // 식사 기록 ID (외래키)
   final String foodName; // 음식명
-  final int? foodId; // FoodLens에서 제공하는 음식 ID
+  final int? foodId; // 외부 음식 DB ID
   final double calories; // 칼로리 (kcal)
   final double? carbs; // 탄수화물 (g)
   final double? protein; // 단백질 (g)
   final double? fat; // 지방 (g)
   final double? sodium; // 나트륨 (mg)
   final double? sugar; // 당분 (g)
-  final double? eatAmount; // 섭취량 (FoodLens에서 제공)
-  final bool recognizedByFoodLens; // FoodLens로 인식된 음식인지 여부
-  final String? imagePath; // 음식 사진 경로 (FoodLens 인식 시 사용된 이미지)
+  final double? eatAmount; // 섭취량
+  final bool recognizedByFoodLens; // API 호환용 (자동 인식 여부)
+  final String? imagePath; // 음식 사진 경로
 
   MealFoodItem({
     this.id,
@@ -29,40 +29,6 @@ class MealFoodItem {
     this.recognizedByFoodLens = false,
     this.imagePath,
   });
-
-  /// FoodLens API 응답으로부터 생성
-  factory MealFoodItem.fromFoodLensResult(
-    Map<String, dynamic> foodLensResult, {
-    String? imagePath,
-  }) {
-    return MealFoodItem(
-      foodName: foodLensResult['foodName']?.toString() ?? '인식된 음식',
-      foodId: foodLensResult['foodId'] != null 
-          ? (foodLensResult['foodId'] as num).toInt() 
-          : null,
-      calories: (foodLensResult['calories'] ?? 0.0) as double,
-      carbs: foodLensResult['carbs'] != null 
-          ? (foodLensResult['carbs'] as num).toDouble() 
-          : null,
-      protein: foodLensResult['protein'] != null 
-          ? (foodLensResult['protein'] as num).toDouble() 
-          : null,
-      fat: foodLensResult['fat'] != null 
-          ? (foodLensResult['fat'] as num).toDouble() 
-          : null,
-      sodium: foodLensResult['sodium'] != null 
-          ? (foodLensResult['sodium'] as num).toDouble() 
-          : null,
-      sugar: foodLensResult['sugar'] != null 
-          ? (foodLensResult['sugar'] as num).toDouble() 
-          : null,
-      eatAmount: foodLensResult['eatAmount'] != null 
-          ? (foodLensResult['eatAmount'] as num).toDouble() 
-          : null,
-      recognizedByFoodLens: true,
-      imagePath: imagePath,
-    );
-  }
 
   /// 수동 입력 음식으로부터 생성
   factory MealFoodItem.fromManualInput({

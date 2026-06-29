@@ -9,7 +9,7 @@ class FoodRecord {
   final DateTime recordedAt; // 식사 기록 시간
   final List<FoodItem> foods; // 식사에 포함된 음식 목록
   final double totalCalories; // 총 칼로리 (음식들의 칼로리 합계)
-  final String? imagePath; // 식사 사진 경로 (FoodLens 인식에 사용된 이미지)
+  final String? imagePath; // 식사 사진 경로
   final String? notes; // 메모
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -38,9 +38,6 @@ class FoodRecord {
   double get totalFat => foods.fold(0.0, (sum, food) => sum + (food.fat ?? 0.0));
   double get totalSodium => foods.fold(0.0, (sum, food) => sum + (food.sodium ?? 0.0));
   double get totalSugar => foods.fold(0.0, (sum, food) => sum + (food.sugar ?? 0.0));
-
-  /// FoodLens로 인식된 음식이 있는지 확인
-  bool get hasFoodLensRecognition => foods.any((food) => food.recognizedByFoodLens);
 
   factory FoodRecord.fromJson(Map<String, dynamic> json) {
     // foods가 리스트인 경우
