@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
 import '../health/health_common/health_responsive_scale.dart';
+import '../../data/models/notification/notification_settings_model.dart';
+import '../../data/services/fcm_service_stub.dart'
+    if (dart.library.io) '../../data/services/fcm_service.dart';
+import '../../data/services/notification_service.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -18,10 +22,58 @@ class _NotificationSettingsScreenState
   static const Color _kText = Color(0xFF1A1A1A);
   static const Color _kPink = Color(0xFFFF5A8D);
 
+  bool _loading = true;
+  bool _saving = false;
   bool _orderAgree = false;
   bool _marketingAgree = false;
   bool _appPushAgree = false;
   bool _smsAgree = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = await NotificationService.loadSettings();
+    if (!mounted) return;
+    setState(() {
+      _orderAgree = settings.orderAgree;
+      _marketingAgree = settings.marketingAgree;
+      _appPushAgree = settings.appPushAgree;
+      _smsAgree = settings.smsAgree;
+      _loading = false;
+    });
+  }
+
+  NotificationSettingsModel get _currentSettings => NotificationSettingsModel(
+        orderAgree: _orderAgree,
+        marketingAgree: _marketingAgree,
+        appPushAgree: _appPushAgree,
+        smsAgree: _smsAgree,
+      );
+
+  Future<void> _saveSettings() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+
+    final ok = await NotificationService.saveSettings(_currentSettings);
+    await FCMService().syncTopicsFromSettings();
+
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('알림 설정 저장에 실패했습니다.')),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('알림 설정이 저장되었습니다.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +84,9 @@ class _NotificationSettingsScreenState
           title: '알림 설정',
           centerTitle: false,
         ),
-        child: ListView(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 27),
             healthDp(context, 20),
@@ -53,7 +107,7 @@ class _NotificationSettingsScreenState
             SizedBox(
               height: healthDp(context, 40),
               child: ElevatedButton(
-                onPressed: _saveSettings,
+                onPressed: _saving ? null : _saveSettings,
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: _kPink,
@@ -63,7 +117,7 @@ class _NotificationSettingsScreenState
                   ),
                 ),
                 child: Text(
-                  '저장',
+                  _saving ? '저장 중…' : '저장',
                   style: TextStyle(
                     fontSize: healthSp(context, 16),
                     fontFamily: _font,
@@ -234,10 +288,6 @@ class _NotificationSettingsScreenState
         ],
       ),
     );
-  }
-
-  void _saveSettings() {
-    // 스낵바 제거: 쇼핑/인증 외 화면 정책
   }
 }
 

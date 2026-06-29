@@ -1,10 +1,15 @@
 import 'dart:convert';
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Firebase Cloud Messaging 서비스
-/// 푸시 알림 초기화, 토큰 관리, 메시지 수신 처리
+import '../../core/navigation/app_navigator_key.dart';
+import 'notification_service.dart';
+
+/// Firebase Cloud Messaging — Android/iOS 전용
 class FCMService {
   static final FCMService _instance = FCMService._internal();
   factory FCMService() => _instance;
@@ -17,189 +22,171 @@ class FCMService {
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
 
-  /// FCM 초기화
+  bool _initialized = false;
+
   Future<void> initialize() async {
+    if (_initialized) return;
     try {
-      // 알림 권한 요청
-      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+      await _requestAndroidNotificationPermission();
+
+      final settings = await _firebaseMessaging.requestPermission(
         alert: true,
-        announcement: false,
         badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
         sound: true,
       );
 
-      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional) {
-        // FCM 토큰 가져오기
-        await _getToken();
+      final allowed = settings.authorizationStatus ==
+              AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+      if (!allowed) return;
 
-        // 로컬 알림 초기화
-        await _initializeLocalNotifications();
+      await _initializeLocalNotifications();
+      _configureForegroundNotification();
+      FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+      _firebaseMessaging.onTokenRefresh.listen(_handleTokenRefresh);
+      _handleNotificationInteraction();
 
-        // 포그라운드 메시지 수신 설정
-        _configureForegroundNotification();
+      await _getToken();
+      await registerTokenWithServer();
+      await _syncTopicsFromSettings();
 
-        // 백그라운드/종료 상태 메시지 핸들러 설정
-        FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
-
-        // 토큰 갱신 리스너
-        _firebaseMessaging.onTokenRefresh.listen(_handleTokenRefresh);
-
-        // 알림 클릭 이벤트 처리
-        _handleNotificationInteraction();
-
-      } else {
-      }
+      _initialized = true;
     } catch (e) {
+      debugPrint('[FCM] initialize 실패: $e');
     }
   }
 
-  /// FCM 토큰 가져오기
+  Future<void> _requestAndroidNotificationPermission() async {
+    final android = _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await android?.requestNotificationsPermission();
+  }
+
+  Future<String?> getFCMToken() async {
+    if (_fcmToken != null) return _fcmToken;
+    return _getToken();
+  }
+
+  Future<void> registerTokenWithServer() async {
+    final token = await getFCMToken();
+    if (token == null || token.isEmpty) return;
+    await NotificationService.registerFcmToken(token);
+  }
+
+  Future<void> syncTopicsFromSettings() => _syncTopicsFromSettings();
+
+  Future<void> _syncTopicsFromSettings() async {
+    try {
+      final settings = await NotificationService.loadSettings();
+      if (settings.orderAgree) {
+        await subscribeToTopic('orders');
+      } else {
+        await unsubscribeFromTopic('orders');
+      }
+      if (settings.marketingAgree && settings.appPushAgree) {
+        await subscribeToTopic('marketing');
+      } else {
+        await unsubscribeFromTopic('marketing');
+      }
+    } catch (_) {}
+  }
+
   Future<String?> _getToken() async {
     try {
       _fcmToken = await _firebaseMessaging.getToken();
-      // 토큰을 로컬 저장소에 저장
       if (_fcmToken != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('fcm_token', _fcmToken!);
       }
-
       return _fcmToken;
     } catch (e) {
+      debugPrint('[FCM] getToken 실패: $e');
       return null;
     }
   }
 
-  /// 토큰 갱신 처리
   Future<void> _handleTokenRefresh(String newToken) async {
     _fcmToken = newToken;
-
-    // 토큰을 로컬 저장소에 저장
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('fcm_token', newToken);
-
-    // TODO: 서버에 새 토큰 전송
-    await _sendTokenToServer(newToken);
+    await NotificationService.registerFcmToken(newToken);
   }
 
-  /// 서버에 토큰 전송 (백엔드 API 연동 필요)
-  Future<void> _sendTokenToServer(String token) async {
-    try {
-      // TODO: 백엔드 API 호출하여 토큰 저장
-      // final response = await http.post(
-      //   Uri.parse('${ApiConstants.baseUrl}/api/users/fcm-token'),
-      //   headers: {'Content-Type': 'application/json'},
-      //   body: jsonEncode({'fcm_token': token}),
-      // );
-    } catch (e) {
-    }
-  }
-
-  /// 로컬 알림 초기화
   Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-
     const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      ),
     );
 
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
-
-    // Android 알림 채널 생성
     await _createNotificationChannels();
   }
 
-  /// Android 알림 채널 생성
   Future<void> _createNotificationChannels() async {
-    // 높은 중요도 채널 (주문, 배송 알림)
-    const highImportanceChannel = AndroidNotificationChannel(
-      'high_importance_channel',
-      '중요 알림',
-      description: '주문, 배송 관련 중요 알림',
-      importance: Importance.high,
-      playSound: true,
-      enableVibration: true,
-    );
+    const channels = [
+      AndroidNotificationChannel(
+        'high_importance_channel',
+        '중요 알림',
+        description: '주문, 배송 관련 중요 알림',
+        importance: Importance.high,
+      ),
+      AndroidNotificationChannel(
+        'default_channel',
+        '일반 알림',
+        description: '이벤트, 쿠폰 등 일반 알림',
+        importance: Importance.defaultImportance,
+      ),
+      AndroidNotificationChannel(
+        'health_channel',
+        '건강 알림',
+        description: '체중 기록, 건강 프로필 리마인더',
+        importance: Importance.defaultImportance,
+      ),
+    ];
 
-    // 일반 알림 채널 (이벤트, 쿠폰)
-    const defaultChannel = AndroidNotificationChannel(
-      'default_channel',
-      '일반 알림',
-      description: '이벤트, 쿠폰 등 일반 알림',
-      importance: Importance.defaultImportance,
-      playSound: true,
-    );
-
-    // 건강 알림 채널
-    const healthChannel = AndroidNotificationChannel(
-      'health_channel',
-      '건강 알림',
-      description: '체중 기록, 건강 프로필 리마인더',
-      importance: Importance.defaultImportance,
-      playSound: true,
-    );
-
-    await _localNotifications
+    final android = _localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(highImportanceChannel);
-
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(defaultChannel);
-
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(healthChannel);
+            AndroidFlutterLocalNotificationsPlugin>();
+    for (final channel in channels) {
+      await android?.createNotificationChannel(channel);
+    }
   }
 
-  /// 포그라운드 메시지 수신 설정
   void _configureForegroundNotification() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // 포그라운드에서도 알림 표시
-      if (message.notification != null) {
+    FirebaseMessaging.onMessage.listen((message) {
+      if (message.notification != null || message.data.isNotEmpty) {
         _showLocalNotification(message);
       }
     });
   }
 
-  /// 로컬 알림 표시
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     final data = message.data;
+    final type = data['type']?.toString() ?? '';
 
-    // 알림 타입에 따라 채널 선택
-    String channelId = 'default_channel';
-    if (data['type'] == 'order' || data['type'] == 'delivery') {
+    var channelId = 'default_channel';
+    if (type == 'order' || type == 'delivery') {
       channelId = 'high_importance_channel';
-    } else if (data['type'] == 'health') {
+    } else if (type == 'health') {
       channelId = 'health_channel';
     }
 
     final androidDetails = AndroidNotificationDetails(
       channelId,
       channelId == 'high_importance_channel' ? '중요 알림' : '일반 알림',
-      channelDescription: notification?.body ?? '',
       importance: channelId == 'high_importance_channel'
           ? Importance.high
           : Importance.defaultImportance,
       priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -208,103 +195,126 @@ class FCMService {
       presentSound: true,
     );
 
-    final notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
     await _localNotifications.show(
       message.hashCode,
-      notification?.title ?? '알림',
-      notification?.body ?? '',
-      notificationDetails,
+      notification?.title ?? data['title']?.toString() ?? '알림',
+      notification?.body ?? data['body']?.toString() ?? '',
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: jsonEncode(data),
     );
   }
 
-  /// 알림 클릭 이벤트 처리
   void _handleNotificationInteraction() {
-    // 앱이 종료된 상태에서 알림 클릭
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) {
-        _handleNotificationNavigation(message.data);
+        _scheduleNavigation(message.data);
       }
     });
 
-    // 앱이 백그라운드 상태에서 알림 클릭
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      _handleNotificationNavigation(message.data);
+      _scheduleNavigation(message.data);
     });
   }
 
-  /// 알림 탭 처리 (로컬 알림)
   void _onNotificationTap(NotificationResponse response) {
-    if (response.payload != null) {
+    if (response.payload == null || response.payload!.isEmpty) return;
+    try {
       final data = jsonDecode(response.payload!);
-      _handleNotificationNavigation(data);
-    }
+      if (data is Map) {
+        _scheduleNavigation(Map<String, dynamic>.from(data));
+      }
+    } catch (_) {}
   }
 
-  /// 알림 데이터 기반 화면 이동
-  void _handleNotificationNavigation(Map<String, dynamic> data) {
-    final type = data['type'];
-    final id = data['id'];
+  void _scheduleNavigation(Map<String, dynamic> data) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleNotificationNavigation(data);
+    });
+  }
 
-    // TODO: 알림 타입에 따라 해당 화면으로 이동
+  void _handleNotificationNavigation(Map<String, dynamic> data) {
+    final nav = appNavigatorKey.currentState;
+    if (nav == null) return;
+
+    final type = data['type']?.toString() ?? '';
+    final id = data['id']?.toString() ?? data['wr_id']?.toString() ?? '';
+    final orderNumber =
+        data['order_number']?.toString() ?? data['od_id']?.toString() ?? id;
+
     switch (type) {
       case 'order':
-        // 주문 상세 화면으로 이동
-        // Navigator.pushNamed(context, '/order-detail', arguments: id);
-        break;
       case 'delivery':
-        // 배송 조회 화면으로 이동
-        // Navigator.pushNamed(context, '/delivery-list');
+        if (orderNumber.isNotEmpty) {
+          nav.pushNamed(
+            '/order-detail',
+            arguments: {'orderNumber': orderNumber, 'odId': orderNumber},
+          );
+        } else {
+          nav.pushNamed('/order');
+        }
         break;
       case 'health':
-        // 건강 관리 화면으로 이동
-        // Navigator.pushNamed(context, '/health-profile');
+        nav.pushNamed('/health');
         break;
       case 'coupon':
-        // 쿠폰 화면으로 이동
-        // Navigator.pushNamed(context, '/coupon');
+        nav.pushNamed('/coupon');
         break;
       case 'event':
-        // 이벤트 상세 화면으로 이동
-        // Navigator.pushNamed(context, '/event-detail', arguments: id);
+        final wrId = int.tryParse(id);
+        if (wrId != null && wrId > 0) {
+          nav.pushNamed('/event/$wrId');
+        } else {
+          nav.pushNamed('/event');
+        }
+        break;
+      case 'announcement':
+      case 'notice':
+        final announcementId = int.tryParse(id);
+        if (announcementId != null && announcementId > 0) {
+          nav.pushNamed('/announcement/$announcementId');
+        } else {
+          nav.pushNamed('/announcement');
+        }
+        break;
+      case 'point':
+        nav.pushNamed('/point');
+        break;
+      case 'contact':
+      case 'inquiry':
+      case 'qna':
+        final contactWrId = int.tryParse(id);
+        if (contactWrId != null && contactWrId > 0) {
+          nav.pushNamed(
+            '/qna-detail',
+            arguments: {'wrId': contactWrId},
+          );
+        } else {
+          nav.pushNamed('/qna');
+        }
         break;
       default:
+        nav.pushNamed('/home');
     }
   }
 
-  /// 앱 배지 초기화
-  /// TODO: flutter_app_badger 패키지 사용 필요
-  Future<void> clearBadge() async {
-    // await _firebaseMessaging.setApplicationIconBadgeNumber(0);
-    // 최신 firebase_messaging에서는 이 메서드가 제거되었습니다.
-    // flutter_app_badger 패키지를 사용하거나 플랫폼별 구현이 필요합니다.
-  }
-
-  /// 구독 (특정 토픽)
   Future<void> subscribeToTopic(String topic) async {
     try {
       await _firebaseMessaging.subscribeToTopic(topic);
     } catch (e) {
+      debugPrint('[FCM] subscribe $topic 실패: $e');
     }
   }
 
-  /// 구독 해제
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _firebaseMessaging.unsubscribeFromTopic(topic);
     } catch (e) {
+      debugPrint('[FCM] unsubscribe $topic 실패: $e');
     }
   }
 }
 
-/// 백그라운드 메시지 핸들러 (최상위 함수여야 함)
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // 백그라운드에서도 필요한 처리 수행
-  // 예: 로컬 데이터베이스 업데이트, 알림 카운트 증가 등
+  await Firebase.initializeApp();
 }
-
