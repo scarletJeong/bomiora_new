@@ -59,12 +59,19 @@ class ContactListScreenState extends State<ContactListScreen> {
     _loadContacts();
   }
 
-  Future<void> _loadContacts() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _requiresLogin = false;
-    });
+  Future<void> _loadContacts({bool fromPullRefresh = false}) async {
+    if (!fromPullRefresh) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _requiresLogin = false;
+      });
+    } else {
+      setState(() {
+        _errorMessage = null;
+        _requiresLogin = false;
+      });
+    }
 
     try {
       final contacts = await ContactService.getMyContacts();
@@ -267,65 +274,76 @@ class ContactListScreenState extends State<ContactListScreen> {
 
   Widget _buildListBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: _pink),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: healthDp(context, 120)),
+          const Center(child: CircularProgressIndicator(color: _pink)),
+        ],
       );
     }
 
     if (_requiresLogin) {
-      return _buildLoginMessage();
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: healthDp(context, 80)),
+          _buildLoginMessage(),
+        ],
+      );
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: _contactText(context, size: 14, color: Colors.red),
-              ),
-              SizedBox(height: healthDp(context, 16)),
-              ElevatedButton(
-                onPressed: _loadContacts,
-                child: const Text('다시 시도'),
-              ),
-            ],
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: healthDp(context, 80)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: _pagePadH(context)),
+            child: Column(
+              children: [
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: _contactText(context, size: 14, color: Colors.red),
+                ),
+                SizedBox(height: healthDp(context, 16)),
+                ElevatedButton(
+                  onPressed: _loadContacts,
+                  child: const Text('다시 시도'),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       );
     }
 
     if (_contacts.isEmpty) {
-      return SingleChildScrollView(
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           _pagePadH(context),
-          0,
+          healthDp(context, 48),
           _pagePadH(context),
           healthDp(context, 100),
         ),
-        child: Column(
-          children: [
-            SizedBox(height: healthDp(context, 48)),
-            Icon(
-              Icons.inbox_outlined,
-              size: healthDp(context, 64),
-              color: Colors.grey[400],
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: healthDp(context, 64),
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: healthDp(context, 16)),
+          Text(
+            '문의내역이 없습니다.',
+            style: _contactText(
+              context,
+              size: 16,
+              color: Colors.grey.shade600,
             ),
-            SizedBox(height: healthDp(context, 16)),
-            Text(
-              '문의내역이 없습니다.',
-              style: _contactText(
-                context,
-                size: 16,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -334,6 +352,7 @@ class ContactListScreenState extends State<ContactListScreen> {
     final hasMore = shown < total;
 
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(
         _pagePadH(context),
         0,
@@ -399,7 +418,13 @@ class ContactListScreenState extends State<ContactListScreen> {
                         ],
                       ),
                     ),
-                  Expanded(child: _buildListBody()),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: _pink,
+                      onRefresh: () => _loadContacts(fromPullRefresh: true),
+                      child: _buildListBody(),
+                    ),
+                  ),
                   if (!_requiresLogin)
                     SafeArea(
                       top: false,
