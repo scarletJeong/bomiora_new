@@ -385,33 +385,54 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
           ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              healthDp(context, 27),
-              healthDp(context, 5),
-              healthDp(context, 27),
-              healthDp(context, 20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '마지막 생리는 언제였나요?',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 14,
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 5),
+                    healthDp(context, 27),
+                    healthDp(context, 16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '마지막 생리는 언제였나요?',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                      SizedBox(height: healthDp(context, 20)),
+                      _buildCalendar(),
+                      SizedBox(height: healthDp(context, 20)),
+                      _buildCycleLengthSection(),
+                      SizedBox(height: healthDp(context, 20)),
+                    ],
                   ),
                 ),
-                SizedBox(height: healthDp(context, 20)),
-                _buildCalendar(),
-                SizedBox(height: healthDp(context, 20)),
-                _buildCycleLengthSection(),
-                SizedBox(height: healthDp(context, 20)),
-                _buildSaveButton(),
-              ],
-            ),
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 8),
+                    healthDp(context, 27),
+                    healthDp(context, 16),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: healthDp(context, 38),
+                    child: _buildSaveButton(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -910,43 +931,36 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
   }
 
   Widget _buildSaveButton() {
-    return Center(
-      child: SizedBox(
-        width: healthDp(context, 113),
-        height: healthDp(context, 30),
-        child: ElevatedButton(
-        onPressed: _isLoading ? null : _onSavePressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _kAccentPink,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
-          ),
-          elevation: 0,
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _onSavePressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _kAccentPink,
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
-        child: _isLoading
-            ? SizedBox(
-                width: healthDp(context, 20),
-                height: healthDp(context, 20),
-                child: CircularProgressIndicator(
-                  strokeWidth: healthDp(context, 2),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Text(
-                '저장',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  height: 1.0,
-                ),
+        elevation: 0,
+      ),
+      child: _isLoading
+          ? SizedBox(
+              width: healthDp(context, 20),
+              height: healthDp(context, 20),
+              child: CircularProgressIndicator(
+                strokeWidth: healthDp(context, 2),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
               ),
-      ),
-      ),
+            )
+          : const Text(
+              '저장',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                height: 1.0,
+              ),
+            ),
     );
   }
 

@@ -9,6 +9,7 @@ import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dar
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_record_selector.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
 import '../../../../data/services/auth_service.dart';
+import '../widgets/menstrual_phase_recommendation_item.dart';
 import 'menstrual_cycle_input_screen.dart';
 
 class MenstrualCycleInfoScreen extends StatefulWidget {
@@ -78,47 +79,57 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                 ],
               ),
             )
-          : _currentRecord == null
-              ? _buildNoDataView()
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),  // 좌우 20px 패딩
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 현재 상태 섹션
-                      _buildCurrentStatusSection(),
-                      const SizedBox(height: 0),
-                      
-                      // 생리주기 원형 차트
-                      _buildCycleChart(),
-                      const SizedBox(height: 10),
-                      
-                      // 현재 단계별 추천사항
-                      _buildPhaseRecommendations(),
-                      const SizedBox(height: 20),
-                      
-                      // 예상 날짜들
-                      _buildExpectedDatesSection(),
-                      const SizedBox(height: 30),
-                      
-                      // 기록하기 버튼
-                      BtnRecord(
-                        text: '+ 기록하기',
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MenstrualCycleInputScreen(),
+          : Column(
+              children: [
+                Expanded(
+                  child: _currentRecord == null
+                      ? _buildNoDataView()
+                      : SingleChildScrollView(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildCurrentStatusSection(),
+                              const SizedBox(height: 0),
+                              _buildCycleChart(),
+                              const SizedBox(height: 10),
+                              _buildPhaseRecommendations(),
+                              const SizedBox(height: 20),
+                              _buildExpectedDatesSection(),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                    child: BtnRecord(
+                      text: '+ 기록하기',
+                      onPressed: () async {
+                        MenstrualCycleRecord? recordForDate;
+                        if (_currentRecord != null) {
+                          recordForDate = await _getRecordForDate(selectedDate);
+                        }
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MenstrualCycleInputScreen(
+                              existingRecord: recordForDate,
                             ),
-                          );
-                          if (result == true) {
-                            _loadMenstrualCycleData();
-                          }
-                        },
-                      ),
-                    ],
+                          ),
+                        );
+                        if (result == true) {
+                          _loadMenstrualCycleData();
+                        }
+                      },
+                    ),
                   ),
                 ),
+              ],
+            ),
     );
   }
 
@@ -150,25 +161,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
                 fontSize: 14,
                 color: Colors.grey[500],
               ),
-            ),
-            const SizedBox(height: 32),
-            BtnRecord(
-              text: '+ 기록하기',
-              onPressed: () async {
-                // 선택한 날짜에 맞는 레코드 찾기
-                final recordForDate = await _getRecordForDate(selectedDate);
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MenstrualCycleInputScreen(
-                      existingRecord: recordForDate,
-                    ),
-                  ),
-                );
-                if (result == true) {
-                  _loadMenstrualCycleData();
-                }
-              },
             ),
           ],
         ),
@@ -374,7 +366,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   }
 
   Widget _buildPhaseIndicator() {
-    final phase = _currentRecord!.currentPhase;
+    final phase = _currentRecord!.phaseOn(selectedDate);
     final phaseInfo = MenstrualPhaseInfo.getPhaseInfo(phase);
     
     Color phaseColor;
@@ -412,8 +404,10 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   }
 
   Widget _buildPhaseRecommendations() {
-    final phase = _currentRecord!.currentPhase;
-    final phaseInfo = MenstrualPhaseInfo.getPhaseInfo(phase);
+    final phaseTitle = _currentRecord!.phaseDisplayNameOn(selectedDate);
+    final tipInfo = MenstrualPhaseInfo.getPhaseInfo(
+      _currentRecord!.recommendationPhaseOn(selectedDate),
+    );
     
     return Container(
       padding: const EdgeInsets.all(20),
@@ -433,7 +427,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${phaseInfo.name} 추천사항',
+            '$phaseTitle 추천사항',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -441,67 +435,17 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildRecommendationItem(
-            '음식',
-            phaseInfo.foodRecommendations.first,
-            AppAssets.menstrualIcon1,
+          MenstrualPhaseRecommendationItem(
+            tip: tipInfo.conditionCheck,
+            compact: false,
           ),
           const SizedBox(height: 12),
-          _buildRecommendationItem(
-            '건강',
-            phaseInfo.healthRecommendations.first,
-            AppAssets.menstrualIcon2,
-          ),
-          const SizedBox(height: 12),
-          _buildRecommendationItem(
-            '관리',
-            phaseInfo.managementRecommendations.first,
-            AppAssets.menstrualIcon3,
+          MenstrualPhaseRecommendationItem(
+            tip: tipInfo.bomioraPick,
+            compact: false,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildRecommendationItem(
-      String category, String content, String assetPath) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Image.asset(
-          assetPath,
-          width: 20,
-          height: 20,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black,
-                height: 1.4,
-                fontFamily: 'Gmarket Sans TTF',
-              ),
-              children: [
-                TextSpan(
-                  text: '$category : ',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                TextSpan(
-                  text: content,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -537,7 +481,7 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
           ),
           const SizedBox(height: 12),
           _buildDateItem(
-            '예상 배란일',
+            '예상 배란기',
             DateFormat('M월 d일').format(_currentRecord!.ovulationDate),
             Colors.pink,
           ),
@@ -639,14 +583,14 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   // 생리주기 단계별 색상 반환
   List<Color> _getPhaseColors() {
     return [
-      // 월경기 (1~5일) - 빨간색 계열
+      // 생리 중 (1~5일) - 빨간색 계열
       Colors.red[300]!,
       Colors.red[400]!,
       Colors.red[500]!,
       Colors.red[600]!,
       Colors.red[700]!,
       
-      // 난포기 (6~14일) - 주황색 계열
+      // 생리 후 컨디션이 좋아지는 시기 (6~14일) - 주황색 계열
       Colors.orange[300]!,
       Colors.orange[400]!,
       Colors.orange[500]!,
@@ -657,12 +601,12 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
       Colors.deepOrange[300]!,
       Colors.deepOrange[400]!,
       
-      // 배란기 (15~17일) - 노란색 계열
+      // 배란 시기 (15~17일) - 노란색 계열
       Colors.yellow[400]!,
       Colors.yellow[500]!,
       Colors.yellow[600]!,
       
-      // 황체기 (18~28일) - 분홍색 계열
+      // 생리 전 시기 (18~28일) - 분홍색 계열
       Colors.pink[300]!,
       Colors.pink[400]!,
       Colors.pink[500]!,
@@ -685,10 +629,10 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
   List<double> _getPhaseStops() {
     return [
       0.0,    // 시작
-      0.16,   // 월경기 끝 (5/31)
-      0.45,   // 난포기 끝 (14/31)
-      0.55,   // 배란기 끝 (17/31)
-      0.90,   // 황체기 끝 (28/31)
+      0.16,   // 생리 중 끝 (5/31)
+      0.45,   // 생리 후 컨디션이 좋아지는 시기 끝 (14/31)
+      0.55,   // 배란 시기 끝 (17/31)
+      0.90,   // 생리 전 시기 끝 (28/31)
       1.0,    // 끝
     ];
   }
@@ -728,7 +672,7 @@ class MenstrualCyclePainter extends CustomPainter {
 
     // 각 사분면별 색상과 일수 정의 (순서대로)
     final phases = [
-      // 1사분면 (0도~90도) - 난포기 (6~14일) - 연핑크색
+      // 1사분면 (0도~90도) - 생리 후 컨디션이 좋아지는 시기 (6~14일) - 연핑크색
       PhaseInfo(
         startAngle: -90.0, // 0도 위치를 오른쪽으로 설정
         endAngle: 0.0,
@@ -736,7 +680,7 @@ class MenstrualCyclePainter extends CustomPainter {
         startDay: 6,
         endDay: 14,
       ),
-      // 4사분면 (270도~360도) - 배란기 (15~17일) - 연핑크색
+      // 4사분면 (270도~360도) - 배란 시기 (15~17일) - 연핑크색
       PhaseInfo(
         startAngle: 0.0,
         endAngle: 90.0,
@@ -744,7 +688,7 @@ class MenstrualCyclePainter extends CustomPainter {
         startDay: 15,
         endDay: 17,
       ),
-      // 3사분면 (180도~270도) - 황체기 (18~28일) - 연핑크색
+      // 3사분면 (180도~270도) - 생리 전 시기 (18~28일) - 연핑크색
       PhaseInfo(
         startAngle: 90.0,
         endAngle: 180.0,
@@ -752,7 +696,7 @@ class MenstrualCyclePainter extends CustomPainter {
         startDay: 18,
         endDay: 28,
       ),
-      // 2사분면 (90도~180도) - 월경기 (1~5일) - 연핑크색
+      // 2사분면 (90도~180도) - 생리 중 (1~5일) - 연핑크색
       PhaseInfo(
         startAngle: 180.0,
         endAngle: 270.0,
@@ -773,7 +717,7 @@ class MenstrualCyclePainter extends CustomPainter {
       ..color = phase.color
       ..style = PaintingStyle.fill;
 
-    // 월경기인 경우
+    // 생리 중인 경우
     if (phase.startDay == 1) {
       if (cycleDay >= 1 && cycleDay <= periodLength) {
         // 월경 기간 중: 점진적으로 채우기
