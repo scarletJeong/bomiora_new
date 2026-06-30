@@ -12,7 +12,6 @@ import '../../../../data/models/health/health_goal_record_model.dart';
 import '../../../../data/models/health/heart_rate/heart_rate_record_model.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/models/health/steps/steps_record_model.dart';
-import '../../../common/widgets/login_required_dialog.dart';
 import '../../blood_pressure/screens/blood_pressure_list_screen.dart';
 import '../../blood_sugar/screens/blood_sugar_list_screen.dart';
 import '../../health_common/health_responsive_scale.dart';
@@ -25,8 +24,8 @@ import '../../steps/screens/steps_list_screen.dart';
 class TodayHealthRecordSection extends StatelessWidget {
   const TodayHealthRecordSection({
     super.key,
-    required this.isLoggedIn,
     required this.selectedDate,
+    required this.onBeforeAction,
     required this.latestBloodSugarRecord,
     required this.latestBloodPressureRecord,
     required this.latestStepsRecord,
@@ -39,8 +38,8 @@ class TodayHealthRecordSection extends StatelessWidget {
     required this.heartRate,
   });
 
-  final bool isLoggedIn;
   final DateTime selectedDate;
+  final Future<bool> Function() onBeforeAction;
   final BloodSugarRecord? latestBloodSugarRecord;
   final BloodPressureRecord? latestBloodPressureRecord;
   final StepsRecord? latestStepsRecord;
@@ -136,14 +135,9 @@ class TodayHealthRecordSection extends StatelessWidget {
                             titleFontSize: 14,
                             valueFontSize: 12,
                             statusFontSize: 10,
-                            onMore: () {
-                              if (!isLoggedIn) {
-                                showLoginRequiredDialog(
-                                  context,
-                                  message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-                                );
-                                return;
-                              }
+                            onMore: () async {
+                              if (!await onBeforeAction()) return;
+                              if (!context.mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -173,14 +167,9 @@ class TodayHealthRecordSection extends StatelessWidget {
                             titleFontSize: 14,
                             valueFontSize: 12,
                             statusFontSize: 10,
-                            onMore: () {
-                              if (!isLoggedIn) {
-                                showLoginRequiredDialog(
-                                  context,
-                                  message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-                                );
-                                return;
-                              }
+                            onMore: () async {
+                              if (!await onBeforeAction()) return;
+                              if (!context.mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -200,8 +189,8 @@ class TodayHealthRecordSection extends StatelessWidget {
                       child: _buildStepsCard(
                         context,
                         dashboardLayout: true,
-                        isLoggedIn: isLoggedIn,
                         selectedDate: selectedDate,
+                        onBeforeAction: onBeforeAction,
                         latestStepsRecord: latestStepsRecord,
                         latestHealthGoal: latestHealthGoal,
                         steps: steps,
@@ -241,14 +230,9 @@ class TodayHealthRecordSection extends StatelessWidget {
                         titleFontSize: 14,
                         valueFontSize: 12,
                         dashboardStyle: true,
-                        onMore: () {
-                          if (!isLoggedIn) {
-                            showLoginRequiredDialog(
-                              context,
-                              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-                            );
-                            return;
-                          }
+                        onMore: () async {
+                          if (!await onBeforeAction()) return;
+                          if (!context.mounted) return;
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -286,14 +270,9 @@ class TodayHealthRecordSection extends StatelessWidget {
                         titleFontSize: 14,
                         valueFontSize: 12,
                         dashboardStyle: true,
-                        onMore: () {
-                          if (!isLoggedIn) {
-                            showLoginRequiredDialog(
-                              context,
-                              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-                            );
-                            return;
-                          }
+                        onMore: () async {
+                          if (!await onBeforeAction()) return;
+                          if (!context.mounted) return;
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -559,8 +538,8 @@ Widget _buildRecordCard(
 Widget _buildStepsCard(
   BuildContext context, {
   required bool dashboardLayout,
-  required bool isLoggedIn,
   required DateTime selectedDate,
+  required Future<bool> Function() onBeforeAction,
   required StepsRecord? latestStepsRecord,
   required HealthGoalRecordModel? latestHealthGoal,
   required int steps,
@@ -578,14 +557,9 @@ Widget _buildStepsCard(
 
   if (latestStepsRecord == null) {
     return GestureDetector(
-      onTap: () {
-        if (!isLoggedIn) {
-          showLoginRequiredDialog(
-            context,
-            message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-          );
-          return;
-        }
+      onTap: () async {
+        if (!await onBeforeAction()) return;
+        if (!context.mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -652,14 +626,9 @@ Widget _buildStepsCard(
       (targetSteps <= 0) ? 0.0 : (steps / targetSteps).clamp(0.0, 1.0);
 
   return GestureDetector(
-    onTap: () {
-      if (!isLoggedIn) {
-        showLoginRequiredDialog(
-          context,
-          message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-        );
-        return;
-      }
+    onTap: () async {
+      if (!await onBeforeAction()) return;
+      if (!context.mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(

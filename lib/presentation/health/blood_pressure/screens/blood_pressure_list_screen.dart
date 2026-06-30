@@ -681,38 +681,44 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
                                 ],
                               ),
                               SizedBox(height: healthDp(context, 24)),
-                              Padding(
-                                padding: EdgeInsets.only(
-                                    bottom: healthDp(context, 20)),
-                                child: BtnRecord(
-                                  text: '+기록하기',
-                                  labelTextScaler: TextScaler.noScaling,
-                                  textStyle: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: healthSp(context, 16),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  onPressed: () async {
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            BloodPressureInputScreen(
-                                          recordContextDate: selectedDate,
-                                        ),
-                                      ),
-                                    );
-
-                                    if (result == true) {
-                                      _loadData();
-                                    }
-                                  },
-                                  backgroundColor: const Color(0xFFFF5A8D),
-                                ),
-                              ),
                             ],
                           ),
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          healthDp(context, 27),
+                          healthDp(context, 8),
+                          healthDp(context, 27),
+                          healthDp(context, 16),
+                        ),
+                        child: BtnRecord(
+                          text: '+기록하기',
+                          labelTextScaler: TextScaler.noScaling,
+                          textStyle: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 16),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BloodPressureInputScreen(
+                                  recordContextDate: selectedDate,
+                                ),
+                              ),
+                            );
+
+                            if (result == true) {
+                              _loadData();
+                            }
+                          },
+                          backgroundColor: const Color(0xFFFF5A8D),
                         ),
                       ),
                     ),

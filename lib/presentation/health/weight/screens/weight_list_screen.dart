@@ -575,33 +575,6 @@ class _WeightListScreenState extends State<WeightListScreen> {
                               // 6. 눈바디 이미지
                               _buildBodyImages(),
                               SizedBox(height: healthDp(context, 20)),
-                              Padding(
-                                padding: EdgeInsets.only(bottom: healthDp(context, 20)),
-                                child: BtnRecord(
-                                  text: '+기록하기',
-                                  labelTextScaler: TextScaler.noScaling,
-                                  textStyle: TextStyle(
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontSize: healthSp(context, 16),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  onPressed: () async {
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => WeightInputScreen(
-                                          recordContextDate: selectedDate,
-                                        ),
-                                      ),
-                                    );
-
-                                    if (result == true && mounted) {
-                                      _loadData();
-                                    }
-                                  },
-                                  backgroundColor: const Color(0xFFFF5A8D),
-                                ),
-                              ),
                             ],
                         ),
                       ),
@@ -618,6 +591,41 @@ class _WeightListScreenState extends State<WeightListScreen> {
                         ),
                       ),
                   ],
+                ),
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 8),
+                    healthDp(context, 27),
+                    healthDp(context, 16),
+                  ),
+                  child: BtnRecord(
+                    text: '+기록하기',
+                    labelTextScaler: TextScaler.noScaling,
+                    textStyle: TextStyle(
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontSize: healthSp(context, 16),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WeightInputScreen(
+                            recordContextDate: selectedDate,
+                          ),
+                        ),
+                      );
+
+                      if (result == true && mounted) {
+                        _loadData();
+                      }
+                    },
+                    backgroundColor: const Color(0xFFFF5A8D),
+                  ),
                 ),
               ),
             ],

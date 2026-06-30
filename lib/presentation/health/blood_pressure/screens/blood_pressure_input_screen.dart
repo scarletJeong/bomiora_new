@@ -225,40 +225,57 @@ class _BloodPressureInputScreenState extends State<BloodPressureInputScreen> {
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
           ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 27),
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: healthDp(context, 5)),
-                  Text(
-                    '오늘의 혈압을 등록해주세요',
-                    textScaler: TextScaler.noScaling,
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                      height: 1,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 27),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: healthDp(context, 5)),
+                        Text(
+                          '오늘의 혈압을 등록해주세요',
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: healthSp(context, 14),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w300,
+                            height: 1,
+                          ),
+                        ),
+                        SizedBox(height: healthDp(context, 20)),
+                        _buildDateTimeCard(),
+                        SizedBox(height: healthDp(context, 20)),
+                        _buildSystolicInput(),
+                        SizedBox(height: healthDp(context, 20)),
+                        _buildDiastolicInput(),
+                        SizedBox(height: healthDp(context, 20)),
+                        _buildPulseInput(),
+                        SizedBox(height: healthDp(context, 20)),
+                      ],
                     ),
                   ),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildDateTimeCard(),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildSystolicInput(),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildDiastolicInput(),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildPulseInput(),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildActionButtons(),
-                ],
+                ),
               ),
-            ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    healthDp(context, 27),
+                    healthDp(context, 8),
+                    healthDp(context, 27),
+                    healthDp(context, 16),
+                  ),
+                  child: _buildActionButtons(),
+                ),
+              ),
+            ],
           ),
         ),
       ),

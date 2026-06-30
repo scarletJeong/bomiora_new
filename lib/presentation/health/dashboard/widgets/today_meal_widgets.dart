@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/image_url_helper.dart';
-import '../../../common/widgets/login_required_dialog.dart';
 import '../../food/screens/food_list_screen.dart';
 import '../../health_common/health_responsive_scale.dart';
 
@@ -18,7 +17,7 @@ class TodayMealSection extends StatelessWidget {
     required this.mealCalories,
     required this.mealImagePaths,
     required this.selectedDate,
-    required this.isLoggedIn,
+    required this.onBeforeAction,
     required this.onAfterDietReturn,
   });
 
@@ -31,20 +30,15 @@ class TodayMealSection extends StatelessWidget {
   final Map<String, int> mealCalories;
   final Map<String, List<String>> mealImagePaths;
   final DateTime selectedDate;
-  final bool isLoggedIn;
+  final Future<bool> Function() onBeforeAction;
   final VoidCallback onAfterDietReturn;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () async {
-        if (!isLoggedIn) {
-          await showLoginRequiredDialog(
-            context,
-            message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-          );
-          return;
-        }
+        if (!await onBeforeAction()) return;
+        if (!context.mounted) return;
         await Navigator.push(
           context,
           MaterialPageRoute(

@@ -550,14 +550,17 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
           ),
           child: isLoading
               ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 27),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+              : Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 27),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                         HealthDateSelector(
                           selectedDate: selectedDate,
                           onDateChanged: (newDate) {
@@ -616,7 +619,21 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                         ),
                         SizedBox(height: healthDp(context, 20)),
                         ...todayRecords.reversed.map(_recordTile),
-                        SizedBox(
+                      ],
+                    ),
+                  ),
+                ),
+                    ),
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          healthDp(context, 27),
+                          healthDp(context, 8),
+                          healthDp(context, 27),
+                          healthDp(context, 16),
+                        ),
+                        child: SizedBox(
                           width: double.infinity,
                           height: healthDp(context, 38),
                           child: ElevatedButton(
@@ -649,10 +666,9 @@ class _HeartRateListScreenState extends State<HeartRateListScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(height: healthDp(context, 20)),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
         ),
       ),
