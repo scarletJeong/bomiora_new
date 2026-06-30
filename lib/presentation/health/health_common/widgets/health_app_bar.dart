@@ -61,7 +61,7 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
       textScaler: TextScaler.noScaling,
       style: TextStyle(
         fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: Colors.black,
         fontSize: titleFontSize ?? healthSp(context, 16),
         height: 1,
