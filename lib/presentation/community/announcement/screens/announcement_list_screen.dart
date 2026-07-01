@@ -68,14 +68,6 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
     if (!mounted) return;
     if (result['success'] == true) {
       final loaded = (result['items'] as List<AnnouncementModel>?) ?? [];
-      for (var i = 0; i < loaded.length && i < 8; i++) {
-        final it = loaded[i];
-        final formatted = DateDisplayFormatter.formatYmdFromString(it.createdAtRaw);
-        debugPrint(
-          '[AnnouncementList] id=${it.id} createdAtRaw=${it.createdAtRaw} '
-          'createdAt=${it.createdAt} formatYmd=$formatted',
-        );
-      }
       setState(() {
         _items = loaded;
         _total = (result['total'] as num?)?.toInt() ?? 0;
@@ -294,26 +286,12 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
             Row(
               children: [
                 if (item.isNotice) ...[
-                  Container(
-                    margin: EdgeInsets.only(right: healthDp(context, 6)),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 6),
-                      vertical: healthDp(context, 2),
-                    ),
-                    decoration: ShapeDecoration(
+                  Padding(
+                    padding: EdgeInsets.only(right: healthDp(context, 6)),
+                    child: Icon(
+                      Icons.push_pin_rounded,
+                      size: healthDp(context, 14),
                       color: _kPink,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                      ),
-                    ),
-                    child: Text(
-                      '고정',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: healthSp(context, 10),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w700,
-                      ),
                     ),
                   ),
                 ],
@@ -324,7 +302,7 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
                     fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
-                    letterSpacing: healthSp(context, -1.65),
+                    letterSpacing: healthSp(context, -0.3),
                   ),
                 ),
                 SizedBox(width: healthDp(context, 10)),
