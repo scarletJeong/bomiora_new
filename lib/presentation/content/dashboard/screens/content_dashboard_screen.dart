@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/image_url_helper.dart';
+import '../../../../data/repositories/content/content_category_catalog.dart';
 import '../../../../data/services/content_service.dart';
 import '../../../common/widgets/app_bar_menu.dart';
 import '../../../common/widgets/appbar_menutap.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
-import '../../../../data/services/category_service.dart';
 import '../../../common/widgets/navi_bar.dart';
 import '../../../common/widgets/app_footer.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../user/myPage/widgets/my_page_common.dart';
 
 /// 건강 콘텐츠 대시보드 (Figma 기반 UI)
 class ContentDashboardScreen extends StatefulWidget {
@@ -23,22 +24,10 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late final Future<List<String>> _categoriesFuture = _loadCategories();
+  late final Future<List<String>> _categoriesFuture =
+      ContentCategoryCatalog.categories();
   late final Future<List<Map<String, dynamic>>> _featuredFuture =
       _loadFeaturedPosts();
-
-  Future<List<String>> _loadCategories() async {
-    final result = await CategoryService.getCategoriesByGroup('content');
-    final dynamic list = result['categories'];
-    if (result['success'] == true && list is List && list.isNotEmpty) {
-      final categories = list
-          .map((e) => e.toString().trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      if (categories.isNotEmpty) return categories;
-    }
-    return const [];
-  }
 
   Future<List<Map<String, dynamic>>> _loadFeaturedPosts() async {
     final result = await ContentService.getContentList(size: 5);
@@ -199,25 +188,12 @@ class _ContentDashboardScreenState extends State<ContentDashboardScreen> {
             Expanded(
               child: Row(
                 children: [
-                  Text(
-                    '|',
-                    style: TextStyle(
-                      color: _textDark,
-                      fontSize: healthSp(context, 16),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
+                  myPageLeadingBar(context),
                   SizedBox(width: healthDp(context, 10)),
                   Expanded(
                     child: Text(
                       category,
-                      style: TextStyle(
-                        color: _textDark,
-                        fontSize: healthSp(context, 16),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                      ),
+                      style: myPageLineTitleStyle(context),
                     ),
                   ),
                 ],

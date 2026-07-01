@@ -3,10 +3,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
+import '../../../../data/repositories/content/content_category_catalog.dart';
 import '../../../../data/services/content_service.dart';
-import '../../../../data/services/category_service.dart';
 import '../../../common/widgets/app_bar_menu.dart';
 import '../../../common/widgets/appbar_menutap.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/navi_bar.dart';
 import '../../../common/widgets/app_footer.dart';
@@ -31,27 +32,13 @@ class _ContentListScreenState extends State<ContentListScreen> {
   int _tabIndex = 0;
   bool _appliedRouteCategory = false;
   String? _requestedCategoryName;
-  late final Future<List<String>> _categoriesFuture = _loadCategories();
+  late final Future<List<String>> _categoriesFuture =
+      ContentCategoryCatalog.categories();
   final TextEditingController _searchController = TextEditingController();
   List<String> _categories = const [];
   List<Map<String, dynamic>> _posts = const [];
   int _totalCount = 0;
   bool _isLoading = true;
-
-  Future<List<String>> _loadCategories() async {
-    final result = await CategoryService.getCategoriesByGroup('content');
-    final dynamic list = result['categories'];
-    if (result['success'] == true && list is List && list.isNotEmpty) {
-      final categories = list
-          .map((e) => e.toString().trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      if (categories.isNotEmpty) {
-        return categories;
-      }
-    }
-    return const [];
-  }
 
   @override
   void initState() {
@@ -188,7 +175,9 @@ class _ContentListScreenState extends State<ContentListScreen> {
                                 ),
                               )
                             else if (_posts.isEmpty)
-                              _buildEmptySearchResult(context)
+                              _hasActiveSearch
+                                  ? _buildEmptySearchResult(context)
+                                  : _buildEmptyPostsState(context)
                             else
                               ..._posts.map((e) => Padding(
                                     padding: EdgeInsets.only(
@@ -297,6 +286,18 @@ class _ContentListScreenState extends State<ContentListScreen> {
     );
   }
 
+  bool get _hasActiveSearch => _searchController.text.trim().isNotEmpty;
+
+  Widget _buildEmptyPostsState(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
+      child: const CenteredEmptyState(
+        icon: Icons.article_outlined,
+        message: '등록된 게시글이 없습니다.',
+      ),
+    );
+  }
+
   Widget _buildEmptySearchResult(BuildContext context) {
     final iconSz = healthDp(context, 80);
     return Padding(
@@ -316,6 +317,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
           Text(
             '검색 결과가 없습니다.',
             textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
             style: TextStyle(
               color: const Color(0xFF1A1A1E),
               fontSize: healthSp(context, 16),
@@ -327,6 +329,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
           Text(
             '검색어를 다시 입력해주세요.',
             textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
             style: TextStyle(
               color: const Color(0xFF898686),
               fontSize: healthSp(context, 14),
