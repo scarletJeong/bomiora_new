@@ -15,6 +15,7 @@ class CenteredEmptyState extends StatelessWidget {
     this.iconColor = kEmptyStateIconColor,
     this.messageStyle,
     this.gap,
+    this.trailingGap,
     this.trailing,
     this.fillAvailable = false,
   });
@@ -25,6 +26,7 @@ class CenteredEmptyState extends StatelessWidget {
   final Color iconColor;
   final TextStyle? messageStyle;
   final double? gap;
+  final double? trailingGap;
   final List<Widget>? trailing;
   final bool fillAvailable;
 
@@ -60,11 +62,12 @@ class CenteredEmptyState extends StatelessWidget {
           child: Text(
             message,
             textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
             style: messageStyle ?? defaultMessageStyle(context),
           ),
         ),
         if (trailing != null) ...[
-          SizedBox(height: spacing),
+          SizedBox(height: trailingGap ?? spacing),
           ...trailing!,
         ],
       ],
@@ -79,10 +82,18 @@ class CenteredEmptyState extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final maxHeight = constraints.maxHeight;
+        final content = Center(child: _buildContent(context));
+
+        // ScrollView 자식 등 높이가 무한인 경우 minHeight를 쓰면 레이아웃 오류 발생
+        if (!maxHeight.isFinite || maxHeight <= 0) {
+          return content;
+        }
+
         return SingleChildScrollView(
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(child: _buildContent(context)),
+            constraints: BoxConstraints(minHeight: maxHeight),
+            child: content,
           ),
         );
       },
