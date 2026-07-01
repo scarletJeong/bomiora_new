@@ -5,6 +5,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -36,6 +37,7 @@ class _CartScreenState extends State<CartScreen> {
   int totalPrice = 0; // 총구매금액
   Set<int> selectedItems = {}; // 선택된 아이템의 ctId 집합
   bool selectAll = false; // 현재 탭의 전체 선택 상태
+  final ScrollController _scrollController = ScrollController();
 
   List<CartItem> get _displayedCartItems {
     // 탭 제거: 처방상품 장바구니만 노출
@@ -76,6 +78,12 @@ class _CartScreenState extends State<CartScreen> {
   void initState() {
     super.initState();
     _loadCart();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<bool> _ensureLoggedIn({
@@ -359,14 +367,25 @@ class _CartScreenState extends State<CartScreen> {
                     : Column(
                     children: [
                       Expanded(
-                        child: RefreshIndicator(
-                          onRefresh: () => _loadCart(showCachedData: false),
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.only(
-                              bottom: healthDp(context, 16),
-                            ),
-                            child: Column(
+                        child: ScrollRevealTopOverlay(
+                          controller: _scrollController,
+                          revealAfterOffset: healthDp(context, 44),
+                          barPadding: EdgeInsets.fromLTRB(
+                            healthDp(context, 27),
+                            healthDp(context, 8),
+                            healthDp(context, 27),
+                            0,
+                          ),
+                          topBar: _buildSelectAllRow(),
+                          scrollChild: RefreshIndicator(
+                            onRefresh: () => _loadCart(showCachedData: false),
+                            child: SingleChildScrollView(
+                              controller: _scrollController,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.only(
+                                bottom: healthDp(context, 16),
+                              ),
+                              child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -474,6 +493,7 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ),
                         ),
+                      ),
                       ),
                       _buildFigmaBottomSummary(),
                     ],
