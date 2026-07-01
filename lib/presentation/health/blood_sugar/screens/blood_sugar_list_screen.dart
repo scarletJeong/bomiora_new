@@ -36,7 +36,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
   Map<String, BloodSugarRecord> bloodSugarRecordsMap = {}; // 날짜별 요약 기록
   Map<String, List<BloodSugarRecord>> dailyRecordsCache = {}; // 날짜별 상세 기록 캐시
   bool isLoading = true;
-  bool hasShownNoDataDialog = false;
   late DateTime selectedDate;
 
   // 차트 관련
@@ -486,15 +485,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
 
         // 메모리에서 날짜별로 캐싱 (API 호출 없이 필터링)
         _cacheRecordsFromMemory();
-
-        // 데이터가 없을 때만 다이얼로그 표시 (한 번만)
-        if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
-          hasShownNoDataDialog = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _showNoDataDialog();
-          });
-        }
 
         setState(() {
           _syncTimeOffsetForSelectedDayRecords();
@@ -1264,48 +1254,6 @@ class _BloodSugarListScreenState extends State<BloodSugarListScreen> {
     }
   }
 
-  // 데이터 없을 때 다이얼로그 표시
-  void _showNoDataDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('혈당 기록 없음'),
-        content: const Text(
-          '아직 혈당 기록이 없습니다.\n지금 혈당을 입력해주세요!',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('나중에'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => BloodSugarInputScreen(
-                    recordContextDate: selectedDate,
-                  ),
-                ),
-              );
-
-              // 기록 후 항상 데이터 새로고침
-              if ((result == true || result == null) && mounted) {
-                await _loadData();
-              }
-            },
-            child: const Text('혈당 입력하기'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _SugarLegend extends StatelessWidget {

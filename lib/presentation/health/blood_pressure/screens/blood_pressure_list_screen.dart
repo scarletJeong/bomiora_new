@@ -42,7 +42,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
   Map<String, BloodPressureRecord> bloodPressureRecordsMap = {}; // 날짜별 요약 기록
   Map<String, List<BloodPressureRecord>> dailyRecordsCache = {}; // 날짜별 상세 기록 캐시
   bool isLoading = true;
-  bool hasShownNoDataDialog = false;
   late DateTime selectedDate;
 
   // 차트 관련
@@ -516,15 +515,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
         // 메모리에서 날짜별로 캐싱 (API 호출 없이 필터링)
         _cacheRecordsFromMemory();
         _ensureHourlyWindowShowsData();
-
-        // 데이터가 없을 때만 다이얼로그 표시 (한 번만)
-        if (allRecords.isEmpty && mounted && !hasShownNoDataDialog) {
-          hasShownNoDataDialog = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _showNoDataDialog();
-          });
-        }
 
         setState(() {
           isLoading = false;
@@ -1587,47 +1577,6 @@ class _BloodPressureListScreenState extends State<BloodPressureListScreen> {
     }
   }
 
-  // 데이터 없을 때 다이얼로그 표시
-  void _showNoDataDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('혈압 기록 없음'),
-        content: const Text(
-          '아직 혈압 기록이 없습니다.\n지금 혈압을 입력해주세요!',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('나중에'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => BloodPressureInputScreen(
-                    recordContextDate: selectedDate,
-                  ),
-                ),
-              );
-
-              if (result == true && mounted) {
-                await _loadData();
-              }
-            },
-            child: const Text('혈압 입력하기'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _PressureLegend extends StatelessWidget {

@@ -577,9 +577,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ),
                 child: const Text('목표설정 >',
                     style: TextStyle(
-                        fontSize: 8,
+                        fontSize: 10,
                         fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500)),
+                        fontWeight: FontWeight.w300)),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -602,9 +602,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                 ),
                 child: const Text('연동하기 >',
                     style: TextStyle(
-                        fontSize: 8,
+                        fontSize: 10,
                         fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500)),
+                        fontWeight: FontWeight.w300)),
               ),
             ],
           ),
@@ -834,7 +834,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
         }
       },
       child: Container(
-        height: healthDp(context, 28),
+        height: healthDp(context, 30),
         padding: EdgeInsets.symmetric(horizontal: healthDp(context, 8)),
         decoration: BoxDecoration(
           color: Colors.white,
