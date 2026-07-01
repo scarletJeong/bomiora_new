@@ -80,6 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
             color: Color(0xFF1A1A1A),
           ),
           child: MobileAppLayoutWrapper(
+            showSideNav: false,
             backgroundColor: Colors.white,
             child: SafeArea(
               child: SingleChildScrollView(

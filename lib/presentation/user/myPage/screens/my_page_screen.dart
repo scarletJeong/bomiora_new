@@ -90,7 +90,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(
         context,
-        '/login',
+        '/home',
         (route) => false,
       );
     } catch (_) {}
@@ -398,17 +398,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         fontSize: healthSp(context, 16),
                         fontWeight: FontWeight.w500,
                         height: 1,
-                      ),
-                    ),
-                    Text(
-                      '로그인 후 마이페이지 기능을 이용해보세요',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 9),
-                        fontWeight: FontWeight.w300,
-                        height: 1.2,
                       ),
                     ),
                   ],
