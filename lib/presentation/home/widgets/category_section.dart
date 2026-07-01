@@ -412,12 +412,9 @@ class _CategoryHomeLayout {
     final titleLineGap = sc(1.15);
     final accentH = titleSubFs * 1.2 + titleLineGap + titleMainFs * 1.2;
 
-    final cardSpacing = sc(12);
-    final horizontalPad = sc(24);
-    final viewportW = math.max(w - horizontalPad * 2, sc(200));
-    final cardW = viewportW / 2.1;
-    final baseCardW = sc(154.62);
-    final ratio = cardW / baseCardW;
+    final cardW = sc(154.62);
+    final imageW = sc(150);
+    final imageH = sc(170);
 
     return _CategoryHomeLayout(
       headerTitleBarW: sc(0.58),
@@ -429,23 +426,23 @@ class _CategoryHomeLayout {
       headerToBodyGap: sc(20),
       tabsToCarouselGap: sc(12),
       tabFontSize: sc(12),
-      carouselHeight: sc(277.5) * ratio,
-      cardSpacing: cardSpacing,
+      carouselHeight: sc(277.5),
+      cardSpacing: sc(12),
       cardW: cardW,
-      imageW: sc(150) * ratio,
-      imageH: sc(170) * ratio,
-      radius: sc(11.54) * ratio,
-      gapImageText: sc(12) * ratio,
-      titleDescGap: sc(4) * ratio,
-      titleFs: sc(14) * ratio,
-      descFs: sc(10) * ratio,
-      priceFs: sc(14) * ratio,
+      imageW: imageW,
+      imageH: imageH,
+      radius: sc(11.54),
+      gapImageText: sc(12),
+      titleDescGap: sc(4),
+      titleFs: sc(14),
+      descFs: sc(10),
+      priceFs: sc(14),
       descMaxW: cardW,
-      titleMaxW: sc(150) * ratio,
-      moreIconBox: sc(46.02) * ratio,
-      moreIconPadding: sc(5.77) * ratio,
-      moreTextGap: sc(6) * ratio,
-      moreFontSize: sc(12) * ratio,
+      titleMaxW: sc(150),
+      moreIconBox: sc(46.02),
+      moreIconPadding: sc(5.77),
+      moreTextGap: sc(6),
+      moreFontSize: sc(12),
     );
   }
 }
