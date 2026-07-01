@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
-// import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
 import 'presentation/auth/screens/login_screen.dart';
 import 'presentation/auth/screens/find_account_main_screen.dart';
@@ -14,9 +15,8 @@ import 'presentation/auth/screens/social_signup_screen.dart';
 import 'data/services/auth_service.dart';
 import 'data/services/kakao_auth_service.dart';
 import 'data/services/naver_auth_service.dart';
-// 조건부 임포트: 웹과 모바일에서 다른 FCM 서비스 사용
-// import 'data/services/fcm_service_stub.dart'
-//   if (dart.library.io) 'data/services/fcm_service.dart';
+import 'data/services/fcm_service_stub.dart'
+    if (dart.library.io) 'data/services/fcm_service.dart';
 import 'presentation/common/widgets/mobile_layout_wrapper.dart';
 import 'presentation/shopping/screens/product_detail_screen.dart';
 import 'presentation/shopping/screens/product_detail_general_screen.dart';
@@ -30,6 +30,7 @@ import 'presentation/shopping/screens/temp_cart_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
 import 'presentation/customer_service/screens/contact_list_screen.dart';
+import 'presentation/customer_service/screens/contact_detail_screen.dart';
 import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
@@ -57,20 +58,14 @@ void main() async {
   // Flutter 바인딩 초기화
   WidgetsFlutterBinding.ensureInitialized();
 
-  // TODO: 웹 개발 완료 후 Firebase 주석 해제 필요
-  // 웹이 아닌 환경에서만 Firebase 초기화
-  // if (!kIsWeb) {
-  //   try {
-  //     // Firebase 초기화
-  //     await Firebase.initializeApp();
-  //
-  //     // FCM 서비스 초기화
-  //     await FCMService().initialize();
-  //   } catch (e) {
-  //     // 에러가 발생해도 앱은 실행되도록 함
-  //   }
-  // } else {
-  // }
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp();
+      await FCMService().initialize();
+    } catch (e) {
+      debugPrint('[FCM] Firebase 초기화 실패(google-services.json 확인): $e');
+    }
+  }
 
   // 카카오·네이버 SDK 초기화
   await KakaoAuthService.initialize();
@@ -100,6 +95,11 @@ class _BomioraAppState extends State<BomioraApp> {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
       title: '보미오라1',
+      builder: (context, child) {
+        return LayoutScaffoldMessenger(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'Gmarket Sans TTF',
@@ -161,6 +161,12 @@ class _BomioraAppState extends State<BomioraApp> {
         '/my_reviews': (context) => const MyReviewsScreen(),
         '/profile': (context) => const HealthProfileListScreen(),
         '/qna': (context) => const ContactListScreen(),
+        '/qna-detail': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          final wrId = int.tryParse(args?['wrId']?.toString() ?? '') ?? 0;
+          return ContactDetailScreen(wrId: wrId);
+        },
         '/cancel-member': (context) => const CancelMemberScreen(),
         '/customer-service': (context) => const ContactListScreen(),
         '/kcp-pay': (context) {
