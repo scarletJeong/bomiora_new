@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../health/health_common/health_responsive_scale.dart';
+
 Future<bool> showLoginRequiredDialog(
   BuildContext context, {
   String message = '로그인 후 이용할 수 있습니다.',
@@ -7,14 +9,22 @@ Future<bool> showLoginRequiredDialog(
   final result = await showDialog<bool>(
     context: context,
     builder: (dialogContext) {
+      final dialogW = healthDp(dialogContext, 272);
+      final radius = healthDp(dialogContext, 20);
+      final padH = healthDp(dialogContext, 20);
+      final titleFs = healthSp(dialogContext, 20);
+      final bodyFs = healthSp(dialogContext, 14);
+      final buttonFs = healthSp(dialogContext, 16);
+      final buttonH = healthDp(dialogContext, 50);
+
       return Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
-          width: 272,
-          decoration: const BoxDecoration(
+          width: dialogW,
+          decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.all(Radius.circular(20)),
+            borderRadius: BorderRadius.all(Radius.circular(radius)),
           ),
           clipBehavior: Clip.antiAlias,
           child: DefaultTextStyle.merge(
@@ -22,32 +32,34 @@ Future<bool> showLoginRequiredDialog(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(padH, padH, padH, healthDp(dialogContext, 8)),
                   child: Text(
                     '로그인 안내',
+                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
-                      color: Color(0xFF1A1A1A),
-                      fontSize: 20,
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: titleFs,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: EdgeInsets.fromLTRB(padH, 0, padH, padH),
                   child: Text(
                     message,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF898686),
-                      fontSize: 14,
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: const Color(0xFF898686),
+                      fontSize: bodyFs,
                       fontWeight: FontWeight.w500,
                       height: 1.57,
                     ),
                   ),
                 ),
                 SizedBox(
-                  height: 50,
+                  height: buttonH,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -56,12 +68,13 @@ Future<bool> showLoginRequiredDialog(
                           color: const Color(0xFFF7F7F7),
                           child: InkWell(
                             onTap: () => Navigator.of(dialogContext).pop(false),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 '취소',
+                                textScaler: TextScaler.noScaling,
                                 style: TextStyle(
-                                  color: Color(0xFF898686),
-                                  fontSize: 16,
+                                  color: const Color(0xFF898686),
+                                  fontSize: buttonFs,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -74,12 +87,13 @@ Future<bool> showLoginRequiredDialog(
                           color: const Color(0xFFFF5A8D),
                           child: InkWell(
                             onTap: () => Navigator.of(dialogContext).pop(true),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 '확인',
+                                textScaler: TextScaler.noScaling,
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: buttonFs,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
