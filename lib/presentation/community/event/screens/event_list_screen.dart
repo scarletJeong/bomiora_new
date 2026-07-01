@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
@@ -22,9 +20,7 @@ class _EventListScreenState extends State<EventListScreen> {
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 
-  int _selectedTab = 0; // 0: 전체, 1: 진행중, 2: 종료
-  final TextEditingController _searchController = TextEditingController();
-  String _query = '';
+  int _selectedTab = 0; // 0: 진행중, 1: 종료
   bool _isLoading = true;
   String? _errorMessage;
   List<EventModel> _activeEvents = [];
@@ -34,12 +30,6 @@ class _EventListScreenState extends State<EventListScreen> {
   void initState() {
     super.initState();
     _loadEvents();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadEvents() async {
@@ -58,17 +48,7 @@ class _EventListScreenState extends State<EventListScreen> {
         _endedEvents = result[1];
         _isLoading = false;
       });
-      final merged = _mergeUniqueEvents();
-      final ongoing = merged.where((e) => !_isEventEnded(e)).length;
-      final closed = merged.where((e) => _isEventEnded(e)).length;
-      debugPrint(
-        '[EventListScreen] state: activeAPI=${_activeEvents.length} endedAPI=${_endedEvents.length} '
-        'merged=${merged.length} ongoing(byDate)=$ongoing closed(byDate)=$closed '
-        'tab=$_selectedTab visible=${_filteredEvents.length}',
-      );
-    } catch (e, st) {
-      debugPrint('[EventListScreen] load failed: $e');
-      debugPrint('$st');
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _errorMessage = '이벤트를 불러오는데 실패했습니다: $e';
@@ -103,20 +83,11 @@ class _EventListScreenState extends State<EventListScreen> {
   }
 
   List<EventModel> get _filteredEvents {
-    var base = _mergeUniqueEvents();
-    switch (_selectedTab) {
-      case 1:
-        base = base.where((e) => !_isEventEnded(e)).toList();
-        break;
-      case 2:
-        base = base.where((e) => _isEventEnded(e)).toList();
-        break;
-      default:
-        break;
+    final base = _mergeUniqueEvents();
+    if (_selectedTab == 0) {
+      return base.where((e) => !_isEventEnded(e)).toList();
     }
-    if (_query.trim().isEmpty) return base;
-    final q = _query.trim().toLowerCase();
-    return base.where((e) => e.wrSubject.toLowerCase().contains(q)).toList();
+    return base.where((e) => _isEventEnded(e)).toList();
   }
 
   @override
@@ -137,8 +108,6 @@ class _EventListScreenState extends State<EventListScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildFilterTabs(context),
-              SizedBox(height: healthDp(context, 10)),
-              _buildSearchBox(context),
               SizedBox(height: healthDp(context, 10)),
               _buildCountRow(context, events.length),
               SizedBox(height: healthDp(context, 10)),
@@ -186,78 +155,12 @@ class _EventListScreenState extends State<EventListScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        tab('전체', 0),
+        tab('진행중인 이벤트', 0),
         SizedBox(width: healthDp(context, 22)),
         divider(),
         SizedBox(width: healthDp(context, 22)),
-        tab('진행중인 이벤트', 1),
-        SizedBox(width: healthDp(context, 22)),
-        divider(),
-        SizedBox(width: healthDp(context, 22)),
-        tab('종료된 이벤트', 2),
+        tab('종료된 이벤트', 1),
       ],
-    );
-  }
-
-  Widget _buildSearchBox(BuildContext context) {
-    return Container(
-      height: healthDp(context, 36),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 1),
-            color: _kBorder,
-          ),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 10),
-          vertical: healthDp(context, 10),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _applySearch(),
-                style: TextStyle(
-                  fontFamily: _font,
-                  fontSize: healthSp(context, 14),
-                  color: const Color(0xFF1A1A1A),
-                  height: 1,
-                ),
-                decoration: InputDecoration(
-                  hintText: '검색',
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w300,
-                    height: 1,
-                  ),
-                ),
-              ),
-            ),
-            GestureDetector(
-              onTap: _applySearch,
-              behavior: HitTestBehavior.opaque,
-              child: SvgPicture.asset(
-                AppAssets.searchIcon,
-                width: healthDp(context, 18),
-                height: healthDp(context, 18),
-                fit: BoxFit.contain,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -518,11 +421,5 @@ class _EventListScreenState extends State<EventListScreen> {
       return '~ ${DateDisplayFormatter.formatYmd(end)}';
     }
     return DateDisplayFormatter.formatYmdFromString(event.wrDatetime);
-  }
-
-  void _applySearch() {
-    setState(() {
-      _query = _searchController.text.trim();
-    });
   }
 }
