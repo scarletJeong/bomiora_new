@@ -6,6 +6,9 @@ import '../repositories/auth/auth_repository.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
+import 'fcm_service_stub.dart'
+    if (dart.library.io) 'fcm_service.dart';
+import 'recent_view_service.dart';
 
 class AuthService {
   static const String _userKey = 'user_data';
@@ -28,6 +31,12 @@ class AuthService {
       await prefs.remove(_tokenKey); // 기존 토큰이 있다면 삭제
     }
     await prefs.setBool(_isLoggedInKey, true);
+
+    // 로그인 전 로컬에 쌓인 최근 본 상품을 계정에 반영
+    await RecentViewService.syncLocalToAccount(user.id);
+
+    // 로그인 후 FCM 토큰 서버 등록 (모바일만)
+    await FCMService().registerTokenWithServer();
   }
 
   // 로그인 상태 확인
