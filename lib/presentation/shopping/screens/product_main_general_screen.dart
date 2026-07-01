@@ -14,6 +14,8 @@ import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../widgets/product_main/product_main_category_tap.dart';
+import '../widgets/recommend_product.dart';
 import '../utils/get_product.dart';
 
 /// 헬스케어 스토어 메인 중간 이미지 (카테고리 칩 아래)
@@ -260,22 +262,31 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
               _contentHorizontalPad(context),
               healthDp(context, 8),
             ),
-            child: _buildSectionTitle(context, "MD's Pick"),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: _MdPickSection(
-            products: _mdPickProducts,
-            onProductTap: _openProductDetail,
+            child: RecommendProductSection(
+              title: "MD's Pick",
+              showLeadingBar: true,
+              titleStyle: TextStyle(
+                color: Colors.black,
+                fontSize: healthSp(context, 16),
+                fontFamily: _font,
+                fontWeight: FontWeight.w700,
+                letterSpacing: healthSp(context, -1.44),
+              ),
+              excludedProductNames: const [],
+              products: _mdPickProducts,
+              onProductTap: _openProductDetail,
+              prescriptionGroupOrdering: false,
+              maxItems: _kMdPickLimit,
+              itemsPerViewport: 2.1,
+              horizontalGap: healthDp(context, 5),
+              hideWhenEmpty: true,
+            ),
           ),
         ),
         SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 8))),
       ],
-      SliverToBoxAdapter(
-        child: _HealthcareCategoryHeader(
-          categories: _categories,
-          onChipTap: _openCategoryList,
-        ),
+      const SliverToBoxAdapter(
+        child: ProductMainCategoryTap(productKind: 'general'),
       ),
       SliverToBoxAdapter(
         child: Padding(
@@ -553,175 +564,6 @@ class _PinkMoreButton extends StatelessWidget {
   }
 }
 
-/// MD's Pick 아래: 상단 여백 → 칩 행 너비에 맞춘 구분선 → 칩 → 하단 여백
-class _HealthcareCategoryHeader extends StatelessWidget {
-  final List<ProductCategoryItem> categories;
-  final void Function(ProductCategoryItem) onChipTap;
-
-  const _HealthcareCategoryHeader({
-    required this.categories,
-    required this.onChipTap,
-  });
-
-  static double chipDiameter(BuildContext context) =>
-      healthDp(context, 76).clamp(64.0, 88.0);
-
-  static double chipTrackWidth(BuildContext context, int categoryCount) {
-    final d = chipDiameter(context);
-    final gap = healthDp(context, 12);
-    final n = categoryCount;
-    if (n <= 0) return d;
-    return n * d + (n - 1) * gap;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final trackW = chipTrackWidth(context, categories.length);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(height: healthDp(context, 20)),
-        Center(
-          child: SizedBox(
-            width: trackW,
-            child: Divider(
-              height: healthDp(context, 1),
-              thickness: healthDp(context, 1),
-              color: const Color(0xFFE8E8E8),
-            ),
-          ),
-        ),
-        SizedBox(height: healthDp(context, 20)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: _contentHorizontalPad(context)),
-          child: _CategoryChipsRow(
-            categories: categories,
-            onChipTap: onChipTap,
-          ),
-        ),
-        SizedBox(height: healthDp(context, 20)),
-      ],
-    );
-  }
-}
-
-class _CategoryChipsRow extends StatelessWidget {
-  final List<ProductCategoryItem> categories;
-  final void Function(ProductCategoryItem) onChipTap;
-
-  const _CategoryChipsRow({
-    required this.categories,
-    required this.onChipTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final diameter = _HealthcareCategoryHeader.chipDiameter(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < categories.length; i++) ...[
-                  if (i > 0) SizedBox(width: healthDp(context, 12)),
-                  _CategoryIconChip(
-                    diameter: diameter,
-                    iconAsset:
-                        productGeneralCategoryIconAsset(categories[i].categoryId),
-                    label: productGeneralCategoryChipLabel(categories[i].label),
-                    onTap: () => onChipTap(categories[i]),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _CategoryIconChip extends StatelessWidget {
-  final double diameter;
-  final String iconAsset;
-  final String label;
-  final VoidCallback onTap;
-
-  const _CategoryIconChip({
-    required this.diameter,
-    required this.iconAsset,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final iconSize = (diameter * 0.38).clamp(22.0, 32.0);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: diameter,
-          height: diameter,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: healthDp(context, 8),
-                offset: Offset(0, healthDp(context, 2)),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              healthDp(context, 6),
-              healthDp(context, 8),
-              healthDp(context, 6),
-              healthDp(context, 6),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Center(
-                    child: SvgPicture.asset(
-                      iconAsset,
-                      width: iconSize,
-                      height: iconSize,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: const Color(0xFF676767),
-                    fontSize: healthSp(context, 8).clamp(8.0, 11.0),
-                    fontWeight: FontWeight.w500,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// 이주의 DEAL — 히어로와 MD's Pick 사이 단일 프로모 카드
 class _WeeklyDealCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
@@ -971,50 +813,6 @@ class _WeeklyDealRibbon extends StatelessWidget {
           height: 1.1,
           letterSpacing: healthSp(context, -0.36),
         ),
-      ),
-    );
-  }
-}
-
-/// MD's Pick — 가로 스크롤 (약 2.1개 노출), [ProductCatalogCard] 사용
-class _MdPickSection extends StatelessWidget {
-  final List<Product> products;
-  final ValueChanged<Product> onProductTap;
-
-  const _MdPickSection({
-    required this.products,
-    required this.onProductTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final items = products.take(_kMdPickLimit).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    final hPad = _contentHorizontalPad(context);
-    final gap = healthDp(context, 5);
-    final viewportW = MediaQuery.sizeOf(context).width - hPad * 2;
-    final cardW = viewportW / 2.1;
-    final listH = ProductCatalogCard.preferredMainAxisExtent(context);
-
-    return SizedBox(
-      height: listH,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: hPad),
-        physics: const BouncingScrollPhysics(),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => SizedBox(width: gap),
-        itemBuilder: (context, index) {
-          final product = items[index];
-          return SizedBox(
-            width: cardW,
-            child: ProductCatalogCard(
-              product: product,
-              onTap: () => onProductTap(product),
-            ),
-          );
-        },
       ),
     );
   }
