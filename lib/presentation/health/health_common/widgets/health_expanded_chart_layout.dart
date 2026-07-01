@@ -9,12 +9,12 @@ class HealthExpandedChartMetrics {
 
   static const double designWidth = 650;
 
-  /// 기간 탭 라벨 — 650 기준 28.18 (375 기준 약 16과 동일 비율)
-  static const double periodTabFontSize = 28.18;
+  /// 기간 탭 라벨 — 650 기준 20
+  static const double periodTabFontSize = 20;
 
   /// 축소 버튼 — 650 기준 (탭보다 작게)
-  static const double shrinkButtonFontSize = 20;
-  static const double shrinkButtonHPadding = 12;
+  static const double shrinkButtonFontSize = 16;
+  static const double shrinkButtonHPadding = 10;
   static const double shrinkButtonVPadding = 5;
   static const double shrinkButtonRadius = 10;
   static const double shrinkButtonBarHeight = 26;
