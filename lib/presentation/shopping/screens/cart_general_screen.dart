@@ -333,59 +333,54 @@ class _CartScreenState extends State<CartScreen> {
                         icon: Icons.shopping_cart_outlined,
                         message: '장바구니가 비어있습니다.',
                       )
-                    : RefreshIndicator(
-                        onRefresh: () => _loadCart(showCachedData: false),
-                        child: SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // 컨텐츠에 padding 적용
-                              Padding(
-                                padding: EdgeInsets.all(healthDp(context, 16)),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    // 전체 선택 및 삭제 버튼 영역 (스크롤되도록 본문 안으로 이동)
-                                    _buildSelectAllRow(),
-                                    SizedBox(height: healthDp(context, 12)),
-
-                                    // 상품 목록
-                                    ..._displayedCartItems.expand(
-                                      (item) => [
-                                        _buildCartItemCard(item),
-                                        SizedBox(height: healthDp(context, 12)),
-                                      ],
-                                    ),
-                                    if (_displayedCartItems.isEmpty)
-                                      Padding(
-                                        padding: EdgeInsets.symmetric(
-                                            vertical: healthDp(context, 40)),
-                                        child: Text(
-                                          '선택한 탭에 상품이 없습니다.',
-                                          style: TextStyle(
-                                            fontSize: healthSp(context, 14),
-                                            color: Colors.grey[600],
+                    : Column(
+                    children: [
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () => _loadCart(showCachedData: false),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.all(healthDp(context, 16)),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      _buildSelectAllRow(),
+                                      SizedBox(height: healthDp(context, 12)),
+                                      ..._displayedCartItems.expand(
+                                        (item) => [
+                                          _buildCartItemCard(item),
+                                          SizedBox(height: healthDp(context, 12)),
+                                        ],
+                                      ),
+                                      if (_displayedCartItems.isEmpty)
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: healthDp(context, 40)),
+                                          child: Text(
+                                            '선택한 탭에 상품이 없습니다.',
+                                            style: TextStyle(
+                                              fontSize: healthSp(context, 14),
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
                                         ),
-                                      ),
-
-                                    SizedBox(height: healthDp(context, 18)),
-
-                                    // 결제 요약(하단 고정 제거 → 본문으로 이동)
-                                    _buildFigmaBottomSummary(
-                                      inPage: true,
-                                    ),
-                                    SizedBox(height: healthDp(context, 18)),
-
-                                  ],
+                                      SizedBox(height: healthDp(context, 18)),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
+                      _buildFigmaBottomSummary(),
+                    ],
+                  ),
       ),
     );
   }
