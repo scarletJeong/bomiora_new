@@ -5,7 +5,6 @@ import '../widgets/product_section.dart';
 import '../widgets/wellness_section.dart';
 import '../widgets/category_section.dart';
 import '../widgets/guidebook_section.dart';
-import '../widgets/home_quick_tab_section.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../user/myPage/screens/my_page_screen.dart';
@@ -74,7 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirmed == true) {
       await AuthService.logout();
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (route) => false,
+        );
       }
     }
   }
@@ -136,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // 메인 배너 슬라이더
                 const MainBannerSlider(),
-                const HomeQuickTabSection(),
                 SizedBox(height: sectionGap),
 
                 // 웰니스 섹션  - 임시
