@@ -130,7 +130,7 @@ class HealthProfileService {
     }
     
     if (profile.answer10.isEmpty) {
-      errors['answer_10'] = '운동 습관을 선택해주세요';
+      errors['answer_10'] = '운동 빈도를 선택해주세요';
     }
 
     if (profile.answer102.trim().isEmpty) {

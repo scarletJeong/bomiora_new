@@ -56,6 +56,36 @@ class ProductShare {
     }
   }
 
+  /// 공유 실행 후 사용자 피드백(스낵바)까지 처리합니다.
+  static Future<void> shareProductWithFeedback({
+    required BuildContext context,
+    required String itId,
+    required String productName,
+  }) async {
+    try {
+      final shared = await shareProduct(
+        anchorContext: context,
+        itId: itId,
+        productName: productName,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            shared
+                ? '공유하기를 실행했습니다.'
+                : '링크가 클립보드에 복사되었습니다.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공유에 실패했습니다.')),
+      );
+    }
+  }
+
   static bool _shouldFallbackToClipboard(Object error) {
     if (error is MissingPluginException) return true;
     if (error is PlatformException) {
