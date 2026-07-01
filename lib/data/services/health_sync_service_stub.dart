@@ -1,9 +1,12 @@
+import 'health_sync_snapshot.dart';
+
 class HealthSyncResult {
   final bool success;
   final bool authorized;
   final bool supported;
   final int? steps;
   final int? heartRate;
+  final HealthSyncSnapshot? snapshot;
   final String message;
 
   const HealthSyncResult({
@@ -12,6 +15,7 @@ class HealthSyncResult {
     required this.supported,
     required this.steps,
     required this.heartRate,
+    this.snapshot,
     required this.message,
   });
 }
