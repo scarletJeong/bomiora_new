@@ -11,6 +11,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/recent_view_service.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../../data/repositories/product/product_category_catalog.dart';
+import '../../../data/repositories/content/content_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../settings/settings_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -47,6 +48,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
       List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
   List<ProductCategoryItem> _prescriptionCategories =
       List<ProductCategoryItem>.from(productPrescriptionCategoryListFallback);
+  List<String> _contentCategories =
+      List<String>.from(contentCategoryListFallback);
 
   @override
   void initState() {
@@ -54,6 +57,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     RecentViewService.revision.addListener(_onRecentViewChanged);
     _refreshUser().then((_) => _loadRecentProducts());
     _loadShopCategories();
+    _loadContentCategories();
   }
 
   @override
@@ -64,6 +68,12 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   void _onRecentViewChanged() {
     _loadRecentProducts();
+  }
+
+  Future<void> _loadContentCategories() async {
+    final categories = await ContentCategoryCatalog.categories();
+    if (!mounted) return;
+    setState(() => _contentCategories = categories);
   }
 
   Future<void> _loadShopCategories() async {
@@ -493,40 +503,18 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                             child: _ExpansionSubmenuWithRail(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _SubLink(
-                                    label: '건강상식',
-                                    onTap: () => _popAndPushNamed(
-                                      context,
-                                      '/content/list',
-                                      arguments: const {'category': '건강상식'},
-                                    ),
-                                  ),
-                                  _SubLink(
-                                    label: '운동가이드',
-                                    onTap: () => _popAndPushNamed(
-                                      context,
-                                      '/content/list',
-                                      arguments: const {'category': '운동가이드'},
-                                    ),
-                                  ),
-                                  _SubLink(
-                                    label: '추천식단',
-                                    onTap: () => _popAndPushNamed(
-                                      context,
-                                      '/content/list',
-                                      arguments: const {'category': '추천식단'},
-                                    ),
-                                  ),
-                                  _SubLink(
-                                    label: '질환관리',
-                                    onTap: () => _popAndPushNamed(
-                                      context,
-                                      '/content/list',
-                                      arguments: const {'category': '질환관리'},
-                                    ),
-                                  ),
-                                ],
+                                children: _contentCategories
+                                    .map(
+                                      (category) => _SubLink(
+                                        label: category,
+                                        onTap: () => _popAndPushNamed(
+                                          context,
+                                          '/content/list',
+                                          arguments: {'category': category},
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                               ),
                             ),
                           ),
