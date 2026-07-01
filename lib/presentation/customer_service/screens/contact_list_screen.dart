@@ -320,30 +320,20 @@ class ContactListScreenState extends State<ContactListScreen> {
     }
 
     if (_contacts.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(
-          _pagePadH(context),
-          healthDp(context, 48),
-          _pagePadH(context),
-          healthDp(context, 100),
-        ),
-        children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: healthDp(context, 64),
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: healthDp(context, 16)),
-          Text(
-            '문의내역이 없습니다.',
-            style: _contactText(
-              context,
-              size: 16,
-              color: Colors.grey.shade600,
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: const CenteredEmptyState(
+                fillAvailable: true,
+                icon: Icons.inbox_outlined,
+                message: '문의내역이 없습니다.',
+              ),
             ),
-          ),
-        ],
+          );
+        },
       );
     }
 
