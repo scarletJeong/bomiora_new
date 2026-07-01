@@ -12,6 +12,7 @@ class ProductSupportReview extends StatelessWidget {
   final ValueChanged<ReviewModel> onReviewTap;
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
+  final bool embedInParentScroll;
 
   const ProductSupportReview({
     super.key,
@@ -22,6 +23,7 @@ class ProductSupportReview extends StatelessWidget {
     required this.onReviewTap,
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
+    this.embedInParentScroll = false,
   });
 
   @override
@@ -40,40 +42,45 @@ class ProductSupportReview extends StatelessWidget {
     final visibleReviews = sorted.take(cappedCount).toList();
     final hPad = healthDp(context, 27);
 
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(height: healthDp(context, 16)),
+        if (isLoading)
+          Padding(
+            padding: EdgeInsets.all(healthDp(context, 32)),
+            child: const Center(child: CircularProgressIndicator()),
+          )
+        else ...[
+          _SupportStatsCard(stats: stats),
+          SizedBox(height: healthDp(context, 14)),
+          if (visibleReviews.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: hPad),
+              child: ProductReviewListSection(
+                reviews: visibleReviews,
+                showCouponSection: true,
+                guestLoginLocked: guestLoginLocked,
+                onGuestLoginTap: onGuestLoginTap,
+                onReviewTap: onReviewTap,
+              ),
+            ),
+          if (cappedCount < sorted.length)
+            Padding(
+              padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 48), hPad, 0),
+              child: ProductReviewLoadMoreButton(onPressed: onLoadMore),
+            ),
+        ],
+        SizedBox(height: healthDp(context, embedInParentScroll ? 20 : 56)),
+      ],
+    );
+
+    if (embedInParentScroll) return content;
+
     return SingleChildScrollView(
       key: const PageStorageKey<String>('support_review_tab'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: healthDp(context, 16)),
-          if (isLoading)
-            Padding(
-              padding: EdgeInsets.all(healthDp(context, 32)),
-              child: const Center(child: CircularProgressIndicator()),
-            )
-          else ...[
-            _SupportStatsCard(stats: stats),
-            SizedBox(height: healthDp(context, 14)),
-            if (visibleReviews.isNotEmpty)
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: hPad),
-                child: ProductReviewListSection(
-                  reviews: visibleReviews,
-                  showCouponSection: true,
-                  guestLoginLocked: guestLoginLocked,
-                  onGuestLoginTap: onGuestLoginTap,
-                  onReviewTap: onReviewTap,
-                ),
-              ),
-            if (cappedCount < sorted.length)
-              Padding(
-                padding: EdgeInsets.fromLTRB(hPad, healthDp(context, 48), hPad, 0),
-                child: ProductReviewLoadMoreButton(onPressed: onLoadMore),
-              ),
-          ],
-          SizedBox(height: healthDp(context, 56)),
-        ],
-      ),
+      child: content,
     );
   }
 }

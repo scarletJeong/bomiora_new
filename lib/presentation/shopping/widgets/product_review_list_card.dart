@@ -31,6 +31,13 @@ class ProductReviewListCard extends StatefulWidget {
 class _ProductReviewListCardState extends State<ProductReviewListCard> {
   bool _expanded = false;
   int _imageIndex = 0;
+  PageController? _imagePageController;
+
+  @override
+  void dispose() {
+    _imagePageController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,104 +45,142 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     final imageH = healthDp(context, 321);
     final radius = healthDp(context, 10);
     final total = review.totalIsScore ?? review.averageScore ?? 0.0;
+    final imageCount = _reviewImageCount(review);
 
-    return GestureDetector(
-      onTap: () => setState(() => _expanded = !_expanded),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(radius),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: imageH,
-                  child: _buildImage(review, imageH),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: SizedBox(
+                width: double.infinity,
+                height: imageH,
+                child: _buildImage(review, imageH, imageCount),
+              ),
+            ),
+            if (review.isSupporterReview)
+              Positioned(
+                left: healthDp(context, 8),
+                top: healthDp(context, 8),
+                child: _SupporterBadge(),
+              ),
+            if (imageCount > 1) ...[
+              Positioned(
+                left: healthDp(context, 4),
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _ReviewImageNavButton(
+                    icon: Icons.chevron_left,
+                    enabled: _imageIndex > 0,
+                    onTap: () => _imagePageController?.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    ),
+                  ),
                 ),
               ),
-              if (review.isSupporterReview)
-                Positioned(
-                  left: healthDp(context, 8),
-                  top: healthDp(context, 8),
-                  child: _SupporterBadge(),
+              Positioned(
+                right: healthDp(context, 4),
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _ReviewImageNavButton(
+                    icon: Icons.chevron_right,
+                    enabled: _imageIndex < imageCount - 1,
+                    onTap: () => _imagePageController?.nextPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    ),
+                  ),
                 ),
+              ),
+            ],
+          ],
+        ),
+        if (imageCount > 1) ...[
+          SizedBox(height: healthDp(context, 8)),
+          _ImageDots(
+            count: imageCount,
+            index: _imageIndex,
+          ),
+        ],
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          behavior: HitTestBehavior.opaque,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: healthDp(context, 10)),
+              Text(
+                review.isName ?? '익명',
+                style: TextStyle(
+                  color: _kTextDark,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: _kGmarket,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: healthDp(context, 10)),
+              _ReviewTextBlock(
+                label: '좋았던 점',
+                text: review.isPositiveReviewText,
+                expanded: _expanded,
+                collapsedMaxLines: 2,
+              ),
+              if (_expanded) ...[
+                SizedBox(height: healthDp(context, 10)),
+                _ReviewTextBlock(
+                  label: '아쉬운 점',
+                  text: review.isNegativeReviewText,
+                  expanded: true,
+                ),
+                SizedBox(height: healthDp(context, 10)),
+                _ReviewTextBlock(
+                  label: '꿀팁',
+                  text: review.isMoreReviewText,
+                  expanded: true,
+                ),
+              ],
+              SizedBox(height: healthDp(context, 10)),
+              _RatingScorePanel(
+                total: total,
+                score1: review.score1,
+                score2: review.score2,
+                score3: review.score3,
+                score4: review.score4,
+              ),
+              if (widget.showCouponSection) ...[
+                _CouponHelpSection(
+                  downloadCount: review.czDownload ?? 0,
+                ),
+              ],
             ],
           ),
-          if (review.images.length > 1) ...[
-            SizedBox(height: healthDp(context, 8)),
-            _ImageDots(
-              count: review.images.length,
-              index: _imageIndex,
-            ),
-          ],
-          SizedBox(height: healthDp(context, 10)),
-          Text(
-            review.isName ?? '익명',
-            style: TextStyle(
-              color: _kTextDark,
-              fontSize: healthSp(context, 16),
-              fontFamily: _kGmarket,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          _ReviewTextBlock(
-            label: '좋았던 점',
-            text: review.isPositiveReviewText,
-            expanded: _expanded,
-            collapsedMaxLines: 2,
-          ),
-          if (_expanded) ...[
-            SizedBox(height: healthDp(context, 10)),
-            _ReviewTextBlock(
-              label: '아쉬운 점',
-              text: review.isNegativeReviewText,
-              expanded: true,
-            ),
-            SizedBox(height: healthDp(context, 10)),
-            _ReviewTextBlock(
-              label: '꿀팁',
-              text: review.isMoreReviewText,
-              expanded: true,
-            ),
-          ],
-          SizedBox(height: healthDp(context, 10)),
-          _RatingScorePanel(
-            total: total,
-            score1: review.score1,
-            score2: review.score2,
-            score3: review.score3,
-            score4: review.score4,
-          ),
-          if (widget.showCouponSection) ...[
-            _CouponHelpSection(
-              downloadCount: review.czDownload ?? 0,
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildImage(ReviewModel review, double imageH) {
-    if (review.images.isEmpty) {
-      final fallback = review.productImage;
-      if (fallback != null && fallback.isNotEmpty) {
-        return Image.network(
-          ImageUrlHelper.convertToLocalUrl(fallback),
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: imageH,
-          errorBuilder: (_, __, ___) => _imagePlaceholder(imageH),
-        );
-      }
+  int _reviewImageCount(ReviewModel review) {
+    if (review.images.isNotEmpty) return review.images.length;
+    final fallback = review.productImage;
+    return fallback != null && fallback.isNotEmpty ? 1 : 0;
+  }
+
+  Widget _buildImage(ReviewModel review, double imageH, int imageCount) {
+    if (imageCount == 0) {
       return _imagePlaceholder(imageH);
     }
 
-    if (review.images.length == 1) {
+    if (imageCount == 1) {
+      final url = review.images.isNotEmpty
+          ? ImageUrlHelper.getReviewImageUrl(review.images.first)
+          : ImageUrlHelper.convertToLocalUrl(review.productImage!);
       return Image.network(
-        ImageUrlHelper.getReviewImageUrl(review.images.first),
+        url,
         fit: BoxFit.cover,
         width: double.infinity,
         height: imageH,
@@ -143,8 +188,12 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
       );
     }
 
+    _imagePageController ??= PageController();
+
     return PageView.builder(
-      itemCount: review.images.length,
+      controller: _imagePageController,
+      itemCount: imageCount,
+      physics: const PageScrollPhysics(),
       onPageChanged: (i) => setState(() => _imageIndex = i),
       itemBuilder: (context, index) {
         return Image.network(
@@ -208,6 +257,42 @@ class _SupporterBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReviewImageNavButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _ReviewImageNavButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final iconSz = healthDp(context, 20);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        customBorder: const CircleBorder(),
+        child: Container(
+          padding: EdgeInsets.all(healthDp(context, 6)),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: enabled ? 0.92 : 0.5),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: iconSz,
+            color: enabled ? Colors.black87 : Colors.black38,
+          ),
+        ),
       ),
     );
   }
