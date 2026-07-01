@@ -124,38 +124,36 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   }
 
   Widget _buildNoProfileState() {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-      child: CenteredEmptyState(
-        icon: Icons.assignment_outlined,
-        message: '다이어트 상담을 위해\n문진표를 작성해주세요',
-        messageStyle: TextStyle(
-          fontSize: healthSp(context, 16),
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w400,
-          color: Colors.black,
-          height: 1.4,
-        ),
-        fillAvailable: true,
-        trailing: [
-          ElevatedButton.icon(
-            onPressed: _navigateToForm,
-            icon: Icon(Icons.add, size: healthDp(context, 22)),
-            label: const Text('문진표 작성하기'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF5A8D),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 24),
-                vertical: healthDp(context, 12),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              ),
+    return CenteredEmptyState(
+      icon: Icons.assignment_outlined,
+      message: '상담을 위해 문진표를 작성해주세요',
+      fillAvailable: true,
+      trailing: [
+        ElevatedButton.icon(
+          onPressed: _navigateToForm,
+          icon: Icon(Icons.add, size: healthDp(context, 22)),
+          label: Text(
+            '문진표 작성하기',
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ],
-      ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF5A8D),
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 20),
+              vertical: healthDp(context, 12),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -470,30 +468,6 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     height: 1.35,
   );
 
-  Widget _basicInfoLabeledRow({
-    required String label,
-    required Widget child,
-    double? labelWidth,
-    Color? labelColor,
-  }) {
-    final lw = labelWidth ?? healthDp(context, 72);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: lw,
-          child: Text(
-            label,
-            textAlign: TextAlign.right,
-            style: _listLabelStyle.copyWith(color: labelColor ?? _kInk),
-          ),
-        ),
-        SizedBox(width: healthDp(context, 16)),
-        Expanded(child: child),
-      ],
-    );
-  }
-
   Widget _readMetricBox(String value, String unit) {
     final v = value.trim().isEmpty ? '-' : value.trim();
     return Container(
@@ -533,93 +507,137 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     );
   }
 
+  Widget _basicInfoGridItem({
+    required String label,
+    required Widget child,
+    Color? labelColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: _listLabelStyle.copyWith(color: labelColor ?? _kInk),
+        ),
+        SizedBox(height: healthDp(context, 8)),
+        child,
+      ],
+    );
+  }
+
   Widget _buildBasicInfoBody(HealthProfileModel profile) {
     final g = profile.answer2;
     final goal = profile.answer3.trim().isEmpty ? '-' : profile.answer3.trim();
+    final gridGap = healthDp(context, 10);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _basicInfoLabeledRow(
-          label: '생년월일',
-          child: Container(
-            height: healthDp(context, 40),
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            alignment: Alignment.centerLeft,
-            decoration: ShapeDecoration(
-              shape: RoundedRectangleBorder(
-                side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
-                borderRadius: BorderRadius.circular(healthDp(context, 7)),
-              ),
-            ),
-            child: Text(
-              _birthDots(profile.answer1),
-              style: const TextStyle(
-                color: _kInk,
-                fontSize: 14,
-                fontFamily: _kFont,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: healthDp(context, 10)),
-        _basicInfoLabeledRow(
-          label: '성별',
-          labelWidth: healthDp(context, 70),
-          child: _genderReadSegment(g == 'M', g == 'F'),
-        ),
-        SizedBox(height: healthDp(context, 10)),
-        _basicInfoLabeledRow(
-          label: '목표',
-          labelWidth: healthDp(context, 70),
-          labelColor: _kPink,
-          child: Container(
-            height: healthDp(context, 40),
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            decoration: ShapeDecoration(
-              shape: RoundedRectangleBorder(
-                side: BorderSide(width: healthDp(context, 1), color: _kBorderField),
-                borderRadius: BorderRadius.circular(healthDp(context, 7)),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  goal,
-                  style: const TextStyle(
-                    color: _kPink,
-                    fontSize: 14,
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (goal != '-')
-                  const Text(
-                    'kg',
-                    style: TextStyle(
-                      color: _kPink,
-                      fontSize: 14,
-                      fontFamily: _kFont,
-                      fontWeight: FontWeight.w300,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _basicInfoGridItem(
+                label: '생년월일',
+                child: Container(
+                  height: healthDp(context, 40),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                  alignment: Alignment.centerLeft,
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: _kBorderField,
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 7)),
                     ),
                   ),
-              ],
+                  child: Text(
+                    _birthDots(profile.answer1),
+                    style: const TextStyle(
+                      color: _kInk,
+                      fontSize: 14,
+                      fontFamily: _kFont,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
+            SizedBox(width: gridGap),
+            Expanded(
+              child: _basicInfoGridItem(
+                label: '성별',
+                child: _genderReadSegment(g == 'M', g == 'F'),
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: healthDp(context, 10)),
-        _basicInfoLabeledRow(
-          label: '키/\n몸무게',
-          labelWidth: healthDp(context, 70),
-          child: Row(
-            children: [
-              Expanded(child: _readMetricBox(profile.answer4, 'cm')),
-              SizedBox(width: healthDp(context, 10)),
-              Expanded(child: _readMetricBox(profile.answer5, 'kg')),
-            ],
-          ),
+        SizedBox(height: gridGap),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _basicInfoGridItem(
+                label: '목표',
+                labelColor: _kPink,
+                child: Container(
+                  height: healthDp(context, 40),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        width: healthDp(context, 1),
+                        color: _kBorderField,
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 7)),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        goal,
+                        style: const TextStyle(
+                          color: _kPink,
+                          fontSize: 14,
+                          fontFamily: _kFont,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (goal != '-')
+                        const Text(
+                          'kg',
+                          style: TextStyle(
+                            color: _kPink,
+                            fontSize: 14,
+                            fontFamily: _kFont,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: gridGap),
+            Expanded(
+              child: _basicInfoGridItem(
+                label: '키/몸무게',
+                child: Row(
+                  children: [
+                    Expanded(child: _readMetricBox(profile.answer4, 'cm')),
+                    SizedBox(width: healthDp(context, 6)),
+                    Expanded(child: _readMetricBox(profile.answer5, 'kg')),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -750,7 +768,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
-          child: Text('평균 식사 횟수', style: _listSubsectionStyle),
+          child: Text('하루 끼니', style: _listSubsectionStyle),
         ),
         SizedBox(height: healthDp(context, 8)),
         _wrapChipsWhite(mealItems),

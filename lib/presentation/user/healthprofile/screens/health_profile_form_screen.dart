@@ -303,12 +303,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         ],
       ),
       HealthProfileSection(
-        title: '운동습관',
+        title: '운동 빈도',
         description: '',
         questions: [
           HealthProfileQuestion(
             id: 'answer_10',
-            question: '운동 습관',
+            question: '운동 빈도',
             type: 'grid',
             options: HealthProfileQuestionnaireOptions.exerciseFrequency,
             columns: 2,
@@ -574,9 +574,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: 'Gmarket Sans TTF'),
     );
-    final textScale =
-        healthTextScaleByWidth(MediaQuery.sizeOf(context).width);
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -592,22 +589,17 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             leadingIconSize: healthDp(context, 24),
             onBack: () => _popAllHealthProfileFormRoutes(context),
           ),
-          child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(textScale),
-            ),
-            child: DefaultTextStyle.merge(
-              style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-              child: _currentUser == null
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFFF3787)),
-                    )
-                  : isMultiSubsetMode
-                      ? _buildMultiSubsetFormMode()
-                      : isSingleSectionMode
-                          ? _buildSingleSectionMode()
-                          : _buildFullFormMode(),
-            ),
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
+            child: _currentUser == null
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFFF3787)),
+                  )
+                : isMultiSubsetMode
+                    ? _buildMultiSubsetFormMode()
+                    : isSingleSectionMode
+                        ? _buildSingleSectionMode()
+                        : _buildFullFormMode(),
           ),
         ),
       ),
@@ -685,13 +677,17 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 4), healthDp(context, 27), healthDp(context, 20)),
                 child: SizedBox(
                   width: double.infinity,
+                  height: healthDp(context, 40),
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submitForm,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF3787),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 16),
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size(double.infinity, healthDp(context, 40)),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
                     child: Text(
@@ -1097,8 +1093,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     if (q.type == 'wizard_basic') return false;
     if (q.type == 'radio' && q.id == 'answer_13') return false;
     if (q.type == 'mealtime') return true;
-    // 전체 마법사: 섹션 첫 그리드는 단계 제목과 중복되면 캡션 생략(운동 습관만).
-    // 부분 수정·식습관+운동 병합: 단계 제목이 없으므로 answer_10(운동 습관) 캡션도 표시.
+    // 전체 마법사: 섹션 첫 그리드는 단계 제목과 중복되면 캡션 생략(운동 빈도만).
+    // 부분 수정·식습관+운동 병합: 단계 제목이 없으므로 answer_10(운동 빈도) 캡션도 표시.
     final isFullWizard = widget.initialSectionIndices == null ||
         widget.initialSectionIndices!.isEmpty;
     if (isFullWizard && _isFirstVisibleInStep(stepIndex, q.id)) {
@@ -1225,7 +1221,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     final title = switch (stepIndex) {
       0 => '기본정보',
       1 => '하루 끼니',
-      2 => '운동 습관',
+      2 => '운동 빈도',
       3 => '현재 질환',
       _ => '다이어트 약',
     };
@@ -2525,13 +2521,17 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 ),
                 child: SizedBox(
                   width: double.infinity,
+                  height: healthDp(context, 40),
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submitForm,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF3787),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        vertical: healthDp(context, 16),
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size(double.infinity, healthDp(context, 40)),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(healthDp(context, 10)),
                       ),
                     ),
                     child: Text(
