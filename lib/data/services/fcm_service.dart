@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/navigation/app_navigator_key.dart';
+import 'notification_inbox_service.dart';
 import 'notification_service.dart';
 
 /// Firebase Cloud Messaging — Android/iOS 전용
@@ -173,6 +174,12 @@ class FCMService {
     final data = message.data;
     final type = data['type']?.toString() ?? '';
 
+    await NotificationInboxService.addFromFcm(
+      data: Map<String, dynamic>.from(data),
+      title: notification?.title,
+      body: notification?.body,
+    );
+
     var channelId = 'default_channel';
     if (type == 'order' || type == 'delivery') {
       channelId = 'high_importance_channel';
@@ -317,4 +324,9 @@ class FCMService {
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+  await NotificationInboxService.addFromFcm(
+    data: Map<String, dynamic>.from(message.data),
+    title: message.notification?.title,
+    body: message.notification?.body,
+  );
 }
