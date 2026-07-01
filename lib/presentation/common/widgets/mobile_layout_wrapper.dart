@@ -6,6 +6,7 @@ import 'navi_bar.dart';
 class MobileLayoutWrapper extends StatelessWidget {
   final Widget child;
   final bool showShadow;
+  final bool showSideNav;
   final Color? backgroundColor;
   final double maxWidth;
 
@@ -13,6 +14,7 @@ class MobileLayoutWrapper extends StatelessWidget {
     super.key,
     required this.child,
     this.showShadow = true,
+    this.showSideNav = true,
     this.backgroundColor,
     this.maxWidth = 650,
   });
@@ -56,6 +58,7 @@ class MobileLayoutWrapper extends StatelessWidget {
 
   /// 바깥 래퍼에서만 세로 네비를 그린다 (안쪽 중첩 래퍼 중복 방지).
   bool _shouldShowSideNav(BoxConstraints constraints, double screenWidth) {
+    if (!showSideNav) return false;
     if (screenWidth < kFooterBarWideBreakpoint) return false;
     return !(constraints.maxWidth <= maxWidth && screenWidth > maxWidth);
   }
@@ -132,6 +135,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   final Widget? bottomNavigationBar;
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final bool showShadow;
+  final bool showSideNav;
   final Color? backgroundColor;
   final Color? outerBackgroundColor;
   final double maxWidth;
@@ -145,6 +149,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     this.bottomNavigationBar,
     this.scaffoldKey,
     this.showShadow = true,
+    this.showSideNav = true,
     this.backgroundColor,
     this.outerBackgroundColor,
     this.maxWidth = 650,
@@ -208,6 +213,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
 
   /// 바깥 래퍼에서만 세로 네비를 그린다 (안쪽 중첩 래퍼 중복 방지).
   bool _shouldShowSideNav(BoxConstraints constraints, double screenWidth) {
+    if (!showSideNav) return false;
     if (screenWidth < kFooterBarWideBreakpoint) return false;
     return !(constraints.maxWidth <= maxWidth && screenWidth > maxWidth);
   }

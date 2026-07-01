@@ -170,101 +170,118 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                               color: Color(0xFFFF5A8D)),
                         ),
                       )
-                    : Form(
-                        key: _formKey,
-                        child: ListView(
-                          padding: EdgeInsets.only(
-                            left: healthDp(context, 27),
-                            right: healthDp(context, 27),
-                            bottom: healthDp(context, 20),
-                            top: healthDp(context, 20),
+                    : Column(
+                        children: [
+                          Expanded(
+                            child: Form(
+                              key: _formKey,
+                              child: ListView(
+                                padding: EdgeInsets.only(
+                                  left: healthDp(context, 27),
+                                  right: healthDp(context, 27),
+                                  top: healthDp(context, 20),
+                                  bottom: healthDp(context, 16),
+                                ),
+                                children: [
+                                  const _FieldLabel('은행 선택'),
+                                  SizedBox(height: healthDp(context, 5)),
+                                  DropdownBtn(
+                                    items: _bankItemsForDropdown,
+                                    value: _selectedBank,
+                                    emptyText: _bankEmptyHint,
+                                    buttonHeight: healthDp(context, 40),
+                                    panelMaxHeight: healthDp(context, 320),
+                                    itemFontSizeBase: 12,
+                                    itemTextAlign: TextAlign.start,
+                                    itemLeadingGapBase: 8,
+                                    leadingBuilder: (name) => _BankIconLeading(
+                                      bankName: name,
+                                      size: healthDp(context, 22),
+                                    ),
+                                    onChanged: (v) =>
+                                        setState(() => _selectedBank = v),
+                                  ),
+                                  SizedBox(height: healthDp(context, 20)),
+                                  const _FieldLabel('계좌번호'),
+                                  SizedBox(height: healthDp(context, 5)),
+                                  _BoxField(
+                                    controller: _accountController,
+                                    hintText: '계좌번호를 입력해주세요.(- 는 제외)',
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    validator: (v) =>
+                                        (v == null || v.trim().isEmpty)
+                                            ? '계좌번호를 입력해주세요'
+                                            : null,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  const _FieldLabel('예금주명'),
+                                  SizedBox(height: healthDp(context, 5)),
+                                  _BoxField(
+                                    controller: _ownerController,
+                                    hintText: '예금주 이름을 입력해주세요.',
+                                    validator: (v) =>
+                                        (v == null || v.trim().isEmpty)
+                                            ? '예금주명을 입력해주세요'
+                                            : null,
+                                  ),
+                                  SizedBox(height: healthDp(context, 10)),
+                                  Text(
+                                    '*환불 처리를 위해 정확한 계좌정보를 입력해 주세요.',
+                                    style: TextStyle(
+                                      color: const Color(0xFF898686),
+                                      fontSize: healthSp(context, 10),
+                                      fontWeight: FontWeight.w300,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  SizedBox(height: healthDp(context, 10)),
+                                  Text(
+                                    '입력하신 정보가 부정확할 경우 환불이 지연되거나 처리되지 않을 수 있으며, 이에 대한 책임은 입력자 본인에게 있습니다.',
+                                    style: TextStyle(
+                                      color: const Color(0xFF898686),
+                                      fontSize: healthSp(context, 10),
+                                      fontWeight: FontWeight.w300,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          children: [
-                            const _FieldLabel('은행 선택'),
-                            SizedBox(height: healthDp(context, 5)),
-                            DropdownBtn(
-                              items: _bankItemsForDropdown,
-                              value: _selectedBank,
-                              emptyText: _bankEmptyHint,
-                              buttonHeight: healthDp(context, 40),
-                              panelMaxHeight: healthDp(context, 320),
-                              itemFontSizeBase: 12,
-                              itemTextAlign: TextAlign.start,
-                              itemLeadingGapBase: 8,
-                              leadingBuilder: (name) => _BankIconLeading(
-                                bankName: name,
-                                size: healthDp(context, 22),
+                          SafeArea(
+                            top: false,
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                healthDp(context, 27),
+                                healthDp(context, 12),
+                                healthDp(context, 27),
+                                healthDp(context, 16),
                               ),
-                              onChanged: (v) =>
-                                  setState(() => _selectedBank = v),
-                            ),
-                            SizedBox(height: healthDp(context, 20)),
-                            const _FieldLabel('계좌번호'),
-                            SizedBox(height: healthDp(context, 5)),
-                            _BoxField(
-                              controller: _accountController,
-                              hintText: '계좌번호를 입력해주세요.(- 는 제외)',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? '계좌번호를 입력해주세요'
-                                  : null,
-                            ),
-                            const SizedBox(height: 20),
-                            const _FieldLabel('예금주명'),
-                            SizedBox(height: healthDp(context, 5)),
-                            _BoxField(
-                              controller: _ownerController,
-                              hintText: '예금주 이름을 입력해주세요.',
-                              validator: (v) =>
-                                  (v == null || v.trim().isEmpty)
-                                      ? '예금주명을 입력해주세요'
-                                      : null,
-                            ),
-                            SizedBox(height: healthDp(context, 10)),
-                            Text(
-                              '*환불 처리를 위해 정확한 계좌정보를 입력해 주세요.',
-                              style: TextStyle(
-                                color: const Color(0xFF898686),
-                                fontSize: healthSp(context, 10),
-                                fontWeight: FontWeight.w300,
-                                height: 1.4,
-                              ),
-                            ),
-                            SizedBox(height: healthDp(context, 10)),
-                            Text(
-                              '입력하신 정보가 부정확할 경우 환불이 지연되거나 처리되지 않을 수 있으며, 이에 대한 책임은 입력자 본인에게 있습니다.',
-                              style: TextStyle(
-                                color: const Color(0xFF898686),
-                                fontSize: healthSp(context, 10),
-                                fontWeight: FontWeight.w300,
-                                height: 1.4,
-                              ),
-                            ),
-                            SizedBox(height: healthDp(context, 48)),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _RefundFormButton(
-                                    label: '취소',
-                                    filled: false,
-                                    onTap: () => Navigator.pop(context),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _RefundFormButton(
+                                      label: '취소',
+                                      filled: false,
+                                      onTap: () => Navigator.pop(context),
+                                    ),
                                   ),
-                                ),
-                                SizedBox(width: healthDp(context, 20)),
-                                Expanded(
-                                  child: _RefundFormButton(
-                                    label: '확인',
-                                    filled: true,
-                                    onTap: _submit,
+                                  SizedBox(width: healthDp(context, 20)),
+                                  Expanded(
+                                    child: _RefundFormButton(
+                                      label: '확인',
+                                      filled: true,
+                                      onTap: _submit,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       )
                 : const CenteredEmptyState(
                     icon: Icons.account_balance_wallet_outlined,

@@ -51,8 +51,19 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   @override
   void initState() {
     super.initState();
+    RecentViewService.revision.addListener(_onRecentViewChanged);
     _refreshUser().then((_) => _loadRecentProducts());
     _loadShopCategories();
+  }
+
+  @override
+  void dispose() {
+    RecentViewService.revision.removeListener(_onRecentViewChanged);
+    super.dispose();
+  }
+
+  void _onRecentViewChanged() {
+    _loadRecentProducts();
   }
 
   Future<void> _loadShopCategories() async {
@@ -551,7 +562,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               _RecentProductsGrid(
                 items: _recentProducts,
                 isLoading: _isLoadingRecent,
-                isLoggedIn: _user != null,
                 onTapProduct: (item) => _openRecentProduct(context, item),
               ),
             ],
@@ -1142,13 +1152,11 @@ class _SubLink extends StatelessWidget {
 class _RecentProductsGrid extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final bool isLoading;
-  final bool isLoggedIn;
   final void Function(Map<String, dynamic> item) onTapProduct;
 
   const _RecentProductsGrid({
     required this.items,
     required this.isLoading,
-    required this.isLoggedIn,
     required this.onTapProduct,
   });
 
@@ -1167,13 +1175,6 @@ class _RecentProductsGrid extends StatelessWidget {
             ),
           ),
         ),
-      );
-    }
-
-    if (!isLoggedIn) {
-      return _buildEmptyMessage(
-        context,
-        '로그인 후 최근 본 상품을 확인할 수 있습니다.',
       );
     }
 
@@ -1218,27 +1219,16 @@ class _RecentProductsGrid extends StatelessWidget {
   }
 
   Widget _buildEmptyMessage(BuildContext context, String message) {
-    return Container(
-      width: double.infinity,
+    return Padding(
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
-      alignment: Alignment.center,
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 0.5),
-            color: const Color(0x7FD2D2D2),
-          ),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
       child: Text(
         message,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: const Color(0xFF898686),
-          fontSize: healthSp(context, 12),
+          fontSize: healthSp(context, 10),
           fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w300,
         ),
       ),
     );

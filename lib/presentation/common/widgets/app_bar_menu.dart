@@ -34,7 +34,10 @@ class AppBarMenu extends StatefulWidget implements PreferredSizeWidget {
     }
     final v = views.first;
     final logicalW = v.physicalSize.width / v.devicePixelRatio;
-    return Size.fromHeight(healthAppBarTotalHeightForWidth(logicalW));
+    final topInset = healthStatusBarTopInsetForView(v);
+    return Size.fromHeight(
+      healthAppBarTotalHeightForWidth(logicalW) + topInset,
+    );
   }
 
   @override
@@ -193,6 +196,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final topInset = healthStatusBarTopInset(context);
     final barH = healthAppBarTotalHeight(context);
     final padH = healthDp(context, 5);
     final iconSz = healthDp(context, 19.82);
@@ -208,7 +212,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
     final actionsWidth = tapBoxW + 2 * actionStep;
 
     return SizedBox(
-      height: barH,
+      height: barH + topInset,
       width: double.infinity,
       child: Material(
         color: Colors.white,
@@ -219,10 +223,12 @@ class _AppBarMenuState extends State<AppBarMenu> {
             color: Colors.white,
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: padH),
-            child: SizedBox(
-              height: barH,
-              child: Stack(
+            padding: EdgeInsets.only(top: topInset),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: padH),
+              child: SizedBox(
+                height: barH,
+                child: Stack(
                 clipBehavior: Clip.none,
                 alignment: Alignment.center,
                 children: [
@@ -321,6 +327,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
             ),
           ),
         ),
+      ),
     );
   }
 }

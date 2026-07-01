@@ -1,3 +1,5 @@
+import 'dart:ui' show FlutterView;
+
 import 'package:flutter/material.dart';
 
 /// Health 화면 전용 텍스트 스케일.
@@ -48,6 +50,18 @@ double healthAppBarTotalHeight(BuildContext context) =>
 /// [PreferredSize] 등 context 없이 전체 높이 (폭 클램프 규칙 동일).
 double healthAppBarTotalHeightForWidth(double layoutWidth) =>
     healthAppBarTotalHeightBase * healthTextScaleByWidth(layoutWidth);
+
+/// 상태바·노치 등 상단 시스템 UI 여백 (Material [AppBar]와 동일 기준).
+double healthStatusBarTopInset(BuildContext context) =>
+    MediaQuery.paddingOf(context).top;
+
+/// [PreferredSize] 등 context 없을 때 view 기준 상단 inset.
+double healthStatusBarTopInsetForView(FlutterView view) =>
+    view.viewPadding.top / view.devicePixelRatio;
+
+/// 커스텀 AppBar: 툴바 + 상단 inset.
+double healthAppBarTotalHeightWithInset(BuildContext context) =>
+    healthAppBarTotalHeight(context) + healthStatusBarTopInset(context);
 
 /// 체중 일간 그래프 그리드 **상단** 패딩 (375 기준 20).
 double healthWeightChartVertPad(BuildContext context) =>
