@@ -21,6 +21,12 @@ class DropdownBtn extends StatefulWidget {
   /// 375 기준 간격 ([healthDp]로 스케일)
   final double itemLeadingGapBase;
   final EdgeInsetsGeometry? itemPadding;
+  /// 미선택(플레이스홀더) 텍스트 색 — null이면 `#898686`
+  final Color? emptyTextColor;
+  /// 선택된 값 텍스트 색 — null이면 `#1A1A1A`
+  final Color? valueTextColor;
+  /// 테두리 색 — null이면 `#D2D2D2`
+  final Color? borderColor;
 
   /// 앵커 위젯 기준으로 드롭다운 메뉴 표시
   static void showMenu({
@@ -74,6 +80,9 @@ class DropdownBtn extends StatefulWidget {
 
     _sharedOverlayEntry = OverlayEntry(
       builder: (overlayContext) {
+        if (!overlayContext.mounted) {
+          return const SizedBox.shrink();
+        }
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -177,8 +186,14 @@ class DropdownBtn extends StatefulWidget {
   }
 
   static void closeMenu() {
-    _sharedOverlayEntry?.remove();
+    final entry = _sharedOverlayEntry;
+    if (entry == null) return;
     _sharedOverlayEntry = null;
+    try {
+      entry.remove();
+    } catch (_) {
+      // Hot reload 중 overlay가 이미 제거된 경우 무시
+    }
   }
 
   const DropdownBtn({
@@ -195,6 +210,9 @@ class DropdownBtn extends StatefulWidget {
     this.leadingBuilder,
     this.itemLeadingGapBase = 8,
     this.itemPadding,
+    this.emptyTextColor,
+    this.valueTextColor,
+    this.borderColor,
   });
 
   @override
@@ -257,7 +275,9 @@ class _DropdownBtnState extends State<DropdownBtn> {
     final canOpen = widget.enabled && widget.items.isNotEmpty;
     final displayColor = !widget.enabled
         ? const Color(0xFFBDBDBD)
-        : (hasValue ? const Color(0xFF1A1A1A) : const Color(0xFF898686));
+        : (hasValue
+            ? (widget.valueTextColor ?? const Color(0xFF1A1A1A))
+            : (widget.emptyTextColor ?? const Color(0xFF898686)));
     final leading = hasValue && widget.leadingBuilder != null
         ? widget.leadingBuilder!(widget.value)
         : null;
@@ -265,6 +285,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
     final radius = healthDp(context, 10);
     final padH = healthDp(context, 10);
     final borderW = healthDp(context, 1);
+    final borderColor = widget.borderColor ?? const Color(0xFFD2D2D2);
     final chevronSize = healthDp(context, 16);
     final itemFontSize = healthSp(context, widget.itemFontSizeBase);
     final itemLeadingGap = healthDp(context, widget.itemLeadingGapBase);
@@ -282,7 +303,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                side: BorderSide(width: borderW, color: const Color(0xFFD2D2D2)),
+                side: BorderSide(width: borderW, color: borderColor),
                 borderRadius: BorderRadius.circular(radius),
               ),
             ),
