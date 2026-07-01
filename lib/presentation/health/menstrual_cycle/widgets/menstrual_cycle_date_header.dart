@@ -42,74 +42,88 @@ class MenstrualCycleDateHeader extends StatelessWidget {
   final Color monthTextColor;
   final Color iconColor;
 
+  Future<void> _openCalendarPopup(BuildContext context) async {
+    final monthStart = DateTime(selectedDate.year, selectedDate.month, 1);
+    final dialogInset = healthDp(context, 24);
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      builder: (_) {
+        final cardW = _menstrualDialogMaxWidth(
+          context,
+          horizontalInsetTotal: dialogInset * 2,
+        );
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: dialogInset,
+            vertical: dialogInset,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: cardW),
+            child: _MenstrualCalendarPopup(
+              initialMonth: monthStart,
+              periodDayKeys: periodDayKeys,
+              periodEndpointKeys: periodEndpointKeys,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final monthStart = DateTime(selectedDate.year, selectedDate.month, 1);
     final monthFontSize = healthSp(context, 12);
     final iconSize = healthDp(context, 12);
     final monthIconGap = healthDp(context, 3);
-    final dialogInset = healthDp(context, 24);
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        Text(
-          DateFormat('yyyy년 M월').format(monthStart),
-          textScaler: TextScaler.noScaling,
-          style: TextStyle(
-            color: monthTextColor,
-            fontSize: monthFontSize,
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(healthDp(context, 20)),
+      splashFactory: NoSplash.splashFactory,
+      hoverColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      focusColor: Colors.transparent,
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+      onTap: () => _openCalendarPopup(context),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 4),
+          vertical: healthDp(context, 2),
         ),
-        SizedBox(width: monthIconGap),
-        InkWell(
-          borderRadius: BorderRadius.circular(healthDp(context, 20)),
-          onTap: () async {
-            await showDialog<void>(
-              context: context,
-              barrierDismissible: true,
-              barrierColor: Colors.black.withValues(alpha: 0.2),
-              builder: (_) {
-                // 공통 달력 팝업과 동일: insetPadding(24/24) 기준 폭 제한
-                final cardW = _menstrualDialogMaxWidth(
-                  context,
-                  horizontalInsetTotal: dialogInset * 2,
-                );
-                return Dialog(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  insetPadding: EdgeInsets.symmetric(
-                    horizontal: dialogInset,
-                    vertical: dialogInset,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: cardW),
-                    child: _MenstrualCalendarPopup(
-                      initialMonth: monthStart,
-                      periodDayKeys: periodDayKeys,
-                      periodEndpointKeys: periodEndpointKeys,
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          child: SizedBox(
-            width: iconSize,
-            height: iconSize,
-            child: SvgPicture.asset(
-              AppAssets.calendarIcon,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Text(
+              DateFormat('yyyy년 M월').format(monthStart),
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: monthTextColor,
+                fontSize: monthFontSize,
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(width: monthIconGap),
+            SizedBox(
               width: iconSize,
               height: iconSize,
-              fit: BoxFit.contain,
-              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+              child: SvgPicture.asset(
+                AppAssets.calendarIcon,
+                width: iconSize,
+                height: iconSize,
+                fit: BoxFit.contain,
+                colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

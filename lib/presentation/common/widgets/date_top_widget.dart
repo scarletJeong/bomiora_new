@@ -83,41 +83,53 @@ class DateTopWidget extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(height: appBarToMonthGap),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              DateFormat('yyyy년 M월').format(selectedDate),
-              textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                color: monthTextColor ?? const Color(0xFF898686),
-                fontSize: monthFontSize,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                height: 1.15,
-              ),
+        InkWell(
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
+          splashFactory: NoSplash.splashFactory,
+          hoverColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          focusColor: Colors.transparent,
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          onTap: () => _openCalendarPicker(context),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 4),
+              vertical: healthDp(context, 2),
             ),
-            InkWell(
-              borderRadius: BorderRadius.circular(healthDp(context, 20)),
-              onTap: () => _openCalendarPicker(context),
-              child: SizedBox(
-                width: iconSize,
-                height: iconSize,
-                child: SvgPicture.asset(
-                  AppAssets.calendarIcon,
-                  width: iconSize,
-                  height: iconSize,
-                  fit: BoxFit.contain,
-                  colorFilter: ColorFilter.mode(
-                    iconColor ?? const Color(0xFF898686),
-                    BlendMode.srcIn,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('yyyy년 M월').format(selectedDate),
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    color: monthTextColor ?? const Color(0xFF898686),
+                    fontSize: monthFontSize,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.15,
                   ),
                 ),
-              ),
+                SizedBox(width: healthDp(context, 3)),
+                SizedBox(
+                  width: iconSize,
+                  height: iconSize,
+                  child: SvgPicture.asset(
+                    AppAssets.calendarIcon,
+                    width: iconSize,
+                    height: iconSize,
+                    fit: BoxFit.contain,
+                    colorFilter: ColorFilter.mode(
+                      iconColor ?? const Color(0xFF898686),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
         SizedBox(height: monthToDateGap),
         Container(

@@ -738,6 +738,7 @@ class _MenstrualCycleInputScreenState extends State<MenstrualCycleInputScreen> {
           hoverColor: Colors.transparent,
           highlightColor: Colors.transparent,
           focusColor: Colors.transparent,
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           onTap: _openMonthFromHealthPicker,
           child: Padding(
             padding: EdgeInsets.symmetric(

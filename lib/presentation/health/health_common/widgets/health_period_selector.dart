@@ -34,7 +34,7 @@ class HealthPeriodSelector extends StatelessWidget {
         periodLabels[periodKey] ?? periodKey,
         maxLines: 1,
         style: TextStyle(
-          fontSize: 13.33,
+          fontSize: 12,
           fontWeight: selectedPeriod == periodKey
               ? FontWeight.w700
               : FontWeight.w500,
@@ -55,7 +55,7 @@ class HealthPeriodSelector extends StatelessWidget {
         onTap: () => onChanged(periodKey),
         child: Container(
           padding: EdgeInsets.symmetric(
-            vertical: plainStyle ? 0 : 6,
+            vertical: plainStyle ? 0 : 4,
           ),
           decoration: BoxDecoration(
             color: Colors.transparent,

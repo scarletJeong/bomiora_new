@@ -935,6 +935,7 @@ class HealthDateSelector extends StatelessWidget {
     this.pickerFirstDate,
     this.pickerLastDate,
     this.topGapBase = 20,
+    this.calendarIconSizeBase = 16,
   });
 
   final DateTime selectedDate;
@@ -949,6 +950,7 @@ class HealthDateSelector extends StatelessWidget {
   final DateTime? pickerFirstDate;
   final DateTime? pickerLastDate;
   final double topGapBase;
+  final double calendarIconSizeBase;
 
   List<DateTime> get _displayDates => [
         selectedDate.subtract(const Duration(days: 1)),
@@ -956,12 +958,25 @@ class HealthDateSelector extends StatelessWidget {
         selectedDate.add(const Duration(days: 1)),
       ];
 
+  Future<void> _openDatePicker(BuildContext context) async {
+    final picked = await showHealthDateOnlyPicker(
+      context,
+      initialDate: selectedDate,
+      firstDate: pickerFirstDate,
+      lastDate: pickerLastDate,
+    );
+    if (picked != null) {
+      onDateChanged(picked);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // AppBar 하단 ↔ 년·월 밴드 = 20, 년·월 ↔ 날짜 숫자 행 = 5 (375 기준)
     final appBarToMonthGap = healthDp(context, topGapBase);
-    final monthFontSize = healthSp(context, 12);
+    final monthFontSize = healthSp(context, 14);
     final monthIconGap = healthDp(context, 3);
+    final calendarIconSize = healthDp(context, calendarIconSizeBase);
     final monthToDateGap = healthDp(context, 0);
     final dateRowH = healthDp(context, 36);
     final dateChipGap = healthDp(context, 8);
@@ -971,49 +986,50 @@ class HealthDateSelector extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(height: appBarToMonthGap),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              DateFormat('yyyy년 M월').format(selectedDate),
-              textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                color: monthTextColor,
-                fontSize: monthFontSize,
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                height: 1.15,
-              ),
+        InkWell(
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
+          splashFactory: NoSplash.splashFactory,
+          hoverColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          focusColor: Colors.transparent,
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          onTap: () => _openDatePicker(context),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: healthDp(context, 4),
+              vertical: healthDp(context, 2),
             ),
-            SizedBox(width: monthIconGap),
-            InkWell(
-              borderRadius: BorderRadius.circular(healthDp(context, 20)),
-              onTap: () async {
-                final picked = await showHealthDateOnlyPicker(
-                  context,
-                  initialDate: selectedDate,
-                  firstDate: pickerFirstDate,
-                  lastDate: pickerLastDate,
-                );
-                if (picked != null) {
-                  onDateChanged(picked);
-                }
-              },
-              child: SizedBox(
-                width: healthDp(context, 12),
-                height: healthDp(context, 12),
-                child: SvgPicture.asset(
-                  AppAssets.calendarIcon,
-                  width: healthDp(context, 12),
-                  height: healthDp(context, 12),
-                  fit: BoxFit.contain,
-                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('yyyy년 M월').format(selectedDate),
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    color: monthTextColor,
+                    fontSize: monthFontSize,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.15,
+                  ),
                 ),
-              ),
+                SizedBox(width: monthIconGap),
+                SizedBox(
+                  width: calendarIconSize,
+                  height: calendarIconSize,
+                  child: SvgPicture.asset(
+                    AppAssets.calendarIcon,
+                    width: calendarIconSize,
+                    height: calendarIconSize,
+                    fit: BoxFit.contain,
+                    colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
         SizedBox(height: monthToDateGap),
         SizedBox(
