@@ -96,10 +96,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
-    RecentViewService.recordView(
-      widget.productId,
-      productKind: 'general',
-    );
   }
 
   Future<void> _loadAuthUser() async {
@@ -147,6 +143,13 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             _pageController?.dispose();
             _pageController = PageController();
           }
+          RecentViewService.recordView(
+            product.id,
+            productKind: product.productKind ?? 'general',
+            productName: product.name,
+            imageUrl: product.imageUrl,
+            price: product.price,
+          );
         }
       });
 
@@ -1095,15 +1098,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           height: tapSize,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () async {
-              try {
-                await ProductShare.shareProduct(
-                  anchorContext: anchorContext,
-                  itId: _product!.id,
-                  productName: _product!.name,
-                );
-              } catch (_) {}
-            },
+            onTap: () => ProductShare.shareProductWithFeedback(
+              context: anchorContext,
+              itId: _product!.id,
+              productName: _product!.name,
+            ),
             child: Center(
               child: SvgPicture.asset(
                 AppAssets.shoppingShareIcon,
@@ -1337,8 +1336,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                 borderRadius: BorderRadius.circular(healthDp(context, 8)),
               ),
               child: IconButton(
+                iconSize: healthDp(context, 22),
+                padding: EdgeInsets.zero,
                 icon: Icon(
                   _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  size: healthDp(context, 22),
                   color:
                       _isFavorite ? const Color(0xFFFF4081) : Colors.grey[600],
                 ),
@@ -1439,7 +1441,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           if (!mounted) return;
           await showLoginRequiredDialog(
             context,
-            message: '상품 구매는 로그인 후 이용할 수 있습니다.',
+            message: '상품 구매는 로그인 후\n이용할 수 있습니다.',
           );
           return;
         }

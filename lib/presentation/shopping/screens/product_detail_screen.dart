@@ -98,10 +98,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
-    RecentViewService.recordView(
-      widget.productId,
-      productKind: 'prescription',
-    );
   }
 
   Future<void> _loadAuthUser() async {
@@ -149,6 +145,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             _pageController?.dispose();
             _pageController = PageController();
           }
+          RecentViewService.recordView(
+            product.id,
+            productKind: product.productKind ?? 'prescription',
+            productName: product.name,
+            imageUrl: product.imageUrl,
+            price: product.price,
+          );
         }
       });
 
@@ -466,6 +469,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final generalReviewCount = _generalReviews.length;
 
     return NestedScrollView(
+      floatHeaderSlivers: true,
       headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
         return [
           // 제품 정보 섹션
@@ -473,15 +477,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             child: _buildProductInfoSection(),
           ),
           // 탭바
-          SliverPersistentHeader(
-            pinned: false,
-            delegate: _SliverTabBarDelegate(
-              _buildProductTabBar(
-                context,
-                supporterReviewCount: supporterReviewCount,
-                generalReviewCount: generalReviewCount,
+          SliverOverlapAbsorber(
+            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+            sliver: SliverPersistentHeader(
+              pinned: true,
+              delegate: _SliverTabBarDelegate(
+                _buildProductTabBar(
+                  context,
+                  supporterReviewCount: supporterReviewCount,
+                  generalReviewCount: generalReviewCount,
+                ),
+                height: _productTabBarHeight(context),
               ),
-              height: _productTabBarHeight(context),
             ),
           ),
         ];
@@ -489,10 +496,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // 상품정보 탭
-          _buildProductInfoTab(),
-          _buildSupportReviewTab(),
-          _buildNormalReviewTab(),
+          _buildNestedScrollTab(
+            _buildProductInfoTabContent(),
+            'product_info_tab',
+          ),
+          _buildNestedScrollTab(
+            _buildSupportReviewTabContent(),
+            'support_review_tab',
+          ),
+          _buildNestedScrollTab(
+            _buildNormalReviewTabContent(),
+            'normal_review_tab',
+          ),
         ],
       ),
     );
@@ -734,35 +749,43 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  /// 상품정보 탭
-  Widget _buildProductInfoTab() {
+  Widget _buildNestedScrollTab(Widget child, String storageKey) {
+    return Builder(
+      builder: (context) {
+        return CustomScrollView(
+          key: PageStorageKey<String>(storageKey),
+          slivers: [
+            SliverOverlapInjector(
+              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+            ),
+            SliverToBoxAdapter(child: child),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 상품정보 탭 본문
+  Widget _buildProductInfoTabContent() {
     final precautionsText = _formatPrecautionsForDisplay(
       _product?.additionalInfo?['it_precautions']?.toString(),
     );
-    return SingleChildScrollView(
-      key: const PageStorageKey<String>('product_info_tab'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 상세페이지 HTML 미리보기 + 자세히 보기
-          _buildDetailPreviewSection(),
-
-          // 공통 정보 섹션 (배송, 처방 프로세스, 교환/환불)
-          ProductTailInfoSection(
-            warningText: precautionsText,
-            deliveryText: _product?.additionalInfo?['it_baesong_content']?.toString(),
-            prescriptionProcessText:
-                _product?.additionalInfo?['it_shipping_process']?.toString(),
-            changeContentText:
-                _product?.additionalInfo?['it_change_content']?.toString(),
-          ),
-
-
-          _buildRecommendedSection(),
-
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildDetailPreviewSection(),
+        ProductTailInfoSection(
+          warningText: precautionsText,
+          deliveryText: _product?.additionalInfo?['it_baesong_content']?.toString(),
+          prescriptionProcessText:
+              _product?.additionalInfo?['it_shipping_process']?.toString(),
+          changeContentText:
+              _product?.additionalInfo?['it_change_content']?.toString(),
+        ),
+        _buildRecommendedSection(),
+        SizedBox(height: healthDp(context, 56)),
+      ],
     );
   }
 
@@ -787,13 +810,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     return parts.join(' | ');
   }
 
-  Widget _buildSupportReviewTab() {
+  Widget _buildSupportReviewTabContent() {
     return ProductSupportReview(
       reviews: _supporterReviews,
       isLoading: _isLoadingReviews,
       visibleCount: _visibleSupporterReviewCount,
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
+      embedInParentScroll: true,
       onLoadMore: () {
         _safeSetState(() {
           _visibleSupporterReviewCount += 8;
@@ -803,13 +827,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Widget _buildNormalReviewTab() {
+  Widget _buildNormalReviewTabContent() {
     return ProductNormalReview(
       reviews: _generalReviews,
       isLoading: _isLoadingReviews,
       visibleCount: _visibleNormalReviewCount,
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
+      embedInParentScroll: true,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;
@@ -1250,15 +1275,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           height: tapSize,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () async {
-              try {
-                await ProductShare.shareProduct(
-                  anchorContext: anchorContext,
-                  itId: _product!.id,
-                  productName: _product!.name,
-                );
-              } catch (_) {}
-            },
+            onTap: () => ProductShare.shareProductWithFeedback(
+              context: anchorContext,
+              itId: _product!.id,
+              productName: _product!.name,
+            ),
             child: Center(
               child: SvgPicture.asset(
                 AppAssets.shoppingShareIcon,
@@ -1520,8 +1541,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 borderRadius: BorderRadius.circular(healthDp(context, 8)),
               ),
               child: IconButton(
+                iconSize: healthDp(context, 22),
+                padding: EdgeInsets.zero,
                 icon: Icon(
                   _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  size: healthDp(context, 22),
                   color:
                       _isFavorite ? const Color(0xFFFF4081) : Colors.grey[600],
                 ),
@@ -1636,7 +1660,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           if (!mounted) return;
           await showLoginRequiredDialog(
             context,
-            message: '상품 구매는 로그인 후 이용할 수 있습니다.',
+            message: '상품 구매는 로그인 후\n이용할 수 있습니다.',
           );
           return;
         }
