@@ -12,6 +12,7 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../data/repositories/auth/auth_repository.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/models/user/user_model.dart';
+import 'cancel_member_screen.dart';
 
 /// 프로필 설정 화면 (개인정보 수정, 비밀번호 변경)
 class ProfileSettingsScreen extends StatefulWidget {
@@ -598,14 +599,111 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 27),
-        vertical: healthDp(context, 20),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 20),
+              healthDp(context, 27),
+              0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProfileFormContent(
+                  buildPhoneRow: buildPhoneRow,
+                ),
+                SizedBox(height: healthDp(context, 40)),
+                _buildWithdrawMemberLink(),
+              ],
+            ),
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 27),
+              healthDp(context, 4),
+              healthDp(context, 27),
+              healthDp(context, 16),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: healthDp(context, 40),
+              child: ElevatedButton(
+                onPressed: _saveProfile,
+                style: MyPageButtonStyles.pinkElevated().copyWith(
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                    ),
+                  ),
+                ),
+                child: Text(
+                  '저장',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: healthSp(context, 16),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWithdrawMemberLink() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CancelMemberScreen(),
+          ),
+        ),
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 6),
+            vertical: healthDp(context, 6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '회원탈퇴',
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 8),
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              SizedBox(width: healthDp(context, 1)),
+              Icon(
+                Icons.chevron_right,
+                size: healthDp(context, 10),
+                color: const Color(0xFF898686),
+              ),
+            ],
+          ),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    );
+  }
+
+  Widget _buildProfileFormContent({
+    required Widget Function(double maxWidth) buildPhoneRow,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           _ProfileHeader(
             name: '${_currentUser!.name} 님',
             email: _currentUser!.email,
@@ -903,32 +1001,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
             ),
           ],
-          SizedBox(height: healthDp(context, 20)),
-          SizedBox(
-            width: double.infinity,
-            height: healthDp(context, 40),
-            child: ElevatedButton(
-              onPressed: _saveProfile,
-              style: MyPageButtonStyles.pinkElevated().copyWith(
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                  ),
-                ),
-              ),
-              child: Text(
-                '저장',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: healthSp(context, 16),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: healthDp(context, 24)),
-        ],
-      ),
+      ],
     );
   }
 }
