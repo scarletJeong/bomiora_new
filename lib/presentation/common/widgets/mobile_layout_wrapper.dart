@@ -2,6 +2,74 @@ import 'package:flutter/material.dart';
 
 import 'navi_bar.dart';
 
+/// [MobileAppLayoutWrapper] 패널 가로 폭 안에 스낵바를 표시합니다.
+class LayoutScaffoldMessenger extends ScaffoldMessenger {
+  const LayoutScaffoldMessenger({
+    super.key,
+    required super.child,
+    this.maxWidth = 650,
+  });
+
+  final double maxWidth;
+
+  @override
+  ScaffoldMessengerState createState() => _LayoutScaffoldMessengerState();
+}
+
+class _LayoutScaffoldMessengerState extends ScaffoldMessengerState {
+  double get _maxWidth {
+    final messenger = context.findAncestorWidgetOfExactType<LayoutScaffoldMessenger>();
+    return messenger?.maxWidth ?? 650;
+  }
+
+  SnackBar _constrainSnackBar(SnackBar snackBar) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final panelW = MobileAppLayoutWrapper.contentWidthOf(
+      context,
+      maxWidth: _maxWidth,
+    );
+    final sideMargin = ((screenW - panelW) / 2).clamp(0.0, double.infinity);
+    const inset = 16.0;
+    final barWidth = (panelW - inset * 2).clamp(0.0, panelW);
+
+    return SnackBar(
+      key: snackBar.key,
+      content: snackBar.content,
+      backgroundColor: snackBar.backgroundColor,
+      elevation: snackBar.elevation,
+      margin: EdgeInsets.fromLTRB(
+        sideMargin + inset,
+        0,
+        sideMargin + inset,
+        16,
+      ),
+      padding: snackBar.padding,
+      width: barWidth,
+      shape: snackBar.shape,
+      behavior: SnackBarBehavior.floating,
+      duration: snackBar.duration,
+      action: snackBar.action,
+      actionOverflowThreshold: snackBar.actionOverflowThreshold,
+      showCloseIcon: snackBar.showCloseIcon,
+      closeIconColor: snackBar.closeIconColor,
+      dismissDirection: snackBar.dismissDirection,
+      onVisible: snackBar.onVisible,
+      clipBehavior: snackBar.clipBehavior,
+    );
+  }
+
+  @override
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBar(
+    SnackBar snackBar, {
+    AnimationStyle? snackBarAnimationStyle,
+  }) {
+    return super.showSnackBar(
+      _constrainSnackBar(snackBar),
+      snackBarAnimationStyle: snackBarAnimationStyle,
+    );
+  }
+}
+
 /// 모바일 앱처럼 [maxWidth]로 가로를 제한해 가운데 정렬하는 공통 위젯.
 class MobileLayoutWrapper extends StatelessWidget {
   final Widget child;
@@ -203,9 +271,12 @@ class MobileAppLayoutWrapper extends StatelessWidget {
                 ]
               : null,
         ),
-        child: _innerScaffold(
-          wrappedAppBar: wrappedAppBar,
-          appBar: appBar,
+        child: LayoutScaffoldMessenger(
+          maxWidth: maxWidth,
+          child: _innerScaffold(
+            wrappedAppBar: wrappedAppBar,
+            appBar: appBar,
+          ),
         ),
       ),
     );
