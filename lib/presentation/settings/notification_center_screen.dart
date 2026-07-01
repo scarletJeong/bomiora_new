@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
 import '../../core/constants/app_assets.dart';
+import '../../data/models/notification/app_notification_model.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/notification_inbox_service.dart';
+import '../common/widgets/centered_empty_state.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
+import '../health/health_common/health_responsive_scale.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
 import 'notification_settings_screen.dart';
-import '../health/health_common/health_responsive_scale.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({super.key});
@@ -21,52 +26,59 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kPink = Color(0xFFFF5A8D);
 
-  int _selectedTab = 0; // 0: 전체, 1: 안읽음
-  late final List<_NotificationItem> _items = [
-    _NotificationItem(
-      date: '2026. 03. 31',
-      category: '공지사항',
-      title: '2026년 5월 11일 시스템 서버 작업 일정 안내',
-      isUnread: true,
-    ),
-    _NotificationItem(
-      date: '2026. 03. 30',
-      category: '결제완료',
-      title: '보미 다이어트(신제품 프로모션, 9종 처방)',
-      description: '결제가 완료되었습니다.',
-      isUnread: true,
-    ),
-    _NotificationItem(
-      date: '2026. 03. 27',
-      category: '주문취소',
-      title: '보미 다이어트(신제품 프로모션, 9종 처방)',
-      description: '주문이 취소되었습니다.',
-      isUnread: true,
-    ),
-    _NotificationItem(
-      date: '2026. 03. 25',
-      category: '포인트 적립',
-      title: '30,000포인트',
-      description: '적립되었습니다.',
-      isUnread: true,
-    ),
-    _NotificationItem(
-      date: '2026. 03. 24',
-      category: '배송시작',
-      title: '보미 다이어트(신제품 프로모션, 9종 처방)',
-      description: '배송이 시작되었습니다.',
-      isUnread: false,
-    ),
-  ];
+  int _selectedTab = 0;
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+  List<AppNotificationItem> _items = [];
 
-  List<_NotificationItem> get _filteredItems {
+  @override
+  void initState() {
+    super.initState();
+    NotificationInboxService.revision.addListener(_onInboxChanged);
+    _loadNotifications();
+  }
+
+  @override
+  void dispose() {
+    NotificationInboxService.revision.removeListener(_onInboxChanged);
+    super.dispose();
+  }
+
+  void _onInboxChanged() {
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    final loggedIn = await AuthService.isLoggedIn();
+    if (!mounted) return;
+
+    if (!loggedIn) {
+      setState(() {
+        _isLoggedIn = false;
+        _items = [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final items = await NotificationInboxService.fetchList(limit: 50);
+    if (!mounted) return;
+    setState(() {
+      _isLoggedIn = true;
+      _items = items;
+      _isLoading = false;
+    });
+  }
+
+  List<AppNotificationItem> get _filteredItems {
     if (_selectedTab == 1) {
-      return _items.where((item) => item.isUnread).toList();
+      return _items.where((item) => !item.isRead).toList();
     }
     return _items;
   }
 
-  int get _unreadCount => _items.where((item) => item.isUnread).length;
+  int get _unreadCount => _items.where((item) => !item.isRead).length;
 
   void _openNotificationSettings() {
     Navigator.push(
@@ -77,9 +89,49 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     );
   }
 
+  Future<void> _markAsRead(AppNotificationItem item) async {
+    if (item.isRead) return;
+    await NotificationInboxService.markAsRead(item.id);
+    if (!mounted) return;
+    setState(() {
+      _items = _items
+          .map((e) => e.id == item.id ? e.copyWith(isRead: true) : e)
+          .toList();
+    });
+  }
+
+  void _openNotification(AppNotificationItem item) {
+    _markAsRead(item);
+    final type = item.type?.toLowerCase() ?? '';
+    final linkId = item.linkId ?? '';
+
+    switch (type) {
+      case 'contact':
+      case 'inquiry':
+      case 'qna':
+        final wrId = int.tryParse(linkId);
+        if (wrId != null && wrId > 0) {
+          Navigator.pushNamed(
+            context,
+            '/qna-detail',
+            arguments: {'wrId': wrId},
+          );
+        } else {
+          Navigator.pushNamed(context, '/qna');
+        }
+        break;
+      case 'login':
+        Navigator.pushNamed(context, '/my_page');
+        break;
+      default:
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = _filteredItems;
+
     return DefaultTextStyle.merge(
       style: const TextStyle(fontFamily: _font),
       child: MobileAppLayoutWrapper(
@@ -114,43 +166,49 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             ),
           ],
         ),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
-            healthDp(context, 20),
-            healthDp(context, 27),
-            healthDp(context, 20),
-          ),
-          children: [
-            _buildTabSelector(context),
-            SizedBox(height: healthDp(context, 14)),
-            if (items.isEmpty)
-              Container(
-                padding: EdgeInsets.symmetric(vertical: healthDp(context, 36)),
-                alignment: Alignment.center,
-                decoration: ShapeDecoration(
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                      width: healthDp(context, 0.5),
-                      color: _kBorder,
-                    ),
-                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                  ),
-                ),
-                child: Text(
-                  '표시할 알림이 없습니다.',
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 14),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w500,
-                  ),
+        child: _isLoading
+            ? Center(
+                child: SizedBox(
+                  width: healthDp(context, 32),
+                  height: healthDp(context, 32),
+                  child: const CircularProgressIndicator(color: _kPink),
                 ),
               )
-            else
-              ...items.map((item) => _buildNotificationCard(context, item)),
-          ],
-        ),
+            : !_isLoggedIn
+                ? const CenteredEmptyState(
+                    icon: Icons.notifications_none_outlined,
+                    message: '로그인 후 알림을 확인할 수 있습니다.',
+                  )
+                : RefreshIndicator(
+                    color: _kPink,
+                    onRefresh: _loadNotifications,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        healthDp(context, 27),
+                        healthDp(context, 20),
+                        healthDp(context, 27),
+                        healthDp(context, 20),
+                      ),
+                      children: [
+                        _buildTabSelector(context),
+                        SizedBox(height: healthDp(context, 14)),
+                        if (items.isEmpty)
+                          SizedBox(
+                            height: healthDp(context, 280),
+                            child: const CenteredEmptyState(
+                              fillAvailable: true,
+                              icon: Icons.notifications_none_outlined,
+                              message: '표시할 알림이 없습니다.',
+                            ),
+                          )
+                        else
+                          ...items.map(
+                            (item) => _buildNotificationCard(context, item),
+                          ),
+                      ],
+                    ),
+                  ),
       ),
     );
   }
@@ -261,107 +319,98 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, _NotificationItem item) {
-    return Container(
-      margin: EdgeInsets.only(bottom: healthDp(context, 10)),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 15)),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 0.5),
-            color: _kBorder,
+  Widget _buildNotificationCard(BuildContext context, AppNotificationItem item) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openNotification(item),
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        child: Container(
+          margin: EdgeInsets.only(bottom: healthDp(context, 10)),
+          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 15)),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: healthDp(context, 0.5),
+                color: _kBorder,
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            ),
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.date,
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: healthSp(context, 10),
-                          fontFamily: _font,
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: healthSp(context, -0.9),
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 6)),
-                      Row(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (item.isUnread) ...[
-                            Container(
-                              width: healthDp(context, 8),
-                              height: healthDp(context, 8),
-                              decoration: const ShapeDecoration(
-                                color: _kPink,
-                                shape: OvalBorder(),
-                              ),
-                            ),
-                            SizedBox(width: healthDp(context, 4)),
-                          ],
                           Text(
-                            item.category,
+                            item.formattedDate,
                             style: TextStyle(
-                              color: _kText,
-                              fontSize: healthSp(context, 14),
+                              color: _kMuted,
+                              fontSize: healthSp(context, 10),
                               fontFamily: _font,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: healthSp(context, -1.26),
+                              fontWeight: FontWeight.w300,
+                              letterSpacing: healthSp(context, -0.9),
                             ),
+                          ),
+                          SizedBox(height: healthDp(context, 6)),
+                          Row(
+                            children: [
+                              if (!item.isRead) ...[
+                                Container(
+                                  width: healthDp(context, 8),
+                                  height: healthDp(context, 8),
+                                  decoration: const ShapeDecoration(
+                                    color: _kPink,
+                                    shape: OvalBorder(),
+                                  ),
+                                ),
+                                SizedBox(width: healthDp(context, 4)),
+                              ],
+                              Text(
+                                item.category,
+                                style: TextStyle(
+                                  color: _kText,
+                                  fontSize: healthSp(context, 14),
+                                  fontFamily: _font,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: healthSp(context, -1.26),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                InkWell(
-                  borderRadius: BorderRadius.circular(healthDp(context, 16)),
-                  onTap: () => _removeItem(item),
-                  child: Padding(
-                    padding: EdgeInsets.all(healthDp(context, 2)),
-                    child: Icon(
-                      Icons.close,
-                      size: healthDp(context, 16),
-                      color: _kMuted,
                     ),
-                  ),
+                    InkWell(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 16)),
+                      onTap: () => _markAsRead(item),
+                      child: Padding(
+                        padding: EdgeInsets.all(healthDp(context, 2)),
+                        child: Icon(
+                          Icons.close,
+                          size: healthDp(context, 16),
+                          color: _kMuted,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            SizedBox(height: healthDp(context, 5)),
-            Container(
-              width: double.infinity,
-              height: healthDp(context, 1),
-              color: const Color(0x7FD2D2D2),
-            ),
-            SizedBox(height: healthDp(context, 10)),
-            if (item.description == null)
-              Text(
-                item.title,
-                style: TextStyle(
-                  color: _kText,
-                  fontSize: healthSp(context, 12),
-                  fontFamily: _font,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: healthSp(context, -1.08),
+                SizedBox(height: healthDp(context, 5)),
+                Container(
+                  width: double.infinity,
+                  height: healthDp(context, 1),
+                  color: const Color(0x7FD2D2D2),
                 ),
-              )
-            else
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: healthDp(context, 5),
-                children: [
+                SizedBox(height: healthDp(context, 10)),
+                if (item.description == null || item.description!.isEmpty)
                   Text(
                     item.title,
                     style: TextStyle(
@@ -371,44 +420,39 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       fontWeight: FontWeight.w500,
                       letterSpacing: healthSp(context, -1.08),
                     ),
+                  )
+                else
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: healthDp(context, 5),
+                    children: [
+                      Text(
+                        item.title,
+                        style: TextStyle(
+                          color: _kText,
+                          fontSize: healthSp(context, 12),
+                          fontFamily: _font,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: healthSp(context, -1.08),
+                        ),
+                      ),
+                      Text(
+                        item.description!,
+                        style: TextStyle(
+                          color: _kMuted,
+                          fontSize: healthSp(context, 12),
+                          fontFamily: _font,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: healthSp(context, -1.08),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    item.description!,
-                    style: TextStyle(
-                      color: _kMuted,
-                      fontSize: healthSp(context, 12),
-                      fontFamily: _font,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: healthSp(context, -1.08),
-                    ),
-                  ),
-                ],
-              ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
-
-  void _removeItem(_NotificationItem target) {
-    setState(() {
-      _items.remove(target);
-    });
-  }
-}
-
-class _NotificationItem {
-  _NotificationItem({
-    required this.date,
-    required this.category,
-    required this.title,
-    this.description,
-    required this.isUnread,
-  });
-
-  final String date;
-  final String category;
-  final String title;
-  final String? description;
-  bool isUnread;
 }
