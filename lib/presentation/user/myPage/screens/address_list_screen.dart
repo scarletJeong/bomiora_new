@@ -237,6 +237,29 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         icon: Icons.location_off_outlined,
                         message: '로그인 후 이용 가능합니다.',
                       )
+                    : _addresses.isEmpty
+                    ? LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SizedBox(
+                            height: constraints.maxHeight,
+                            child: CenteredEmptyState(
+                              fillAvailable: true,
+                              icon: Icons.location_off_outlined,
+                              message: '등록된 배송지가 없습니다',
+                              trailingGap: healthDp(context, 10),
+                              trailing: [
+                                _SmallActionButton(
+                                  label: '등록',
+                                  variant:
+                                      _SmallActionButtonVariant.filledPink,
+                                  enabled: true,
+                                  onTap: _goToRegister,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      )
                     : SingleChildScrollView(
                         padding: EdgeInsets.only(
                           left: healthDp(context, 27),
@@ -287,34 +310,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                               SizedBox(height: healthDp(context, 10)),
                             ],
 
-                            if (_addresses.isEmpty)
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                    vertical: healthDp(context, 60)),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.location_off_outlined,
-                                        size: healthDp(context, 56),
-                                        color: Colors.grey[400],
-                                      ),
-                                      SizedBox(height: healthDp(context, 12)),
-                                      Text(
-                                        '등록된 배송지가 없습니다',
-                                        style: TextStyle(
-                                          fontSize: healthSp(context, 12),
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else
-                              ..._addresses.asMap().entries.map(
+                            ..._addresses.asMap().entries.map(
                                 (entry) {
                                   final isLast =
                                       entry.key == _addresses.length - 1;
@@ -330,7 +326,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                               ),
 
                             if (_addresses.isNotEmpty)
-                              SizedBox(height: healthDp(context, 48)),
+                              SizedBox(height: healthDp(context, 20)),
                             if (_addresses.isNotEmpty)
                               Row(
                                 mainAxisAlignment:
@@ -365,16 +361,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                                     onTap: _goToRegister,
                                   ),
                                 ],
-                              )
-                            else
-                              Center(
-                                child: _SmallActionButton(
-                                  label: '등록',
-                                  variant: _SmallActionButtonVariant
-                                      .filledPink,
-                                  enabled: true,
-                                  onTap: _goToRegister,
-                                ),
                               ),
                           ],
                         ),
