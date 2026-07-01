@@ -62,6 +62,20 @@ abstract final class MyPageButtonStyles {
   }
 }
 
+/// 마이페이지 메인 — 라인 + 화살표 메뉴 행과 동일한 세로 라인
+Widget myPageLeadingBar(BuildContext context) => Container(
+      width: healthDp(context, 1),
+      height: healthDp(context, 16),
+      color: const Color(0xFF1A1A1A),
+    );
+
+TextStyle myPageLineTitleStyle(BuildContext context) => TextStyle(
+      color: const Color(0xFF1A1A1A),
+      fontSize: healthSp(context, 16),
+      fontWeight: FontWeight.w300,
+      letterSpacing: -1.44,
+    );
+
 /// 마이페이지 메인 — 라인 + 화살표 메뉴 행
 class MyPageLineMenuItem extends StatelessWidget {
   const MyPageLineMenuItem({
@@ -96,20 +110,11 @@ class MyPageLineMenuItem extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: healthDp(context, 1),
-                  height: healthDp(context, 16),
-                  color: const Color(0xFF1A1A1A),
-                ),
+                myPageLeadingBar(context),
                 SizedBox(width: healthDp(context, 10)),
                 Text(
                   title,
-                  style: TextStyle(
-                    color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(context, 16),
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -1.44,
-                  ),
+                  style: myPageLineTitleStyle(context),
                 ),
               ],
             ),
