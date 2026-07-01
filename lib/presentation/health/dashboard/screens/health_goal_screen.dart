@@ -230,59 +230,63 @@ class _HealthGoalScreenState extends State<HealthGoalScreen> {
                             const SizedBox(height: 20),
                             _buildStepsPickerSection(),
                             const SizedBox(height: 20),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  healthDp(context, 10),
-                                ),
-                                child: Material(
-                                  color: _submitting
-                                      ? const Color(0xFFFF5A8D)
-                                          .withValues(alpha: 0.5)
-                                      : const Color(0xFFFF5A8D),
-                                  child: InkWell(
-                                    onTap:
-                                        _submitting ? null : _onRegister,
-                                    child: Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: healthDp(context, 16),
-                                        vertical: healthDp(context, 10),
-                                      ),
-                                      child: Center(
-                                        child: _submitting
-                                            ? SizedBox(
-                                                height: healthDp(
-                                                    context, 22),
-                                                width: healthDp(
-                                                    context, 22),
-                                                child:
-                                                    const CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Colors.white,
-                                                ),
-                                              )
-                                            : Text(
-                                                '등록',
-                                                textScaler:
-                                                    TextScaler.noScaling,
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: healthSp(
-                                                      context, 16),
-                                                  fontFamily:
-                                                      'Gmarket Sans TTF',
-                                                  fontWeight:
-                                                      FontWeight.w500,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          healthDp(context, 27),
+                          healthDp(context, 8),
+                          healthDp(context, 27),
+                          healthDp(context, 16),
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              healthDp(context, 10),
+                            ),
+                            child: Material(
+                              color: _submitting
+                                  ? const Color(0xFFFF5A8D)
+                                      .withValues(alpha: 0.5)
+                                  : const Color(0xFFFF5A8D),
+                              child: InkWell(
+                                onTap: _submitting ? null : _onRegister,
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: healthDp(context, 16),
+                                    vertical: healthDp(context, 10),
+                                  ),
+                                  child: Center(
+                                    child: _submitting
+                                        ? SizedBox(
+                                            height: healthDp(context, 22),
+                                            width: healthDp(context, 22),
+                                            child:
+                                                const CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
+                                            '등록',
+                                            textScaler: TextScaler.noScaling,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: healthSp(context, 16),
+                                              fontFamily: 'Gmarket Sans TTF',
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
                                   ),
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),

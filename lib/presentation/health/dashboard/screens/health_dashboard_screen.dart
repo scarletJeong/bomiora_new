@@ -30,6 +30,7 @@ import '../widgets/today_healthrecord_widgets.dart';
 import '../widgets/today_meal_widgets.dart';
 import '../../health_common/health_responsive_scale.dart';
 import '../../health_common/widgets/health_date_selector.dart';
+import '../../health_common/health_goal_gate.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/navi_bar.dart';
 
@@ -245,9 +246,30 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return sameDayRecords.first;
   }
 
+  bool get _hasHealthGoalConfigured => isHealthGoalConfigured(latestHealthGoal);
+
+  Future<bool> _ensureDashboardFeatureAccess() async {
+    if (currentUser == null) {
+      await showLoginRequiredDialog(
+        context,
+        message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
+      );
+      return false;
+    }
+    if (!_hasHealthGoalConfigured) {
+      final saved = await showHealthGoalRequiredDialog(context);
+      if (saved && mounted) {
+        await _loadData(showBlockingLoader: false);
+      }
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final textScale = healthTextScaleByWidth(MediaQuery.of(context).size.width);
+    final topInset = healthStatusBarTopInset(context);
     return MobileAppLayoutWrapper(
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {
@@ -286,7 +308,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                             left: 0,
                             right: 0,
                             top: 0,
-                            height: healthDp(context, 320),
+                            height: healthDp(context, 320) + topInset,
                             child: const ColoredBox(
                               color: Color(0xFFFFACC6),
                             ),
@@ -295,6 +317,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              SizedBox(height: topInset),
                               _buildHeaderSection(),
                               SizedBox(
                                   height: _headerToWhiteCardGap(context)),
@@ -352,7 +375,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                         mealCalories: mealCalories,
                                         mealImagePaths: mealImagePaths,
                                         selectedDate: selectedDate,
-                                        isLoggedIn: currentUser != null,
+                                        onBeforeAction: _ensureDashboardFeatureAccess,
                                         onAfterDietReturn: () {
                                           if (mounted) _loadData();
                                         },
@@ -360,8 +383,8 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                                       SizedBox(
                                           height: healthDp(context, 14)),
                                       TodayHealthRecordSection(
-                                        isLoggedIn: currentUser != null,
                                         selectedDate: selectedDate,
+                                        onBeforeAction: _ensureDashboardFeatureAccess,
                                         latestBloodSugarRecord:
                                             latestBloodSugarRecord,
                                         latestBloodPressureRecord:
@@ -552,7 +575,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999)),
                 ),
-                child: const Text('목표수정 >',
+                child: const Text('목표설정 >',
                     style: TextStyle(
                         fontSize: 8,
                         fontFamily: 'Gmarket Sans TTF',
@@ -755,14 +778,9 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     );
   }
 
-  void _openHealthConnectScreen() {
-    if (currentUser == null) {
-      showLoginRequiredDialog(
-        context,
-        message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-      );
-      return;
-    }
+  void _openHealthConnectScreen() async {
+    if (!await _ensureDashboardFeatureAccess()) return;
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -800,13 +818,7 @@ class _HealthDashboardScreenState extends State<HealthDashboardScreen> {
     return GestureDetector(
       onTap: () async {
         if (title == '키' || title == '체중' || title == 'BMI') {
-          if (currentUser == null) {
-            await showLoginRequiredDialog(
-              context,
-              message: '건강 대시보드 입력은 로그인 후 이용할 수 있습니다.',
-            );
-            return;
-          }
+          if (!await _ensureDashboardFeatureAccess()) return;
           if (!mounted) return;
 
           final result = await Navigator.push(
