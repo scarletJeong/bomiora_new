@@ -175,39 +175,75 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 ),
               )
             : !_isLoggedIn
-                ? const CenteredEmptyState(
-                    icon: Icons.notifications_none_outlined,
-                    message: '로그인 후 알림을 확인할 수 있습니다.',
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SizedBox(
+                        height: constraints.maxHeight,
+                        child: const CenteredEmptyState(
+                          fillAvailable: true,
+                          icon: Icons.notifications_none_outlined,
+                          message: '로그인 후 알림을 확인할 수 있습니다.',
+                        ),
+                      );
+                    },
                   )
-                : RefreshIndicator(
-                    color: _kPink,
-                    onRefresh: _loadNotifications,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(
-                        healthDp(context, 27),
-                        healthDp(context, 20),
-                        healthDp(context, 27),
-                        healthDp(context, 20),
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          healthDp(context, 27),
+                          healthDp(context, 20),
+                          healthDp(context, 27),
+                          0,
+                        ),
+                        child: _buildTabSelector(context),
                       ),
-                      children: [
-                        _buildTabSelector(context),
-                        SizedBox(height: healthDp(context, 14)),
-                        if (items.isEmpty)
-                          SizedBox(
-                            height: healthDp(context, 280),
-                            child: const CenteredEmptyState(
-                              fillAvailable: true,
-                              icon: Icons.notifications_none_outlined,
-                              message: '표시할 알림이 없습니다.',
-                            ),
-                          )
-                        else
-                          ...items.map(
-                            (item) => _buildNotificationCard(context, item),
-                          ),
-                      ],
-                    ),
+                      SizedBox(height: healthDp(context, 14)),
+                      Expanded(
+                        child: RefreshIndicator(
+                          color: _kPink,
+                          onRefresh: _loadNotifications,
+                          child: items.isEmpty
+                              ? LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    return SingleChildScrollView(
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          minHeight: constraints.maxHeight,
+                                        ),
+                                        child: const CenteredEmptyState(
+                                          fillAvailable: true,
+                                          icon: Icons.notifications_none_outlined,
+                                          message: '표시할 알림이 없습니다.',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: EdgeInsets.fromLTRB(
+                                    healthDp(context, 27),
+                                    0,
+                                    healthDp(context, 27),
+                                    healthDp(context, 20),
+                                  ),
+                                  children: items
+                                      .map(
+                                        (item) => _buildNotificationCard(
+                                          context,
+                                          item,
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
       ),
     );

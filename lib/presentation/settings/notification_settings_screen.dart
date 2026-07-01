@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
+import '../common/widgets/centered_empty_state.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
 import '../health/health_common/health_responsive_scale.dart';
 import '../../data/models/notification/notification_settings_model.dart';
+import '../../data/services/auth_service.dart';
 import '../../data/services/fcm_service_stub.dart'
     if (dart.library.io) '../../data/services/fcm_service.dart';
 import '../../data/services/notification_service.dart';
@@ -24,6 +26,7 @@ class _NotificationSettingsScreenState
 
   bool _loading = true;
   bool _saving = false;
+  bool _requiresLogin = false;
   bool _orderAgree = false;
   bool _marketingAgree = false;
   bool _appPushAgree = false;
@@ -36,6 +39,16 @@ class _NotificationSettingsScreenState
   }
 
   Future<void> _loadSettings() async {
+    final loggedIn = await AuthService.isLoggedIn();
+    if (!loggedIn) {
+      if (!mounted) return;
+      setState(() {
+        _requiresLogin = true;
+        _loading = false;
+      });
+      return;
+    }
+
     final settings = await NotificationService.loadSettings();
     if (!mounted) return;
     setState(() {
@@ -85,8 +98,27 @@ class _NotificationSettingsScreenState
           centerTitle: false,
         ),
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
+            ? Center(
+                child: SizedBox(
+                  width: healthDp(context, 32),
+                  height: healthDp(context, 32),
+                  child: const CircularProgressIndicator(color: _kPink),
+                ),
+              )
+            : _requiresLogin
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SizedBox(
+                        height: constraints.maxHeight,
+                        child: const CenteredEmptyState(
+                          fillAvailable: true,
+                          icon: Icons.notifications_none_outlined,
+                          message: '로그인 후 이용 가능합니다.',
+                        ),
+                      );
+                    },
+                  )
+                : ListView(
           padding: EdgeInsets.fromLTRB(
             healthDp(context, 27),
             healthDp(context, 20),
