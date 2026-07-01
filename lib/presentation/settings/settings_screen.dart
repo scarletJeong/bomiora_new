@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
-import 'notification_center_screen.dart';
+import 'notification_settings_screen.dart';
 import 'policy/screens/terms_of_service_screen.dart';
 import 'policy/screens/privacy_policy_screen.dart';
-import '../user/myPage/screens/cancel_member_screen.dart';
 import '../health/health_common/health_responsive_scale.dart';
 
 /// 설정 화면
@@ -47,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const NotificationCenterScreen(),
+                    builder: (context) => const NotificationSettingsScreen(),
                   ),
                 ),
                 isLast: true,
@@ -133,44 +132,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ],
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          Align(
-            alignment: Alignment.centerRight,
-            child: InkWell(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CancelMemberScreen(),
-                ),
-              ),
-              borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 6),
-                  vertical: healthDp(context, 6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '회원탈퇴',
-                      style: TextStyle(
-                        color: _kMuted,
-                        fontSize: healthSp(context, 12),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(width: healthDp(context, 2)),
-                    Icon(
-                      Icons.chevron_right,
-                      size: healthDp(context, 18),
-                      color: _kMuted,
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ),
         ],
       ),
