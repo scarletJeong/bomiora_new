@@ -218,6 +218,8 @@ class ContactService {
     required String subject,
     required String content,
     int? parentWrId,
+    String? primaryType,
+    String? detailType,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -241,6 +243,10 @@ class ContactService {
           'wr_email': user.email.isNotEmpty ? user.email : '',
           'wr_subject': subject,
           'wr_content': content,
+          if (primaryType != null && primaryType.isNotEmpty)
+            'ca_name': primaryType,
+          if (detailType != null && detailType.isNotEmpty)
+            'wr_6': detailType,
           if (parentWrId != null) 'parent_wr_id': parentWrId,
           'wr_password': (user.password != null && user.password!.isNotEmpty)
               ? user.password
@@ -271,6 +277,8 @@ class ContactService {
     required int wrId,
     required String subject,
     required String content,
+    String? primaryType,
+    String? detailType,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -284,6 +292,10 @@ class ContactService {
         {
           'wr_subject': subject,
           'wr_content': content,
+          if (primaryType != null && primaryType.isNotEmpty)
+            'ca_name': primaryType,
+          if (detailType != null && detailType.isNotEmpty)
+            'wr_6': detailType,
         },
       );
 
@@ -300,6 +312,38 @@ class ContactService {
       };
     } catch (e) {
       throw Exception('문의 수정 실패: $e');
+    }
+  }
+
+  /// 문의 종료 (스레드 원글 기준)
+  static Future<Map<String, dynamic>> closeContact(int wrId) async {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) {
+        throw Exception('로그인이 필요합니다.');
+      }
+
+      final response = await ApiClient.put(
+        ApiEndpoints.updateContact(wrId),
+        {
+          'mb_id': user.id,
+          'is_closed': 1,
+        },
+      );
+
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return NodeValueParser.normalizeMap(decoded);
+      }
+      if (decoded is Map) {
+        return NodeValueParser.normalizeMap(Map<String, dynamic>.from(decoded));
+      }
+      return {
+        'success': false,
+        'message': '응답 형식이 올바르지 않습니다.',
+      };
+    } catch (e) {
+      throw Exception('문의 종료 실패: $e');
     }
   }
 

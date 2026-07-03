@@ -30,6 +30,106 @@ String normalizeContactInquiryPrimaryLabel(String raw) {
   return contactInquiryPrimaryTypes.first;
 }
 
+/// 목록·상세에 표시할 사용자 제목 (구 형식 `유형 - 상세 | 제목` 역파싱)
+String contactDisplayTitle(String wrSubject) {
+  var subject = wrSubject.trim();
+  if (subject.isEmpty) return '(제목 없음)';
+
+  String customTitle = '';
+  final pipeIdx = subject.indexOf(' | ');
+  if (pipeIdx != -1) {
+    customTitle = subject.substring(pipeIdx + 3).trim();
+    subject = subject.substring(0, pipeIdx).trim();
+    if (customTitle.isNotEmpty) return customTitle;
+  }
+
+  if (subject.contains(' - ')) {
+    final dashIdx = subject.indexOf(' - ');
+    final typePart =
+        normalizeContactInquiryPrimaryLabel(subject.substring(0, dashIdx).trim());
+    final detailPart = subject.substring(dashIdx + 3).trim();
+    if (contactInquiryDetailMap.containsKey(typePart) &&
+        (contactInquiryDetailMap[typePart]!.contains(detailPart) ||
+            detailPart.isNotEmpty)) {
+      return '(제목 없음)';
+    }
+  }
+
+  return subject;
+}
+
+/// 문의 상세유형 (`wr_6` 우선, 없으면 구 제목에서 파싱)
+String? contactDetailTypeLabel({
+  required String wrSubject,
+  String? wr6,
+}) {
+  final fromWr6 = wr6?.trim() ?? '';
+  if (fromWr6.isNotEmpty) {
+    return fromWr6;
+  }
+
+  var subject = wrSubject.trim();
+  final pipeIdx = subject.indexOf(' | ');
+  if (pipeIdx != -1) {
+    subject = subject.substring(0, pipeIdx).trim();
+  }
+  if (subject.contains(' - ')) {
+    final dashIdx = subject.indexOf(' - ');
+    return subject.substring(dashIdx + 3).trim();
+  }
+  return null;
+}
+
+/// 문의 대분류 유형 (`ca_name` 우선, 없으면 구 제목에서 파싱)
+String? contactPrimaryTypeLabel({
+  required String wrSubject,
+  String? caName,
+}) {
+  final fromCa = caName?.trim() ?? '';
+  if (fromCa.isNotEmpty) {
+    return normalizeContactInquiryPrimaryLabel(fromCa);
+  }
+
+  var subject = wrSubject.trim();
+  final pipeIdx = subject.indexOf(' | ');
+  if (pipeIdx != -1) {
+    subject = subject.substring(0, pipeIdx).trim();
+  }
+  if (subject.contains(' - ')) {
+    final dashIdx = subject.indexOf(' - ');
+    final typePart = subject.substring(0, dashIdx).trim();
+    final normalized = normalizeContactInquiryPrimaryLabel(typePart);
+    if (contactInquiryPrimaryTypes.contains(normalized)) {
+      return normalized;
+    }
+  }
+  return null;
+}
+
+/// 목록용 문의유형 배지
+Widget contactInquiryTypeBadge(BuildContext context, String label) {
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: healthDp(context, 6),
+      vertical: healthDp(context, 2),
+    ),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE8E8E8),
+      borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        color: Colors.black,
+        fontSize: healthSp(context, 9),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+        height: 1.2,
+      ),
+    ),
+  );
+}
+
 /// 1:1 문의 **작성/수정 폼** — 목록과 동일한 드롭다운 스타일
 class ContactInquiryTypeSelectorRow extends StatefulWidget {
   const ContactInquiryTypeSelectorRow({

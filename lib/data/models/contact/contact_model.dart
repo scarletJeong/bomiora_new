@@ -13,6 +13,7 @@ class Contact {
   final String wrReply;
   final int wrParent;
   final String? caName;
+  final String? wr6;
   final int wrHit;
   final String? wrOption; // html1, html2, secret 등의 옵션
   final int? wrIsComment; // 답변 여부 (0=답변없음, 1=답변있음)
@@ -22,6 +23,8 @@ class Contact {
   final int latestWrId;
   /// 스레드 최신 글(원글/추가질문)의 답변 여부(0/1)
   final int latestWrIsComment;
+  /// 문의 종료 여부 (`wr_8` / `is_closed` 등)
+  final bool isClosed;
   
   // 답변 여부 (wr_is_comment = 1 이면 답변 있음)
   bool get hasReply => wrIsComment == 1;
@@ -43,13 +46,26 @@ class Contact {
     required this.wrReply,
     required this.wrParent,
     this.caName,
+    this.wr6,
     required this.wrHit,
     this.wrOption,
     this.wrIsComment,
     this.followupCount = 0,
     this.latestWrId = 0,
     this.latestWrIsComment = 0,
+    this.isClosed = false,
   });
+
+  static bool _parseIsClosed(Map<String, dynamic> normalized) {
+    if (normalized.containsKey('is_closed')) {
+      return NodeValueParser.asInt(normalized['is_closed']) == 1;
+    }
+    // is_closed 필드가 없는 구 API 응답만 wr_8 레거시 사용
+    final wr8 = NodeValueParser.asString(normalized['wr_8'])?.trim() ?? '';
+    return wr8 == '1' ||
+        wr8.toLowerCase() == 'closed' ||
+        wr8 == 'Y';
+  }
 
   factory Contact.fromJson(Map<dynamic, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
@@ -71,12 +87,15 @@ class Contact {
       wrReply: mergedReply,
       wrParent: NodeValueParser.asInt(normalized['wr_parent']) ?? 0,
       caName: NodeValueParser.asString(normalized['ca_name']),
+      wr6: NodeValueParser.asString(normalized['wr_6']),
       wrHit: NodeValueParser.asInt(normalized['wr_hit']) ?? 0,
       wrOption: NodeValueParser.asString(normalized['wr_option']),
       wrIsComment: NodeValueParser.asInt(normalized['wr_is_comment']),
       followupCount: NodeValueParser.asInt(normalized['followup_count']) ?? 0,
       latestWrId: NodeValueParser.asInt(normalized['latest_wr_id']) ?? 0,
-      latestWrIsComment: NodeValueParser.asInt(normalized['latest_wr_is_comment']) ?? 0,
+      latestWrIsComment:
+          NodeValueParser.asInt(normalized['latest_wr_is_comment']) ?? 0,
+      isClosed: _parseIsClosed(normalized),
     );
   }
 
@@ -94,6 +113,7 @@ class Contact {
       'wr_reply': wrReply,
       'wr_parent': wrParent,
       'ca_name': caName,
+      'wr_6': wr6,
       'wr_hit': wrHit,
       'wr_option': wrOption,
       'wr_is_comment': wrIsComment,

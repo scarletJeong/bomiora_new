@@ -50,6 +50,13 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
   bool get _isEditMode => widget.contact != null;
 
+  bool get _isFollowUpMode => widget.parentWrId != null && !_isEditMode;
+
+  String get _appBarTitle {
+    if (_isFollowUpMode) return '1:1 추가 문의';
+    return '1:1 문의';
+  }
+
   double _pagePadH(BuildContext context) => healthDp(context, 27);
 
   @override
@@ -59,36 +66,41 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     _applyContactToForm(widget.contact!);
   }
 
-  /// 저장 형식: `유형 - 상세 | 사용자제목` 또는 `유형 - 상세`(제목 생략)
+  /// 저장 형식: `유형 - 상세 | 사용자제목` 또는 `유형 - 상세`(제목 생략) — 구 데이터 역파싱
   void _applyContactToForm(Contact c) {
     _contentController.text = c.getPlainTextContent();
 
-    var subject = c.wrSubject;
-    String customTitle = '';
-
-    final pipeIdx = subject.indexOf(' | ');
-    if (pipeIdx != -1) {
-      customTitle = subject.substring(pipeIdx + 3).trim();
-      subject = subject.substring(0, pipeIdx).trim();
-    }
-
-    if (subject.contains(' - ')) {
-      final dashIdx = subject.indexOf(' - ');
-      final typePart =
-          normalizeContactInquiryPrimaryLabel(subject.substring(0, dashIdx).trim());
-      final detailPart = subject.substring(dashIdx + 3).trim();
-      if (contactInquiryDetailMap.containsKey(typePart)) {
-        _selectedType = typePart;
-        final details = contactInquiryDetailMap[_selectedType]!;
-        _selectedDetailType =
-            details.contains(detailPart) ? detailPart : details.first;
-        _titleController.text = customTitle;
-        return;
+    final typeLabel = contactPrimaryTypeLabel(
+      wrSubject: c.wrSubject,
+      caName: c.caName,
+    );
+    if (typeLabel != null && contactInquiryDetailMap.containsKey(typeLabel)) {
+      _selectedType = typeLabel;
+      final details = contactInquiryDetailMap[_selectedType]!;
+      final fromWr6 = c.wr6?.trim() ?? '';
+      if (fromWr6.isNotEmpty && details.contains(fromWr6)) {
+        _selectedDetailType = fromWr6;
+      } else {
+        var subject = c.wrSubject;
+        String detailPart = details.first;
+        final pipeIdx = subject.indexOf(' | ');
+        if (pipeIdx != -1) {
+          subject = subject.substring(0, pipeIdx).trim();
+        }
+        if (subject.contains(' - ')) {
+          final dashIdx = subject.indexOf(' - ');
+          final parsedDetail = subject.substring(dashIdx + 3).trim();
+          if (details.contains(parsedDetail)) {
+            detailPart = parsedDetail;
+          }
+        }
+        _selectedDetailType = detailPart;
       }
     }
 
-    _titleController.text =
-        customTitle.isNotEmpty ? customTitle : subject.trim();
+    _titleController.text = contactDisplayTitle(c.wrSubject) == '(제목 없음)'
+        ? ''
+        : contactDisplayTitle(c.wrSubject);
   }
 
   @override
@@ -160,19 +172,22 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
     try {
       final title = _titleController.text.trim();
-      final categorySubject = '$_selectedType - $_selectedDetailType';
-      final mergedSubject = title.isEmpty ? categorySubject : '$categorySubject | $title';
+      final subject = title.isEmpty ? '(제목 없음)' : title;
 
       final Map<String, dynamic> result = _isEditMode
           ? await ContactService.updateContact(
               wrId: widget.contact!.wrId,
-              subject: mergedSubject,
+              subject: subject,
               content: _contentController.text.trim(),
+              primaryType: _selectedType,
+              detailType: _selectedDetailType,
             )
           : await ContactService.createContact(
-              subject: mergedSubject,
+              subject: subject,
               content: _contentController.text.trim(),
               parentWrId: widget.parentWrId,
+              primaryType: widget.parentWrId == null ? _selectedType : null,
+              detailType: widget.parentWrId == null ? _selectedDetailType : null,
             );
 
       if (!mounted) return;
@@ -210,30 +225,36 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           child: MobileAppLayoutWrapper(
             backgroundColor: Colors.white,
             appBar: HealthAppBar(
-              title: '1:1 문의',
+              title: _appBarTitle,
               titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
             ),
             child: Form(
               key: _formKey,
-              child: ListView(
-                padding: EdgeInsets.only(
-                  left: _pagePadH(context),
-                  right: _pagePadH(context),
-                  bottom: healthDp(context, 20),
-                ),
+              child: Column(
                 children: [
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildTypeSelectors(),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildTitleField(),
-                  SizedBox(height: healthDp(context, 10)),
-                  _buildContentBox(),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildImageBox(),
-                  SizedBox(height: healthDp(context, 20)),
-                  _buildBottomButtons(),
-                  SizedBox(height: healthDp(context, 20)),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        _pagePadH(context),
+                        healthDp(context, 20),
+                        _pagePadH(context),
+                        healthDp(context, 20),
+                      ),
+                      children: [
+                        if (!_isFollowUpMode) ...[
+                          _buildTypeSelectors(),
+                          SizedBox(height: healthDp(context, 20)),
+                        ],
+                        _buildTitleField(),
+                        SizedBox(height: healthDp(context, 10)),
+                        _buildContentBox(),
+                        SizedBox(height: healthDp(context, 20)),
+                        _buildImageBox(),
+                      ],
+                    ),
+                  ),
+                  _buildFixedBottomButtons(),
                 ],
               ),
             ),
@@ -481,66 +502,82 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     );
   }
 
-  Widget _buildBottomButtons() {
+  Widget _buildFixedBottomButtons() {
     final h = healthDp(context, 40);
     final r = healthDp(context, 10);
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: h,
-            decoration: ShapeDecoration(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                    width: healthDp(context, 0.5), color: _kBorder),
-                borderRadius: BorderRadius.circular(r),
-              ),
-            ),
-            child: TextButton(
-              onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-              child: Text(
-                '취소',
-                style: TextStyle(
-                  color: _kMuted,
-                  fontSize: healthSp(context, 16),
-                  fontWeight: FontWeight.w500,
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        _pagePadH(context),
+        healthDp(context, 12),
+        _pagePadH(context),
+        healthDp(context, 20),
+      ),
+      color: Colors.white,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: h,
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      width: healthDp(context, 0.5),
+                      color: _kBorder,
+                    ),
+                    borderRadius: BorderRadius.circular(r),
+                  ),
+                ),
+                child: TextButton(
+                  onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                  child: Text(
+                    '취소',
+                    style: TextStyle(
+                      color: _kMuted,
+                      fontSize: healthSp(context, 16),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-        SizedBox(width: healthDp(context, 20)),
-        Expanded(
-          child: Container(
-            height: h,
-            decoration: ShapeDecoration(
-              color: _kPink,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r)),
+            SizedBox(width: healthDp(context, 20)),
+            Expanded(
+              child: Container(
+                height: h,
+                decoration: ShapeDecoration(
+                  color: _kPink,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(r),
+                  ),
+                ),
+                child: TextButton(
+                  onPressed: _isSubmitting ? null : _submitContact,
+                  child: _isSubmitting
+                      ? SizedBox(
+                          width: healthDp(context, 18),
+                          height: healthDp(context, 18),
+                          child: CircularProgressIndicator(
+                            strokeWidth: healthDp(context, 2),
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _isEditMode ? '수정' : '등록',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 16),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                ),
+              ),
             ),
-            child: TextButton(
-              onPressed: _isSubmitting ? null : _submitContact,
-              child: _isSubmitting
-                  ? SizedBox(
-                      width: healthDp(context, 18),
-                      height: healthDp(context, 18),
-                      child: CircularProgressIndicator(
-                        strokeWidth: healthDp(context, 2),
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      _isEditMode ? '수정' : '등록',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: healthSp(context, 16),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-            ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
