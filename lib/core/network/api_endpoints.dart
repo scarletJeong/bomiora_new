@@ -82,6 +82,8 @@ class ApiEndpoints {
   static const String userOrders = '/api/user/orders';
   static const String userFcmToken = '/api/user/fcm-token';
   static const String userNotificationSettings = '/api/user/notification-settings';
+  static const String userNotifications = '/api/user/notifications';
+  static const String userNotificationRead = '/api/user/notifications/read';
 
   // 건강 관리 관련 (향후 확장용)
   static const String bloodSugarRecords = '/api/health/blood-sugar';
