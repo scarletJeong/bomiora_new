@@ -87,10 +87,9 @@ abstract final class AppAssets {
   static const String mainCardIconBloodSugar = '${_img}health_blood_sugar.svg';
   static const String mainCardIconMenstrual = '${_img}health_menstrual.svg';
 
-  // 생리주기 추천 카드 아이콘콘
-  static const String menstrualIcon1 = '${_img}menstrual_icon1.png';
-  static const String menstrualIcon2 = '${_img}menstrual_icon2.png';
-  static const String menstrualIcon3 = '${_img}menstrual_icon3.png';
+  // 생리주기 추천 카드 아이콘
+  static const String menstrualConditionCheckIcon = '${_img}health_menstrual.svg';
+  static const String menstrualBomioraPickIcon = '${_img}thumb_up_icon.svg';
 
   // 걸음수 카드 아이콘
   static const String stepsDown = '${_img}step_arrow_down.svg';
