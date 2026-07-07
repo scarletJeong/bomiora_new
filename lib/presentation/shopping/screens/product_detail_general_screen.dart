@@ -1400,6 +1400,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       selectedOptions: _selectedOptions,
       userPoint: _userPoint,
       isFavorite: _isFavorite,
+      productKindOverride: 'general',
       onToggleFavorite: _toggleFavorite,
       onNoOptionGeneral: _showGeneralQuantityBottomSheet,
       onNoOptionPrescription: () async {},
@@ -1508,12 +1509,63 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     return _parseGeneralCartItems(cart).map((e) => e.ctId).toSet();
   }
 
-  Future<List<CartItem>> _resolveBuyNowCartItems(Set<int> beforeIds) async {
+  String _ctOptionText(ProductOption option) {
+    if (option.months != null) {
+      return '${option.step} / ${option.months}일';
+    }
+    return option.step;
+  }
+
+  Future<List<CartItem>> _resolveGeneralBuyNowPayItems({
+    required Set<int> beforeIds,
+    Map<ProductOption, int>? selectedOptions,
+    int? quantity,
+  }) async {
     final cart = await CartService.getCart();
-    if (cart['success'] != true) return [];
-    return _parseGeneralCartItems(cart)
-        .where((item) => !beforeIds.contains(item.ctId))
-        .toList();
+    if (cart['success'] != true || _product == null) return [];
+
+    final all = _parseGeneralCartItems(cart);
+    final newlyAdded =
+        all.where((item) => !beforeIds.contains(item.ctId)).toList();
+    if (newlyAdded.isNotEmpty) return newlyAdded;
+
+    if (selectedOptions != null && selectedOptions.isNotEmpty) {
+      final matched = <CartItem>[];
+      for (final entry in selectedOptions.entries) {
+        final optionText = _ctOptionText(entry.key).trim();
+        CartItem? found;
+        for (final candidate in all) {
+          if (candidate.itId == _product!.id &&
+              candidate.ctOption.trim() == optionText) {
+            found = candidate;
+            break;
+          }
+        }
+        if (found == null) return [];
+        matched.add(found);
+      }
+      return matched;
+    }
+
+    if (quantity != null && quantity > 0) {
+      final noOptionItems = all
+          .where(
+            (item) =>
+                item.itId == _product!.id && item.ctOption.trim().isEmpty,
+          )
+          .toList();
+      if (noOptionItems.isEmpty) return [];
+      return [noOptionItems.last];
+    }
+
+    return [];
+  }
+
+  void _showBuyNowFailedSnackBar() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('결제 정보를 불러오지 못했습니다. 다시 시도해 주세요.')),
+    );
   }
 
   int _resolveBuyNowShippingCost({
@@ -1567,24 +1619,35 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       result = await CartService.addOptionsToCart(
         product: _product!,
         selectedOptions: selectedOptions!,
+        mergeIfExists: false,
       );
     } else {
       result = await CartService.addToCart(
         productId: _product!.id,
         quantity: quantity!,
         price: _product!.price * quantity,
-        ctKind: _product!.ctKind,
+        ctKind: _product!.ctKind.isNotEmpty ? _product!.ctKind : 'general',
       );
     }
 
-    if (!mounted || result['success'] != true) return;
+    if (!mounted || result['success'] != true) {
+      _showBuyNowFailedSnackBar();
+      return;
+    }
 
     _safeSetState(() {
       _selectedOptions.clear();
     });
 
-    final payItems = await _resolveBuyNowCartItems(beforeIds);
-    if (!mounted || payItems.isEmpty) return;
+    final payItems = await _resolveGeneralBuyNowPayItems(
+      beforeIds: beforeIds,
+      selectedOptions: selectedOptions,
+      quantity: quantity,
+    );
+    if (!mounted || payItems.isEmpty) {
+      _showBuyNowFailedSnackBar();
+      return;
+    }
 
     final cart = await CartService.getCart();
     if (!mounted || cart['success'] != true) return;
