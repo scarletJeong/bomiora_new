@@ -1,4 +1,3 @@
-// TODO step2
 import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -81,7 +80,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   @override
   void initState() {
     super.initState();
-    // 상품정보, 리뷰 (일반 리뷰 탭은 step2에서 재검토)
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       // 탭 변경 시 UI 업데이트
