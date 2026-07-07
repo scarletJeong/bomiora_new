@@ -485,6 +485,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         padding: EdgeInsets.zero,
         icon: Icon(
           _isFavorite ? Icons.favorite : Icons.favorite_border,
+          size: healthDp(context, 22),
           color: _isFavorite ? const Color(0xFFFF4081) : Colors.grey[600],
         ),
         onPressed: () {
@@ -941,6 +942,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                               _isFavorite
                                   ? Icons.favorite
                                   : Icons.favorite_border,
+                              size: healthDp(context, 22),
                               color: _isFavorite
                                   ? const Color(0xFFFF4081)
                                   : Colors.grey[600],

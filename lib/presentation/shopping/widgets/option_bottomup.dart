@@ -38,6 +38,7 @@ Future<void> showProductOptionBottomup({
   required VoidCallback onBuyNow,
   required FutureOr<void> Function() onNoOptionGeneral,
   required FutureOr<void> Function() onNoOptionPrescription,
+  String? productKindOverride,
   bool isFavorite = false,
   VoidCallback? onToggleFavorite,
 }) async {
@@ -99,7 +100,8 @@ Future<void> showProductOptionBottomup({
             stepLabel: stepLabel,
             monthsLabel: monthsLabel,
             userPoint: userPoint,
-            productKind: product.productKind ??
+            productKind: productKindOverride ??
+                product.productKind ??
                 product.additionalInfo?['it_kind']?.toString(),
             onOptionsChanged: onOptionsChanged,
             onAddToCart: onAddToCart,
