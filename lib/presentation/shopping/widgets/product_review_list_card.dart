@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/review_model.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/services/coupon_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 const _kGmarket = 'Gmarket Sans TTF';
@@ -16,12 +18,14 @@ class ProductReviewListCard extends StatefulWidget {
   final ReviewModel review;
   final bool showCouponSection;
   final VoidCallback? onOpenDetail;
+  final VoidCallback? onGuestLoginTap;
 
   const ProductReviewListCard({
     super.key,
     required this.review,
     this.showCouponSection = false,
     this.onOpenDetail,
+    this.onGuestLoginTap,
   });
 
   @override
@@ -154,7 +158,8 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
               ),
               if (widget.showCouponSection) ...[
                 _CouponHelpSection(
-                  downloadCount: review.czDownload ?? 0,
+                  review: review,
+                  onGuestLoginTap: widget.onGuestLoginTap,
                 ),
               ],
             ],
@@ -530,10 +535,92 @@ class _ScoreChip extends StatelessWidget {
   }
 }
 
-class _CouponHelpSection extends StatelessWidget {
-  final int downloadCount;
+class _CouponHelpSection extends StatefulWidget {
+  final ReviewModel review;
+  final VoidCallback? onGuestLoginTap;
 
-  const _CouponHelpSection({required this.downloadCount});
+  const _CouponHelpSection({
+    required this.review,
+    this.onGuestLoginTap,
+  });
+
+  @override
+  State<_CouponHelpSection> createState() => _CouponHelpSectionState();
+}
+
+class _CouponHelpSectionState extends State<_CouponHelpSection> {
+  late int _downloadCount;
+  bool _isDownloading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _downloadCount = widget.review.czDownload ?? 0;
+  }
+
+  @override
+  void didUpdateWidget(covariant _CouponHelpSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.review.isId != widget.review.isId) {
+      _downloadCount = widget.review.czDownload ?? 0;
+    }
+  }
+
+  Future<void> _onDownloadTap() async {
+    if (_isDownloading || widget.review.isId == null) return;
+
+    final user = await AuthService.getUser();
+    if (!mounted) return;
+    if (user == null) {
+      if (widget.onGuestLoginTap != null) {
+        widget.onGuestLoginTap!();
+      } else {
+        Navigator.pushNamed(context, '/login');
+      }
+      return;
+    }
+
+    setState(() => _isDownloading = true);
+    try {
+      final result = await CouponService.downloadHelpCoupon(
+        mbId: user.id,
+        itId: widget.review.itId,
+        isId: widget.review.isId!,
+      );
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        setState(() {
+          final next = result['downloadCount'];
+          if (next is int) {
+            _downloadCount = next;
+          } else {
+            _downloadCount += 1;
+          }
+        });
+        final message = result['message'] as String?;
+        if (message != null && message.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        }
+      } else {
+        final message =
+            result['message'] as String? ?? '쿠폰 다운로드에 실패했습니다.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('쿠폰 다운로드 중 오류가 발생했습니다.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -584,7 +671,7 @@ class _CouponHelpSection extends StatelessWidget {
                         TextSpan(
                           children: [
                             TextSpan(
-                              text: '$downloadCount',
+                              text: '$_downloadCount',
                               style: TextStyle(
                                 color: _kPink,
                                 fontSize: healthSp(context, 12),
@@ -621,19 +708,30 @@ class _CouponHelpSection extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            width: healthDp(context, 40),
-            height: healthDp(context, 40),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: SvgPicture.asset(
-              AppAssets.myReviewCouponCardDownload,
-              width: healthDp(context, 40),
-              height: healthDp(context, 40),
-              fit: BoxFit.contain,
+          Material(
+            color: Colors.white,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: _isDownloading ? null : _onDownloadTap,
+              customBorder: const CircleBorder(),
+              child: SizedBox(
+                width: healthDp(context, 40),
+                height: healthDp(context, 40),
+                child: _isDownloading
+                    ? Padding(
+                        padding: EdgeInsets.all(healthDp(context, 10)),
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: _kPink,
+                        ),
+                      )
+                    : SvgPicture.asset(
+                        AppAssets.myReviewCouponCardDownload,
+                        width: healthDp(context, 40),
+                        height: healthDp(context, 40),
+                        fit: BoxFit.contain,
+                      ),
+              ),
             ),
           ),
         ],
@@ -705,6 +803,7 @@ class ProductReviewListSection extends StatelessWidget {
           ProductReviewListCard(
             review: reviews[i],
             showCouponSection: showCouponSection,
+            onGuestLoginTap: onGuestLoginTap,
             onOpenDetail: onReviewTap != null
                 ? () => onReviewTap!(reviews[i])
                 : null,
