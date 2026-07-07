@@ -52,6 +52,53 @@ class _CartScreenState extends State<CartScreen> {
     return selectedItems.intersection(_displayedItemIds);
   }
 
+  static const String _selectionCtKind = 'general';
+
+  void _applySelectionFromServer() {
+    selectedItems = _displayedCartItems
+        .where((item) => item.ctSelect)
+        .map((item) => item.ctId)
+        .toSet();
+    selectAll = _displayedCartItems.isNotEmpty &&
+        _displayedItemIds.difference(selectedItems).isEmpty;
+  }
+
+  Future<void> _persistCartSelection() async {
+    final result = await CartService.syncCartSelection(
+      selectedCtIds: _selectedDisplayedItemIds.toList(),
+      ctKind: _selectionCtKind,
+    );
+    if (!mounted || result['success'] == true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result['message']?.toString() ?? '선택 저장에 실패했습니다.',
+        ),
+      ),
+    );
+  }
+
+  List<CartItem> _preserveCartItemOrder(
+    List<CartItem> previous,
+    List<CartItem> incoming,
+  ) {
+    if (previous.isEmpty) return incoming;
+
+    final incomingById = <int, CartItem>{
+      for (final item in incoming) item.ctId: item,
+    };
+
+    final ordered = <CartItem>[];
+    for (final item in previous) {
+      final updated = incomingById.remove(item.ctId);
+      if (updated != null) {
+        ordered.add(updated);
+      }
+    }
+    ordered.addAll(incomingById.values);
+    return ordered;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +139,7 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     try {
+      final previousItems = List<CartItem>.from(cartItems);
       final result = await CartService.getCart();
       if (!mounted) return;
 
@@ -108,19 +156,12 @@ class _CartScreenState extends State<CartScreen> {
             })
             .whereType<CartItem>() // null 제거
             .toList();
+        final orderedItems = _preserveCartItemOrder(previousItems, items);
         setState(() {
-          cartItems = items;
+          cartItems = orderedItems;
           shippingCost = (result['shipping_cost'] as int?) ?? 0;
           totalPrice = (result['total_price'] as int?) ?? 0;
-
-          // 사라진 아이템의 선택 상태는 제거하고, 현재 탭 전체선택 상태면 현재 탭 아이템만 재선택
-          final existingIds = items.map((item) => item.ctId).toSet();
-          selectedItems = selectedItems.where(existingIds.contains).toSet();
-          if (selectAll) {
-            selectedItems.addAll(_displayedItemIds);
-          }
-          selectAll = _displayedCartItems.isNotEmpty &&
-              _displayedItemIds.difference(selectedItems).isEmpty;
+          _applySelectionFromServer();
 
           isLoading = false;
           isRefreshing = false;
@@ -165,16 +206,53 @@ class _CartScreenState extends State<CartScreen> {
     }
     if (newQuantity < 1) return;
 
-    // 백엔드 API 호출로 수량 업데이트
     final result = await CartService.updateCartQuantity(
       ctId: ctId,
       quantity: newQuantity,
     );
 
-    if (result['success'] == true) {
-      // 성공 시 장바구니 다시 로드 (캐시된 데이터를 표시하면서 백그라운드 갱신)
-      _loadCart(showCachedData: true);
-    }
+    if (!mounted || result['success'] != true) return;
+
+    setState(() {
+      final index = cartItems.indexWhere((item) => item.ctId == ctId);
+      if (index < 0) return;
+
+      final data = result['data'];
+      if (data is Map) {
+        cartItems[index] =
+            CartItem.fromJson(Map<String, dynamic>.from(data));
+      } else {
+        final old = cartItems[index];
+        final unitPrice =
+            old.ctQty > 0 ? old.ctPrice / old.ctQty : old.ctPrice.toDouble();
+        cartItems[index] = CartItem(
+          ctId: old.ctId,
+          odId: old.odId,
+          mbId: old.mbId,
+          itId: old.itId,
+          itName: old.itName,
+          itSubject: old.itSubject,
+          ctStatus: old.ctStatus,
+          ctPrice: (unitPrice * newQuantity).round(),
+          ctOption: old.ctOption,
+          ctQty: newQuantity,
+          ioId: old.ioId,
+          ioPrice: old.ioPrice,
+          ctKind: old.ctKind,
+          ctTime: old.ctTime,
+          doctorName: old.doctorName,
+          reservationDate: old.reservationDate,
+          reservationTime: old.reservationTime,
+          imageUrl: old.imageUrl,
+          productType: old.productType,
+          ctMbInf: old.ctMbInf,
+          pointUsageRate: old.pointUsageRate,
+          ctSelect: old.ctSelect,
+        );
+      }
+
+      totalPrice = cartItems.fold<int>(0, (sum, item) => sum + item.ctPrice);
+    });
   }
 
   Future<void> _deleteCartItem(int ctId) async {
@@ -230,6 +308,7 @@ class _CartScreenState extends State<CartScreen> {
       selectAll = false;
     });
 
+    await _persistCartSelection();
     _loadCart(showCachedData: true);
   }
 
@@ -389,6 +468,7 @@ class _CartScreenState extends State<CartScreen> {
                                             ),
                                           ),
                                         SizedBox(height: healthDp(context, 18)),
+                                        _buildScrollablePriceSummary(),
                                       ],
                                     ),
                                   ),
@@ -398,76 +478,76 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                         ),
                       ),
-                      _buildFigmaBottomSummary(),
+                      _buildCheckoutBar(),
                     ],
                   ),
       ),
     );
   }
 
-  Widget _buildFigmaBottomSummary({bool inPage = false}) {
-    // 기존 계산 로직/선택 로직을 재사용하면서, 하단 영역을 Figma 느낌으로 고정
-    final selected = _selectedDisplayedItemIds;
+  Widget _buildScrollablePriceSummary() {
     final selectedPrice = selectedTotalPrice;
     final selectedShipping = selectedShippingCost;
     final payable = finalPrice;
 
-    final content = Container(
-      color: Colors.white,
-      padding: inPage
-          ? EdgeInsets.fromLTRB(
-              healthDp(context, 10), healthDp(context, 14), 0, healthDp(context, 16))
-          : EdgeInsets.fromLTRB(
-              healthDp(context, 17),
-              healthDp(context, 14),
-              healthDp(context, 20),
-              healthDp(context, 20)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _summaryRow('구매금액', '${PriceFormatter.format(selectedPrice)}원',
-              fontSize: healthSp(context, 16), fontWeight: FontWeight.w500),
-          SizedBox(height: healthDp(context, 10)),
-          _summaryRow('배송비', '${PriceFormatter.format(selectedShipping)}원',
-              fontSize: healthSp(context, 14), fontWeight: FontWeight.w500),
-          SizedBox(height: healthDp(context, 10)),
-          Divider(
-            height: healthDp(context, 1),
-            thickness: healthDp(context, 1),
-            color: const Color(0x7F1A1A1A),
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          _summaryRow('결제 금액', '${PriceFormatter.format(payable)}원',
-              fontSize: healthSp(context, 16), fontWeight: FontWeight.w700),
-          SizedBox(height: healthDp(context, 14)),
-          SizedBox(
-            width: double.infinity,
-            height: healthDp(context, 40),
-            child: ElevatedButton(
-              onPressed: selected.isEmpty ? null : _openPaymentScreen,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5A8D),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _summaryRow('구매금액', '${PriceFormatter.format(selectedPrice)}원',
+            fontSize: healthSp(context, 16), fontWeight: FontWeight.w500),
+        SizedBox(height: healthDp(context, 10)),
+        _summaryRow('배송비', '${PriceFormatter.format(selectedShipping)}원',
+            fontSize: healthSp(context, 14), fontWeight: FontWeight.w500),
+        SizedBox(height: healthDp(context, 10)),
+        Divider(
+          height: healthDp(context, 1),
+          thickness: healthDp(context, 1),
+          color: const Color(0x7F1A1A1A),
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        _summaryRow('결제 금액', '${PriceFormatter.format(payable)}원',
+            fontSize: healthSp(context, 16), fontWeight: FontWeight.w700),
+      ],
+    );
+  }
+
+  Widget _buildCheckoutBar() {
+    final selected = _selectedDisplayedItemIds;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        color: Colors.white,
+        padding: EdgeInsets.fromLTRB(
+          healthDp(context, 17),
+          healthDp(context, 10),
+          healthDp(context, 20),
+          healthDp(context, 20),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: healthDp(context, 40),
+          child: ElevatedButton(
+            onPressed: selected.isEmpty ? null : _openPaymentScreen,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5A8D),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 10)),
               ),
-              child: Text(
-                '결제하기',
-                style: TextStyle(
-                  fontSize: healthSp(context, 16),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                ),
+            ),
+            child: Text(
+              '결제하기',
+              style: TextStyle(
+                fontSize: healthSp(context, 16),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
-
-    if (inPage) return content;
-    return SafeArea(top: false, child: content);
   }
 
   Widget _buildSelectAllRow() {
@@ -502,6 +582,7 @@ class _CartScreenState extends State<CartScreen> {
                     selectAll = _displayedCartItems.isNotEmpty &&
                         _displayedItemIds.difference(selectedItems).isEmpty;
                   });
+                  _persistCartSelection();
                 },
               ),
               SizedBox(width: healthDp(context, 4)),
@@ -798,6 +879,7 @@ class _CartScreenState extends State<CartScreen> {
                         selectAll = _displayedCartItems.isNotEmpty &&
                             _displayedItemIds.difference(selectedItems).isEmpty;
                       });
+                      _persistCartSelection();
                     },
                   ),
                 ),

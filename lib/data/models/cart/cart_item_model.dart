@@ -31,6 +31,8 @@ class CartItem {
   final String ctMbInf;
   // 포인트 사용 가능 비율 (0~100)
   final int pointUsageRate;
+  /// 결제 대상 선택 여부 (`bomiora_shop_cart.ct_select`)
+  final bool ctSelect;
 
   CartItem({
     required this.ctId,
@@ -54,6 +56,7 @@ class CartItem {
     this.productType,
     this.ctMbInf = '',
     this.pointUsageRate = 10,
+    this.ctSelect = false,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
@@ -180,6 +183,7 @@ class CartItem {
             normalized['it_point_usage_rate'],
         normalizedCtKind,
       ),
+      ctSelect: _parseCtSelect(normalized['ct_select'] ?? normalized['ctSelect']),
     );
   }
 
@@ -262,7 +266,18 @@ class CartItem {
       'product_type': productType,
       'ct_mb_inf': ctMbInf,
       'point_usage_rate': pointUsageRate,
+      'ct_select': ctSelect ? 1 : 0,
     };
+  }
+
+  static bool _parseCtSelect(dynamic value) {
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      final trimmed = value.trim();
+      return trimmed == '1' || trimmed.toLowerCase() == 'true';
+    }
+    return false;
   }
 
   static int _parseInt(dynamic value) {

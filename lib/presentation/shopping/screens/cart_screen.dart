@@ -52,6 +52,32 @@ class _CartScreenState extends State<CartScreen> {
     return selectedItems.intersection(_displayedItemIds);
   }
 
+  static const String _selectionCtKind = 'prescription';
+
+  void _applySelectionFromServer() {
+    selectedItems = _displayedCartItems
+        .where((item) => item.ctSelect)
+        .map((item) => item.ctId)
+        .toSet();
+    selectAll = _displayedCartItems.isNotEmpty &&
+        _displayedItemIds.difference(selectedItems).isEmpty;
+  }
+
+  Future<void> _persistCartSelection() async {
+    final result = await CartService.syncCartSelection(
+      selectedCtIds: _selectedDisplayedItemIds.toList(),
+      ctKind: _selectionCtKind,
+    );
+    if (!mounted || result['success'] == true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result['message']?.toString() ?? '선택 저장에 실패했습니다.',
+        ),
+      ),
+    );
+  }
+
   /// API 재조회 후에도 기존 장바구니 표시 순서 유지
   List<CartItem> _preserveCartItemOrder(
     List<CartItem> previous,
@@ -136,15 +162,7 @@ class _CartScreenState extends State<CartScreen> {
           cartItems = orderedItems;
           shippingCost = (result['shipping_cost'] as int?) ?? 0;
           totalPrice = (result['total_price'] as int?) ?? 0;
-
-          // 사라진 아이템의 선택 상태는 제거하고, 현재 탭 전체선택 상태면 현재 탭 아이템만 재선택
-          final existingIds = orderedItems.map((item) => item.ctId).toSet();
-          selectedItems = selectedItems.where(existingIds.contains).toSet();
-          if (selectAll) {
-            selectedItems.addAll(_displayedItemIds);
-          }
-          selectAll = _displayedCartItems.isNotEmpty &&
-              _displayedItemIds.difference(selectedItems).isEmpty;
+          _applySelectionFromServer();
 
           isLoading = false;
           isRefreshing = false;
@@ -254,6 +272,7 @@ class _CartScreenState extends State<CartScreen> {
       selectAll = false;
     });
 
+    await _persistCartSelection();
     _loadCart(showCachedData: true);
   }
 
@@ -586,6 +605,7 @@ class _CartScreenState extends State<CartScreen> {
                     selectAll = _displayedCartItems.isNotEmpty &&
                         _displayedItemIds.difference(selectedItems).isEmpty;
                   });
+                  _persistCartSelection();
                 },
               ),
               SizedBox(width: healthDp(context, 4)),
@@ -841,6 +861,7 @@ class _CartScreenState extends State<CartScreen> {
                         selectAll = _displayedCartItems.isNotEmpty &&
                             _displayedItemIds.difference(selectedItems).isEmpty;
                       });
+                      _persistCartSelection();
                     },
                   ),
                 ),

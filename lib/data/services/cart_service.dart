@@ -377,6 +377,57 @@ class CartService {
     }
   }
 
+  /// 장바구니 선택 상태 저장 (`bomiora_shop_cart.ct_select`)
+  static Future<Map<String, dynamic>> syncCartSelection({
+    required List<int> selectedCtIds,
+    String ctStatus = '쇼핑',
+    String? ctKind,
+  }) async {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) {
+        return {
+          'success': false,
+          'message': '로그인이 필요합니다.',
+        };
+      }
+
+      final response = await ApiClient.put(
+        ApiEndpoints.syncCartSelection,
+        {
+          'mb_id': user.id,
+          'ct_status': ctStatus,
+          if (ctKind != null && ctKind.isNotEmpty) 'ct_kind': ctKind,
+          'ct_ids': selectedCtIds,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? '선택이 저장되었습니다.',
+          'data': data['data'],
+        };
+      }
+
+      Map<String, dynamic>? err;
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) err = decoded;
+      } catch (_) {}
+      return {
+        'success': false,
+        'message': err?['message'] ?? '선택 저장에 실패했습니다.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '선택 저장 중 오류가 발생했습니다: $e',
+      };
+    }
+  }
+
   /// 장바구니 항목 삭제
   static Future<Map<String, dynamic>> removeCartItem(int ctId) async {
     try {
