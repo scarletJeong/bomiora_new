@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart';
@@ -23,6 +24,10 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
+  static const String _influencerWebBase = 'https://bomiora0.mycafe24.com';
+  static const String _influencerAutoLoginUrl =
+      '$_influencerWebBase/inf_adm/app_auto_login.php';
+
   UserModel? _currentUser;
   bool _statsLoading = false;
   int _orderCount = 0;
@@ -103,7 +108,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _loadCurrentUser() async {
-    final user = await AuthService.getUser();
+    final user = await AuthService.refreshUserFromServer();
     if (!mounted) return;
 
     if (user == null) {
@@ -119,6 +124,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
       _statsLoading = true;
     });
     await _loadMyPageStats();
+  }
+
+  Future<void> _openInfluencerAdmin() async {
+    final user = _currentUser ?? await AuthService.getUser();
+    final password = user?.password?.trim() ?? '';
+    final mbId = user?.id.trim() ?? '';
+
+    final Uri uri;
+    if (mbId.isNotEmpty && password.isNotEmpty) {
+      uri = Uri.parse(_influencerAutoLoginUrl).replace(
+        queryParameters: {
+          'mb_id': mbId,
+          'mb_password': password,
+        },
+      );
+    } else {
+      uri = Uri.parse('$_influencerWebBase/inf_adm/influencer_exhaustion_list.php');
+    }
+
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -157,6 +182,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           SizedBox(height: healthDp(context, 30)),
                           _buildStatsRow(),
                           SizedBox(height: healthDp(context, 20)),
+                          if (_currentUser?.isInfluencer == true) ...[
+                            MyPageLineMenuItem(
+                              title: '인플루언서 관리',
+                              onTap: _openInfluencerAdmin,
+                            ),
+                            SizedBox(height: healthDp(context, 20)),
+                          ],
                           MyPageLineMenuItem(
                             title: '찜 목록',
                             onTap: () {
@@ -316,6 +348,33 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
+  Widget _buildInfluencerBadge() {
+    final size = healthDp(context, 20);
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF5A8D),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: healthDp(context, 1.5)),
+      ),
+      child: Text(
+        'V',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: healthSp(context, 11),
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileAvatar({required Widget child}) {
+    return MyPageAvatarFrame(child: child);
+  }
+
   Widget _buildProfileHeader() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -323,7 +382,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         Expanded(
           child: Row(
             children: [
-              MyPageAvatarFrame(
+              _buildProfileAvatar(
                 child: ClipRRect(
                   borderRadius:
                       BorderRadius.circular(healthDp(context, 45)),
@@ -335,16 +394,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${_currentUser?.name ?? ''} 님',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: healthSp(context, 16),
-                        fontWeight: FontWeight.w500,
-                        height: 1,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${_currentUser?.name ?? ''} 님',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: healthSp(context, 16),
+                              fontWeight: FontWeight.w500,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                        if (_currentUser?.isInfluencer == true) ...[
+                          SizedBox(width: healthDp(context, 4)),
+                          _buildInfluencerBadge(),
+                        ],
+                      ],
                     ),
                     SizedBox(height: healthDp(context, 5)),
                     Text(
@@ -377,7 +446,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         Expanded(
           child: Row(
             children: [
-              MyPageAvatarFrame(
+              _buildProfileAvatar(
                 child: ClipRRect(
                   borderRadius:
                       BorderRadius.circular(healthDp(context, 45)),
