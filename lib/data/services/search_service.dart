@@ -31,10 +31,10 @@ class SearchResult {
 class SearchService {
   SearchService._();
 
-  /// 비대면 진료 공식 카탈로그 (`get_product.dart` productPrescriptionCategoryList)
+  /// 비대면 진료 카탈로그 (`ProductCategoryCatalog.prescriptionCategories`)
   static const List<String> _rxCatalogCategoryIds = ['10', '20', '80', '50'];
 
-  /// 스토어 공식 카탈로그 (`get_product.dart` productGeneralCategoryList)
+  /// 스토어 카탈로그 (`ProductCategoryCatalog.generalCategories`)
   static const List<String> _storeCatalogCategoryIds = [
     '11',
     '21',
