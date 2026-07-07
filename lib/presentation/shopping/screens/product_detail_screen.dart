@@ -1,4 +1,3 @@
-// TODO step2
 import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -82,7 +81,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   @override
   void initState() {
     super.initState();
-    // 상품정보, 리뷰 (일반 리뷰 탭은 step2에서 재검토)
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       // 탭 변경 시 UI 업데이트
@@ -468,18 +466,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final supporterReviewCount = _supporterReviews.length;
     final generalReviewCount = _generalReviews.length;
 
-    return NestedScrollView(
-      floatHeaderSlivers: true,
-      headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-        return [
-          // 제품 정보 섹션
-          SliverToBoxAdapter(
-            child: _buildProductInfoSection(),
-          ),
-          // 탭바
-          SliverOverlapAbsorber(
-            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            sliver: SliverPersistentHeader(
+    return AnimatedBuilder(
+      animation: _tabController,
+      builder: (context, _) {
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: _buildProductInfoSection(),
+            ),
+            SliverPersistentHeader(
               pinned: true,
               delegate: _SliverTabBarDelegate(
                 _buildProductTabBar(
@@ -490,30 +485,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 height: _productTabBarHeight(context),
               ),
             ),
-          ),
-        ];
+            SliverToBoxAdapter(
+              child: switch (_tabController.index) {
+                0 => _buildProductInfoTabContent(),
+                1 => _buildSupportReviewTabContent(),
+                _ => _buildNormalReviewTabContent(),
+              },
+            ),
+          ],
+        );
       },
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildNestedScrollTab(
-            _buildProductInfoTabContent(),
-            'product_info_tab',
-          ),
-          _buildNestedScrollTab(
-            _buildSupportReviewTabContent(),
-            'support_review_tab',
-          ),
-          _buildNestedScrollTab(
-            _buildNormalReviewTabContent(),
-            'normal_review_tab',
-          ),
-        ],
-      ),
     );
   }
 
-  double _productTabBarHeight(BuildContext context) {
+  double _productTabBarPaddingTop(BuildContext context) => healthDp(context, 20);
+
+  double _productTabBarPaddingBottom(BuildContext context) =>
+      healthDp(context, 10);
+
+  double _productTabBarContentHeight(BuildContext context) {
     final gap = healthDp(context, 5);
     final indicatorH = healthDp(context, 1.5);
     final labelStyle = TextStyle(
@@ -528,6 +518,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       maxLines: 1,
     )..layout();
     return textPainter.height + gap + indicatorH;
+  }
+
+  double _productTabBarHeight(BuildContext context) {
+    return _productTabBarContentHeight(context) +
+        _productTabBarPaddingTop(context) +
+        _productTabBarPaddingBottom(context);
   }
 
   Widget _buildTabDivider(BuildContext context) {
@@ -619,9 +615,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       animation: _tabController,
       builder: (context, _) {
         return Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 34)),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 34),
+            _productTabBarPaddingTop(context),
+            healthDp(context, 34),
+            _productTabBarPaddingBottom(context),
+          ),
           child: SizedBox(
-            height: _productTabBarHeight(context),
+            height: _productTabBarContentHeight(context),
             width: double.infinity,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -746,22 +747,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildNestedScrollTab(Widget child, String storageKey) {
-    return Builder(
-      builder: (context) {
-        return CustomScrollView(
-          key: PageStorageKey<String>(storageKey),
-          slivers: [
-            SliverOverlapInjector(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            ),
-            SliverToBoxAdapter(child: child),
-          ],
-        );
-      },
     );
   }
 

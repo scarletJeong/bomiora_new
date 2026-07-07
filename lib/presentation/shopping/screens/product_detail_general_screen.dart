@@ -413,7 +413,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               child: _buildProductInfoSection(),
             ),
             SliverPersistentHeader(
-              pinned: false,
+              pinned: true,
               delegate: _SliverTabBarDelegate(
                 _buildProductTabBar(
                   context,
@@ -448,7 +448,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
-  double _productTabBarHeight(BuildContext context) {
+  double _productTabBarPaddingTop(BuildContext context) => healthDp(context, 20);
+
+  double _productTabBarPaddingBottom(BuildContext context) =>
+      healthDp(context, 10);
+
+  double _productTabBarContentHeight(BuildContext context) {
     final gap = healthDp(context, 5);
     final indicatorH = healthDp(context, 1.5);
     final labelStyle = TextStyle(
@@ -463,6 +468,12 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       maxLines: 1,
     )..layout();
     return textPainter.height + gap + indicatorH;
+  }
+
+  double _productTabBarHeight(BuildContext context) {
+    return _productTabBarContentHeight(context) +
+        _productTabBarPaddingTop(context) +
+        _productTabBarPaddingBottom(context);
   }
 
   Widget _buildTabDivider(BuildContext context) {
@@ -552,9 +563,14 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       animation: _tabController,
       builder: (context, _) {
         return Padding(
-          padding: EdgeInsets.symmetric(horizontal: healthDp(context, 27)),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 27),
+            _productTabBarPaddingTop(context),
+            healthDp(context, 27),
+            _productTabBarPaddingBottom(context),
+          ),
           child: SizedBox(
-            height: _productTabBarHeight(context),
+            height: _productTabBarContentHeight(context),
             width: double.infinity,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
