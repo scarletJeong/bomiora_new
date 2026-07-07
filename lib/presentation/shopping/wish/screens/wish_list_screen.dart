@@ -63,6 +63,13 @@ class _WishListScreenState extends State<WishListScreen> {
   List<Map<String, dynamic>> get _contentWishes =>
       _wishList.where(_isContentWish).toList();
 
+  void _openProductDetail(String productId, Map<String, dynamic> item) {
+    final route = _itKindLower(item) == 'prescription'
+        ? '/product/$productId'
+        : '/product-general/$productId';
+    Navigator.pushNamed(context, route);
+  }
+
   List<Map<String, dynamic>> get _currentTabList {
     switch (_selectedTabIndex) {
       case 0:
@@ -457,9 +464,7 @@ class _WishListScreenState extends State<WishListScreen> {
               GestureDetector(
                 onTap: productId.isEmpty
                     ? null
-                    : () {
-                        Navigator.pushNamed(context, '/product/$productId');
-                      },
+                    : () => _openProductDetail(productId, item),
                 behavior: HitTestBehavior.opaque,
                 child: AspectRatio(
                   aspectRatio: 1.45,
@@ -507,9 +512,7 @@ class _WishListScreenState extends State<WishListScreen> {
                     GestureDetector(
                       onTap: productId.isEmpty
                           ? null
-                          : () {
-                              Navigator.pushNamed(context, '/product/$productId');
-                            },
+                          : () => _openProductDetail(productId, item),
                       behavior: HitTestBehavior.opaque,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
