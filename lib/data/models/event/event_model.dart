@@ -38,7 +38,9 @@ class EventModel {
       caName: NodeValueParser.asString(normalized['ca_name']),
       wrSubject: NodeValueParser.asString(normalized['wr_subject']) ?? '',
       wrContent: NodeValueParser.asString(normalized['wr_content']) ?? '',
-      wrLink1: NodeValueParser.asString(normalized['wr_link1']),
+      wrLink1: NodeValueParser.asString(
+        normalized['wr_link1'] ?? normalized['image_path'],
+      ),
       wrDatetime: NodeValueParser.asString(normalized['wr_datetime']) ?? '',
       wrLast: NodeValueParser.asString(normalized['wr_last']),
       wrHit: NodeValueParser.asInt(normalized['wr_hit']) ?? 0,
@@ -72,8 +74,16 @@ class EventModel {
     };
   }
 
-  /// 이미지 URL 추출 (환경에 맞게 변환)
+  /// 이미지 URL 추출 (`image_path` / `wr_link1` 우선, 없으면 HTML 본문 img)
   String? getImageUrl() {
+    final direct = (wrLink1 ?? '').trim();
+    if (direct.isNotEmpty) {
+      if (direct.startsWith('http://') || direct.startsWith('https://')) {
+        return ImageUrlHelper.convertToLocalUrl(direct);
+      }
+      return ImageUrlHelper.resolveEventImageUrl(direct);
+    }
+
     final regex = RegExp(r'<img[^>]+src="([^"]+)"');
     final match = regex.firstMatch(wrContent);
     if (match != null) {
