@@ -8,6 +8,8 @@ import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/product_card.dart';
+import '../../common/widgets/scroll_reveal_top_overlay.dart';
+import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../utils/get_product.dart';
 import '../widgets/product_banner_slider.dart';
@@ -50,7 +52,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
   final ScrollController _tabScrollController = ScrollController();
+  final ScrollController _stickyTabScrollController = ScrollController();
   late List<GlobalKey> _tabKeys;
+  late List<GlobalKey> _stickyTabKeys;
 
   late String _activeCategoryId;
 
@@ -89,6 +93,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
         .toList();
     _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+    _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
 
     setState(() => _tabsReady = true);
 
@@ -99,6 +104,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void dispose() {
     _scrollController.dispose();
     _tabScrollController.dispose();
+    _stickyTabScrollController.dispose();
     super.dispose();
   }
 
@@ -109,15 +115,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
         _baseTabOrder.indexWhere((tab) => tab.id == _activeCategoryId);
     if (index < 0) return;
 
-    final tabContext = _tabKeys[index].currentContext;
-    if (tabContext == null) return;
+    for (final keys in [_tabKeys, _stickyTabKeys]) {
+      final tabContext = keys[index].currentContext;
+      if (tabContext == null) continue;
 
-    Scrollable.ensureVisible(
-      tabContext,
-      alignment: 0.5,
-      duration: animate ? const Duration(milliseconds: 280) : Duration.zero,
-      curve: Curves.easeInOut,
-    );
+      Scrollable.ensureVisible(
+        tabContext,
+        alignment: 0.5,
+        duration: animate ? const Duration(milliseconds: 280) : Duration.zero,
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   void _onScroll() {
@@ -266,87 +274,101 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadProducts,
-      child: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          const SliverToBoxAdapter(
-            child: ProductBannerSlider(),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(height: healthDp(context, 20)),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: _pageHPad(context)),
-              child: _buildCategoryTabs(),
+    return ScrollRevealTopOverlay(
+      controller: _scrollController,
+      revealAfterOffset: healthDp(context, 230),
+      barPadding: EdgeInsets.fromLTRB(
+        _pageHPad(context),
+        healthDp(context, 8),
+        _pageHPad(context),
+        healthDp(context, 8),
+      ),
+      topBar: _buildCategoryTabs(forSticky: true),
+      scrollChild: RefreshIndicator(
+        onRefresh: _loadProducts,
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverToBoxAdapter(
+              child: ProductBannerSlider(productKind: widget.productKind),
             ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              _pageHPad(context),
-              healthDp(context, 10),
-              _pageHPad(context),
-              healthDp(context, 48),
+            SliverToBoxAdapter(
+              child: SizedBox(height: healthDp(context, 20)),
             ),
-            sliver: _products.isEmpty
-                ? SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: healthDp(context, 56)),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.shopping_bag_outlined,
-                            size: healthDp(context, 64),
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: healthDp(context, 16)),
-                          Text(
-                            '등록된 상품이 없습니다',
-                            style: TextStyle(
-                              fontSize: healthSp(context, 16),
-                              color: Colors.grey[600],
-                              fontFamily: _gmarket,
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: _pageHPad(context)),
+                child: _buildCategoryTabs(),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                _pageHPad(context),
+                healthDp(context, 10),
+                _pageHPad(context),
+                healthDp(context, 48),
+              ),
+              sliver: _products.isEmpty
+                  ? SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: healthDp(context, 56),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.shopping_bag_outlined,
+                              size: healthDp(context, 64),
+                              color: Colors.grey[400],
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisExtent:
-                          ProductCatalogCard.preferredMainAxisExtent(context),
-                      crossAxisSpacing: healthDp(context, 9),
-                      mainAxisSpacing: healthDp(context, 20),
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (index == _products.length) {
-                          return Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(healthDp(context, 16)),
-                              child: SizedBox(
-                                width: healthDp(context, 28),
-                                height: healthDp(context, 28),
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
+                            SizedBox(height: healthDp(context, 16)),
+                            Text(
+                              '등록된 상품이 없습니다',
+                              style: TextStyle(
+                                fontSize: healthSp(context, 16),
+                                color: Colors.grey[600],
+                                fontFamily: _gmarket,
                               ),
                             ),
-                          );
-                        }
-                        return _buildProductCard(_products[index]);
-                      },
-                      childCount: _products.length + (_isLoadingMore ? 1 : 0),
+                          ],
+                        ),
+                      ),
+                    )
+                  : SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisExtent:
+                            ProductCatalogCard.preferredMainAxisExtent(context),
+                        crossAxisSpacing: healthDp(context, 9),
+                        mainAxisSpacing: healthDp(context, 20),
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index == _products.length) {
+                            return Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(healthDp(context, 16)),
+                                child: SizedBox(
+                                  width: healthDp(context, 28),
+                                  height: healthDp(context, 28),
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return _buildProductCard(_products[index]);
+                        },
+                        childCount:
+                            _products.length + (_isLoadingMore ? 1 : 0),
+                      ),
                     ),
-                  ),
-          ),
-          SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 32))),
-          const SliverToBoxAdapter(child: AppFooter()),
-        ],
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 32))),
+            const SliverToBoxAdapter(child: AppFooter()),
+          ],
+        ),
       ),
     );
   }
@@ -360,38 +382,43 @@ class _ProductListScreenState extends State<ProductListScreen> {
         .trim();
   }
 
-  Widget _buildCategoryTabs() {
-    return SingleChildScrollView(
-      controller: _tabScrollController,
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (var i = 0; i < _baseTabOrder.length; i++) ...[
-            if (i > 0)
-              SizedBox(
-                width: healthDp(
-                  context,
-                  _baseTabOrder[i - 1].id == _activeCategoryId ? 10 : 14,
+  Widget _buildCategoryTabs({bool forSticky = false}) {
+    final tabKeys = forSticky ? _stickyTabKeys : _tabKeys;
+    final tabController =
+        forSticky ? _stickyTabScrollController : _tabScrollController;
+
+    return WebDragScrollConfiguration(
+      child: SingleChildScrollView(
+        controller: tabController,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var i = 0; i < _baseTabOrder.length; i++) ...[
+              if (i > 0)
+                SizedBox(
+                  width: healthDp(
+                    context,
+                    _baseTabOrder[i - 1].id == _activeCategoryId ? 10 : 14,
+                  ),
                 ),
-              ),
-            _buildCategoryTabChip(_baseTabOrder[i]),
+              _buildCategoryTabChip(_baseTabOrder[i], tabKeys[i]),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildCategoryTabChip(_CategoryTab tab) {
-    final index = _baseTabOrder.indexOf(tab);
+  Widget _buildCategoryTabChip(_CategoryTab tab, GlobalKey tabKey) {
     final selected = tab.id == _activeCategoryId;
     final label = _tabDisplayLabel(tab.label);
 
     if (selected) {
       return KeyedSubtree(
-        key: _tabKeys[index],
+        key: tabKey,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -425,7 +452,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
 
     return KeyedSubtree(
-      key: _tabKeys[index],
+      key: tabKey,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
