@@ -21,10 +21,6 @@ const List<ProductCategoryItem> productPrescriptionCategoryListFallback = [
   ProductCategoryItem(label: '건강/면역', categoryId: '50'),
 ];
 
-/// @deprecated [ProductCategoryCatalog.prescriptionCategories] 사용 권장
-const List<ProductCategoryItem> productPrescriptionCategoryList =
-    productPrescriptionCategoryListFallback;
-
 /// 헬스케어 스토어(일반) — API 실패 시 폴백
 const List<ProductCategoryItem> productGeneralCategoryListFallback = [
   ProductCategoryItem(
@@ -53,10 +49,6 @@ const List<ProductCategoryItem> productGeneralCategoryListFallback = [
     productKind: 'general',
   ),
 ];
-
-/// @deprecated [ProductCategoryCatalog.generalCategories] 사용 권장
-const List<ProductCategoryItem> productGeneralCategoryList =
-    productGeneralCategoryListFallback;
 
 /// `ca_id` → 비대면 진료 칩 아이콘 (신규 카테고리는 기본 아이콘)
 String productPrescriptionCategoryIconAsset(String categoryId) {
@@ -121,26 +113,3 @@ String productGeneralCategoryChipLabel(String categoryName) {
       .replaceAll(' / ', '/')
       .trim();
 }
-
-/// [productGeneralCategoryListFallback]에서 홈 카테고리 섹션에 붙일 `ca_id`만
-const Set<String> productHomeCategorySectionExtraCategoryIds = {'60', '70'};
-
-/// 홈 [CategorySection] 탭: 처방 전체 + 위 [Set]에 해당하는 일반 항목
-List<ProductCategoryItem> buildProductHomeCategorySectionTabList({
-  List<ProductCategoryItem> prescriptionCategories =
-      productPrescriptionCategoryListFallback,
-  required List<ProductCategoryItem> generalCategories,
-}) {
-  return List<ProductCategoryItem>.unmodifiable(<ProductCategoryItem>[
-    ...prescriptionCategories,
-    ...generalCategories.where(
-      (e) => productHomeCategorySectionExtraCategoryIds.contains(e.categoryId),
-    ),
-  ]);
-}
-
-/// @deprecated [buildProductHomeCategorySectionTabList] 사용 권장
-final List<ProductCategoryItem> productHomeCategorySectionTabList =
-    buildProductHomeCategorySectionTabList(
-  generalCategories: productGeneralCategoryListFallback,
-);
