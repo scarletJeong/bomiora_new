@@ -1019,80 +1019,91 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Row(
-          children: [
-            MyPageAvatarFrame(
-              child: ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(healthDp(context, 45)),
-                child: SvgPicture.asset(
-                  AppAssets.mypagePhotoProfileIcon,
-                  width: healthDp(context, 77),
-                  height: healthDp(context, 77),
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            SizedBox(width: healthDp(context, 10)),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final avatarSize = healthDp(context, 77);
+    final frameOuter = avatarSize + healthDp(context, 6);
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: frameOuter,
+            height: frameOuter,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: healthSp(context, 16),
-                    fontWeight: FontWeight.w500,
-                    height: 1,
+                Align(
+                  alignment: Alignment.center,
+                  child: MyPageAvatarFrame(
+                    child: ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 45)),
+                      child: SvgPicture.asset(
+                        AppAssets.mypagePhotoProfileIcon,
+                        width: avatarSize,
+                        height: avatarSize,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(height: healthDp(context, 5)),
-                Text(
-                  email,
-                  style: TextStyle(
-                    color: Color(0xFF898686),
-                    fontSize: healthSp(context, 12),
-                    fontWeight: FontWeight.w300,
-                    height: 1,
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: InkWell(
+                    onTap: onAddPhoto,
+                    borderRadius: BorderRadius.circular(healthDp(context, 25)),
+                    child: Container(
+                      width: healthDp(context, 18),
+                      height: healthDp(context, 18),
+                      decoration: ShapeDecoration(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(
+                            width: healthDp(context, 0.5),
+                            color: const Color(0xFFD2D2D2),
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 25)),
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.add,
+                          size: healthDp(context, 14),
+                          color: const Color(0xFFFF5A8D),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-        Positioned(
-          left: healthDp(context, 63),
-          top: healthDp(context, 62.7),
-          child: InkWell(
-            onTap: onAddPhoto,
-            borderRadius: BorderRadius.circular(healthDp(context, 25)),
-            child: Container(
-              width: healthDp(context, 18),
-              height: healthDp(context, 18),
-              decoration: ShapeDecoration(
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    width: healthDp(context, 0.5),
-                    color: Color(0xFFD2D2D2),
-                  ),
-                  borderRadius: BorderRadius.circular(healthDp(context, 25)),
-                ),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.add,
-                  size: healthDp(context, 14),
-                  color: Color(0xFFFF5A8D),
-                ),
-              ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: healthSp(context, 16),
+              fontWeight: FontWeight.w500,
+              height: 1,
             ),
           ),
-        ),
-      ],
+          SizedBox(height: healthDp(context, 5)),
+          Text(
+            email,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 12),
+              fontWeight: FontWeight.w300,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
