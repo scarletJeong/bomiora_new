@@ -107,6 +107,53 @@ class ImageUrlHelper {
     }
   }
   
+  static const _cafe24EventImageBase =
+      'https://bomiora0.mycafe24.com/data/event/';
+
+  /// DB `image_path` 예: `event/e_xxx.png` → `https://bomiora0.mycafe24.com/data/event/e_xxx.png`
+  static String resolveEventImageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    var raw = path.trim();
+    if (raw.isEmpty || isBrowserBlobOrInvalidImageUrl(raw)) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return convertToLocalUrl(raw);
+    }
+
+    raw = raw.replaceFirst(RegExp(r'^/+'), '');
+    final lower = raw.toLowerCase();
+
+    // FTP/서버 경로 `bomiora0/www/data/event/...` → 공개 URL `/data/event/...`
+    if (lower.startsWith('bomiora0/www/data/event/')) {
+      final fileName = raw.substring('bomiora0/www/data/event/'.length);
+      return convertToLocalUrl('$_cafe24EventImageBase$fileName');
+    }
+    if (lower.startsWith('www/data/event/')) {
+      final fileName = raw.substring('www/data/event/'.length);
+      return convertToLocalUrl('$_cafe24EventImageBase$fileName');
+    }
+    if (lower.startsWith('data/event/')) {
+      return convertToLocalUrl('https://bomiora0.mycafe24.com/$raw');
+    }
+    if (lower.startsWith('event/')) {
+      final fileName = raw.substring('event/'.length);
+      return convertToLocalUrl('$_cafe24EventImageBase$fileName');
+    }
+
+    return convertToLocalUrl('$_cafe24EventImageBase$raw');
+  }
+
+  /// 정적 사이트 에셋 (`assets/img/...`, `main_banner/...`) — `data/item`과 별도
+  static String resolveSiteAssetUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    var p = path.trim();
+    if (p.isEmpty || isBrowserBlobOrInvalidImageUrl(p)) return '';
+    if (p.startsWith('http://') || p.startsWith('https://')) {
+      return convertToLocalUrl(p);
+    }
+    if (!p.startsWith('/')) p = '/$p';
+    return convertToLocalUrl('${imageBaseUrl}$p');
+  }
+
   /// 상대 경로를 전체 URL로 변환
   static String normalizeImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
