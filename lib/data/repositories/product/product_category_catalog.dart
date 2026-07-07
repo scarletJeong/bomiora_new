@@ -11,7 +11,7 @@ class ProductCategoryCatalog {
   static Future<List<ProductCategoryItem>> generalCategories({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _generalCache != null && _generalCache!.isNotEmpty) {
+    if (!forceRefresh && _generalCache != null) {
       return _generalCache!;
     }
 
@@ -19,11 +19,8 @@ class ProductCategoryCatalog {
       productKind: 'general',
     );
 
-    _generalCache = fromApi.isNotEmpty
-        ? fromApi
-        : List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
-
-    return _generalCache!;
+    _generalCache = fromApi;
+    return fromApi;
   }
 
   static Future<List<ProductCategoryItem>> prescriptionCategories({

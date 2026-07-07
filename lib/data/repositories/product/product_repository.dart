@@ -56,36 +56,6 @@ class ProductRepository {
         }
       }
       
-      return await _getProductsFromPhpServer(
-        categoryId: categoryId,
-        productKind: productKind,
-      );
-    } catch (e) {
-      // 폴백: PHP 서버로 시도
-      try {
-        return await _getProductsFromPhpServer(
-          categoryId: categoryId,
-          productKind: productKind,
-        );
-      } catch (fallbackError) {
-        return [];
-      }
-    }
-  }
-
-  // bomiora.kr PHP 서버에서 상품 목록 가져오기 (폴백)
-  static Future<List<Product>> _getProductsFromPhpServer({
-    required String categoryId,
-    String? productKind,
-  }) async {
-    try {
-      // bomiora.kr의 API 엔드포인트를 확인해야 함
-      // 만약 JSON API가 없다면, Spring Boot 서버가 중간에서 PHP 서버를 호출하는 구조일 수 있음
-      // 일단 빈 리스트 반환 (나중에 실제 API 구조를 파악하면 수정)
-      
-      // TODO: 실제 bomiora.kr API 엔드포인트 확인 후 구현
-      // 예: 'https://bomiora.kr/api/products/list.php?ca_id=$categoryId&it_kind=$productKind'
-      
       return [];
     } catch (e) {
       return [];
