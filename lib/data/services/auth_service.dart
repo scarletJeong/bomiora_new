@@ -113,6 +113,38 @@ class AuthService {
     await prefs.setString(_userKey, json.encode(user.toJson()));
   }
 
+  /// 서버 세션 조회로 회원 정보(레벨 등) 갱신
+  static Future<UserModel?> refreshUserFromServer() async {
+    final local = await getUser();
+    if (local == null || local.id.trim().isEmpty) return local;
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '${ApiClient.baseUrl}${ApiEndpoints.authSession}?mb_id=${Uri.encodeQueryComponent(local.id)}',
+        ),
+        headers: const {'Accept': 'application/json'},
+      );
+
+      if (response.statusCode != 200) return local;
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map) return local;
+      if (decoded['active'] != true) return local;
+
+      final userRaw = decoded['user'];
+      if (userRaw is! Map) return local;
+
+      final merged = Map<String, dynamic>.from(local.toJson())
+        ..addAll(NodeValueParser.normalizeMap(Map<String, dynamic>.from(userRaw)));
+      final refreshed = UserModel.fromJson(merged);
+      await updateUser(refreshed);
+      return refreshed;
+    } catch (_) {
+      return local;
+    }
+  }
+
   // 토큰 업데이트
   static Future<void> updateToken(String token) async {
     final prefs = await SharedPreferences.getInstance();

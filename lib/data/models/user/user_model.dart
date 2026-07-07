@@ -14,6 +14,8 @@ class UserModel {
   final String? birthDate;
   /// 회원 성별(가능한 값: M/F/1/2/남/여 등)
   final String? sex;
+  /// 회원 레벨 (`mb_level`, 5=인플루언서)
+  final int mbLevel;
 
   UserModel({
     required this.id,
@@ -26,6 +28,7 @@ class UserModel {
     this.profileImage,
     this.birthDate,
     this.sex,
+    this.mbLevel = 0,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -69,6 +72,10 @@ class UserModel {
         NodeValueParser.asString(normalized['sex']) ??
         NodeValueParser.asString(normalized['mbSex']) ??
         NodeValueParser.asString(normalized['mb_sex']);
+    final mbLevel =
+        NodeValueParser.asInt(normalized['mbLevel']) ??
+        NodeValueParser.asInt(normalized['mb_level']) ??
+        0;
     
     return UserModel(
       id: id,
@@ -81,6 +88,7 @@ class UserModel {
       profileImage: profileImage,
       birthDate: birthDate,
       sex: sex,
+      mbLevel: mbLevel,
     );
   }
 
@@ -96,6 +104,8 @@ class UserModel {
       if (profileImage != null) 'profileImage': profileImage,
       if (birthDate != null) 'birthDate': birthDate,
       if (sex != null) 'sex': sex,
+      'mbLevel': mbLevel,
+      'mb_level': mbLevel,
     };
   }
 
@@ -110,6 +120,7 @@ class UserModel {
     String? profileImage,
     String? birthDate,
     String? sex,
+    int? mbLevel,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -122,6 +133,9 @@ class UserModel {
       profileImage: profileImage ?? this.profileImage,
       birthDate: birthDate ?? this.birthDate,
       sex: sex ?? this.sex,
+      mbLevel: mbLevel ?? this.mbLevel,
     );
   }
+
+  bool get isInfluencer => mbLevel == 5;
 }
