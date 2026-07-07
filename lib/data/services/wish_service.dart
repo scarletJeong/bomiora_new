@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../core/utils/inf_code_tracker.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -107,6 +108,7 @@ class WishService {
   static Future<Map<String, dynamic>> addToWish(
     String productId, {
     String? wiItKind,
+    String? infCode,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -121,6 +123,11 @@ class WishService {
       final k = wiItKind?.trim();
       if (k != null && k.isNotEmpty) {
         body['wi_it_kind'] = k;
+      }
+
+      final resolvedInfCode = (infCode ?? InfCodeTracker.current)?.trim();
+      if (resolvedInfCode != null && resolvedInfCode.isNotEmpty) {
+        body['inf_code'] = resolvedInfCode;
       }
 
       final response = await ApiClient.post(

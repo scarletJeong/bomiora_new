@@ -38,6 +38,7 @@ class ApiEndpoints {
   // 장바구니 관련 (기존 Cafe24 서버)
   static const String addToCart = '/api/cart/add';
   static const String getCart = '/api/cart';
+  static const String getCartRecommend = '/api/cart/recommend';
   static const String updateCartItem = '/api/cart/update';
   static const String syncCartSelection = '/api/cart/select';
   static const String removeCartItem = '/api/cart/remove';
