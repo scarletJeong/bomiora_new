@@ -64,8 +64,6 @@ class ApiEndpoints {
   // 리뷰 관련 — 메인 홈 베스트 리뷰는 Node `bomiora_main_review` (쿼리: ?size=8)
   static const String mainHomeReviews = '/api/user/reviews/main';
 
-  /// @deprecated Cafe24 구 경로. 메인 홈은 [mainHomeReviews] 사용.
-  static const String mainReviews = '/api/reviews/main';
   static const String productReviews = '/api/reviews/product';
   static const String addReview = '/api/reviews/add';
   static String productReviewsByKind(String productId, {String? reviewKind}) {
@@ -166,7 +164,6 @@ class ApiEndpoints {
   // 이벤트 관련
   static const String getActiveEvents = '/api/event/active';
   static const String getEndedEvents = '/api/event/ended';
-  static const String getEventPopup = '/api/event/popup';
   static const String getEventDetail = '/api/event';
 
   // 공지사항 관련
