@@ -96,9 +96,13 @@ class _TempCartScreenState extends State<TempCartScreen> {
             .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
             .toList();
         setState(() {
-          _tempItems = items;
+          _tempItems = items
+              .where(
+                (e) => e.ctKind.trim().toLowerCase() != 'general',
+              )
+              .toList();
           _recommendedProducts = recommended;
-          _syncSelectionAfterLoad(items);
+          _syncSelectionAfterLoad(_tempItems);
           _isLoading = false;
         });
       } else {
@@ -168,9 +172,6 @@ class _TempCartScreenState extends State<TempCartScreen> {
     }
   }
 
-  bool _isGeneralKind(String kind) =>
-      kind.trim().toLowerCase() == 'general';
-
   List<Map<String, dynamic>> _selectedOptionsFromPrescItems(
       List<CartItem> items) {
     return items
@@ -196,62 +197,21 @@ class _TempCartScreenState extends State<TempCartScreen> {
     setState(() => _isSubmitting = true);
     try {
       if (!await _ensureLoggedIn()) return;
-
-      final generalItems =
-          selectedItems.where((e) => _isGeneralKind(e.ctKind)).toList();
-      final prescItems =
-          selectedItems.where((e) => !_isGeneralKind(e.ctKind)).toList();
       if (!mounted) return;
 
-      if (prescItems.isNotEmpty) {
-        await Navigator.push<void>(
-          context,
-          MaterialPageRoute<void>(
-            builder: (context) => PrescriptionProfileScreen(
-              productId: prescItems.first.itId,
-              productName: prescItems.first.itName,
-              selectedOptions: _selectedOptionsFromPrescItems(prescItems),
-              tempCartCtIdsToClearOnSuccess:
-                  prescItems.map((e) => e.ctId).toList(),
-            ),
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute<void>(
+          builder: (context) => PrescriptionProfileScreen(
+            productId: selectedItems.first.itId,
+            productName: selectedItems.first.itName,
+            selectedOptions: _selectedOptionsFromPrescItems(selectedItems),
+            tempCartCtIdsToClearOnSuccess:
+                selectedItems.map((e) => e.ctId).toList(),
           ),
-        );
-        if (mounted) await _loadData();
-        return;
-      }
-
-      int genSuccess = 0;
-      int genFail = 0;
-      for (final item in generalItems) {
-        final addResult = await CartService.addToCart(
-          productId: item.itId,
-          quantity: item.ctQty,
-          price: item.ctPrice,
-          optionId: item.ioId,
-          optionText: item.ctOption,
-          optionPrice: item.ioPrice,
-          odId: item.odId,
-          ctKind: item.ctKind,
-          ctStatus: '쇼핑',
-        );
-        if (addResult['success'] == true) {
-          genSuccess++;
-          await CartService.removeCartItem(item.ctId);
-        } else {
-          genFail++;
-        }
-      }
-
-      if (!mounted) return;
-
-      if (genFail > 0) {
-        await _loadData();
-        return;
-      }
-
-      if (genSuccess > 0) {
-        Navigator.pushReplacementNamed(context, '/cart');
-      }
+        ),
+      );
+      if (mounted) await _loadData();
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
