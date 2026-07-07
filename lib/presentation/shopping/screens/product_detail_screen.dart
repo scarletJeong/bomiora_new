@@ -12,6 +12,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/point_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/product_share.dart';
+import '../../../core/utils/inf_code_tracker.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/wish_service.dart';
@@ -91,8 +92,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     _loadProductDetail().then((_) {
       // 제품 정보 로드 후 리뷰 로드 (it_org_id 확인을 위해)
       _loadReviews();
+      if (_product?.isInfluencerProduct != true) {
+        _loadUserPoint();
+      }
     });
-    _loadUserPoint();
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
@@ -167,51 +170,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   Future<void> _loadRecommendedProducts() async {
     if (_product == null) return;
-    if (_product!.ctKind != 'prescription') {
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = [];
-      });
-      return;
-    }
-
-    String normalize(String? value) => (value ?? '').trim();
-    final currentCategory = normalize(_product!.categoryId);
-    final currentName = normalize(_product!.name);
-
-    final isDiet = currentCategory == '10' || currentName.contains('다이어트');
-    final isDetox = currentCategory == '20' || currentName.contains('디톡스');
-    final isCalm = currentCategory == '80' || currentName.contains('심신안정');
-
-    List<String> targetCategoryIds;
-    if (isDiet) {
-      targetCategoryIds = ['20', '80'];
-    } else if (isDetox) {
-      targetCategoryIds = ['10', '80'];
-    } else if (isCalm) {
-      targetCategoryIds = ['10', '20'];
-    } else {
-      targetCategoryIds = ['10', '20', '80'];
-    }
 
     try {
-      final categoryProducts = await Future.wait(
-        targetCategoryIds.map(
-          (categoryId) => ProductRepository.getProductsByCategory(
-            categoryId: categoryId,
-            productKind: 'prescription',
-            page: 1,
-            pageSize: 100,
-          ),
-        ),
-      );
-      final products = categoryProducts.expand((list) => list).toList();
+      final products =
+          await CartService.getProductRecommendProducts(_product!.id);
       if (!mounted) return;
       setState(() {
-        _recommendedProducts = products
-            .where((p) => p.ctKind == 'prescription')
-            .where((p) => p.id != _product?.id)
-            .toList();
+        _recommendedProducts = products;
       });
     } catch (_) {
       if (!mounted) return;
@@ -796,6 +761,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildSupportReviewTabContent() {
+    final hideCoupon = _product?.isInfluencerProduct == true;
     return ProductSupportReview(
       reviews: _supporterReviews,
       isLoading: _isLoadingReviews,
@@ -803,6 +769,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
+      showCouponSection: !hideCoupon,
       onLoadMore: () {
         _safeSetState(() {
           _visibleSupporterReviewCount += 8;
@@ -1113,7 +1080,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         price: _product!.price,
       );
 
-      if (pointText != null) {
+      if (pointText != null && _product?.isInfluencerProduct != true) {
         mainSpecs.add({
           'label': '적립포인트',
           'value': pointText,
@@ -1261,9 +1228,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => ProductShare.shareProductWithFeedback(
-              context: anchorContext,
+              context: context,
+              anchorContext: anchorContext,
               itId: _product!.id,
               productName: _product!.name,
+              productKind: _product!.productKind,
             ),
             child: Center(
               child: SvgPicture.asset(
@@ -1488,14 +1457,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       child: RecommendProductSection(
         excludedProductNames: [_product?.name ?? ''],
         products: _recommendedProducts,
-        title: '추천상품',
+        title: '추가 상품 구매하기',
         titleStyle: shoppingSectionTitleStyle(context),
         showLeadingBar: true,
-        onProductTap: (product) {
-          Navigator.pushNamed(context, '/product/${product.id}');
-        },
+        hideWhenEmpty: true,
+        useGrid2: true,
+        prescriptionGroupOrdering: false,
+        maxItems: 4,
+        onProductTap: _openRecommendProduct,
       ),
     );
+  }
+
+  Future<void> _openRecommendProduct(Product product) async {
+    final kind = (product.productKind ?? '').toLowerCase();
+    final basePath =
+        kind == 'general' ? '/product-general/${product.id}' : '/product/${product.id}';
+    final inf = InfCodeTracker.current;
+    final route = (inf != null && inf.isNotEmpty)
+        ? '$basePath?infcode=${Uri.encodeComponent(inf)}'
+        : basePath;
+    await Navigator.pushNamed(context, route);
+    if (!mounted) return;
+    await _loadProductDetail();
   }
 
   Widget _buildBottomActionBar() {
@@ -1574,7 +1558,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       product: _product!,
       options: _productOptions,
       selectedOptions: _selectedOptions,
-      userPoint: _userPoint,
+      userPoint: _product!.isInfluencerProduct ? null : _userPoint,
       isFavorite: _isFavorite,
       onToggleFavorite: _toggleFavorite,
       onNoOptionGeneral: () async {},

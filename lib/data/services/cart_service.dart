@@ -1,12 +1,20 @@
 import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/utils/inf_code_tracker.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/models/cart/cart_item_model.dart';
 import '../../data/models/product/product_model.dart';
 import '../../data/models/product/product_option_model.dart';
 
 class CartService {
+  static void _attachInfCode(Map<String, dynamic> requestData) {
+    final code = InfCodeTracker.current;
+    if (code != null && code.isNotEmpty) {
+      requestData['inf_code'] = code;
+    }
+  }
+
   static List<CartItem> parseShoppingCartItems(Map<String, dynamic> cart) {
     final rawItems = (cart['items'] as List?) ?? const [];
     return rawItems
@@ -136,6 +144,8 @@ class CartService {
         requestData['ct_status'] = ctStatus;
       }
 
+      _attachInfCode(requestData);
+
       final response = await ApiClient.post(
         ApiEndpoints.addToCart,
         requestData,
@@ -243,6 +253,60 @@ class CartService {
         'success': false,
         'message': '장바구니 추가 중 오류가 발생했습니다: $e',
       };
+    }
+  }
+
+  /// 상품 상세 하단 추천 (인플루언서 SKU + MD픽). [itId] 기준으로 추천 목록 조회.
+  static Future<List<Product>> getProductRecommendProducts(String itId) async {
+    final id = itId.trim();
+    if (id.isEmpty) return [];
+
+    try {
+      final response = await ApiClient.get(
+        '${ApiEndpoints.getCartRecommend}?it_id=${Uri.encodeQueryComponent(id)}',
+      );
+      if (response.statusCode != 200) return [];
+
+      final data = json.decode(response.body);
+      if (data is! Map || data['success'] != true) return [];
+
+      final raw = data['data'];
+      if (raw is! List) return [];
+
+      return raw
+          .whereType<Map>()
+          .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// 장바구니 하단 인플루언서·MD 추천 상품 (PHP `get_influencer_recommend_products`)
+  static Future<List<Product>> getCartRecommendProducts({
+    String ctStatus = '쇼핑',
+  }) async {
+    try {
+      final user = await AuthService.getUser();
+      if (user == null) return [];
+
+      final response = await ApiClient.get(
+        '${ApiEndpoints.getCartRecommend}?mb_id=${user.id}&ct_status=${Uri.encodeComponent(ctStatus)}',
+      );
+      if (response.statusCode != 200) return [];
+
+      final data = json.decode(response.body);
+      if (data is! Map || data['success'] != true) return [];
+
+      final raw = data['data'];
+      if (raw is! List) return [];
+
+      return raw
+          .whereType<Map>()
+          .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (_) {
+      return [];
     }
   }
 

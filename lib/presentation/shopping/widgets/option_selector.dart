@@ -591,25 +591,27 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 ),
               ],
             ),
-            SizedBox(height: healthDp(context, 5)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  '보유 포인트 ${(widget.userPoint ?? 0).toString().replaceAllMapped(
-                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                        (Match m) => '${m[1]},',
-                      )}P',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    fontFamily: _kGmarketSans,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: healthSp(context, -1.08),
+            if (widget.userPoint != null) ...[
+              SizedBox(height: healthDp(context, 5)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    '보유 포인트 ${widget.userPoint!.toString().replaceAllMapped(
+                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                          (Match m) => '${m[1]},',
+                        )}P',
+                    style: TextStyle(
+                      fontSize: healthSp(context, 12),
+                      fontFamily: _kGmarketSans,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: healthSp(context, -1.08),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
           if (_selectedOptions.isNotEmpty) SizedBox(height: healthDp(context, 10)),
           widget.productKind == 'general'
@@ -908,22 +910,24 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                       ),
                     ],
                   ),
-                  SizedBox(height: healthDp(context, 5)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        '보유 포인트 ${_formatPrice(widget.userPoint ?? 0)}P',
-                        style: TextStyle(
-                          fontSize: healthSp(context, 12),
-                          fontFamily: _kGmarketSans,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: healthSp(context, -1.08),
+                  if (widget.userPoint != null) ...[
+                    SizedBox(height: healthDp(context, 5)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          '보유 포인트 ${_formatPrice(widget.userPoint!)}P',
+                          style: TextStyle(
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _kGmarketSans,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: healthSp(context, -1.08),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                   SizedBox(height: healthDp(context, 10)),
                   Row(
                     children: [

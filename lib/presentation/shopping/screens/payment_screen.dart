@@ -152,14 +152,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _isCouponApplicable(Coupon coupon) {
     if (!coupon.isAvailable) return false;
-    if (_purchaseAmount < coupon.minimum) return false;
+    if (_couponPointDisabled) return false;
+    if (_nonInfluencerAmount < coupon.minimum) return false;
     switch (coupon.method) {
       case 0:
-        return widget.cartItems.any((item) => item.itId == coupon.target);
+        return widget.cartItems.any(
+          (item) =>
+              !_isInfluencerCartItem(item) &&
+              item.itId == coupon.target,
+        );
       case 1:
-        if (coupon.target.trim().isEmpty) return true;
+        if (coupon.target.trim().isEmpty) return _nonInfluencerAmount > 0;
         final target = coupon.target.trim().toLowerCase();
         return widget.cartItems.any((item) {
+          if (_isInfluencerCartItem(item)) return false;
           final source =
               '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
                   .toLowerCase();
@@ -174,10 +180,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   int get _purchaseAmount =>
       widget.cartItems.fold(0, (sum, item) => sum + item.ctPrice);
+
+  bool _isInfluencerCartItem(CartItem item) =>
+      item.ctMbInf.trim().isNotEmpty;
+
+  int get _nonInfluencerAmount => widget.cartItems
+      .where((item) => !_isInfluencerCartItem(item))
+      .fold<int>(0, (sum, item) => sum + item.ctPrice);
+
+  bool get _hasInfluencerItems =>
+      widget.cartItems.any(_isInfluencerCartItem);
+
   bool get _isInfluencerOnly =>
       widget.cartItems.isNotEmpty &&
-      widget.cartItems.every((item) => item.ctMbInf.trim().isNotEmpty);
-  bool get _couponPointDisabled => _purchaseAmount <= 0 || _isInfluencerOnly;
+      widget.cartItems.every(_isInfluencerCartItem);
+
+  bool get _couponPointDisabled => _nonInfluencerAmount <= 0;
+
+  String get _couponPointNotice {
+    if (_isInfluencerOnly) {
+      return '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.';
+    }
+    if (_hasInfluencerItems) {
+      return '인플루언서 상품에는 쿠폰/포인트가 적용되지 않습니다.';
+    }
+    return '';
+  }
 
   int _discountForCoupon(Coupon coupon) {
     final base = _baseAmountForCoupon(coupon);
@@ -189,22 +217,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return coupon.price > base ? base : coupon.price;
   }
 
-  int get _couponDiscount => _couponPointDisabled
+  int get _couponDiscountRaw => _couponPointDisabled
       ? 0
       : _selectedCoupons.fold(0, (sum, c) => sum + _discountForCoupon(c));
 
+  int get _couponDiscount {
+    final raw = _couponDiscountRaw;
+    if (raw <= _nonInfluencerAmount) return raw;
+    return _nonInfluencerAmount;
+  }
+
   int get _pointEligibleBaseAmount {
-    final base = _purchaseAmount - _couponDiscount;
+    final base = _nonInfluencerAmount - _couponDiscount;
     return base < 0 ? 0 : base;
   }
 
   int get _maxPointByRate {
     final eligibleBase = _pointEligibleBaseAmount;
-    if (eligibleBase <= 0 || _purchaseAmount <= 0) return 0;
+    final nonInfTotal = _nonInfluencerAmount;
+    if (eligibleBase <= 0 || nonInfTotal <= 0) return 0;
 
     var total = 0;
     for (final item in widget.cartItems) {
-      final share = (eligibleBase * item.ctPrice / _purchaseAmount).floor();
+      if (_isInfluencerCartItem(item)) continue;
+      final share = (eligibleBase * item.ctPrice / nonInfTotal).floor();
       final rate = _pointRateForItem(item);
       total += (share * rate / 100).floor();
     }
@@ -377,24 +413,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   int _baseAmountForCoupon(Coupon coupon) {
+    bool isEligibleItem(CartItem item) => !_isInfluencerCartItem(item);
+
     switch (coupon.method) {
       case 0:
-        if (coupon.target.trim().isEmpty) return _purchaseAmount;
+        if (coupon.target.trim().isEmpty) return _nonInfluencerAmount;
         return widget.cartItems
-            .where((item) => item.itId == coupon.target.trim())
+            .where((item) =>
+                isEligibleItem(item) && item.itId == coupon.target.trim())
             .fold<int>(0, (sum, item) => sum + item.ctPrice);
       case 1:
-        // 카테고리 정보가 API에 없는 경우 기존 텍스트 매칭 방식 유지
-        if (coupon.target.trim().isEmpty) return _purchaseAmount;
+        if (coupon.target.trim().isEmpty) return _nonInfluencerAmount;
         final target = coupon.target.trim().toLowerCase();
         return widget.cartItems.where((item) {
+          if (!isEligibleItem(item)) return false;
           final source =
               '${item.productType ?? ''} ${item.itSubject ?? ''} ${item.itName}'
                   .toLowerCase();
           return source.contains(target);
         }).fold<int>(0, (sum, item) => sum + item.ctPrice);
       case 2:
-        return _purchaseAmount;
+        return _nonInfluencerAmount;
       case 3:
         return widget.shippingCost;
       default:
@@ -816,6 +855,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             _sectionGap(context),
                             _buildDeliverySection(context),
                             _sectionGap(context),
+                            if (_couponPointNotice.isNotEmpty)
+                              _buildInfluencerCouponPointNotice(context),
                             _buildCouponSection(context),
                             _buildPointSection(context),
                             _sectionGap(context),
@@ -1161,6 +1202,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  Widget _buildInfluencerCouponPointNotice(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 12),
+        healthDp(context, 27),
+        0,
+      ),
+      child: Text(
+        _couponPointNotice,
+        style: TextStyle(
+          color: _figmaBrown,
+          fontSize: healthSp(context, 11),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w400,
+          height: 1.35,
+        ),
+      ),
+    );
+  }
+
   Widget _buildCouponSection(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -1172,17 +1234,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           _sectionTitleLarge(context, '쿠폰'),
           SizedBox(height: healthDp(context, 16)),
-          if (_couponPointDisabled)
-            Text(
-              '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.',
-              style: TextStyle(
-                color: _figmaBrown,
-                fontSize: healthSp(context, 13),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w400,
-              ),
-            )
-          else ...[
+          if (!_couponPointDisabled) ...[
             _couponDropdown(context),
             SizedBox(height: healthDp(context, 5)),
             ..._selectedCoupons.map((c) => _selectedCouponRow(context, c)),
@@ -1205,17 +1257,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           _sectionTitleLarge(context, '포인트'),
           SizedBox(height: healthDp(context, 16)),
-          if (_couponPointDisabled)
-            Text(
-              '인플루언서 상품 주문은 쿠폰/포인트 사용이 불가합니다.',
-              style: TextStyle(
-                color: _figmaBrown,
-                fontSize: healthSp(context, 13),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w400,
-              ),
-            )
-          else ...[
+          if (!_couponPointDisabled) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [

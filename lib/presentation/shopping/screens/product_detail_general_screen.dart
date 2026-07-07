@@ -12,6 +12,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/point_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/product_share.dart';
+import '../../../core/utils/inf_code_tracker.dart';
 import '../../../data/services/point_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/wish_service.dart';
@@ -27,6 +28,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
 import '../widgets/producrt_normal_review.dart';
+import '../widgets/recommend_product.dart';
 import '../utils/get_review.dart';
 import 'cart_general_screen.dart' as cart_general;
 import 'payment_screen.dart';
@@ -71,6 +73,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   // 옵션 관련 상태
   List<ProductOption> _productOptions = [];
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
+  List<Product> _recommendedProducts = [];
 
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
@@ -89,8 +92,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     });
     _loadProductDetail().then((_) {
       _loadReviews();
+      if (_product?.isInfluencerProduct != true) {
+        _loadUserPoint();
+      }
     });
-    _loadUserPoint();
     _loadAuthUser();
     _loadConfig();
     _loadProductOptions();
@@ -153,6 +158,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
       // 찜하기 상태 확인
       await _checkFavoriteStatus();
+      await _loadRecommendedProducts();
     } catch (e) {
       _safeSetState(() {
         _isLoading = false;
@@ -160,6 +166,60 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         _errorMessage = '제품 정보를 불러오는데 실패했습니다: $e';
       });
     }
+  }
+
+  Future<void> _loadRecommendedProducts() async {
+    if (_product == null) return;
+
+    try {
+      final products =
+          await CartService.getProductRecommendProducts(_product!.id);
+      if (!mounted) return;
+      setState(() {
+        _recommendedProducts = products;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _recommendedProducts = [];
+      });
+    }
+  }
+
+  Future<void> _openRecommendProduct(Product product) async {
+    final kind = (product.productKind ?? '').toLowerCase();
+    final basePath =
+        kind == 'general' ? '/product-general/${product.id}' : '/product/${product.id}';
+    final inf = InfCodeTracker.current;
+    final route = (inf != null && inf.isNotEmpty)
+        ? '$basePath?infcode=${Uri.encodeComponent(inf)}'
+        : basePath;
+    await Navigator.pushNamed(context, route);
+    if (!mounted) return;
+    await _loadProductDetail();
+  }
+
+  Widget _buildRecommendedSection() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 20),
+        healthDp(context, 27),
+        healthDp(context, 40),
+      ),
+      child: RecommendProductSection(
+        excludedProductNames: [_product?.name ?? ''],
+        products: _recommendedProducts,
+        title: '추가 상품 구매하기',
+        titleStyle: shoppingSectionTitleStyle(context),
+        showLeadingBar: true,
+        hideWhenEmpty: true,
+        useGrid2: true,
+        prescriptionGroupOrdering: false,
+        maxItems: 4,
+        onProductTap: _openRecommendProduct,
+      ),
+    );
   }
 
   /// 찜하기 상태 확인
@@ -437,6 +497,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                       ?.toString(),
                 ),
               ),
+              SliverToBoxAdapter(child: _buildRecommendedSection()),
               SliverToBoxAdapter(
                 child: SizedBox(height: healthDp(context, 40)),
               ),
@@ -959,7 +1020,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         price: _product!.price,
       );
 
-      if (pointText != null) {
+      if (pointText != null && _product?.isInfluencerProduct != true) {
         mainSpecs.add({
           'label': '적립포인트',
           'value': pointText,
@@ -1113,9 +1174,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => ProductShare.shareProductWithFeedback(
-              context: anchorContext,
+              context: context,
+              anchorContext: anchorContext,
               itId: _product!.id,
               productName: _product!.name,
+              productKind: _product!.productKind ?? 'general',
             ),
             child: Center(
               child: SvgPicture.asset(
@@ -1398,7 +1461,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       product: _product!,
       options: _productOptions,
       selectedOptions: _selectedOptions,
-      userPoint: _userPoint,
+      userPoint: _product!.isInfluencerProduct ? null : _userPoint,
       isFavorite: _isFavorite,
       productKindOverride: 'general',
       onToggleFavorite: _toggleFavorite,
@@ -1673,7 +1736,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       context: context,
       productName: _product!.name,
       unitPrice: _product!.price,
-      userPoint: _userPoint,
+      userPoint: _product!.isInfluencerProduct ? null : _userPoint,
       isFavorite: _isFavorite,
       onToggleFavorite: _toggleFavorite,
       onAddToCart: (quantity) async {

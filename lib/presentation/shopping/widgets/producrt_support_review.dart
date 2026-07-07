@@ -13,6 +13,7 @@ class ProductSupportReview extends StatelessWidget {
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
   final bool embedInParentScroll;
+  final bool showCouponSection;
 
   const ProductSupportReview({
     super.key,
@@ -24,6 +25,7 @@ class ProductSupportReview extends StatelessWidget {
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
     this.embedInParentScroll = false,
+    this.showCouponSection = true,
   });
 
   @override
@@ -60,7 +62,7 @@ class ProductSupportReview extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: hPad),
               child: ProductReviewListSection(
                 reviews: visibleReviews,
-                showCouponSection: true,
+                showCouponSection: showCouponSection,
                 guestLoginLocked: guestLoginLocked,
                 onGuestLoginTap: onGuestLoginTap,
                 onReviewTap: onReviewTap,

@@ -50,6 +50,7 @@ import 'presentation/content/dashboard/screens/content_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_detail_screen.dart';
 import 'presentation/home/search/search_list_screen.dart';
 import 'presentation/common/widgets/dropdown_btn.dart';
+import 'core/utils/inf_code_tracker.dart';
 
 /// 개발용: 앱 시작 시 로그인 화면을 먼저 표시
 const bool kDevForceLoginScreenFirst = false;
@@ -70,6 +71,7 @@ void main() async {
   // 카카오·네이버 SDK 초기화
   await KakaoAuthService.initialize();
   await NaverAuthService.initialize();
+  await InfCodeTracker.init();
 
   runApp(const BomioraApp());
 }
@@ -253,6 +255,7 @@ class _BomioraAppState extends State<BomioraApp> {
         // 동적 라우트 처리
         final routeName = settings.name ?? '';
         final uri = Uri.parse(routeName);
+        InfCodeTracker.captureFromUri(uri);
 
         // KCP 본인인증: 원래 화면이 비치는 딤 오버레이 스타일로 표시
         if (routeName == '/kcp-cert') {
