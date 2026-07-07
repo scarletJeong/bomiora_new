@@ -57,6 +57,10 @@ class ApiEndpoints {
   static const String recentViewRemove = '/api/recent-view/remove';
   static const String recentViewClear = '/api/recent-view/clear';
 
+  /// 홈·상품목록 슬라이드 배너 (`bm_banner`)
+  /// Query: platform=mobile|pc, placement=main|list, target_kind=general|prescription (list만)
+  static const String mainBanners = '/api/main/banners';
+
   // 리뷰 관련 — 메인 홈 베스트 리뷰는 Node `bomiora_main_review` (쿼리: ?size=8)
   static const String mainHomeReviews = '/api/user/reviews/main';
 
@@ -162,6 +166,7 @@ class ApiEndpoints {
   // 이벤트 관련
   static const String getActiveEvents = '/api/event/active';
   static const String getEndedEvents = '/api/event/ended';
+  static const String getEventPopup = '/api/event/popup';
   static const String getEventDetail = '/api/event';
 
   // 공지사항 관련

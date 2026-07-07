@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/main_banner_slider.dart';
+import '../widgets/banner_slider.dart';
 import '../widgets/review_section.dart';
 import '../widgets/product_section.dart';
 import '../widgets/wellness_section.dart';
@@ -138,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 // 메인 배너 슬라이더
-                const MainBannerSlider(),
+                const BannerSlider(),
                 SizedBox(height: sectionGap),
 
                 // 웰니스 섹션  - 임시
