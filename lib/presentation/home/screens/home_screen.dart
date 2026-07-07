@@ -142,8 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(height: sectionGap),
 
                 // 웰니스 섹션  - 임시
-                const WellnessSection(),
-                SizedBox(height: sectionGap),
+                //const WellnessSection(),
+                //SizedBox(height: sectionGap),
 
                 // 신상품 섹션 - 임시
                 const ProductSection(),

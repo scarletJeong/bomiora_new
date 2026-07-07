@@ -26,6 +26,14 @@ class _BannerSliderState extends State<BannerSlider> {
   }
 
   @override
+  void reassemble() {
+    super.reassemble();
+    setState(() {
+      _bannersFuture = BannerService.fetchMobileBanners();
+    });
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
