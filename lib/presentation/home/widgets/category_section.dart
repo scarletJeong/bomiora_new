@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../../presentation/shopping/utils/get_product.dart' show ProductCategoryItem;
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import '../../shopping/utils/get_product.dart';
 
 class CategorySection extends StatefulWidget {
   const CategorySection({super.key});
@@ -21,10 +21,11 @@ class _CategorySectionState extends State<CategorySection> {
   static const int _expandStep = 5;
   static const int _maxCarouselProducts = 10;
 
-  List<ProductCategoryItem> _tabs =
-      List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
+  List<ProductCategoryItem> _tabs = const [];
   int _selectedTabIndex = 0;
   int _tabsRequestToken = 0;
+  bool _tabsLoading = true;
+  String? _tabsError;
   final Map<String, List<Product>> _productsByCategory = {};
   final Map<String, int> _visibleCountByCategory = {};
   bool _isLoading = false;
@@ -33,7 +34,6 @@ class _CategorySectionState extends State<CategorySection> {
   @override
   void initState() {
     super.initState();
-    _loadProductsForCurrentTab();
     _refreshTabsFromApi();
   }
 
@@ -53,16 +53,38 @@ class _CategorySectionState extends State<CategorySection> {
 
   Future<void> _refreshTabsFromApi() async {
     final requestToken = ++_tabsRequestToken;
-    final tabs = await ProductCategoryCatalog.generalCategories();
-    if (!mounted || requestToken != _tabsRequestToken) return;
-    if (tabs.isEmpty) return;
-
-    final previousIndex = _selectedTabIndex;
     setState(() {
-      _tabs = tabs;
-      _selectedTabIndex = previousIndex.clamp(0, tabs.length - 1);
+      _tabsLoading = true;
+      _tabsError = null;
     });
-    _loadProductsForCurrentTab();
+
+    try {
+      final tabs = await ProductCategoryCatalog.generalCategories();
+      if (!mounted || requestToken != _tabsRequestToken) return;
+
+      setState(() {
+        _tabsLoading = false;
+        if (tabs.isEmpty) {
+          _tabs = const [];
+          _tabsError = '카테고리를 불러오지 못했습니다.';
+        } else {
+          _tabs = tabs;
+          _selectedTabIndex = _selectedTabIndex.clamp(0, tabs.length - 1);
+          _tabsError = null;
+        }
+      });
+
+      if (tabs.isNotEmpty) {
+        _loadProductsForCurrentTab();
+      }
+    } catch (_) {
+      if (!mounted || requestToken != _tabsRequestToken) return;
+      setState(() {
+        _tabsLoading = false;
+        _tabs = const [];
+        _tabsError = '카테고리를 불러오지 못했습니다.';
+      });
+    }
   }
 
   @override
@@ -154,11 +176,14 @@ class _CategorySectionState extends State<CategorySection> {
 
   @override
   Widget build(BuildContext context) {
-    if (_tabs.isEmpty) {
+    if (_tabsLoading) {
       return SizedBox(
         height: healthDp(context, 280),
         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
+    }
+    if (_tabsError != null || _tabs.isEmpty) {
+      return const SizedBox.shrink();
     }
 
     final w = MediaQuery.sizeOf(context).width;
