@@ -15,6 +15,58 @@ class CartService {
     }
   }
 
+  static int? ctIdFromCartResponseData(dynamic data) {
+    if (data is! Map) return null;
+    final raw = data['ct_id'] ?? data['ctId'];
+    if (raw is int) return raw;
+    return int.tryParse('$raw');
+  }
+
+  static List<int> cartIdsFromAddOptionsResult(Map<String, dynamic> result) {
+    final raw = result['cart_ids'];
+    if (raw is! List) return [];
+    return [
+      for (final id in raw)
+        if (id is int) id else if (int.tryParse('$id') != null) int.parse('$id'),
+    ];
+  }
+
+  /// 새로 담은 상품(ct_id)을 선택 상태로 유지·반영 (기존 선택은 유지)
+  static Future<void> ensureCartItemsSelected(List<int> ctIds) async {
+    if (ctIds.isEmpty) return;
+
+    try {
+      final cart = await getCart();
+      if (cart['success'] != true) return;
+
+      final raw = cart['data'];
+      if (raw is! List) {
+        await syncCartSelection(
+          selectedCtIds: ctIds,
+          ctKind: 'prescription',
+        );
+        return;
+      }
+
+      final selected = <int>{...ctIds};
+      for (final row in raw) {
+        if (row is! Map) continue;
+        final map = Map<String, dynamic>.from(row);
+        final ctId = ctIdFromCartResponseData(map);
+        if (ctId == null) continue;
+        final select = map['ct_select'] ?? map['ctSelect'];
+        final isSelected =
+            select == 1 || select == true || select == '1' || select == 1.0;
+        if (isSelected) selected.add(ctId);
+      }
+
+      await syncCartSelection(
+        selectedCtIds: selected.toList(),
+        ctKind: 'prescription',
+      );
+    } catch (_) {}
+  }
+
   static List<CartItem> parseShoppingCartItems(Map<String, dynamic> cart) {
     final rawItems = (cart['items'] as List?) ?? const [];
     return rawItems
@@ -192,6 +244,7 @@ class CartService {
       int successCount = 0;
       int failCount = 0;
       List<String> errorMessages = [];
+      final addedCtIds = <int>[];
 
       // 각 옵션별로 장바구니에 추가
       for (final entry in selectedOptions.entries) {
@@ -224,6 +277,8 @@ class CartService {
 
         if (result['success'] == true) {
           successCount++;
+          final ctId = ctIdFromCartResponseData(result['data']);
+          if (ctId != null) addedCtIds.add(ctId);
         } else {
           failCount++;
           errorMessages.add('${option.displayText}: ${result['message']}');
@@ -231,15 +286,19 @@ class CartService {
       }
 
       if (failCount == 0) {
+        await ensureCartItemsSelected(addedCtIds);
         return {
           'success': true,
           'message': '모든 상품이 장바구니에 추가되었습니다.',
+          'cart_ids': addedCtIds,
         };
       } else if (successCount > 0) {
+        await ensureCartItemsSelected(addedCtIds);
         return {
           'success': true,
           'message': '일부 상품이 장바구니에 추가되었습니다.',
           'errors': errorMessages,
+          'cart_ids': addedCtIds,
         };
       } else {
         return {
@@ -262,9 +321,14 @@ class CartService {
     if (id.isEmpty) return [];
 
     try {
-      final response = await ApiClient.get(
-        '${ApiEndpoints.getCartRecommend}?it_id=${Uri.encodeQueryComponent(id)}',
-      );
+      final user = await AuthService.getUser();
+      var url =
+          '${ApiEndpoints.getCartRecommend}?it_id=${Uri.encodeQueryComponent(id)}';
+      if (user != null) {
+        url += '&mb_id=${Uri.encodeQueryComponent(user.id)}';
+      }
+
+      final response = await ApiClient.get(url);
       if (response.statusCode != 200) return [];
 
       final data = json.decode(response.body);

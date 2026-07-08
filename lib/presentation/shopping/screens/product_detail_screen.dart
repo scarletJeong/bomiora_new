@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/review/review_model.dart';
@@ -26,9 +27,10 @@ import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
+import '../widgets/recommend_product_bottomup.dart';
+import 'prescription_booking/prescription_profile_screen.dart';
 import '../widgets/producrt_support_review.dart';
 import '../widgets/producrt_normal_review.dart';
-import '../widgets/recommend_product.dart';
 import '../utils/get_review.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -61,7 +63,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   // 리뷰 관련 상태
   List<ReviewModel> _supporterReviews = [];
   List<ReviewModel> _generalReviews = [];
-  List<Product> _recommendedProducts = [];
   bool _isLoadingReviews = false;
   int? _userPoint; // 현재 사용자 보유 포인트
   bool? _usePointConfig; // cf_use_point 설정값
@@ -158,30 +159,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
       // 찜하기 상태 확인
       await _checkFavoriteStatus();
-      await _loadRecommendedProducts();
     } catch (e) {
       _safeSetState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = '제품 정보를 불러오는데 실패했습니다: $e';
-      });
-    }
-  }
-
-  Future<void> _loadRecommendedProducts() async {
-    if (_product == null) return;
-
-    try {
-      final products =
-          await CartService.getProductRecommendProducts(_product!.id);
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = products;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _recommendedProducts = [];
       });
     }
   }
@@ -733,7 +715,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           changeContentText:
               _product?.additionalInfo?['it_change_content']?.toString(),
         ),
-        _buildRecommendedSection(),
         SizedBox(height: healthDp(context, 56)),
       ],
     );
@@ -1445,30 +1426,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  // 추천상품 섹션
-  Widget _buildRecommendedSection() {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        healthDp(context, 27),
-        healthDp(context, 20),
-        healthDp(context, 27),
-        healthDp(context, 60),
-      ),
-      child: RecommendProductSection(
-        excludedProductNames: [_product?.name ?? ''],
-        products: _recommendedProducts,
-        title: '추가 상품 구매하기',
-        titleStyle: shoppingSectionTitleStyle(context),
-        showLeadingBar: true,
-        hideWhenEmpty: true,
-        useGrid2: true,
-        prescriptionGroupOrdering: false,
-        maxItems: 4,
-        onProductTap: _openRecommendProduct,
-      ),
-    );
-  }
-
   Future<void> _openRecommendProduct(Product product) async {
     final kind = (product.productKind ?? '').toLowerCase();
     final basePath =
@@ -1615,11 +1572,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
         if (!mounted) return;
 
-        await _addPrescriptionItemsToShoppingCart();
+        final added = await _addPrescriptionItemsToShoppingCart(
+          navigateToCart: false,
+        );
+        if (added != null && mounted) {
+          await _showRecommendProductBottomup();
+        }
       },
       onReserve: () async {
+        if (_product == null || _selectedOptions.isEmpty) return;
+
+        final user = await AuthService.getUser();
+        if (user == null || user.id.isEmpty) {
+          if (!mounted) return;
+          await showLoginRequiredDialog(
+            context,
+            message: '진료담기는 로그인 후 이용할 수 있습니다.',
+          );
+          return;
+        }
+
         Navigator.of(context).pop();
-        await _addPrescriptionItemsToTempCart();
+
+        if (!mounted) return;
+
+        await _startPrescriptionReservationCheckout();
       },
       onBuyNow: () async {
         if (_product == null || _selectedOptions.isEmpty) return;
@@ -1636,90 +1613,123 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
         Navigator.of(context).pop();
 
-        final result = await CartService.addOptionsToCart(
-          product: _product!,
-          selectedOptions: _selectedOptions,
-        );
-
         if (!mounted) return;
-        if (result['success'] == true) {
-          setState(() {
-            _selectedOptions.clear();
-          });
-          // 처방 상품 구매 플로우는 "임시 장바구니 → 문진표 → 장바구니"를 거침
-          await _addPrescriptionItemsToTempCart();
-        }
+
+        await _addPrescriptionItemsToShoppingCart(navigateToCart: true);
       },
     );
   }
 
-  Future<void> _addPrescriptionItemsToShoppingCart({
+  List<Map<String, dynamic>> _cartItemsToBookingOptions(List<CartItem> items) {
+    return items
+        .map(
+          (item) => <String, dynamic>{
+            'it_id': item.itId,
+            'it_name': item.itName,
+            'id': item.ioId ?? '',
+            'name': item.ctOption.isNotEmpty ? item.ctOption : item.itName,
+            'price': item.ioPrice ?? 0,
+            'quantity': item.ctQty,
+            'totalPrice': item.ctPrice,
+            'ct_kind': item.ctKind,
+          },
+        )
+        .toList();
+  }
+
+  Future<void> _startPrescriptionReservationCheckout() async {
+    if (_product == null || _selectedOptions.isEmpty) return;
+
+    final addedCtIds = await _addPrescriptionItemsToShoppingCart(
+      navigateToCart: false,
+    );
+    if (addedCtIds == null || addedCtIds.isEmpty || !mounted) return;
+
+    final cartResult = await CartService.getCart();
+    if (!mounted || cartResult['success'] != true) return;
+
+    final rawItems = cartResult['data'];
+    final allItems = (rawItems is List ? rawItems : [])
+        .whereType<Map>()
+        .map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    final addedIdSet = addedCtIds.toSet();
+    final bookingItems =
+        allItems.where((item) => addedIdSet.contains(item.ctId)).toList();
+
+    if (bookingItems.isEmpty || !mounted) return;
+
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PrescriptionProfileScreen(
+          productId: bookingItems.first.itId,
+          productName: bookingItems.first.itName,
+          selectedOptions: _cartItemsToBookingOptions(bookingItems),
+          cartCtIdsForCheckout: bookingItems.map((e) => e.ctId).toList(),
+          checkoutCartItems: bookingItems,
+          checkoutShippingCost: 0,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRecommendProductBottomup() async {
+    if (_product == null || !mounted) return;
+
+    final products =
+        await CartService.getProductRecommendProducts(_product!.id);
+    if (!mounted || products.isEmpty) return;
+
+    await showRecommendProductBottomup(
+      context: context,
+      products: products,
+      onProductTap: (product) {
+        Navigator.of(context).pop();
+        _openRecommendProduct(product);
+      },
+      onGoToCart: () {
+        Navigator.pushNamed(context, '/cart');
+      },
+    );
+  }
+
+  Future<List<int>?> _addPrescriptionItemsToShoppingCart({
     bool navigateToCart = true,
   }) async {
-    if (_product == null || _selectedOptions.isEmpty) return;
+    if (_product == null || _selectedOptions.isEmpty) return null;
 
     final user = await AuthService.getUser();
     if (user == null || user.id.isEmpty) {
-      if (!mounted) return;
+      if (!mounted) return null;
       await showLoginRequiredDialog(
         context,
         message: '진료담기는 로그인 후 이용할 수 있습니다.',
       );
-      return;
+      return null;
     }
 
-    if (!mounted) return;
+    if (!mounted) return null;
 
     final result = await CartService.addOptionsToCart(
       product: _product!,
       selectedOptions: _selectedOptions,
     );
 
-    if (!mounted) return;
+    if (!mounted) return null;
 
     if (result['success'] == true) {
+      final cartIds = CartService.cartIdsFromAddOptionsResult(result);
       setState(() {
         _selectedOptions.clear();
       });
       if (navigateToCart && mounted) {
         Navigator.pushNamed(context, '/cart');
       }
+      return cartIds;
     }
-  }
-
-  Future<void> _addPrescriptionItemsToTempCart({
-    bool navigateToTempCart = true,
-  }) async {
-    if (_product == null || _selectedOptions.isEmpty) return;
-
-    final user = await AuthService.getUser();
-    if (user == null || user.id.isEmpty) {
-      if (!mounted) return;
-      await showLoginRequiredDialog(
-        context,
-        message: '로그인 후 이용 가능합니다.',
-      );
-      return;
-    }
-
-    if (!mounted) return;
-
-    final result = await CartService.addOptionsToCart(
-      product: _product!,
-      selectedOptions: _selectedOptions,
-      ctStatus: '임시',
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      setState(() {
-        _selectedOptions.clear();
-      });
-      if (navigateToTempCart && mounted) {
-        Navigator.pushNamed(context, '/temp-cart');
-      }
-    }
+    return null;
   }
 
   /// 옵션 선택 후 예약 진행

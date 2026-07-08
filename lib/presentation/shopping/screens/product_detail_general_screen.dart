@@ -214,7 +214,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         titleStyle: shoppingSectionTitleStyle(context),
         showLeadingBar: true,
         hideWhenEmpty: true,
-        useGrid2: true,
+        useVerticalList: true,
         prescriptionGroupOrdering: false,
         maxItems: 4,
         onProductTap: _openRecommendProduct,

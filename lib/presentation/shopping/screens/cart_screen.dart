@@ -9,9 +9,8 @@ import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/price_formatter.dart';
-import 'payment_screen.dart';
+import 'prescription_booking/prescription_profile_screen.dart';
 import '../widgets/get_cartImage.dart';
 
 class CartScreen extends StatefulWidget {
@@ -305,6 +304,23 @@ class _CartScreenState extends State<CartScreen> {
 
   int get finalPrice => selectedTotalPrice + selectedShippingCost;
 
+  List<Map<String, dynamic>> _cartItemsToBookingOptions(List<CartItem> items) {
+    return items
+        .map(
+          (item) => <String, dynamic>{
+            'it_id': item.itId,
+            'it_name': item.itName,
+            'id': item.ioId ?? '',
+            'name': item.ctOption.isNotEmpty ? item.ctOption : item.itName,
+            'price': item.ioPrice ?? 0,
+            'quantity': item.ctQty,
+            'totalPrice': item.ctPrice,
+            'ct_kind': item.ctKind,
+          },
+        )
+        .toList();
+  }
+
   Future<void> _openPaymentScreen() async {
     if (!await _ensureLoggedIn(message: '상품 구매는 로그인 후 이용할 수 있습니다.')) {
       return;
@@ -316,22 +332,23 @@ class _CartScreenState extends State<CartScreen> {
         .toList();
     if (selectedCartItems.isEmpty) return;
 
-    final paid = await Navigator.push<bool>(
+    await Navigator.push<void>(
       context,
       MaterialPageRoute(
-        settings: const RouteSettings(name: '/pay'),
-        builder: (context) => PaymentScreen(
-          cartItems: selectedCartItems,
-          shippingCost: selectedShippingCost,
-          sourceTitle: '처방상품 장바구니',
+        builder: (context) => PrescriptionProfileScreen(
+          productId: selectedCartItems.first.itId,
+          productName: selectedCartItems.first.itName,
+          selectedOptions: _cartItemsToBookingOptions(selectedCartItems),
+          cartCtIdsForCheckout:
+              selectedCartItems.map((e) => e.ctId).toList(),
+          checkoutCartItems: selectedCartItems,
+          checkoutShippingCost: selectedShippingCost,
         ),
       ),
     );
 
     if (!mounted) return;
-    if (paid == true) {
-      await _loadCart(showCachedData: false);
-    }
+    await _loadCart(showCachedData: false);
   }
 
   void _handleBackNavigation() {
@@ -734,42 +751,6 @@ class _CartScreenState extends State<CartScreen> {
   bool _isPrescriptionKind(CartItem item) =>
       item.ctKind.trim().toLowerCase() == 'prescription';
 
-  TextStyle _prescriptionScheduleLabelStyle() => TextStyle(
-        color: const Color(0xFF1A1A1E),
-        fontSize: healthSp(context, 10),
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w500,
-      );
-
-  TextStyle _prescriptionScheduleValueStyle() => TextStyle(
-        color: const Color(0xFFFF5A8D),
-        fontSize: healthSp(context, 10),
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w500,
-      );
-
-  String _formatCartReservationSchedule(CartItem item) {
-    final d = item.reservationDate;
-    final rawTime = item.reservationTime?.trim() ?? '';
-    final timePart = rawTime
-        .replaceAll(' ~ ', '~')
-        .replaceAll(' ~', '~')
-        .replaceAll('~ ', '~');
-
-    if (d == null && timePart.isEmpty) return '-';
-
-    String datePart = '-';
-    if (d != null) {
-      const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-      final wd = weekdays[d.weekday - 1];
-      datePart = '${DateDisplayFormatter.formatYmd(d)}($wd)';
-    }
-
-    if (datePart == '-') return timePart.isEmpty ? '-' : timePart;
-    if (timePart.isEmpty) return datePart;
-    return '$datePart $timePart';
-  }
-
   /// 옵션/규격 줄 — `ct_option`의 ` / ` 또는 `it_subject` + `ct_option` 조합
   Widget? _buildCartItemOptionRow(CartItem item) {
     final opt = item.ctOption.trim();
@@ -929,21 +910,6 @@ class _CartScreenState extends State<CartScreen> {
                           SizedBox(height: healthDp(context, 4)),
                           optionRow,
                         ],
-                        SizedBox(height: healthDp(context, 4)),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '진료 예약 시간 :',
-                              style: _prescriptionScheduleLabelStyle(),
-                            ),
-                            Text(
-                              _formatCartReservationSchedule(item),
-                              style: _prescriptionScheduleValueStyle(),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: healthDp(context, 4)),
                       ] else ...[
                         if (optionRow != null) ...[
                           SizedBox(height: healthDp(context, 5)),

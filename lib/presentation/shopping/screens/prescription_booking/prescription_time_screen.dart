@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../data/models/cart/cart_item_model.dart';
 import '../../../../data/models/shop_default/reservation_settings_model.dart';
 import '../../../../data/services/shop_default_service.dart';
 import '../../../user/healthprofile/models/health_profile_model.dart';
@@ -14,7 +15,9 @@ class PrescriptionTimeScreen extends StatefulWidget {
   final dynamic selectedOptions; // List<Map<String, dynamic>> 또는 Map<String, dynamic>? (하위 호환성)
   final Map<String, dynamic> formData;
   final HealthProfileModel? existingProfile;
-  final List<int>? tempCartCtIdsToClearOnSuccess;
+  final List<int>? cartCtIdsForCheckout;
+  final List<CartItem>? checkoutCartItems;
+  final int? checkoutShippingCost;
 
   const PrescriptionTimeScreen({
     super.key,
@@ -23,7 +26,9 @@ class PrescriptionTimeScreen extends StatefulWidget {
     this.selectedOptions,
     required this.formData,
     this.existingProfile,
-    this.tempCartCtIdsToClearOnSuccess,
+    this.cartCtIdsForCheckout,
+    this.checkoutCartItems,
+    this.checkoutShippingCost,
   });
 
   @override
@@ -149,7 +154,9 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
           existingProfile: widget.existingProfile,
           selectedDate: _selectedDate!,
           selectedTime: _selectedTime!,
-          tempCartCtIdsToClearOnSuccess: widget.tempCartCtIdsToClearOnSuccess,
+          cartCtIdsForCheckout: widget.cartCtIdsForCheckout,
+          checkoutCartItems: widget.checkoutCartItems,
+          checkoutShippingCost: widget.checkoutShippingCost,
         ),
       ),
     );

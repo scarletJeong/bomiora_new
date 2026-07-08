@@ -10,8 +10,9 @@ import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/content_popup.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../data/services/cart_service.dart';
+import '../../../../data/models/cart/cart_item_model.dart';
 import '../../../../core/navigation/app_navigator_key.dart';
+import '../../screens/payment_screen.dart';
 
 /// 연락처 입력 화면 (개인정보)
 class PrescriptionContactScreen extends StatefulWidget {
@@ -22,7 +23,9 @@ class PrescriptionContactScreen extends StatefulWidget {
   final HealthProfileModel? existingProfile;
   final DateTime selectedDate;
   final String selectedTime;
-  final List<int>? tempCartCtIdsToClearOnSuccess;
+  final List<int>? cartCtIdsForCheckout;
+  final List<CartItem>? checkoutCartItems;
+  final int? checkoutShippingCost;
 
   const PrescriptionContactScreen({
     super.key,
@@ -33,7 +36,9 @@ class PrescriptionContactScreen extends StatefulWidget {
     this.existingProfile,
     required this.selectedDate,
     required this.selectedTime,
-    this.tempCartCtIdsToClearOnSuccess,
+    this.cartCtIdsForCheckout,
+    this.checkoutCartItems,
+    this.checkoutShippingCost,
   });
 
   @override
@@ -375,6 +380,11 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
             .toList();
       }
 
+      final cartCtIds = widget.cartCtIdsForCheckout;
+      if (cartCtIds != null && cartCtIds.isNotEmpty) {
+        requestData['cart_ct_ids'] = cartCtIds;
+      }
+
       final response =
           await ApiClient.post('/api/cart/healthprofile', requestData);
 
@@ -393,16 +403,27 @@ class _PrescriptionContactScreenState extends State<PrescriptionContactScreen> {
 
       await Future.delayed(const Duration(milliseconds: 500));
 
-      final tempIds = widget.tempCartCtIdsToClearOnSuccess;
-      if (tempIds != null && tempIds.isNotEmpty) {
-        for (final ctId in tempIds) {
-          try {
-            await CartService.removeCartItem(ctId);
-          } catch (_) {}
-        }
+      if (!mounted) return;
+
+      final checkoutItems = widget.checkoutCartItems;
+      if (checkoutItems != null && checkoutItems.isNotEmpty) {
+        Navigator.of(context).popUntil(
+          (route) => route.settings.name == '/cart' || route.isFirst,
+        );
+        if (!mounted) return;
+        await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: '/pay'),
+            builder: (context) => PaymentScreen(
+              cartItems: checkoutItems,
+              shippingCost: widget.checkoutShippingCost ?? 0,
+              sourceTitle: '처방상품 장바구니',
+            ),
+          ),
+        );
+        return;
       }
 
-      if (!mounted) return;
       Future.microtask(() {
         try {
           final navigator = appNavigatorKey.currentState;

@@ -11,6 +11,7 @@ import '../../../user/healthprofile/health_profile_payload.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../../data/models/cart/cart_item_model.dart';
 import 'prescription_time_screen.dart';
 
 /// `HealthProfileFormScreen._Answer6MenuLine` 과 동일 스타일 (다이어트 기간 오버레이 메뉴)
@@ -71,14 +72,18 @@ class PrescriptionProfileScreen extends StatefulWidget {
   final String productId;
   final String productName;
   final dynamic selectedOptions;
-  final List<int>? tempCartCtIdsToClearOnSuccess;
+  final List<int>? cartCtIdsForCheckout;
+  final List<CartItem>? checkoutCartItems;
+  final int? checkoutShippingCost;
 
   const PrescriptionProfileScreen({
     super.key,
     required this.productId,
     required this.productName,
     this.selectedOptions,
-    this.tempCartCtIdsToClearOnSuccess,
+    this.cartCtIdsForCheckout,
+    this.checkoutCartItems,
+    this.checkoutShippingCost,
   });
 
   @override
@@ -425,7 +430,9 @@ class _PrescriptionProfileScreenState extends State<PrescriptionProfileScreen> {
             selectedOptions: widget.selectedOptions,
             formData: Map<String, dynamic>.from(_formData),
             existingProfile: refreshed ?? _existingProfile,
-            tempCartCtIdsToClearOnSuccess: widget.tempCartCtIdsToClearOnSuccess,
+            cartCtIdsForCheckout: widget.cartCtIdsForCheckout,
+            checkoutCartItems: widget.checkoutCartItems,
+            checkoutShippingCost: widget.checkoutShippingCost,
           ),
         ),
       );

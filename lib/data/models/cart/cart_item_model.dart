@@ -337,16 +337,22 @@ class CartItem {
         )}원';
   }
 
+  bool get hasReservationSchedule {
+    if (reservationDate != null) return true;
+    final time = reservationTime?.trim() ?? '';
+    return time.isNotEmpty;
+  }
+
+  bool get needsPrescriptionBooking =>
+      _normalizeKind(ctKind) == 'prescription' && !hasReservationSchedule;
+
   bool get isPrescription {
     final kind = _normalizeKind(ctKind);
     if (kind == 'prescription') {
       return true;
     }
     if (doctorName != null && doctorName!.trim().isNotEmpty) return true;
-    if (reservationDate != null) return true;
-    if (reservationTime != null && reservationTime!.trim().isNotEmpty) {
-      return true;
-    }
+    if (hasReservationSchedule) return true;
     return false;
   }
 }
