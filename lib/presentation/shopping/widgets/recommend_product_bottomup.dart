@@ -12,6 +12,35 @@ const double kRecommendBottomSheetItemsPerViewport = 2.2;
 /// 카드 너비 대비 이미지 정사각형 비율 (살짝 작게)
 const double kRecommendBottomSheetImageScale = 0.9;
 
+/// 바텀시트 추천 카드 레이아웃 (인라인 행과 동일 크기)
+({
+  double cardWidth,
+  double imageSize,
+  double listHeight,
+  double crossGap,
+  double textBlockHeight,
+}) computeRecommendBottomSheetCardLayout(
+  BuildContext context,
+  double innerWidth, {
+  double itemsPerViewport = kRecommendBottomSheetItemsPerViewport,
+}) {
+  final crossGap = healthDp(context, 12);
+  final imageGap = healthDp(context, 6);
+  final textBlockH = healthDp(context, 52);
+  final cardWidth = innerWidth > crossGap
+      ? (innerWidth - crossGap) / itemsPerViewport
+      : innerWidth * 0.42;
+  final imageSize = cardWidth * kRecommendBottomSheetImageScale;
+  final listHeight = imageSize + imageGap + textBlockH;
+  return (
+    cardWidth: cardWidth,
+    imageSize: imageSize,
+    listHeight: listHeight,
+    crossGap: crossGap,
+    textBlockHeight: textBlockH,
+  );
+}
+
 Widget _dismissibleBottomSheetShell({
   required BuildContext context,
   required Widget child,
@@ -88,18 +117,11 @@ class RecommendProductBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sheetPadding = healthDp(context, 30);
-    final crossGap = healthDp(context, 12);
-    final imageGap = healthDp(context, 6);
-    final textBlockH = healthDp(context, 52);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final innerWidth = constraints.maxWidth - sheetPadding * 2;
-        final cardWidth = innerWidth > crossGap
-            ? (innerWidth - crossGap) / kRecommendBottomSheetItemsPerViewport
-            : innerWidth * 0.42;
-        final imageSize = cardWidth * kRecommendBottomSheetImageScale;
-        final listHeight = imageSize + imageGap + textBlockH;
+        final layout = computeRecommendBottomSheetCardLayout(context, innerWidth);
 
         return ClipRRect(
           borderRadius: BorderRadius.only(
@@ -184,7 +206,7 @@ class RecommendProductBottomSheet extends StatelessWidget {
                     ),
                     SizedBox(height: healthDp(context, 12)),
                     SizedBox(
-                      height: listHeight,
+                      height: layout.listHeight,
                       child: ScrollConfiguration(
                         behavior: const _HorizontalDragScrollBehavior(),
                         child: ListView.separated(
@@ -192,14 +214,14 @@ class RecommendProductBottomSheet extends StatelessWidget {
                           physics: const BouncingScrollPhysics(),
                           itemCount: products.length,
                           separatorBuilder: (_, __) =>
-                              SizedBox(width: crossGap),
+                              SizedBox(width: layout.crossGap),
                           itemBuilder: (context, index) {
                             return SizedBox(
-                              width: cardWidth,
-                              child: _RecommendSquareProductCard(
+                              width: layout.cardWidth,
+                              child: RecommendSquareProductCard(
                                 product: products[index],
-                                imageSize: imageSize,
-                                textBlockHeight: textBlockH,
+                                imageSize: layout.imageSize,
+                                textBlockHeight: layout.textBlockHeight,
                                 onTap: () => onProductTap(products[index]),
                               ),
                             );
@@ -218,7 +240,55 @@ class RecommendProductBottomSheet extends StatelessWidget {
   }
 }
 
-class _RecommendSquareProductCard extends StatelessWidget {
+/// 인라인 정사각형 추천 행 — 바텀시트와 동일 카드 크기
+class RecommendProductSquareRow extends StatelessWidget {
+  final List<Product> products;
+  final ValueChanged<Product> onProductTap;
+
+  const RecommendProductSquareRow({
+    super.key,
+    required this.products,
+    required this.onProductTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (products.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final innerWidth = constraints.maxWidth.clamp(0.0, double.infinity);
+        final layout = computeRecommendBottomSheetCardLayout(context, innerWidth);
+
+        return SizedBox(
+          height: layout.listHeight,
+          child: ScrollConfiguration(
+            behavior: const _HorizontalDragScrollBehavior(),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: products.length,
+              separatorBuilder: (_, __) => SizedBox(width: layout.crossGap),
+              itemBuilder: (context, index) {
+                return SizedBox(
+                  width: layout.cardWidth,
+                  child: RecommendSquareProductCard(
+                    product: products[index],
+                    imageSize: layout.imageSize,
+                    textBlockHeight: layout.textBlockHeight,
+                    onTap: () => onProductTap(products[index]),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class RecommendSquareProductCard extends StatelessWidget {
   static const Color _brandPink = Color(0xFFFF5A8D);
   static const Color _textDark = Color(0xFF1A1A1E);
   static const String _gmarket = 'Gmarket Sans TTF';
@@ -228,7 +298,7 @@ class _RecommendSquareProductCard extends StatelessWidget {
   final double textBlockHeight;
   final VoidCallback onTap;
 
-  const _RecommendSquareProductCard({
+  const RecommendSquareProductCard({
     required this.product,
     required this.imageSize,
     required this.textBlockHeight,
@@ -277,20 +347,22 @@ class _RecommendSquareProductCard extends StatelessWidget {
             height: textBlockHeight,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _textDark,
-                    fontSize: healthSp(context, 11),
-                    fontFamily: _gmarket,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _textDark,
+                      fontSize: healthSp(context, 11),
+                      fontFamily: _gmarket,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 Row(
                   children: [
                     Text(
