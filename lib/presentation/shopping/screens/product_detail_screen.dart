@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/cart/cart_item_model.dart';
@@ -32,6 +31,7 @@ import 'prescription_booking/prescription_profile_screen.dart';
 import '../widgets/producrt_support_review.dart';
 import '../widgets/producrt_normal_review.dart';
 import '../utils/get_review.dart';
+import '../utils/product_detail_html_helper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -847,10 +847,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               itemBuilder: (context, index) {
                 final imageUrl = images[index];
 
-                return Image.network(
-                  imageUrl,
+                return buildProductCarouselImage(
+                  imageUrl: imageUrl,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  height: imageHeight,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: Colors.grey[200],
@@ -1266,86 +1266,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     if (_product == null) return '';
     final itExplain = _product!.additionalInfo?['it_explain']?.toString() ??
         _product!.description;
-    if (itExplain == null || itExplain.isEmpty) {
-      return '';
-    }
-
-    final srcPattern = RegExp(
-      r'''src\s*=\s*(['"])(https?://[^'"]+)\1''',
-      caseSensitive: false,
-    );
-    return itExplain.replaceAllMapped(srcPattern, (match) {
-      final quote = match.group(1) ?? '"';
-      final originalUrl = match.group(2) ?? '';
-      final convertedUrl = ImageUrlHelper.convertToLocalUrl(originalUrl);
-      return 'src=$quote$convertedUrl$quote';
-    });
+    return processProductDetailHtml(itExplain);
   }
 
-  Widget _buildDetailHtml({
-    required String html,
-    required double imageWidth,
-  }) {
-    return Html(
-      data: html,
-      shrinkWrap: true,
-      style: {
-        'body': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          fontFamily: _kGmarketSans,
-        ),
-        'img': Style(
-          width: Width(imageWidth),
-          display: Display.block,
-          margin: Margins.symmetric(vertical: healthDp(context, 8)),
-        ),
-        'div': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          fontFamily: _kGmarketSans,
-        ),
-        'p': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          display: Display.block,
-          fontFamily: _kGmarketSans,
-        ),
-        'span': Style(fontFamily: _kGmarketSans),
-        'li': Style(fontFamily: _kGmarketSans),
-        'h1': Style(fontFamily: _kGmarketSans),
-        'h2': Style(fontFamily: _kGmarketSans),
-        'h3': Style(fontFamily: _kGmarketSans),
-        'h4': Style(fontFamily: _kGmarketSans),
-        'a': Style(fontFamily: _kGmarketSans),
-      },
+  Widget _buildDetailHtml({required String html}) {
+    return buildProductDetailHtml(
+      context: context,
+      html: html,
+      fontFamily: _kGmarketSans,
     );
   }
 
   Widget _buildDetailPreviewSection() {
     final processedHtml = _getProcessedDetailHtml();
     if (processedHtml.isEmpty) return const SizedBox.shrink();
-    final screenWidth = MediaQuery.of(context).size.width;
-    final imageWidth = (screenWidth - healthDp(context, 32)).clamp(
-      healthDp(context, 200),
-      healthDp(context, 600),
-    );
     final collapsedPreviewHeight = healthDp(context, 320);
     final isExpanded = _isDetailExpanded == true;
+    final hPad = healthDp(context, 16);
 
     return Container(
       margin: EdgeInsets.only(
         top: healthDp(context, 24),
         bottom: healthDp(context, 24),
       ),
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 16)),
+      padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
         children: [
           if (isExpanded) ...[
-            _buildDetailHtml(
-              html: processedHtml,
-              imageWidth: imageWidth,
-            ),
+            _buildDetailHtml(html: processedHtml),
           ] else ...[
             ClipRect(
               child: SizedBox(
@@ -1354,10 +1302,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   children: [
                     Positioned.fill(
                       child: IgnorePointer(
-                        child: _buildDetailHtml(
-                          html: processedHtml,
-                          imageWidth: imageWidth,
-                        ),
+                        child: _buildDetailHtml(html: processedHtml),
                       ),
                     ),
                     Positioned(

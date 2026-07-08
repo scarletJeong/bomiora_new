@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../data/models/product/product_model.dart';
@@ -29,7 +28,9 @@ import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
 import '../widgets/producrt_normal_review.dart';
 import '../widgets/recommend_product.dart';
+import '../widgets/recommend_product_bottomup.dart';
 import '../utils/get_review.dart';
+import '../utils/product_detail_html_helper.dart';
 import 'cart_general_screen.dart' as cart_general;
 import 'payment_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
@@ -806,10 +807,10 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               itemBuilder: (context, index) {
                 final imageUrl = images[index];
 
-                return Image.network(
-                  imageUrl,
+                return buildProductCarouselImage(
+                  imageUrl: imageUrl,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  height: imageHeight,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: Colors.grey[200],
@@ -1230,71 +1231,23 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     if (_product == null) return '';
     final itExplain = _product!.additionalInfo?['it_explain']?.toString() ??
         _product!.description;
-    if (itExplain == null || itExplain.isEmpty) {
-      return '';
-    }
-
-    final srcPattern = RegExp(
-      r'''src\s*=\s*(['"])(https?://[^'"]+)\1''',
-      caseSensitive: false,
-    );
-    return itExplain.replaceAllMapped(srcPattern, (match) {
-      final quote = match.group(1) ?? '"';
-      final originalUrl = match.group(2) ?? '';
-      final convertedUrl = ImageUrlHelper.convertToLocalUrl(originalUrl);
-      return 'src=$quote$convertedUrl$quote';
-    });
+    return processProductDetailHtml(itExplain);
   }
 
-  Widget _buildDetailHtml({
-    required String html,
-    required double imageWidth,
-  }) {
-    return Html(
-      data: html,
-      shrinkWrap: true,
-      style: {
-        'body': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          fontFamily: _kGmarketSans,
-        ),
-        'img': Style(
-          width: Width(imageWidth),
-          display: Display.block,
-          margin: Margins.symmetric(vertical: healthDp(context, 8)),
-        ),
-        'div': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          fontFamily: _kGmarketSans,
-        ),
-        'p': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          display: Display.block,
-          fontFamily: _kGmarketSans,
-        ),
-        'span': Style(fontFamily: _kGmarketSans),
-        'li': Style(fontFamily: _kGmarketSans),
-        'h1': Style(fontFamily: _kGmarketSans),
-        'h2': Style(fontFamily: _kGmarketSans),
-        'h3': Style(fontFamily: _kGmarketSans),
-        'h4': Style(fontFamily: _kGmarketSans),
-        'a': Style(fontFamily: _kGmarketSans),
-      },
+  Widget _buildDetailHtml({required String html}) {
+    return buildProductDetailHtml(
+      context: context,
+      html: html,
+      fontFamily: _kGmarketSans,
     );
   }
 
   Widget _buildDetailPreviewSection() {
     final processedHtml = _getProcessedDetailHtml();
     if (processedHtml.isEmpty) return const SizedBox.shrink();
-    final screenWidth = MediaQuery.of(context).size.width;
-    final hPad = healthDp(context, 27);
-    final imageWidth =
-        (screenWidth - hPad * 2).clamp(healthDp(context, 200), healthDp(context, 600));
     final collapsedPreviewHeight = healthDp(context, 320);
     final isExpanded = _isDetailExpanded == true;
+    final hPad = healthDp(context, 27);
 
     return Container(
       margin: EdgeInsets.only(top: healthDp(context, 24)),
@@ -1302,10 +1255,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       child: Column(
         children: [
           if (isExpanded) ...[
-            _buildDetailHtml(
-              html: processedHtml,
-              imageWidth: imageWidth,
-            ),
+            _buildDetailHtml(html: processedHtml),
           ] else ...[
             ClipRect(
               child: SizedBox(
@@ -1314,10 +1264,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   children: [
                     Positioned.fill(
                       child: IgnorePointer(
-                        child: _buildDetailHtml(
-                          html: processedHtml,
-                          imageWidth: imageWidth,
-                        ),
+                        child: _buildDetailHtml(html: processedHtml),
                       ),
                     ),
                     Positioned(
@@ -1501,12 +1448,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _safeSetState(() {
             _selectedOptions.clear();
           });
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const cart_general.CartScreen(),
-            ),
-          );
+          await _showRecommendProductBottomup();
         }
       },
       onAddToPrescriptionCart: () async {},
@@ -1729,6 +1671,31 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
+  Future<void> _showRecommendProductBottomup() async {
+    if (_product == null || !mounted) return;
+
+    final products =
+        await CartService.getProductRecommendProducts(_product!.id);
+    if (!mounted || products.isEmpty) return;
+
+    await showRecommendProductBottomup(
+      context: context,
+      products: products,
+      onProductTap: (product) {
+        Navigator.of(context).pop();
+        _openRecommendProduct(product);
+      },
+      onGoToCart: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const cart_general.CartScreen(),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _showGeneralQuantityBottomSheet() async {
     if (_product == null) return;
 
@@ -1743,12 +1710,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         Navigator.of(context).pop();
         final success = await _addGeneralProductToCart(quantity: quantity);
         if (!mounted || !success) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const cart_general.CartScreen(),
-          ),
-        );
+        await _showRecommendProductBottomup();
       },
       onBuyNow: (quantity) async {
         Navigator.of(context).pop();
