@@ -26,7 +26,6 @@ import 'presentation/shopping/screens/bomiora_introduce_screen.dart';
 import 'presentation/shopping/screens/kcp_pay_webview_screen.dart';
 import 'presentation/shopping/screens/payment_complete_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
-import 'presentation/shopping/screens/temp_cart_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
 import 'presentation/customer_service/screens/contact_list_screen.dart';
@@ -156,7 +155,6 @@ class _BomioraAppState extends State<BomioraApp> {
         '/health': (context) => const HealthDashboardScreen(),
         // (임시) 장바구니 페이지 접근 차단
         '/cart': (context) => const CartScreen(),
-        '/temp-cart': (context) => const TempCartScreen(),
         '/bomiora-introduce': (context) => const BomioraIntroduceScreen(),
         '/healthcare-store': (context) => const ProductMainGeneralScreen(),
         '/coupon': (context) => const CouponScreen(),
