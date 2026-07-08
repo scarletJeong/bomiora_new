@@ -572,7 +572,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 Text(
                   '총 구매 금액',
                   style: TextStyle(
-                    fontSize: healthSp(context, 16),
+                    fontSize: healthSp(context, 14),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w500,
                   ),
@@ -583,7 +583,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                         (Match m) => '${m[1]},',
                       )}원',
                   style: TextStyle(
-                    fontSize: healthSp(context, 20),
+                    fontSize: healthSp(context, 18),
                     fontFamily: _kGmarketSans,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFFFF5A8D),
@@ -628,8 +628,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                       ],
                       Expanded(
                         child: OutlinedButton(
-                          onPressed:
-                              _selectedOptions.isEmpty ? null : () {},
+                          onPressed: _selectedOptions.isEmpty
+                              ? null
+                              : widget.onAddToPrescriptionCart,
                           style: OutlinedButton.styleFrom(
                             padding: EdgeInsets.symmetric(
                               vertical: healthDp(context, 10),
@@ -894,7 +895,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                       Text(
                         '총 구매 금액',
                         style: TextStyle(
-                          fontSize: healthSp(context, 16),
+                          fontSize: healthSp(context, 14),
                           fontFamily: _kGmarketSans,
                           fontWeight: FontWeight.w500,
                         ),
@@ -902,7 +903,7 @@ class _GeneralQuantityBottomSheetState extends State<GeneralQuantityBottomSheet>
                       Text(
                         '${_formatPrice(_totalPrice)}원',
                         style: TextStyle(
-                          fontSize: healthSp(context, 20),
+                          fontSize: healthSp(context, 18),
                           fontFamily: _kGmarketSans,
                           fontWeight: FontWeight.w500,
                           color: const Color(0xFFFF5A8D),

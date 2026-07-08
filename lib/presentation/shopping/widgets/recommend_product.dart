@@ -45,6 +45,18 @@ class RecommendProductSection extends StatefulWidget {
   /// 섹션 표시 시 상단 여백 (hideWhenEmpty로 숨길 때는 적용 안 함)
   final double topSpacingBefore;
   final bool useGrid2;
+  /// true이면 1열 세로 리스트 (상품 상세 하단 추천 등)
+  final bool useVerticalList;
+  /// false이면 [products]를 처방 그룹 정렬 없이 그대로 노출 (일반 MD Pick 등)
+  final bool prescriptionGroupOrdering;
+  /// 가로 리스트 최대 개수
+  final int? maxItems;
+  /// 가로 한 화면에 보이는 카드 수 (기본 2.0, MD Pick은 2.1 등)
+  final double? itemsPerViewport;
+  /// 가로 카드 사이 간격 (null이면 목록 그리드와 동일 12)
+  final double? horizontalGap;
+  /// 가로 카드 축소 비율 (1.0=기본, 2/3=1/3 축소)
+  final double cardScale;
 
   const RecommendProductSection({
     super.key,
@@ -57,6 +69,12 @@ class RecommendProductSection extends StatefulWidget {
     this.hideWhenEmpty = false,
     this.topSpacingBefore = 0,
     this.useGrid2 = false,
+    this.useVerticalList = false,
+    this.prescriptionGroupOrdering = true,
+    this.maxItems,
+    this.itemsPerViewport,
+    this.horizontalGap,
+    this.cardScale = 1.0,
   });
 
   @override
@@ -94,6 +112,15 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
   }
 
   List<Product> _buildOrderedRecommendations() {
+    if (!widget.prescriptionGroupOrdering) {
+      var list = widget.products;
+      final limit = widget.maxItems;
+      if (limit != null && limit > 0) {
+        list = list.take(limit).toList();
+      }
+      return list;
+    }
+
     final selectedGroups = <_RecommendGroup>{};
     for (final productName in widget.excludedProductNames) {
       final group = _groupFromName(productName);
@@ -171,6 +198,18 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
               style: TextStyle(fontSize: 13),
             ),
           )
+        else if (widget.useVerticalList)
+          Column(
+            children: [
+              for (var i = 0; i < recommended.length; i++) ...[
+                if (i > 0) SizedBox(height: healthDp(context, 16)),
+                ProductCatalogCard(
+                  product: recommended[i],
+                  onTap: () => widget.onProductTap(recommended[i]),
+                ),
+              ],
+            ],
+          )
         else if (widget.useGrid2)
           LayoutBuilder(
             builder: (context, constraints) {
@@ -197,10 +236,22 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
         else
           LayoutBuilder(
             builder: (context, constraints) {
-              final m =
-                  _recommendCatalogMetrics(context, constraints.maxWidth);
+              final crossGap =
+                  widget.horizontalGap ?? healthDp(context, 12);
+              final inner = constraints.maxWidth.clamp(0.0, double.infinity);
+              final perView = widget.itemsPerViewport;
+              final scale = widget.cardScale.clamp(0.4, 1.0);
+              final baseCellWidth = perView != null && perView > 0
+                  ? inner / perView
+                  : (inner > crossGap
+                      ? (inner - crossGap) / 2
+                      : (inner * 0.45).clamp(80.0, 200.0));
+              final baseCellHeight =
+                  ProductCatalogCard.preferredMainAxisExtent(context);
+              final cellWidth = baseCellWidth * scale;
+              final cellHeight = baseCellHeight * scale;
               return SizedBox(
-                height: m.cellHeight,
+                height: cellHeight,
                 child: ScrollConfiguration(
                   behavior: const _HorizontalDragScrollBehavior(),
                   child: Scrollbar(
@@ -212,16 +263,25 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
                       physics: const BouncingScrollPhysics(),
                       itemBuilder: (context, index) {
                         return SizedBox(
-                          width: m.cellWidth,
-                          child: ProductCatalogCard(
-                            product: recommended[index],
-                            onTap: () =>
-                                widget.onProductTap(recommended[index]),
+                          width: cellWidth,
+                          height: cellHeight,
+                          child: Transform.scale(
+                            scale: scale,
+                            alignment: Alignment.topLeft,
+                            child: SizedBox(
+                              width: baseCellWidth,
+                              height: baseCellHeight,
+                              child: ProductCatalogCard(
+                                product: recommended[index],
+                                onTap: () =>
+                                    widget.onProductTap(recommended[index]),
+                              ),
+                            ),
                           ),
                         );
                       },
                       separatorBuilder: (_, __) =>
-                          SizedBox(width: m.crossGap),
+                          SizedBox(width: crossGap * scale),
                       itemCount: recommended.length,
                     ),
                   ),
