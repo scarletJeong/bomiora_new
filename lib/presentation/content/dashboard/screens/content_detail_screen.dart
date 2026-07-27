@@ -142,12 +142,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     if (user == null) {
       return;
     }
-    setState(() => _wishBusy = true);
+    final prev = _isWished == true;
+    setState(() {
+      _wishBusy = true;
+      _isWished = !prev; // 즉시 채워진/테두리 아이콘 반영
+    });
     try {
       final r = await WishService.addToWish('$id', wiItKind: 'content');
       final wished = r['is_wished'] == true;
       if (mounted) setState(() => _isWished = wished);
     } catch (e) {
+      if (mounted) setState(() => _isWished = prev);
     } finally {
       if (mounted) setState(() => _wishBusy = false);
     }
@@ -169,7 +174,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       if (pfNo < 0) pfNo = 0;
     } catch (_) {}
     if (mounted) setState(() => _recommendPfNo = pfNo);
-    setState(() => _recommendBusy = true);
+    final prevCount = _recommendCount;
+    setState(() {
+      _recommendBusy = true;
+      _userRecommended = true; // 즉시 채워진 아이콘 반영
+      _recommendCount = prevCount + 1;
+    });
     try {
       final r = await ContentService.recommendContent(
         id,
@@ -181,7 +191,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         final c = r['recommend_count'];
         final n = c is num
             ? c.toInt()
-            : int.tryParse('$c') ?? _recommendCount + 1;
+            : int.tryParse('$c') ?? _recommendCount;
         setState(() {
           _recommendCount = n;
           _userRecommended = true;
@@ -196,7 +206,19 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             _recommendCount = n;
             _userRecommended = true;
           });
+        } else {
+          setState(() {
+            _userRecommended = false;
+            _recommendCount = prevCount;
+          });
         }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _userRecommended = false;
+          _recommendCount = prevCount;
+        });
       }
     } finally {
       if (mounted) setState(() => _recommendBusy = false);
@@ -336,8 +358,50 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     );
   }
 
+  static const String _heartFilledSvg =
+      '<svg width="42" height="42" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg">'
+      '<path fill="#FF5A8D" d="M21.4202 11.1386L19.7037 9.42208C18.1103 7.82873 15.9493 6.93359 13.6959 6.93359C11.4426 6.93359 9.28154 7.82873 7.68819 9.42208C6.09485 11.0154 5.19971 13.1765 5.19971 15.4298C5.19971 17.6831 6.09485 19.8442 7.68819 21.4376L16.2335 29.9828C16.2458 29.9953 16.2582 30.0077 16.2706 30.0202L20.5619 34.3114C20.7988 34.5484 21.1095 34.6669 21.4202 34.6669C21.7309 34.6669 22.0416 34.5484 22.2785 34.3114L35.1522 21.4376C36.7455 19.8442 37.6407 17.6831 37.6407 15.4298C37.6407 13.1765 36.7455 11.0154 35.1522 9.42208C33.5588 7.82873 31.3978 6.93359 29.1444 6.93359C26.8911 6.93359 24.7301 7.82873 23.1367 9.42208L21.4202 11.1386Z"/>'
+      '</svg>';
+
+  static const String _thumbFilledSvg =
+      '<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">'
+      '<path fill="#FF5A8D" d="M2 12.5C2 11.3954 2.89543 10.5 4 10.5C5.65685 10.5 7 11.8431 7 13.5V17.5C7 19.1569 5.65685 20.5 4 20.5C2.89543 20.5 2 19.6046 2 18.5V12.5Z"/>'
+      '<path fill="#FF5A8D" d="M15.4787 7.80626L15.2124 8.66634C14.9942 9.37111 14.8851 9.72349 14.969 10.0018C15.0369 10.2269 15.1859 10.421 15.389 10.5487C15.64 10.7065 16.0197 10.7065 16.7791 10.7065H17.1831C19.7532 10.7065 21.0382 10.7065 21.6452 11.4673C21.7145 11.5542 21.7762 11.6467 21.8296 11.7437C22.2965 12.5921 21.7657 13.7351 20.704 16.0211C19.7297 18.1189 19.2425 19.1678 18.338 19.7852C18.2505 19.8449 18.1605 19.9013 18.0683 19.9541C17.116 20.5 15.9362 20.5 13.5764 20.5H13.0646C10.2057 20.5 8.77628 20.5 7.88814 19.6395C7 18.7789 7 17.3939 7 14.6239V13.6503C7 12.1946 7 11.4668 7.25834 10.8006C7.51668 10.1344 8.01135 9.58664 9.00069 8.49112L13.0921 3.96056C13.1947 3.84694 13.246 3.79012 13.2913 3.75075C13.7135 3.38328 14.3652 3.42464 14.7344 3.84235C14.774 3.8871 14.8172 3.94991 14.9036 4.07554C15.0388 4.27205 15.1064 4.37031 15.1654 4.46765C15.6928 5.33913 15.8524 6.37436 15.6108 7.35715C15.5838 7.46692 15.5488 7.5801 15.4787 7.80626Z"/>'
+      '</svg>';
+
+  Widget _buildActionIcon({
+    required double size,
+    required bool filled,
+    required String outlineAsset,
+    required String filledAsset,
+    required String filledSvg,
+  }) {
+    // 활성 → 채워진 SVG / 비활성 → 테두리 SVG
+    // filled 에셋이 아직 번들에 없으면 string으로 폴백
+    if (filled) {
+      return SvgPicture.string(
+        filledSvg,
+        key: ValueKey('filled_$filledAsset'),
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        colorFilter: const ColorFilter.mode(_pink, BlendMode.srcIn),
+      );
+    }
+    return SvgPicture.asset(
+      outlineAsset,
+      key: ValueKey('outline_$outlineAsset'),
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      colorFilter: const ColorFilter.mode(_textDark, BlendMode.srcIn),
+    );
+  }
+
   Widget _buildDetailPostNavActions(BuildContext context) {
     final iconSz = healthDp(context, 24);
+    final wished = _isWished == true;
+    final recommended = _userRecommended == true;
 
     return Container(
       width: double.infinity,
@@ -353,31 +417,28 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: EdgeInsets.all(healthDp(context, 0)),
-              child: SvgPicture.asset(
-                AppAssets.heartIcon,
-                width: iconSz,
-                height: iconSz,
-                fit: BoxFit.contain,
-                colorFilter: ColorFilter.mode(
-                  _isWished == true ? _pink : _textDark,
-                  BlendMode.srcIn,
-                ),
+              child: _buildActionIcon(
+                size: iconSz,
+                filled: wished,
+                outlineAsset: AppAssets.heartIcon,
+                filledAsset: AppAssets.heartIconFilled,
+                filledSvg: _heartFilledSvg,
               ),
             ),
           ),
           SizedBox(width: healthDp(context, 10)),
           IgnorePointer(
-            ignoring: _userRecommended == true,
+            ignoring: recommended,
             child: GestureDetector(
               onTap: (_recommendBusy ||
                       _currentContentId == null ||
-                      _userRecommended == true)
+                      recommended)
                   ? null
                   : _onRecommend,
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: EdgeInsets.all(healthDp(context, 0)),
-                child: (_recommendBusy && _userRecommended != true)
+                child: (_recommendBusy && !recommended)
                     ? SizedBox(
                         width: iconSz,
                         height: iconSz,
@@ -386,15 +447,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                           color: _pink,
                         ),
                       )
-                    : SvgPicture.asset(
-                        AppAssets.thumbUpIcon,
-                        width: iconSz,
-                        height: iconSz,
-                        fit: BoxFit.contain,
-                        colorFilter: ColorFilter.mode(
-                          _userRecommended == true ? _pink : _textDark,
-                          BlendMode.srcIn,
-                        ),
+                    : _buildActionIcon(
+                        size: iconSz,
+                        filled: recommended,
+                        outlineAsset: AppAssets.thumbUpIcon,
+                        filledAsset: AppAssets.thumbUpIconFilled,
+                        filledSvg: _thumbFilledSvg,
                       ),
               ),
             ),

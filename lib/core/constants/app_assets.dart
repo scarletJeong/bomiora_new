@@ -204,9 +204,11 @@ abstract final class AppAssets {
   static const String TOSSIcon = '${_img}bankIcon_TOSS.svg';
 
   /* 10. 건강콘텐츠 */
-  // 엄지척 아이콘 - 콘텐츠 추천천
+  // 엄지척 아이콘 - 콘텐츠 추천
   static const String thumbUpIcon = '${_img}thumb_up_icon.svg';
+  static const String thumbUpIconFilled = '${_img}thumb_up_icon_filled.svg';
 
-  // 하트트 아이콘 - 콘텐츠 찜 
+  // 하트 아이콘 - 콘텐츠 찜
   static const String heartIcon = '${_img}content_heart_icon.svg';
+  static const String heartIconFilled = '${_img}content_heart_icon_filled.svg';
 }
