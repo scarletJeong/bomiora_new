@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -28,8 +28,8 @@ import 'presentation/shopping/screens/payment_complete_screen.dart';
 import 'presentation/shopping/screens/cart_screen.dart';
 import 'presentation/shopping/wish/screens/wish_list_screen.dart';
 import 'presentation/user/myPage/screens/cancel_member_screen.dart';
-import 'presentation/customer_service/screens/contact_list_screen.dart';
-import 'presentation/customer_service/screens/contact_detail_screen.dart';
+import 'presentation/customer_service/screens/qa_list_screen.dart';
+import 'presentation/customer_service/screens/qa_detail_screen.dart';
 import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
@@ -160,15 +160,15 @@ class _BomioraAppState extends State<BomioraApp> {
         '/coupon': (context) => const CouponScreen(),
         '/my_reviews': (context) => const MyReviewsScreen(),
         '/profile': (context) => const HealthProfileListScreen(),
-        '/qna': (context) => const ContactListScreen(),
+        '/qna': (context) => const QaListScreen(),
         '/qna-detail': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
           final wrId = int.tryParse(args?['wrId']?.toString() ?? '') ?? 0;
-          return ContactDetailScreen(wrId: wrId);
+          return QaDetailScreen(wrId: wrId);
         },
         '/cancel-member': (context) => const CancelMemberScreen(),
-        '/customer-service': (context) => const ContactListScreen(),
+        '/customer-service': (context) => const QaListScreen(),
         '/kcp-pay': (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;

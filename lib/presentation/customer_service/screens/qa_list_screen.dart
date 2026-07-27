@@ -1,26 +1,25 @@
 import 'package:flutter/material.dart';
-import '../widget/contact_inquiry_type_filters.dart';
-import 'contact_form_screen.dart';
-import 'contact_detail_screen.dart';
+import 'qa_category_screen.dart';
+import 'qa_detail_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
-import '../../../data/models/contact/contact_model.dart';
-import '../../../data/services/contact_service.dart';
+import '../../../data/models/qa/qa_inquiry_model.dart';
+import '../../../data/services/qa_service.dart';
 import '../../../core/utils/date_formatter.dart';
 
-/// 1:1 문의 **화면(페이지)** — 앱바, 총 문의수, 문의유형 필터, 목록.
-class ContactListScreen extends StatefulWidget {
-  const ContactListScreen({super.key});
+/// 1:1 문의 **화면(페이지)** — 앱바, 총 문의수, 목록.
+class QaListScreen extends StatefulWidget {
+  const QaListScreen({super.key});
 
   @override
-  State<ContactListScreen> createState() => ContactListScreenState();
+  State<QaListScreen> createState() => QaListScreenState();
 }
 
-class ContactListScreenState extends State<ContactListScreen> {
-  List<Contact> _contacts = [];
+class QaListScreenState extends State<QaListScreen> {
+  List<QaInquiry> _inquiries = [];
   bool _isLoading = true;
   String? _errorMessage;
   bool _requiresLogin = false;
@@ -40,7 +39,7 @@ class ContactListScreenState extends State<ContactListScreen> {
 
   double _pagePadH(BuildContext context) => healthDp(context, 27);
 
-  TextStyle _contactText(
+  TextStyle _qaText(
     BuildContext context, {
     required double size,
     required Color color,
@@ -84,10 +83,9 @@ class ContactListScreenState extends State<ContactListScreen> {
     }
 
     try {
-      final contacts = await ContactService.getMyContacts();
+      final contacts = await QaService.getMyList();
       if (!mounted) return;
-      setState(() {
-        _contacts = contacts;
+      setState(() {_inquiries = contacts;
         final total = _filteredContacts.length;
         _visibleCount = total < _pageSize ? total : _pageSize;
         _isLoading = false;
@@ -107,11 +105,11 @@ class ContactListScreenState extends State<ContactListScreen> {
     }
   }
 
-  List<Contact> get _filteredContacts {
+  List<QaInquiry> get _filteredContacts {
     if (_selectedStatusTab == 0) {
-      return _contacts.where((c) => !c.isClosed).toList();
+      return _inquiries.where((c) => !c.isClosed).toList();
     }
-    return _contacts.where((c) => c.isClosed).toList();
+    return _inquiries.where((c) => c.isClosed).toList();
   }
 
   void _onStatusTabChanged(int index) {
@@ -124,24 +122,31 @@ class ContactListScreenState extends State<ContactListScreen> {
   }
 
   String get _emptyTabMessage {
-    if (_contacts.isEmpty) return '문의내역이 없습니다.';
+    if (_inquiries.isEmpty) return '문의내역이 없습니다.';
     return _selectedStatusTab == 0
         ? '진행 중인 문의가 없습니다.'
         : '종료된 문의가 없습니다.';
   }
 
-  /// 탭 전환 등에서 목록을 다시 불러올 때 호출합니다.
+  /// 탭 전환 등에 의해 외부에서 다시 불러올 때 호출합니다.
   Future<void> refresh() => _loadContacts();
 
   Future<void> _openContactForm() async {
-    final result = await Navigator.push(
+    final result = await Navigator.push<Object>(
       context,
       MaterialPageRoute(
-        builder: (context) => const ContactFormScreen(),
+        builder: (context) => const QaCategoryScreen(),
       ),
     );
-    if (result == true && mounted) _loadContacts();
+    if (!mounted) return;
+    if (result == true || result is int) {
+      await _loadContacts();
+    }
   }
+
+  String _displayTitle(QaInquiry item) => item.listCardTitle;
+
+  String _displayPreview(QaInquiry item) => item.listCardPreview;
 
   void _loadMore() {
     setState(() {
@@ -151,15 +156,15 @@ class ContactListScreenState extends State<ContactListScreen> {
     });
   }
 
-  String _statusLabel(Contact contact) {
-    if (contact.isClosed) return '문의종료';
-    if (contact.latestAnswered) return '답변완료';
+  String _statusLabel(QaInquiry item) {
+    if (item.isClosed) return '문의종료';
+    if (item.latestAnswered) return '답변완료';
     return '답변대기';
   }
 
-  bool _shouldShowLatestBadge(Contact contact) {
-    if (contact.isClosed) return false;
-    return contact.followupCount > 0 && !contact.latestAnswered;
+  bool _shouldShowLatestBadge(QaInquiry item) {
+    if (item.isClosed) return false;
+    return item.followupCount > 0 && !item.latestAnswered;
   }
 
   Widget _buildLatestBadge(BuildContext context) {
@@ -174,7 +179,7 @@ class ContactListScreenState extends State<ContactListScreen> {
       ),
       child: Text(
         '최신',
-        style: _contactText(
+        style: _qaText(
           context,
           size: 10,
           color: Colors.black,
@@ -201,11 +206,11 @@ class ContactListScreenState extends State<ContactListScreen> {
             children: [
               TextSpan(
                 text: '총 문의수 ',
-                style: _contactText(context, size: 12, color: _muted),
+                style: _qaText(context, size: 12, color: _muted),
               ),
               TextSpan(
                 text: '$count',
-                style: _contactText(
+                style: _qaText(
                   context,
                   size: 12,
                   color: _pink,
@@ -226,13 +231,11 @@ class ContactListScreenState extends State<ContactListScreen> {
   }
 
   // 문의 카드
-  Widget _buildContactItem(BuildContext context, Contact contact) {
-    final cardRadius = healthDp(context, 16);
-    final displayTitle = contactDisplayTitle(contact.wrSubject);
-    final typeLabel = contactPrimaryTypeLabel(
-      wrSubject: contact.wrSubject,
-      caName: contact.caName,
-    );
+  Widget _buildContactItem(BuildContext context, QaInquiry item) {
+    final displayTitle = _displayTitle(item);
+    final preview = _displayPreview(item);
+    final closed = item.isClosed;
+    final r = healthDp(context, 16);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -240,20 +243,30 @@ class ContactListScreenState extends State<ContactListScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ContactDetailScreen(wrId: contact.wrId),
+              builder: (context) => QaDetailScreen(wrId: item.wrId),
             ),
           ).then((_) => _loadContacts());
         },
-        borderRadius: BorderRadius.circular(cardRadius),
+        borderRadius: BorderRadius.circular(r),
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.all(healthDp(context, 16)),
-          decoration: ShapeDecoration(
+          padding: EdgeInsets.fromLTRB(
+            healthDp(context, 16),
+            healthDp(context, 14),
+            healthDp(context, 12),
+            healthDp(context, 14),
+          ),
+          decoration: BoxDecoration(
             color: Colors.white,
-            shape: RoundedRectangleBorder(
-              side: BorderSide(width: healthDp(context, 1), color: _border),
-              borderRadius: BorderRadius.circular(cardRadius),
-            ),
+            borderRadius: BorderRadius.circular(r),
+            border: Border.all(color: _border, width: healthDp(context, 1)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x14000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -262,51 +275,57 @@ class ContactListScreenState extends State<ContactListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          DateDisplayFormatter.formatYmdFromString(
-                            contact.wrDatetime,
-                          ),
-                          style: _contactText(
-                            context,
-                            size: 10,
-                            color: _textInk,
-                            height: 1,
-                          ),
-                        ),
-                        if (typeLabel != null) ...[
-                          SizedBox(width: healthDp(context, 6)),
-                          contactInquiryTypeBadge(context, typeLabel),
-                        ],
-                      ],
+                    Text(
+                      DateDisplayFormatter.formatYmdFromString(
+                        item.wrDatetime,
+                      ),
+                      style: _qaText(
+                        context,
+                        size: 10,
+                        color: _muted,
+                        height: 1,
+                      ),
                     ),
-                    SizedBox(height: healthDp(context, 0.5)),
+                    SizedBox(height: healthDp(context, 6)),
                     Text(
                       displayTitle,
-                      style: _contactText(
+                      style: _qaText(
                         context,
                         size: 14,
                         color: _textInk,
                         letterSpacing: -1.26,
-                        height: 1,
+                        height: 1.3,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: healthDp(context, 2)),
+                    if (preview.isNotEmpty && preview != displayTitle) ...[
+                      SizedBox(height: healthDp(context, 4)),
+                      Text(
+                        preview,
+                        style: _qaText(
+                          context,
+                          size: 12,
+                          color: _muted,
+                          height: 1.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    SizedBox(height: healthDp(context, 6)),
                     Row(
                       children: [
                         Text(
-                          _statusLabel(contact),
-                          style: _contactText(
+                          _statusLabel(item),
+                          style: _qaText(
                             context,
                             size: 12,
-                            color: _muted,
+                            color: closed ? _muted : _pink,
                             letterSpacing: -1.08,
                           ),
                         ),
-                        if (_shouldShowLatestBadge(contact)) ...[
+                        if (_shouldShowLatestBadge(item)) ...[
                           SizedBox(width: healthDp(context, 6)),
                           _buildLatestBadge(context),
                         ],
@@ -317,7 +336,7 @@ class ContactListScreenState extends State<ContactListScreen> {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.black,
+                color: _muted,
                 size: healthDp(context, 20),
               ),
             ],
@@ -346,7 +365,7 @@ class ContactListScreenState extends State<ContactListScreen> {
         child: Text(
           '더보기',
           textAlign: TextAlign.center,
-          style: _contactText(context, size: 16, color: _muted),
+          style: _qaText(context, size: 16, color: _muted),
         ),
       ),
     );
@@ -368,7 +387,7 @@ class ContactListScreenState extends State<ContactListScreen> {
           ),
           child: Text(
             text,
-            style: _contactText(
+            style: _qaText(
               context,
               size: 14,
               color: selected ? _pink : const Color(0xFF898383),
@@ -389,9 +408,9 @@ class ContactListScreenState extends State<ContactListScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         tab('진행중인 문의', 0),
-        SizedBox(width: healthDp(context, 40)),
+        SizedBox(width: healthDp(context, 60)),
         divider(),
-        SizedBox(width: healthDp(context, 40)),
+        SizedBox(width: healthDp(context, 60)),
         tab('종료된 문의', 1),
       ],
     );
@@ -414,7 +433,7 @@ class ContactListScreenState extends State<ContactListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: healthDp(context, 20)),
+          SizedBox(height: healthDp(context, 5)),
           _buildStickyHeaderContent(),
           SizedBox(height: healthDp(context, 20)),
         ],
@@ -463,7 +482,7 @@ class ContactListScreenState extends State<ContactListScreen> {
                 Text(
                   _errorMessage!,
                   textAlign: TextAlign.center,
-                  style: _contactText(context, size: 14, color: Colors.red),
+                  style: _qaText(context, size: 14, color: Colors.red),
                 ),
                 SizedBox(height: healthDp(context, 16)),
                 ElevatedButton(
@@ -477,7 +496,7 @@ class ContactListScreenState extends State<ContactListScreen> {
       );
     }
 
-    if (_contacts.isEmpty || _filteredContacts.isEmpty) {
+    if (_inquiries.isEmpty || _filteredContacts.isEmpty) {
       return LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
@@ -572,20 +591,21 @@ class ContactListScreenState extends State<ContactListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    child: ScrollRevealTopOverlay(
-                      controller: _scrollController,
-                      revealAfterOffset: healthDp(context, 44),
-                      barPadding: EdgeInsets.fromLTRB(
-                        _pagePadH(context),
-                        healthDp(context, 8),
-                        _pagePadH(context),
-                        healthDp(context, 8),
-                      ),
-                      topBar: _buildStickyHeaderContent(),
-                      scrollChild: RefreshIndicator(
-                        color: _pink,
-                        onRefresh: () => _loadContacts(fromPullRefresh: true),
-                        child: _buildListBody(),
+                    child: RefreshIndicator(
+                      color: _pink,
+                      displacement: healthDp(context, 40),
+                      onRefresh: () => _loadContacts(fromPullRefresh: true),
+                      child: ScrollRevealTopOverlay(
+                        controller: _scrollController,
+                        revealAfterOffset: healthDp(context, 44),
+                        barPadding: EdgeInsets.fromLTRB(
+                          _pagePadH(context),
+                          healthDp(context, 8),
+                          _pagePadH(context),
+                          healthDp(context, 8),
+                        ),
+                        topBar: _buildStickyHeaderContent(),
+                        scrollChild: _buildListBody(),
                       ),
                     ),
                   ),
@@ -593,10 +613,10 @@ class ContactListScreenState extends State<ContactListScreen> {
                     SafeArea(
                       top: false,
                       minimum: EdgeInsets.fromLTRB(
-                        _pagePadH(context),
-                        healthDp(context, 8),
-                        _pagePadH(context),
-                        healthDp(context, 12),
+                        healthDp(context, 27),
+                        healthDp(context, 0),
+                        healthDp(context, 27),
+                        healthDp(context, 5),
                       ),
                       child: GestureDetector(
                         onTap: _openContactForm,
@@ -615,7 +635,7 @@ class ContactListScreenState extends State<ContactListScreen> {
                           alignment: Alignment.center,
                           child: Text(
                             '1:1 문의하기',
-                            style: _contactText(
+                            style: _qaText(
                               context,
                               size: 16,
                               color: Colors.white,

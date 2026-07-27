@@ -156,12 +156,12 @@ class ApiEndpoints {
       '/api/products/$productId/options';
 
   // 문의 관련
-  static const String getMyContacts = '/api/contact/list';
-  static const String getContactDetail = '/api/contact';
-  static const String getContactReplies = '/api/contact';
-  static const String createContact = '/api/contact/create';
-  static String updateContact(int wrId) => '/api/contact/$wrId';
-  static String deleteContact(int wrId) => '/api/contact/$wrId';
+  // 1:1 문의 (QA)
+  static const String qaList = '/api/qa/list';
+  static const String qaDetail = '/api/qa';
+  static const String qaCreate = '/api/qa/create';
+  static String qaUpdate(int wrId) => '/api/qa/$wrId';
+  static String qaDelete(int wrId) => '/api/qa/$wrId';
 
   // 이벤트 관련
   static const String getActiveEvents = '/api/event/active';
