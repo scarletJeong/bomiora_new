@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_assets.dart';
@@ -8,7 +8,7 @@ import '../../../../data/services/coupon_service.dart';
 import '../../../../data/services/point_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import 'profile_settings_screen.dart';
-import '../../../customer_service/screens/contact_list_screen.dart';
+import '../../../customer_service/screens/qa_list_screen.dart';
 import 'address_list_screen.dart';
 import '../../../shopping/wish/screens/wish_list_screen.dart';
 import 'refund_account_screen.dart';
@@ -239,7 +239,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        const ContactListScreen()),
+                                        const QaListScreen()),
                               );
                             },
                           ),
