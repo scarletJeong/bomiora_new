@@ -29,9 +29,9 @@ import '../widgets/option_bottomup.dart';
 import '../widgets/producrt_normal_review.dart';
 import '../widgets/recommend_product.dart';
 import '../widgets/recommend_product_bottomup.dart';
+import '../utils/cart_navigation.dart';
 import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
-import 'cart_general_screen.dart' as cart_general;
 import 'payment_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -1681,17 +1681,13 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     await showRecommendProductBottomup(
       context: context,
       products: products,
+      primaryButtonLabel: '장바구니 바로가기',
       onProductTap: (product) {
         Navigator.of(context).pop();
         _openRecommendProduct(product);
       },
       onGoToCart: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const cart_general.CartScreen(),
-          ),
-        );
+        CartNavigation.openCart(context, prescriptionTab: false);
       },
     );
   }

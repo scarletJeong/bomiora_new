@@ -4,6 +4,7 @@ import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../common/widgets/confirm_dialog.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../../data/models/cart/cart_item_model.dart';
@@ -18,10 +19,18 @@ class CartScreen extends StatefulWidget {
   final String? backToProductId;
   final int initialTabIndex;
 
+  /// true면 Scaffold/AppBar 없이 본문만 (통합 장바구니 탭용)
+  final bool embedInParent;
+
+  /// 통합 장바구니 탭 헤더 (스크롤과 함께 이동)
+  final Widget? scrollHeader;
+
   const CartScreen({
     super.key,
     this.backToProductId,
     this.initialTabIndex = 0,
+    this.embedInParent = false,
+    this.scrollHeader,
   });
 
   @override
@@ -276,6 +285,7 @@ class _CartScreenState extends State<CartScreen> {
         setState(() {
           selectedItems.remove(ctId);
         });
+        AppToastOverlay.show(context, '장바구니에서 상품이 삭제됐어요.');
         _loadCart(showCachedData: true); // 장바구니 다시 로드 (캐시 표시)
       }
     }
@@ -296,12 +306,7 @@ class _CartScreenState extends State<CartScreen> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${itemsToDelete.length}개 상품 삭제 완료'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppToastOverlay.show(context, '장바구니에서 상품이 삭제됐어요.');
 
     setState(() {
       selectedItems.removeAll(itemsToDelete);
@@ -385,51 +390,65 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return MobileAppLayoutWrapper(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: HealthAppBar(
-          title: '일반상품 장바구니',
-          centerTitle: false,
-          onBack: _handleBackNavigation,
-          actions: const [],
+  Widget _wrapWithOptionalHeader(Widget body) {
+    final header = widget.scrollHeader;
+    if (header == null) return body;
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: header),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: body,
         ),
-        body: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                        SizedBox(height: healthDp(context, 16)),
-                        ElevatedButton(
-                          onPressed: _loadCart,
-                          child: const Text('다시 시도'),
-                        ),
-                      ],
-                    ),
-                  )
-                : _displayedCartItems.isEmpty
-                    ? const CenteredEmptyState(
-                        icon: Icons.shopping_cart_outlined,
-                        message: '장바구니가 비어있습니다.',
-                      )
-                    : Column(
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (isLoading) {
+      return _wrapWithOptionalHeader(
+        const Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (errorMessage != null) {
+      return _wrapWithOptionalHeader(
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                errorMessage!,
+                style: const TextStyle(color: Colors.red),
+              ),
+              SizedBox(height: healthDp(context, 16)),
+              ElevatedButton(
+                onPressed: _loadCart,
+                child: const Text('다시 시도'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_displayedCartItems.isEmpty) {
+      return _wrapWithOptionalHeader(
+        const CenteredEmptyState(
+          icon: Icons.shopping_cart_outlined,
+          message: '장바구니가 비어있습니다.',
+        ),
+      );
+    }
+    return Column(
                     children: [
                       Expanded(
                         child: ScrollRevealTopOverlay(
                           controller: _scrollController,
                           revealAfterOffset: healthDp(context, 44),
                           barPadding: EdgeInsets.fromLTRB(
-                            healthDp(context, 16),
+                            healthDp(context, 27),
                             healthDp(context, 8),
-                            healthDp(context, 16),
+                            healthDp(context, 27),
                             0,
                           ),
                           topBar: _buildSelectAllRow(),
@@ -438,15 +457,29 @@ class _CartScreenState extends State<CartScreen> {
                             child: SingleChildScrollView(
                               controller: _scrollController,
                               physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.only(
+                                bottom: healthDp(context, 16),
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Padding(
-                                    padding: EdgeInsets.all(healthDp(context, 16)),
+                                    padding: EdgeInsets.fromLTRB(
+                                      healthDp(context, 27),
+                                      widget.scrollHeader != null
+                                          ? 0
+                                          : healthDp(context, 16),
+                                      healthDp(context, 27),
+                                      healthDp(context, 16),
+                                    ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
+                                        if (widget.scrollHeader != null) ...[
+                                          widget.scrollHeader!,
+                                          SizedBox(height: healthDp(context, 8)),
+                                        ],
                                         _buildSelectAllRow(),
                                         SizedBox(height: healthDp(context, 12)),
                                         ..._displayedCartItems.expand(
@@ -480,7 +513,25 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       _buildCheckoutBar(),
                     ],
-                  ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final body = _buildBody(context);
+    if (widget.embedInParent) {
+      return ColoredBox(color: Colors.white, child: body);
+    }
+    return MobileAppLayoutWrapper(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: HealthAppBar(
+          title: '일반상품 장바구니',
+          centerTitle: false,
+          onBack: _handleBackNavigation,
+          actions: const [],
+        ),
+        body: body,
       ),
     );
   }
@@ -513,36 +564,47 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildCheckoutBar() {
     final selected = _selectedDisplayedItemIds;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
-    return SafeArea(
-      top: false,
-      child: Container(
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 8),
+        healthDp(context, 27),
+        healthDp(context, 8) + bottomInset.clamp(0, healthDp(context, 10)),
+      ),
+      decoration: BoxDecoration(
         color: Colors.white,
-        padding: EdgeInsets.fromLTRB(
-          healthDp(context, 17),
-          healthDp(context, 10),
-          healthDp(context, 20),
-          healthDp(context, 20),
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: healthDp(context, 40),
-          child: ElevatedButton(
-            onPressed: selected.isEmpty ? null : _openPaymentScreen,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF5A8D),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: healthDp(context, 8),
+            offset: Offset(0, -healthDp(context, 2)),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: healthDp(context, 40),
+        child: ElevatedButton(
+          onPressed: selected.isEmpty ? null : _openPaymentScreen,
+          style: ElevatedButton.styleFrom(
+            minimumSize: Size(double.infinity, healthDp(context, 40)),
+            maximumSize: Size(double.infinity, healthDp(context, 40)),
+            padding: EdgeInsets.zero,
+            backgroundColor: const Color(0xFFFF5A8D),
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: Colors.grey[300],
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
             ),
-            child: Text(
-              '결제하기',
-              style: TextStyle(
-                fontSize: healthSp(context, 16),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
+          ),
+          child: Text(
+            '결제하기',
+            style: TextStyle(
+              fontSize: healthSp(context, 16),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -553,7 +615,7 @@ class _CartScreenState extends State<CartScreen> {
   Widget _buildSelectAllRow() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
+      padding: EdgeInsets.only(bottom: healthDp(context, 8)),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -590,6 +652,8 @@ class _CartScreenState extends State<CartScreen> {
                 '전체선택',
                 style: TextStyle(
                   fontSize: healthSp(context, 13),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
                   color: Colors.black87,
                 ),
               ),
@@ -614,9 +678,9 @@ class _CartScreenState extends State<CartScreen> {
                   '선택삭제',
                   style: TextStyle(
                     fontSize: healthSp(context, 12),
-                    color: _selectedDisplayedItemIds.isEmpty
-                        ? Colors.grey
-                        : Colors.red,
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w300,
+                    color: Colors.grey,
                   ),
                 ),
               ),
@@ -763,57 +827,20 @@ class _CartScreenState extends State<CartScreen> {
           .where((e) => e.isNotEmpty)
           .toList();
       if (parts.length >= 2) {
-        final left = parts.first;
-        final right = parts.sublist(1).join(' / ');
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('$left ', style: _cartOptionMutedStyle()),
-            Container(
-              width: healthDp(context, 0.5),
-              height: healthDp(context, 10),
-              color: const Color(0xFF898686),
-            ),
-            SizedBox(width: healthDp(context, 5)),
-            Flexible(
-              child: Text(
-                right,
-                style: _cartOptionMutedStyle(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        return Text(
+          parts.join(' | '),
+          style: _cartOptionMutedStyle(),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         );
       }
     }
     if (sub.isNotEmpty && opt.isNotEmpty) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              '$sub ',
-              style: _cartOptionMutedStyle(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Container(
-            width: healthDp(context, 0.5),
-            height: healthDp(context, 10),
-            color: const Color(0xFF898686),
-          ),
-          SizedBox(width: healthDp(context, 5)),
-          Flexible(
-            child: Text(
-              opt,
-              style: _cartOptionMutedStyle(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+      return Text(
+        '$sub | $opt',
+        style: _cartOptionMutedStyle(),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       );
     }
     if (opt.isNotEmpty) {

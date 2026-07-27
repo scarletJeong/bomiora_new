@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/models/product/product_option_model.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 import 'option_selector.dart';
 
 /// 배경(딤 영역) 탭 시 바텀시트 닫기 — 시트 본문 탭은 전파 차단
@@ -74,6 +75,8 @@ Future<void> showProductOptionBottomup({
     }
   }
 
+  final contentW = MobileLayoutWrapper.contentWidthOf(context);
+
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -81,6 +84,7 @@ Future<void> showProductOptionBottomup({
     enableDrag: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
+    constraints: BoxConstraints(maxWidth: contentW),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(50),
@@ -88,28 +92,32 @@ Future<void> showProductOptionBottomup({
       ),
     ),
     builder: (context) {
-      final screenWidth = MediaQuery.sizeOf(context).width;
       return _dismissibleBottomSheetShell(
         context: context,
         child: SizedBox(
-          width: screenWidth,
-          child: OptionSelectorBottomSheet(
-            options: options,
-            selectedOptions: selectedOptions,
-            basePrice: product.price,
-            stepLabel: stepLabel,
-            monthsLabel: monthsLabel,
-            userPoint: userPoint,
-            productKind: productKindOverride ??
-                product.productKind ??
-                product.additionalInfo?['it_kind']?.toString(),
-            onOptionsChanged: onOptionsChanged,
-            onAddToCart: onAddToCart,
-            onAddToPrescriptionCart: onAddToPrescriptionCart,
-            onReserve: onReserve,
-            onBuyNow: onBuyNow,
-            isFavorite: isFavorite,
-            onToggleFavorite: onToggleFavorite,
+          width: contentW,
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              size: Size(contentW, MediaQuery.sizeOf(context).height),
+            ),
+            child: OptionSelectorBottomSheet(
+              options: options,
+              selectedOptions: selectedOptions,
+              basePrice: product.price,
+              stepLabel: stepLabel,
+              monthsLabel: monthsLabel,
+              userPoint: userPoint,
+              productKind: productKindOverride ??
+                  product.productKind ??
+                  product.additionalInfo?['it_kind']?.toString(),
+              onOptionsChanged: onOptionsChanged,
+              onAddToCart: onAddToCart,
+              onAddToPrescriptionCart: onAddToPrescriptionCart,
+              onReserve: onReserve,
+              onBuyNow: onBuyNow,
+              isFavorite: isFavorite,
+              onToggleFavorite: onToggleFavorite,
+            ),
           ),
         ),
       );
@@ -127,6 +135,8 @@ Future<void> showGeneralQuantityBottomup({
   required Future<void> Function(int quantity) onAddToCart,
   required Future<void> Function(int quantity) onBuyNow,
 }) async {
+  final contentW = MobileLayoutWrapper.contentWidthOf(context);
+
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -134,20 +144,25 @@ Future<void> showGeneralQuantityBottomup({
     enableDrag: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
+    constraints: BoxConstraints(maxWidth: contentW),
     builder: (context) {
-      final screenWidth = MediaQuery.sizeOf(context).width;
       return _dismissibleBottomSheetShell(
         context: context,
         child: SizedBox(
-          width: screenWidth,
-          child: GeneralQuantityBottomSheet(
-            productName: productName,
-            unitPrice: unitPrice,
-            userPoint: userPoint,
-            isFavorite: isFavorite,
-            onToggleFavorite: onToggleFavorite,
-            onAddToCart: onAddToCart,
-            onBuyNow: onBuyNow,
+          width: contentW,
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              size: Size(contentW, MediaQuery.sizeOf(context).height),
+            ),
+            child: GeneralQuantityBottomSheet(
+              productName: productName,
+              unitPrice: unitPrice,
+              userPoint: userPoint,
+              isFavorite: isFavorite,
+              onToggleFavorite: onToggleFavorite,
+              onAddToCart: onAddToCart,
+              onBuyNow: onBuyNow,
+            ),
           ),
         ),
       );

@@ -27,6 +27,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
 import '../widgets/recommend_product_bottomup.dart';
+import '../utils/cart_navigation.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import '../widgets/producrt_support_review.dart';
 import '../widgets/producrt_normal_review.dart';
@@ -1635,7 +1636,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _openRecommendProduct(product);
       },
       onGoToCart: () {
-        Navigator.pushNamed(context, '/cart');
+        CartNavigation.openCart(context, prescriptionTab: true);
       },
     );
   }
@@ -1670,7 +1671,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _selectedOptions.clear();
       });
       if (navigateToCart && mounted) {
-        Navigator.pushNamed(context, '/cart');
+        await CartNavigation.openCart(context, prescriptionTab: true);
       }
       return cartIds;
     }
