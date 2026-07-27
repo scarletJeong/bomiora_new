@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../data/services/prescription_purchase_history_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../settings/notification_center_screen.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
+import '../../shopping/screens/cart_integration_screen.dart';
 import '../../home/search/search_popup.dart';
 import 'cart_dropdown_menu.dart';
 
@@ -47,6 +49,7 @@ class AppBarMenu extends StatefulWidget implements PreferredSizeWidget {
 class _AppBarMenuState extends State<AppBarMenu> {
   final GlobalKey _cartIconKey = GlobalKey();
   OverlayEntry? _cartOverlay;
+  bool _cartNavigating = false;
 
   @override
   void dispose() {
@@ -71,8 +74,30 @@ class _AppBarMenuState extends State<AppBarMenu> {
   void _toggleCartMenu() {
     if (_cartOverlay != null) {
       _removeCartOverlay();
-    } else {
+      return;
+    }
+    _onCartIconPressed();
+  }
+
+  Future<void> _onCartIconPressed() async {
+    if (_cartNavigating) return;
+    _cartNavigating = true;
+    try {
+      final useIntegrated =
+          await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
+      if (!mounted) return;
+      if (useIntegrated) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => const CartIntegrationScreen(),
+          ),
+        );
+        return;
+      }
       _openCartMenu();
+    } finally {
+      _cartNavigating = false;
     }
   }
 

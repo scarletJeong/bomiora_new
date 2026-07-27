@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -8,13 +7,16 @@ import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/prescription_purchase_history_service.dart';
 import '../../../data/services/recent_view_service.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
+import '../../shopping/screens/cart_integration_screen.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/content/content_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../settings/settings_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../customer_service/screens/qa_list_screen.dart';
 import 'cart_dropdown_menu.dart';
 
 /// AppBar 햄버거 메뉴에서 공통으로 사용하는 Drawer (Figma 사이드 메뉴 스타일)
@@ -168,12 +170,29 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   EdgeInsets _mainMenuTitlePadding(BuildContext context) =>
       EdgeInsets.symmetric(vertical: healthDp(context, 10));
 
-  Future<void> _openKakaoTalkConsult() async {
-    const kakaoChannelUrl = 'https://pf.kakao.com/_NdxgAG';
-    final uri = Uri.parse(kakaoChannelUrl);
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened || !mounted) return;
+  void _openHealthcareStoreTopCategory(BuildContext context) {
+    final top = _generalCategories.isNotEmpty
+        ? _generalCategories.first
+        : productGeneralCategoryListFallback.first;
+    _popAndPushNamed(
+      context,
+      '/product-general/',
+      arguments: {
+        'categoryId': top.categoryId,
+        'categoryName': top.label,
+        'productKind': 'general',
+      },
+    );
+  }
+
+  void _openContactList(BuildContext context) {
     Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const QaListScreen(),
+      ),
+    );
   }
 
   Widget _buildShortcutGrid(BuildContext context) {
@@ -257,8 +276,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
             )),
             cell(_DrawerShortcutData(
               icon: Icons.headset_mic_outlined,
-              label: '카카오톡 상담',
-              onTap: _openKakaoTalkConsult,
+              label: '1:1 문의',
+              onTap: () => _openContactList(context),
             )),
           ],
         ),
@@ -398,13 +417,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                           children: [
                             Expanded(
                               child: InkWell(
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/healthcare-store',
-                                  );
-                                },
+                                onTap: () =>
+                                    _openHealthcareStoreTopCategory(context),
                                 child: Padding(
                                   padding: _mainMenuTitlePadding(context),
                                   child: Text(
@@ -818,6 +832,8 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
   bool _hover = false;
   bool _pressed = false;
   bool _showCartDropdown = false;
+  /// 비대면 구매 이력 있으면 드롭다운 숨기고 통합 장바구니로 직행
+  bool _useIntegratedCart = false;
   final GlobalKey _cartAnchorKey = GlobalKey();
   OverlayEntry? _cartDropdownEntry;
 
@@ -826,6 +842,25 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
       widget.label == '장바구니' &&
       widget.onCartPrescriptionTap != null &&
       widget.onCartShoppingTap != null;
+  bool get _showCartDropdownButton =>
+      _isCartShortcut && !_useIntegratedCart;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isCartShortcut) {
+      _loadIntegratedCartFlag();
+    }
+  }
+
+  Future<void> _loadIntegratedCartFlag() async {
+    final useIntegrated =
+        await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
+    if (!mounted) return;
+    setState(() {
+      _useIntegratedCart = useIntegrated;
+    });
+  }
 
   void _toggleCartDropdown() {
     if (_showCartDropdown) {
@@ -837,10 +872,30 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
 
   void _onShortcutTap() {
     if (_isCartShortcut) {
-      _openCartDropdown();
+      _onCartShortcutPressed();
       return;
     }
     widget.onTap();
+  }
+
+  Future<void> _onCartShortcutPressed() async {
+    final navigator = Navigator.of(context);
+    final useIntegrated =
+        await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
+    if (!mounted) return;
+    if (useIntegrated != _useIntegratedCart) {
+      setState(() => _useIntegratedCart = useIntegrated);
+    }
+    if (useIntegrated) {
+      navigator.pop();
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const CartIntegrationScreen(),
+        ),
+      );
+      return;
+    }
+    _openCartDropdown();
   }
 
   void _openCartDropdown() {
@@ -1004,7 +1059,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                                   color: color,
                                 ),
                         ),
-                        if (_isCartShortcut)
+                        if (_showCartDropdownButton)
                           Positioned(
                             right: -healthDp(context, 4),
                             bottom: -healthDp(context, 4),
