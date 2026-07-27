@@ -1,10 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'mobile_layout_wrapper.dart';
 
 /// 하단 검은 토스트 오버레이 (메시지 문구만 교체해서 재사용)
+///
+/// 앱 패널(최대 650) 안에 맞춰 표시 — 와이드 화면에서도 패널 밖으로 나가지 않음.
 class AppToastOverlay {
   AppToastOverlay._();
 
@@ -24,14 +29,25 @@ class AppToastOverlay {
     late final OverlayEntry entry;
     entry = OverlayEntry(
       builder: (ctx) {
+        final screenW = MediaQuery.sizeOf(ctx).width;
+        final contentW = MobileAppLayoutWrapper.contentWidthOf(ctx);
+        final panelLeft = (screenW - contentW) / 2;
+        final hPad = 27 * healthTextScaleByWidth(contentW);
         final bottomInset = MediaQuery.paddingOf(ctx).bottom;
+        final bottomPad = 24 * healthTextScaleByWidth(contentW);
+
         return Positioned(
-          left: healthDp(ctx, 27),
-          right: healthDp(ctx, 27),
-          bottom: bottomInset + healthDp(ctx, 24),
-          child: Material(
-            color: Colors.transparent,
-            child: _AppToastBar(message: message),
+          left: panelLeft + hPad,
+          width: contentW - hPad * 2,
+          bottom: bottomInset + bottomPad,
+          child: MediaQuery(
+            data: MediaQuery.of(ctx).copyWith(
+              size: Size(contentW, MediaQuery.sizeOf(ctx).height),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: _AppToastBar(message: message),
+            ),
           ),
         );
       },
@@ -57,6 +73,7 @@ class _AppToastBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = healthDp(context, 10);
     return Container(
       width: double.infinity,
       height: healthDp(context, 40),
@@ -68,18 +85,29 @@ class _AppToastBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(healthDp(context, 10)),
         ),
       ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        message,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: healthSp(context, 13),
-          fontFamily: 'Gmarket Sans TTF',
-          fontWeight: FontWeight.w500,
-          height: 1.23,
-        ),
+      child: Row(
+        children: [
+          SvgPicture.asset(
+            AppAssets.commonToastOverlay,
+            width: iconSize,
+            height: iconSize,
+          ),
+          SizedBox(width: healthDp(context, 10)),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: healthSp(context, 13),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+                height: 1.23,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
