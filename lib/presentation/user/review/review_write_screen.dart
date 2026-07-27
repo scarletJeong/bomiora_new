@@ -11,6 +11,7 @@ import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -80,15 +81,15 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     super.initState();
     final editing = widget.initialReview;
     if (editing != null) {
-      _score1 = _snapIntRating(editing.isScore1.toDouble());
-      _score2 = _snapIntRating(editing.isScore2.toDouble());
-      _score3 = _snapIntRating(editing.isScore3.toDouble());
-      _score4 = _snapIntRating(editing.isScore4.toDouble());
+      _score1 = _snapTenthRating(editing.isScore1.toDouble());
+      _score2 = _snapTenthRating(editing.isScore2.toDouble());
+      _score3 = _snapTenthRating(editing.isScore3.toDouble());
+      _score4 = _snapTenthRating(editing.isScore4.toDouble());
       final totalRaw = (editing.totalIsScore ?? 0).toDouble();
       _totalSatisfaction =
           totalRaw > 0 ? _snapTenthRating(totalRaw) : 0.0;
       final w = editing.isOutageNum ?? 0;
-      _weightLossKg = w < 1 ? 1 : (w > 50 ? 50 : w);
+      _weightLossKg = _snapWeightKg(w);
       _positiveController.text = editing.isPositiveReviewText ?? '';
       _negativeController.text = editing.isNegativeReviewText ?? '';
       _moreController.text = editing.isMoreReviewText ?? '';
@@ -160,25 +161,13 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
-  void _showPhotoLimitSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '사진등록은 최대 3장까지 가능합니다.',
-          style: TextStyle(
-            fontFamily: 'Gmarket Sans TTF',
-            fontSize: healthSp(context, 14),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showPhotoLimitToast() {
+    AppToastOverlay.show(context, '사진은 최대 3장까지 등록 가능합니다.');
   }
 
   void _openPhotoSourceDropdown(BuildContext anchorContext) {
     if (_draftImages.length >= _maxImages) {
-      _showPhotoLimitSnackBar();
+      _showPhotoLimitToast();
       return;
     }
     ImagePickerUtils.showPhotoSourceDropdown(
@@ -191,7 +180,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   Future<void> _applyPickedImage(XFile? image) async {
     if (image == null || !mounted) return;
     if (_draftImages.length >= _maxImages) {
-      _showPhotoLimitSnackBar();
+      _showPhotoLimitToast();
       return;
     }
     try {
@@ -500,18 +489,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return markerKg <= _weightLossKg ? _kPink : const Color(0xFFA19E9E);
   }
 
-  Widget _weightScaleLabel(String text, int markerKg) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontFamily: _kFont,
-        color: _weightScaleLabelColor(markerKg),
-        fontSize: healthSp(context, 10),
-        fontWeight: FontWeight.w300,
-      ),
-    );
-  }
-
   Widget _buildWeightSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -572,55 +549,135 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         SizedBox(height: healthDp(context, 20)),
         LayoutBuilder(
           builder: (context, constraints) {
-            final extendLeft = healthDp(context, 0);
-            final extendRight = healthDp(context, 27);
-            final sliderWidth = constraints.maxWidth + extendLeft + extendRight;
-            return Transform.translate(
-              offset: Offset(-extendLeft, 0),
-              child: SizedBox(
-                width: sliderWidth,
-                child: Column(
-                  children: [
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: _kPink,
-                        inactiveTrackColor: const Color(0xFFF6F6F6),
-                        trackHeight: healthDp(context, 8),
-                        thumbColor: Colors.transparent,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 0,
-                          disabledThumbRadius: 0,
-                        ),
-                        trackShape: const RoundedRectSliderTrackShape(),
-                        overlayShape: const RoundSliderOverlayShape(
-                          overlayRadius: 0,
-                        ),
-                      ),
-                      child: Slider(
-                        value: _weightLossKg.clamp(1, 50).toDouble(),
-                        min: 1,
-                        max: 50,
-                        divisions: 49,
-                        onChanged: (v) => setState(
-                          () => _weightLossKg = v.round().clamp(1, 50),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: healthDp(context, 10)),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            final w = constraints.maxWidth;
+            final trackH = healthDp(context, 8);
+            final thumbR = healthDp(context, 7);
+            final markR = healthDp(context, 2.5);
+            final labelW = healthDp(context, 36);
+
+            double xForKg(int kg) =>
+                w <= 0 ? 0 : ((kg - 1) / 29.0) * w;
+
+            void setFromLocalDx(double dx) {
+              if (w <= 0) return;
+              final t = (dx / w).clamp(0.0, 1.0);
+              final kg = (1 + t * 29).round().clamp(1, 30);
+              setState(() => _weightLossKg = kg);
+            }
+
+            return Column(
+              children: [
+                SizedBox(
+                  height: thumbR * 2,
+                  width: w,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (d) => setFromLocalDx(d.localPosition.dx),
+                    onHorizontalDragUpdate: (d) =>
+                        setFromLocalDx(d.localPosition.dx),
+                    child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        _weightScaleLabel('1kg', 1),
-                        _weightScaleLabel('10kg', 10),
-                        _weightScaleLabel('20kg', 20),
-                        _weightScaleLabel('30kg', 30),
-                        _weightScaleLabel('40kg', 40),
-                        _weightScaleLabel('50kg', 50),
+                        // 트랙(비활성)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: thumbR - trackH / 2,
+                          child: Container(
+                            height: trackH,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF6F6F6),
+                              borderRadius: BorderRadius.circular(trackH / 2),
+                            ),
+                          ),
+                        ),
+                        // 트랙(활성)
+                        Positioned(
+                          left: 0,
+                          width: xForKg(_weightLossKg)
+                              .clamp(0.0, w)
+                              .toDouble(),
+                          top: thumbR - trackH / 2,
+                          child: Container(
+                            height: trackH,
+                            decoration: BoxDecoration(
+                              color: _kPink,
+                              borderRadius: BorderRadius.circular(trackH / 2),
+                            ),
+                          ),
+                        ),
+                        // 눈금: 5·10·15·20·25·30 (1kg는 흰원 노치 방지로 미표시)
+                        for (final kg in _weightLabelMarks)
+                          if (kg != 1)
+                            Positioned(
+                              left: xForKg(kg) - markR,
+                              top: thumbR - markR,
+                              child: Container(
+                                width: markR * 2,
+                                height: markR * 2,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: kg <= _weightLossKg
+                                      ? Colors.white
+                                      : const Color(0xFFD2D2D2),
+                                ),
+                              ),
+                            ),
+                        // 썸(핑크 원)
+                        Positioned(
+                          left: xForKg(_weightLossKg) - thumbR,
+                          top: 0,
+                          child: Container(
+                            width: thumbR * 2,
+                            height: thumbR * 2,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _kPink,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                SizedBox(height: healthDp(context, 4)),
+                SizedBox(
+                  width: w,
+                  height: healthSp(context, 12) * 1.3,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (final kg in _weightLabelMarks)
+                        Positioned(
+                          left: kg == 1
+                              ? 0
+                              : kg == 30
+                                  ? (w - labelW).clamp(0.0, w)
+                                  : (xForKg(kg) - labelW / 2).clamp(
+                                      0.0,
+                                      (w - labelW).clamp(0.0, w),
+                                    ),
+                          width: labelW,
+                          child: Text(
+                            '${kg}kg',
+                            textAlign: kg == 1
+                                ? TextAlign.left
+                                : kg == 30
+                                    ? TextAlign.right
+                                    : TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: _kFont,
+                              color: _weightScaleLabelColor(kg),
+                              fontSize: healthSp(context, 10),
+                              fontWeight: FontWeight.w300,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             );
           },
         ),
@@ -657,22 +714,21 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return (c * 2).round() / 2.0;
   }
 
-  /// 효과~편리함 — 정수 1~5 (DB `is_score1~4` INT)
-  double _snapIntRating(double raw) {
-    if (raw <= 0) return 0.0;
-    return raw.round().clamp(1, 5).toDouble();
-  }
+  /// 감량 kg 눈금 라벨 (선택은 1~30 1kg 단위)
+  static const List<int> _weightLabelMarks = [1, 5, 10, 15, 20, 25, 30];
 
-  int _scoreToApiInt(double score) {
-    if (score < 0.5) return 1;
-    return score.round().clamp(1, 5);
-  }
-
-  /// 상품 만족도 — 0.1 단위 (4.8, 4.2 등)
+  /// 효과~편리함 / 상품 만족도 — 0.1 단위 (4.8, 4.2 등)
   double _snapTenthRating(double raw) {
     if (raw <= 0) return 0.0;
     final c = raw.clamp(0.1, 5.0);
     return (c * 10).round() / 10.0;
+  }
+
+  /// 감량 kg — 1~30, 1kg 단위
+  int _snapWeightKg(int raw) {
+    if (raw < 1) return 1;
+    if (raw > 30) return 30;
+    return raw;
   }
 
   String _formatTenthRatingDisplay(double rating) {
@@ -731,7 +787,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
-  /// 별 5개 — [dragTenth] 0.1 단위, [snapWholeStar] 정수 1~5, 아니면 0.5 반별
+  /// 별 5개 — [dragTenth] 0.1 단위, 아니면 0.5 반별
   Widget _interactiveStarRow({
     required double rating,
     required ValueChanged<double> onRatingChanged,
@@ -739,7 +795,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     required double gap,
     MainAxisAlignment alignment = MainAxisAlignment.start,
     bool dragTenth = false,
-    bool snapWholeStar = false,
   }) {
     final tapRadius = Radius.circular(healthDp(context, 4));
     final starDp = healthDp(context, starSize);
@@ -754,11 +809,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         return;
       }
       onRatingChanged(
-        dragTenth
-            ? _snapTenthRating(raw)
-            : snapWholeStar
-                ? _snapIntRating(raw)
-                : _snapHalfRating(raw),
+        dragTenth ? _snapTenthRating(raw) : _snapHalfRating(raw),
       );
     }
 
@@ -768,29 +819,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       children: List.generate(5, (i) {
         if (dragTenth) {
           return _fractionalStar(rating - i, starDp);
-        }
-        if (snapWholeStar) {
-          return SizedBox(
-            width: starDp,
-            height: starDp,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  _starIcon(rating, i),
-                  color: _kPink,
-                  size: starDp,
-                ),
-                Positioned.fill(
-                  child: InkWell(
-                    onTap: () => onRatingChanged(_snapIntRating(i + 1.0)),
-                    borderRadius: BorderRadius.all(tapRadius),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              ],
-            ),
-          );
         }
         return SizedBox(
           width: starDp,
@@ -906,26 +934,31 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      // 상품 만족도 별과 동일하게 가운데 정렬 → 시작 위치 맞춤
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          SizedBox(
-            width: healthDp(context, _scoreLabelWidthBase),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: _kFont,
-                fontSize: healthSp(context, 12),
-                fontWeight: FontWeight.w500,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: healthDp(context, _scoreLabelWidthBase),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: _kFont,
+                  fontSize: healthSp(context, 12),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
           _interactiveStarRow(
             rating: score,
             onRatingChanged: onChanged,
-            starSize: 20,
-            gap: 2,
-            snapWholeStar: true,
+            starSize: 24,
+            gap: 4,
+            alignment: MainAxisAlignment.center,
+            dragTenth: true,
           ),
         ],
       ),
@@ -1245,10 +1278,10 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         odId: editTarget?.odId ?? widget.orderDetail?.odId,
         itId: itId,
         isName: user.name,
-        isScore1: _scoreToApiInt(_score1),
-        isScore2: _scoreToApiInt(_score2),
-        isScore3: _scoreToApiInt(_score3),
-        isScore4: _scoreToApiInt(_score4),
+        isScore1: _snapTenthRating(_score1),
+        isScore2: _snapTenthRating(_score2),
+        isScore3: _snapTenthRating(_score3),
+        isScore4: _snapTenthRating(_score4),
         totalIsScore: totalSat,
         isRvkind: editTarget?.isRvkind ?? 'prescription',
         isRecommend: editTarget?.isRecommend ?? 'y',

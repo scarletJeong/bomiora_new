@@ -379,10 +379,10 @@ class _ReviewTextBlock extends StatelessWidget {
 
 class _RatingScorePanel extends StatelessWidget {
   final double total;
-  final int score1;
-  final int score2;
-  final int score3;
-  final int score4;
+  final double score1;
+  final double score2;
+  final double score3;
+  final double score4;
 
   const _RatingScorePanel({
     required this.total,
@@ -472,7 +472,7 @@ class _RatingScorePanel extends StatelessWidget {
 
 class _ScoreChip extends StatelessWidget {
   final String label;
-  final int value;
+  final double value;
 
   const _ScoreChip({required this.label, required this.value});
 
@@ -480,7 +480,7 @@ class _ScoreChip extends StatelessWidget {
     const color = Color(0xFFFFCC00);
     final size = healthDp(context, 10);
 
-    switch (value.clamp(1, 5)) {
+    switch (value.round().clamp(1, 5)) {
       case 5:
         return Icon(Icons.star, color: color, size: size);
       case 4:

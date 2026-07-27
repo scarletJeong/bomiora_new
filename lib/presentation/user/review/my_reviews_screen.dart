@@ -362,9 +362,9 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     );
   }
 
-  /// 비대면 카드 — 평점 2×2 그리드(효과·가성비 / 향·맛·복용 편의성), 셀마다 별 5개(정수).
-  Widget _prescriptionRatingCell(String label, int score) {
-    final s = score.clamp(0, 5);
+  /// 비대면 카드 — 평점 2×2 그리드(효과·가성비 / 향·맛·복용 편의성), 셀마다 별 5개.
+  Widget _prescriptionRatingCell(String label, double score) {
+    final s = score.round().clamp(0, 5);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 12)),
@@ -393,7 +393,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Widget _prescriptionRatingGrid(ReviewModel r) {
-    Widget pair(String a, int sa, String b, int sb) {
+    Widget pair(String a, double sa, String b, double sb) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

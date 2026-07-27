@@ -267,8 +267,8 @@ class _ReviewStats {
         : withScore.map((r) => r.averageScore!).reduce((a, b) => a + b) /
             withScore.length;
 
-    double avgScore(int Function(ReviewModel) pick) {
-      return reviews.map((r) => pick(r).toDouble()).reduce((a, b) => a + b) /
+    double avgScore(double Function(ReviewModel) pick) {
+      return reviews.map((r) => pick(r)).reduce((a, b) => a + b) /
           reviews.length;
     }
 

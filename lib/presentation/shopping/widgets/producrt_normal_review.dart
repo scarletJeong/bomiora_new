@@ -339,8 +339,8 @@ class _ReviewStats {
     final satisfiedCount = reviews.where((r) => r.isRecommend == 'y').length;
     final dissatisfiedCount = reviews.where((r) => r.isRecommend == 'n').length;
 
-    double avgScore(int Function(ReviewModel) pick) {
-      return reviews.map((r) => pick(r).toDouble()).reduce((a, b) => a + b) /
+    double avgScore(double Function(ReviewModel) pick) {
+      return reviews.map((r) => pick(r)).reduce((a, b) => a + b) /
           reviews.length;
     }
 
