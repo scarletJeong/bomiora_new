@@ -5,6 +5,7 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/coupon_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../../../../data/models/coupon/coupon_model.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
 import '../../../common/widgets/centered_empty_state.dart';
@@ -32,11 +33,9 @@ class _CouponScreenState extends State<CouponScreen> {
   static const Color _registerDisabled = Color(0xFFD2D2D2);
   static const Color _border = Color(0x7FD2D2D2);
   static const Color _textMain = Color(0xFF1A1A1A);
-  static const Color _textInk = Color(0xFF1A1A1E);
   static const Color _textMuted = Color(0xFF898383);
   static const Color _textSub = Color(0xFF898686);
   static const Color _usedRed = Color(0xFFEF4444);
-  static const Color _dialogShadow = Color(0x19000000);
 
   static const List<String> _emptyMessages = [
     '사용할 수 있는 쿠폰이 없습니다.',
@@ -176,7 +175,9 @@ class _CouponScreenState extends State<CouponScreen> {
       if (result['success'] == true) {
         _couponCodeController.clear();
         await _loadCoupons();
-        if (mounted) await _showCouponRegisteredDialog();
+        if (mounted) {
+          AppToastOverlay.show(context, '쿠폰이 성공적으로 등록되었습니다.');
+        }
       } else {
         setState(() => _couponRegisterError = true);
       }
@@ -437,101 +438,6 @@ class _CouponScreenState extends State<CouponScreen> {
     final m = dt.month.toString().padLeft(2, '0');
     final d = dt.day.toString().padLeft(2, '0');
     return '$y.$m.$d';
-  }
-
-  Future<void> _showCouponRegisteredDialog() async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: Container(
-            width: healthDp(ctx, 272),
-            padding: EdgeInsets.all(healthDp(ctx, 20)),
-            decoration: ShapeDecoration(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(ctx, 20)),
-              ),
-              shadows: [
-                BoxShadow(
-                  color: _dialogShadow,
-                  blurRadius: healthDp(ctx, 8.14),
-                  offset: Offset.zero,
-                ),
-              ],
-            ),
-            child: DefaultTextStyle.merge(
-              style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '쿠폰 등록',
-                    style: _couponText(
-                      ctx,
-                      size: 20,
-                      color: _textInk,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(ctx, 20)),
-                  Text(
-                    '쿠폰이 성공적으로 등록되었습니다.',
-                    textAlign: TextAlign.center,
-                    style: _couponText(
-                      ctx,
-                      size: 14,
-                      color: _textSub,
-                      height: 1.57,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(ctx, 20)),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => Navigator.of(ctx).pop(),
-                      borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
-                      child: Container(
-                        width: double.infinity,
-                        height: healthDp(ctx, 40),
-                        padding: EdgeInsets.all(healthDp(ctx, 10)),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: ShapeDecoration(
-                          color: _pink,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              '확인',
-                              style: _couponText(
-                                ctx,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Widget _buildCouponRegistration() {
