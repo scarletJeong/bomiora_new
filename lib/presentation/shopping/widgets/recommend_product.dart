@@ -57,6 +57,8 @@ class RecommendProductSection extends StatefulWidget {
   final double? horizontalGap;
   /// 가로 카드 축소 비율 (1.0=기본, 2/3=1/3 축소)
   final double cardScale;
+  /// 제목 앞 `|` 높이 (null이면 healthDp 14)
+  final double? leadingBarHeight;
 
   const RecommendProductSection({
     super.key,
@@ -75,6 +77,7 @@ class RecommendProductSection extends StatefulWidget {
     this.itemsPerViewport,
     this.horizontalGap,
     this.cardScale = 1.0,
+    this.leadingBarHeight,
   });
 
   @override
@@ -169,9 +172,9 @@ class _RecommendProductSectionState extends State<RecommendProductSection> {
             children: [
               if (widget.showLeadingBar)
                 Container(
-                  width: 1,
-                  height: 14,
-                  margin: const EdgeInsets.only(right: 6),
+                  width: healthDp(context, 1),
+                  height: widget.leadingBarHeight ?? healthDp(context, 14),
+                  margin: EdgeInsets.only(right: healthDp(context, 6)),
                   color: const Color(0xFF1A1A1A),
                 ),
               if (widget.title.trim().isNotEmpty)

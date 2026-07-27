@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
+import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'recommend_product.dart';
@@ -65,9 +66,13 @@ Future<void> showRecommendProductBottomup({
   required List<Product> products,
   required ValueChanged<Product> onProductTap,
   VoidCallback? onGoToCart,
-  String title = '이것도 같이 구매하면 좋아요',
+  String headline = '장바구니에 상품을 담았어요.',
+  String title = '함께 구매하기 좋은 상품',
+  String primaryButtonLabel = '처방 예약 바로가기',
 }) async {
   if (products.isEmpty) return;
+
+  final contentW = MobileLayoutWrapper.contentWidthOf(context);
 
   await showModalBottomSheet<void>(
     context: context,
@@ -76,6 +81,7 @@ Future<void> showRecommendProductBottomup({
     enableDrag: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
+    constraints: BoxConstraints(maxWidth: contentW),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(50),
@@ -83,16 +89,22 @@ Future<void> showRecommendProductBottomup({
       ),
     ),
     builder: (context) {
-      final screenWidth = MediaQuery.sizeOf(context).width;
       return _dismissibleBottomSheetShell(
         context: context,
         child: SizedBox(
-          width: screenWidth,
-          child: RecommendProductBottomSheet(
-            products: products.take(4).toList(),
-            title: title,
-            onProductTap: onProductTap,
-            onGoToCart: onGoToCart,
+          width: contentW,
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              size: Size(contentW, MediaQuery.sizeOf(context).height),
+            ),
+            child: RecommendProductBottomSheet(
+              products: products.take(4).toList(),
+              headline: headline,
+              title: title,
+              primaryButtonLabel: primaryButtonLabel,
+              onProductTap: onProductTap,
+              onGoToCart: onGoToCart,
+            ),
           ),
         ),
       );
@@ -102,14 +114,18 @@ Future<void> showRecommendProductBottomup({
 
 class RecommendProductBottomSheet extends StatelessWidget {
   final List<Product> products;
+  final String headline;
   final String title;
+  final String primaryButtonLabel;
   final ValueChanged<Product> onProductTap;
   final VoidCallback? onGoToCart;
 
   const RecommendProductBottomSheet({
     super.key,
     required this.products,
+    required this.headline,
     required this.title,
+    required this.primaryButtonLabel,
     required this.onProductTap,
     this.onGoToCart,
   });
@@ -129,6 +145,7 @@ class RecommendProductBottomSheet extends StatelessWidget {
             topRight: Radius.circular(healthDp(context, 30)),
           ),
           child: Container(
+            width: double.infinity,
             color: Colors.white,
             child: SafeArea(
               top: false,
@@ -158,16 +175,15 @@ class RecommendProductBottomSheet extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          width: healthDp(context, 1),
-                          height: healthDp(context, 14),
-                          margin: EdgeInsets.only(right: healthDp(context, 6)),
-                          color: const Color(0xFF1A1A1A),
-                        ),
                         Expanded(
                           child: Text(
-                            title,
-                            style: shoppingSectionTitleStyle(context),
+                            headline,
+                            style: TextStyle(
+                              color: const Color(0xFF1A1A1E),
+                              fontSize: healthSp(context, 16),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                         if (onGoToCart != null)
@@ -204,6 +220,24 @@ class RecommendProductBottomSheet extends StatelessWidget {
                           ),
                       ],
                     ),
+                    SizedBox(height: healthDp(context, 10)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: healthDp(context, 1),
+                          height: healthDp(context, 14),
+                          margin: EdgeInsets.only(right: healthDp(context, 6)),
+                          color: const Color(0xFF1A1A1A),
+                        ),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: shoppingSectionTitleStyle(context),
+                          ),
+                        ),
+                      ],
+                    ),
                     SizedBox(height: healthDp(context, 12)),
                     SizedBox(
                       height: layout.listHeight,
@@ -229,6 +263,38 @@ class RecommendProductBottomSheet extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (onGoToCart != null) ...[
+                      SizedBox(height: healthDp(context, 20)),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          onGoToCart!();
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          height: healthDp(context, 40),
+                          padding: EdgeInsets.all(healthDp(context, 10)),
+                          clipBehavior: Clip.antiAlias,
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFFFF5A8D),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 10)),
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            primaryButtonLabel,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: healthSp(context, 16),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
