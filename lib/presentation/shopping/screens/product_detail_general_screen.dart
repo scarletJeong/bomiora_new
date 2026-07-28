@@ -8,7 +8,6 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../../../core/utils/point_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/product_share.dart';
 import '../../../core/utils/inf_code_tracker.dart';
@@ -26,13 +25,14 @@ import '../../../data/models/cart/cart_item_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
-import '../widgets/producrt_normal_review.dart';
 import '../widgets/recommend_product.dart';
 import '../widgets/recommend_product_bottomup.dart';
 import '../utils/cart_navigation.dart';
 import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
+import '../utils/product_info_spec_helper.dart';
 import 'payment_screen.dart';
+import 'product_review_general_screen.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -63,11 +63,13 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   PageController? _pageController;
 
   // 리뷰 관련 상태
+  List<ReviewModel> _supporterReviews = [];
   List<ReviewModel> _generalReviews = [];
   bool _isLoadingReviews = false;
   int? _userPoint; // 현재 사용자 보유 포인트
   bool? _usePointConfig; // cf_use_point 설정값
   bool? _isDetailExpanded = false;
+  int _visibleSupporterReviewCount = 4;
   int _visibleNormalReviewCount = 4;
   UserModel? _loggedInUser;
 
@@ -84,7 +86,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       // 탭 변경 시 UI 업데이트
       if (!_tabController.indexIsChanging) {
@@ -201,6 +203,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildRecommendedSection() {
+    if (_recommendedProducts.isEmpty) return const SizedBox.shrink();
+
+    final products = _recommendedProducts.take(4).toList();
     return Padding(
       padding: EdgeInsets.fromLTRB(
         healthDp(context, 27),
@@ -208,17 +213,31 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         healthDp(context, 27),
         healthDp(context, 40),
       ),
-      child: RecommendProductSection(
-        excludedProductNames: [_product?.name ?? ''],
-        products: _recommendedProducts,
-        title: '추가 상품 구매하기',
-        titleStyle: shoppingSectionTitleStyle(context),
-        showLeadingBar: true,
-        hideWhenEmpty: true,
-        useVerticalList: true,
-        prescriptionGroupOrdering: false,
-        maxItems: 4,
-        onProductTap: _openRecommendProduct,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: healthDp(context, 1),
+                height: healthDp(context, 14),
+                margin: EdgeInsets.only(right: healthDp(context, 6)),
+                color: const Color(0xFF1A1A1A),
+              ),
+              Text(
+                '추가 상품 구매하기',
+                style: shoppingSectionTitleStyle(context),
+              ),
+            ],
+          ),
+          SizedBox(height: healthDp(context, 12)),
+          // 바텀시트(함께 구매하기 좋은 상품)와 동일 상품·가로 카드
+          RecommendProductSquareRow(
+            products: products,
+            onProductTap: _openRecommendProduct,
+          ),
+        ],
       ),
     );
   }
@@ -262,7 +281,9 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
       if (loaded != null) {
         _safeSetState(() {
+          _supporterReviews = loaded.supporterReviews;
           _generalReviews = loaded.generalReviews;
+          _visibleSupporterReviewCount = 4;
           _visibleNormalReviewCount = 4;
           _isLoadingReviews = false;
         });
@@ -463,6 +484,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildProductDetail() {
+    final supporterReviewCount = _supporterReviews.length;
     final generalReviewCount = _generalReviews.length;
 
     return AnimatedBuilder(
@@ -478,32 +500,19 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               delegate: _SliverTabBarDelegate(
                 _buildProductTabBar(
                   context,
+                  supporterReviewCount: supporterReviewCount,
                   generalReviewCount: generalReviewCount,
                 ),
                 height: _productTabBarHeight(context),
               ),
             ),
-            if (_tabController.index == 0) ...[
-              SliverToBoxAdapter(child: _buildDetailPreviewSection()),
-              SliverToBoxAdapter(
-                child: ProductTailInfoSection(
-                  showCertification: false,
-                  showWarning: false,
-                  showPrescriptionProcess: false,
-                  deliveryText: _product
-                      ?.additionalInfo?['it_baesong_content']
-                      ?.toString(),
-                  changeContentText: _product
-                      ?.additionalInfo?['it_change_content']
-                      ?.toString(),
-                ),
-              ),
-              SliverToBoxAdapter(child: _buildRecommendedSection()),
-              SliverToBoxAdapter(
-                child: SizedBox(height: healthDp(context, 40)),
-              ),
-            ] else
-              SliverToBoxAdapter(child: _buildNormalReviewTab()),
+            SliverToBoxAdapter(
+              child: switch (_tabController.index) {
+                0 => _buildProductInfoTabContent(),
+                1 => _buildSupportReviewTabContent(),
+                _ => _buildNormalReviewTab(),
+              },
+            ),
           ],
         );
       },
@@ -525,7 +534,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       height: 1.0,
     );
     final textPainter = TextPainter(
-      text: TextSpan(text: '일반 리뷰 (999)', style: labelStyle),
+      text: TextSpan(text: '서포터리뷰 (999)', style: labelStyle),
       textDirection: Directionality.of(context),
       maxLines: 1,
     )..layout();
@@ -548,6 +557,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   Widget _buildProductTabBar(
     BuildContext context, {
+    required int supporterReviewCount,
     required int generalReviewCount,
   }) {
     const pink = Color(0xFFFF5A8D);
@@ -568,7 +578,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       height: 1.0,
     );
     final textPainter = TextPainter(
-      text: TextSpan(text: '일반 리뷰 (999)', style: labelStyle),
+      text: TextSpan(text: '서포터리뷰 (999)', style: labelStyle),
       textDirection: Directionality.of(context),
       maxLines: 1,
     )..layout();
@@ -626,37 +636,85 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       builder: (context, _) {
         return Padding(
           padding: EdgeInsets.fromLTRB(
-            healthDp(context, 27),
+            healthDp(context, 34),
             _productTabBarPaddingTop(context),
-            healthDp(context, 27),
+            healthDp(context, 34),
             _productTabBarPaddingBottom(context),
           ),
           child: SizedBox(
             height: _productTabBarContentHeight(context),
             width: double.infinity,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 buildTabItem(
                   0,
                   '상품 소개',
+                  indicatorAlign: Alignment.centerLeft,
+                  textAlign: TextAlign.left,
                 ),
-                SizedBox(width: healthDp(context, 12)),
                 Padding(
                   padding: EdgeInsets.only(top: dividerTop),
                   child: _buildTabDivider(context),
                 ),
-                SizedBox(width: healthDp(context, 12)),
+                buildTabItem(1, '서포터리뷰 ($supporterReviewCount)'),
+                Padding(
+                  padding: EdgeInsets.only(top: dividerTop),
+                  child: _buildTabDivider(context),
+                ),
                 buildTabItem(
-                  1,
+                  2,
                   '일반 리뷰 ($generalReviewCount)',
+                  indicatorAlign: Alignment.centerRight,
+                  textAlign: TextAlign.right,
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  /// 상품 소개 탭 본문
+  Widget _buildProductInfoTabContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildDetailPreviewSection(),
+        ProductTailInfoSection(
+          showCertification: false,
+          showWarning: false,
+          showPrescriptionProcess: false,
+          deliveryText:
+              _product?.additionalInfo?['it_baesong_content']?.toString(),
+          changeContentText:
+              _product?.additionalInfo?['it_change_content']?.toString(),
+        ),
+        _buildRecommendedSection(),
+        SizedBox(height: healthDp(context, 40)),
+      ],
+    );
+  }
+
+  Widget _buildSupportReviewTabContent() {
+    final hideCoupon = _product?.isInfluencerProduct == true;
+    return GeneralReviewTabPanel(
+      reviews: _supporterReviews,
+      isLoading: _isLoadingReviews,
+      visibleCount: _visibleSupporterReviewCount,
+      guestLoginLocked: !_isReviewLoginOk,
+      onGuestLoginTap: _onGuestReviewLoginTap,
+      embedInParentScroll: true,
+      showCouponSection: !hideCoupon,
+      onLoadMore: () {
+        _safeSetState(() {
+          _visibleSupporterReviewCount += 8;
+        });
+      },
+      onReviewTap: (_) {},
     );
   }
 
@@ -721,13 +779,14 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildNormalReviewTab() {
-    return ProductNormalReview(
+    return GeneralReviewTabPanel(
       reviews: _generalReviews,
       isLoading: _isLoadingReviews,
       visibleCount: _visibleNormalReviewCount,
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
+      showCouponSection: false,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;
@@ -985,54 +1044,27 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildProductSpecs() {
-    final mainSpecs = <Map<String, String>>[];
+    final mainSpecs = ProductInfoSpecHelper.buildSpecs(
+      info: _product!.additionalInfo,
+      price: _product!.price,
+      usePoint: _usePointConfig ?? true,
+      isInfluencerProduct: _product?.isInfluencerProduct == true,
+    );
 
-    if (_product!.additionalInfo != null) {
-      final info = _product!.additionalInfo!;
-      final weightRaw = info['it_weight'];
-      final weightValue = weightRaw?.toString().trim();
-      if (weightValue != null && weightValue.isNotEmpty) {
-        mainSpecs.add({
-          'label': '중량/용량',
-          'value': weightValue,
-        });
-      }
-
-      if (info['it_prescription'] != null &&
-          info['it_prescription'].toString().isNotEmpty) {
-        mainSpecs.add({
-          'label': '처방단위',
-          'value': info['it_prescription'].toString(),
-        });
-      }
-
-      if (info['it_takeway'] != null &&
-          info['it_takeway'].toString().isNotEmpty) {
-        mainSpecs.add({
-          'label': '복용방법',
-          'value': info['it_takeway'].toString(),
-        });
-      }
-
-      final pointText = PointHelper.calculatePointText(
-        pointType: info['it_point_type'],
-        point: info['it_point'],
-        usePoint: _usePointConfig ?? true,
-        price: _product!.price,
+    if (mainSpecs.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: healthDp(context, 20)),
+          Divider(
+            height: healthDp(context, 1),
+            thickness: healthDp(context, 1),
+            color: Colors.grey.shade300,
+          ),
+          SizedBox(height: healthDp(context, 10)),
+        ],
       );
-
-      if (pointText != null && _product?.isInfluencerProduct != true) {
-        mainSpecs.add({
-          'label': '적립포인트',
-          'value': pointText,
-        });
-      }
     }
-
-    const deliverySpec = {
-      'label': '배송비',
-      'value': '주문시 결제',
-    };
 
     final specTextStyle = TextStyle(
       fontSize: healthSp(context, 12),
@@ -1081,10 +1113,6 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       children.add(buildSpecRow(mainSpecs[i]));
     }
 
-    if (mainSpecs.isNotEmpty) {
-      children.add(SizedBox(height: itemGap));
-    }
-    children.add(buildSpecRow(deliverySpec));
     children.add(SizedBox(height: healthDp(context, 20)));
     children.add(specDivider());
     children.add(SizedBox(height: healthDp(context, 10)));

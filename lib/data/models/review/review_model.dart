@@ -12,11 +12,11 @@ class ReviewModel {
   final DateTime? isTime;
   final int? isConfirm;
   
-  // 평점 (각 5점 만점, 정수 1~5 — DB `is_score1~4` INT)
-  final int isScore1; // 효과
-  final int isScore2; // 가성비
-  final int isScore3; // 맛/향
-  final int isScore4; // 편리함
+  // 평점 (각 5점 만점, 0.1 단위 — DB `is_score1~4` DECIMAL)
+  final double isScore1; // 효과
+  final double isScore2; // 가성비
+  final double isScore3; // 맛/향
+  final double isScore4; // 편리함
   /// 처방·일반 공통 상품 만족도 0.1~5, 0.1 단위 (API `totalIsScore` / DB `total_is_score`)
   final double? totalIsScore;
   final double? averageScore; // 평균 평점
@@ -53,10 +53,10 @@ class ReviewModel {
   bool get isSupporterReview => isRvkind == 'supporter';
   bool get isGeneralReview => isRvkind == 'general';
   bool get isSatisfied => isRecommend == 'y';
-  int get score1 => isScore1;
-  int get score2 => isScore2;
-  int get score3 => isScore3;
-  int get score4 => isScore4;
+  double get score1 => isScore1;
+  double get score2 => isScore2;
+  double get score3 => isScore3;
+  double get score4 => isScore4;
   
   ReviewModel({
     this.isId,
@@ -277,10 +277,10 @@ class ReviewModel {
       isName: NodeValueParser.asString(normalized['isName']),
       isTime: NodeValueParser.asDateTime(normalized['isTime']),
       isConfirm: NodeValueParser.asInt(normalized['isConfirm']),
-      isScore1: NodeValueParser.asInt(normalized['isScore1']) ?? 0,
-      isScore2: NodeValueParser.asInt(normalized['isScore2']) ?? 0,
-      isScore3: NodeValueParser.asInt(normalized['isScore3']) ?? 0,
-      isScore4: NodeValueParser.asInt(normalized['isScore4']) ?? 0,
+      isScore1: NodeValueParser.asDouble(normalized['isScore1']) ?? 0,
+      isScore2: NodeValueParser.asDouble(normalized['isScore2']) ?? 0,
+      isScore3: NodeValueParser.asDouble(normalized['isScore3']) ?? 0,
+      isScore4: NodeValueParser.asDouble(normalized['isScore4']) ?? 0,
       totalIsScore: NodeValueParser.asDouble(normalized['totalIsScore'] ?? normalized['total_is_score']),
       averageScore: NodeValueParser.asDouble(normalized['averageScore']),
       isRvkind: NodeValueParser.asString(normalized['isRvkind']) ?? 'general',

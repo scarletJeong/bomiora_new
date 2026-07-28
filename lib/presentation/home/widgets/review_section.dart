@@ -1,37 +1,22 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../review/screens/review_best_screen.dart';
 import 'home_section_widgets.dart';
 
-const _defaultMainReviewImage =
-    'https://bomiora0.mycafe24.com/data/mainreview/1686290723/7KO864Sk66W0_01.gif';
-const _mainReviewImagePool = <String>[
-  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/6rmA7JuQ7KeE220x220px.gif',
-  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_iLd8o8.gif',
-  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_4cxlQV.gif',
-  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_yTlnjB.gif',
-  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_bBWgZU.gif',
-  'https://bomiora0.mycafe24.com/data/mainreview/1686290723/IMB_VQ1Mzk.gif',
-];
-
-/// 메인 리뷰 `mr_img`를 mainreview 경로로 정규화
-String _mainHomeReviewCardImageUrl(MainHomeReviewModel r, int index) {
+/// 베스트 리뷰 화면과 동일 — `mr_img` 우선, 없으면 상품 썸네일
+String? _mainHomeReviewCardImageUrl(MainHomeReviewModel r) {
+  if (r.images.isNotEmpty) {
+    return ImageUrlHelper.getMainReviewImageUrl(r.images.first);
+  }
   final productImage = r.productImage?.trim();
   if (productImage != null && productImage.isNotEmpty) {
     return ImageUrlHelper.getImageUrl(productImage);
   }
-  final fallback = _mainReviewImagePool[index % _mainReviewImagePool.length];
-  return ImageUrlHelper.convertToLocalUrl(fallback);
-}
-
-/// 메인리뷰 이미지 실패 시 기존 itemuse 경로 재시도용
-String _mainHomeReviewFallbackImageUrl() {
-  return ImageUrlHelper.convertToLocalUrl(_defaultMainReviewImage);
+  return null;
 }
 
 /// Figma 375 기준 리뷰 카드·그리드 치수 — [healthDp] / [healthSp]로 스케일.
@@ -134,51 +119,62 @@ class _ReviewSectionState extends State<ReviewSection> {
           SizedBox(height: layout.titleToGridGap),
           _buildGridBody(context, layout),
           SizedBox(height: healthDp(context, 48)),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: healthDp(context, 1),
-                  child: const ColoredBox(color: Color(0xFFE0E0E0)),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const ReviewBestScreen(),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 12),
+              );
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: healthDp(context, 1),
+                    child: const ColoredBox(color: Color(0xFFE0E0E0)),
+                  ),
                 ),
-                child: Container(
+                Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 20),
-                    vertical: healthDp(context, 6),
+                    horizontal: healthDp(context, 12),
                   ),
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFFF5A8D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 17.88)),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 20),
+                      vertical: healthDp(context, 6),
                     ),
-                  ),
-                  child: Text(
-                    '+ 리뷰 더 보기',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 12),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      height: 1.5,
+                    decoration: ShapeDecoration(
+                      color: const Color(0xFFFF5A8D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 17.88)),
+                      ),
+                    ),
+                    child: Text(
+                      '+ 리뷰 더 보기',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        height: 1.5,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: SizedBox(
-                  height: healthDp(context, 1),
-                  child: const ColoredBox(color: Color(0xFFE0E0E0)),
+                Expanded(
+                  child: SizedBox(
+                    height: healthDp(context, 1),
+                    child: const ColoredBox(color: Color(0xFFE0E0E0)),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -225,14 +221,27 @@ class _ReviewSectionState extends State<ReviewSection> {
       itemCount: _reviews.length,
       itemBuilder: (context, index) {
         final r = _reviews[index];
-        final thumb = _mainHomeReviewCardImageUrl(r, index);
-        final fallbackThumb = _mainHomeReviewFallbackImageUrl();
-        return _ReviewCard(
-          layout: layout,
-          titleLine: r.headline,
-          bodyLine: r.bodyText,
-          imageUrl: thumb,
-          fallbackImageUrl: fallbackThumb,
+        final thumb = _mainHomeReviewCardImageUrl(r);
+        final fallbackThumb = r.productImage != null &&
+                r.productImage!.trim().isNotEmpty
+            ? ImageUrlHelper.getImageUrl(r.productImage)
+            : null;
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => ReviewBestScreen(initialMrNo: r.mrNo),
+              ),
+            );
+          },
+          child: _ReviewCard(
+            layout: layout,
+            titleLine: r.reviewerName,
+            bodyLine: r.cardTitleText,
+            imageUrl: thumb,
+            fallbackImageUrl: fallbackThumb,
+          ),
         );
       },
     );
@@ -240,8 +249,6 @@ class _ReviewSectionState extends State<ReviewSection> {
 }
 
 class _ReviewCard extends StatelessWidget {
-  static const double _overlayOpacity = 0.9;
-
   final _ReviewCardLayout layout;
   final String titleLine;
   final String bodyLine;
@@ -273,12 +280,17 @@ class _ReviewCard extends StatelessWidget {
                   )
                 : const ColoredBox(color: Color(0xFFE0E0E0)),
           ),
-          Positioned.fill(
-            child: Opacity(
-              opacity: _overlayOpacity,
-              child: ClipPath(
-                clipper: BottomCurveClipper(),
-                child: const ColoredBox(color: Color(0xFFFF8EAC)),
+          // 리뷰 목록 카드와 동일 핑크 그라데이션
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment(0.5, 0),
+                end: Alignment(0.5, 0.69),
+                colors: [
+                  Color(0x00FFFFFF),
+                  Color(0x00FF96B6),
+                  Color(0x7FFF5A8D),
+                ],
               ),
             ),
           ),
@@ -384,67 +396,4 @@ class _ReviewCardImageState extends State<_ReviewCardImage> {
       },
     );
   }
-}
-
-/// 이미지2 기준:
-/// - 핑크가 하단을 차지
-/// - 경계선: x=0 에서 가장 높이 올라와 있고(왼쪽 상단 꼭짓점)
-///   오른쪽으로 곡선을 그리며 내려오다가 수평이 됨
-/// - 곡선은 concave(오목): 핑크 영역 안쪽으로 파임
-///
-/// Path 논리 (size = 클리퍼에 주어진 전체 크기):
-///   시작: (0, topY)          ← 왼쪽, 가장 높은 지점
-///   베지어 제어점: (0, flatY) ← 왼쪽 벽을 따라 아래로
-///   베지어 끝점: (curveEndX, flatY) ← 수평선과 만나는 지점
-///   직선: (width - r, flatY) … (width, flatY+r) ← 오른쪽 상단 모서리 라운드
-///   직선: (width, height)    ← 오른쪽 하단
-///   직선: (0, height)        ← 왼쪽 하단
-class BottomCurveClipper extends CustomClipper<Path> {
-  /// [size] 기준 — 185 높이 때 flatY=111 등 비율 유지 (199.62 등에서도 형태 일치).
-  @override
-  Path getClip(Size size) {
-    final flatY = size.height * (111.0 / 185.0);
-    final riseAmount = size.height * (36.0 / 185.0);
-    final topY = flatY - riseAmount;
-    final curveEndX =
-        (56.0 * size.width / 156.0).clamp(20.0, size.width * 0.48);
-    final topRightCornerRadius =
-        (12.0 * size.width / 156.0).clamp(4.0, 18.0);
-
-    final path = Path()..moveTo(0, topY);
-
-    path.quadraticBezierTo(0, flatY, curveEndX, flatY);
-
-    final maxR = math.min(
-      topRightCornerRadius,
-      math.min(
-        (size.width - curveEndX) * 0.5,
-        (size.height - flatY).clamp(0.0, double.infinity),
-      ),
-    );
-    var r = maxR.clamp(0.0, topRightCornerRadius);
-    if (r > 0 && size.width - r < curveEndX) {
-      r = math.max(0.0, size.width - curveEndX - 0.5);
-    }
-
-    if (r <= 0) {
-      path
-        ..lineTo(size.width, flatY)
-        ..lineTo(size.width, size.height);
-    } else {
-      path
-        ..lineTo(size.width - r, flatY)
-        ..quadraticBezierTo(size.width, flatY, size.width, flatY + r)
-        ..lineTo(size.width, size.height);
-    }
-
-    path
-      ..lineTo(0, size.height)
-      ..close();
-
-    return path;
-  }
-
-  @override
-  bool shouldReclip(covariant BottomCurveClipper oldClipper) => false;
 }

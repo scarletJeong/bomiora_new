@@ -11,7 +11,10 @@ import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/review_service.dart';
+import '../../common/widgets/app_star_rating.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/review_policy_footer.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 
@@ -26,7 +29,7 @@ class _ReviewDraftImage {
       serverPath != null && serverPath!.trim().isNotEmpty;
 }
 
-/// 일반 상품 리뷰 (`it_kind` / `is_rvkind` general) — 본문은 `is_more_review_text` 만 사용, 세부 `is_score1~4` 는 0.
+/// 일반 상품 리뷰 — 본문 `is_positive_review_text`, 별점 `total_is_score` 만 사용
 class ReviewWriteGeneralScreen extends StatefulWidget {
   final OrderDetailModel? orderDetail;
   final ReviewModel? initialReview;
@@ -84,8 +87,10 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
     final r = widget.initialReview;
     if (r != null) {
-      _reviewController.text = r.isMoreReviewText ?? '';
-      _score = _snapTenthRating((r.totalIsScore ?? 0).toDouble());
+      final positive = r.isPositiveReviewText?.trim() ?? '';
+      final more = r.isMoreReviewText?.trim() ?? '';
+      _reviewController.text = positive.isNotEmpty ? positive : more;
+      _score = _snapTenthRating(r.averageScore ?? 0);
       _draftImages.addAll(
         r.images.take(_maxImages).map((p) => _ReviewDraftImage(serverPath: p)),
       );
@@ -106,25 +111,13 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
   ReviewModel? get _editReview => widget.initialReview;
 
-  void _showPhotoLimitSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '사진등록은 최대 3장까지 가능합니다.',
-          style: TextStyle(
-            fontFamily: 'Gmarket Sans TTF',
-            fontSize: healthSp(context, 14),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showPhotoLimitToast() {
+    AppToastOverlay.show(context, '사진은 최대 3장까지 등록 가능합니다.');
   }
 
   void _openPhotoSourceDropdown(BuildContext anchorContext) {
     if (_draftImages.length >= _maxImages) {
-      _showPhotoLimitSnackBar();
+      _showPhotoLimitToast();
       return;
     }
     ImagePickerUtils.showPhotoSourceDropdown(
@@ -137,7 +130,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   Future<void> _applyPickedImage(XFile? image) async {
     if (image == null || !mounted) return;
     if (_draftImages.length >= _maxImages) {
-      _showPhotoLimitSnackBar();
+      _showPhotoLimitToast();
       return;
     }
     try {
@@ -219,13 +212,16 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
     final text = _reviewController.text.trim();
 
     if (_score < 0.1) {
+      AppToastOverlay.show(context, '상품 만족도 통합합 별점을 작성해주세요.');
       return;
     }
     if (text.length < 20) {
       setState(() => _reviewBodyError = '최소 20자 이상 작성해주세요.');
+      AppToastOverlay.show(context, '필수 리뷰 내용을 작성해주세요. (최소 20자)');
       return;
     }
     if (text.length > 3000) {
+      AppToastOverlay.show(context, '리뷰는 최대 3000자까지 작성할 수 있습니다.');
       return;
     }
 
@@ -250,16 +246,17 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         odId: odIdValue,
         itId: itIdValue,
         isName: user.name,
-        isScore1: 0,
-        isScore2: 0,
-        isScore3: 0,
-        isScore4: 0,
+        // 일반 작성은 totalIsScore만 사용. 수정 시 기존 is_score1~4 유지(0으로 덮지 않음)
+        isScore1: edit?.isScore1 ?? 0,
+        isScore2: edit?.isScore2 ?? 0,
+        isScore3: edit?.isScore3 ?? 0,
+        isScore4: edit?.isScore4 ?? 0,
         totalIsScore: _snapTenthRating(_score),
         isRvkind: 'general',
         isRecommend: edit?.isRecommend ?? 'y',
-        isPositiveReviewText: null,
-        isNegativeReviewText: null,
-        isMoreReviewText: text,
+        isPositiveReviewText: text,
+        isNegativeReviewText: edit?.isNegativeReviewText ?? '',
+        isMoreReviewText: edit?.isMoreReviewText ?? '',
         images: paths,
         isPayMthod: 'solo',
       );
@@ -310,110 +307,146 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
             ),
             child: Form(
               key: _formKey,
-              child: ListView(
-                padding: EdgeInsets.only(
-                  left: healthDp(context, 27),
-                  right: healthDp(context, 27),
-                  bottom: healthDp(context, 20),
-                ),
+              child: Column(
                 children: [
-                  SizedBox(height: healthDp(context, 20)),
-                  _barSectionTitle(context, '주문상품 정보'),
-                  SizedBox(height: healthDp(context, 10)),
-                  _productCard(context, item, edit),
-                  SizedBox(height: healthDp(context, 20)),
-                  _barSectionTitle(
-                    context,
-                    '상품 만족도',
-                    trailing: '*  필수',
-                    trailingColor: const Color(0xFFEF4444),
-                  ),
-                  SizedBox(height: healthDp(context, 10)),
-                  _scoreCard(context),
-                  SizedBox(height: healthDp(context, 20)),
-                  _barSectionTitle(
-                    context,
-                    '상품 리뷰',
-                    trailing: '*  필수',
-                    trailingColor: const Color(0xFFEF4444),
-                  ),
-                  SizedBox(height: healthDp(context, 10)),
-                  _reviewInputBlock(context),
-                  SizedBox(height: healthDp(context, 20)),
-                  _barSectionTitle(
-                    context,
-                    '사진 업로드',
-                    trailing: '(선택)',
-                    trailingColor: _kMuted,
-                  ),
-                  SizedBox(height: healthDp(context, 10)),
-                  _imageSection(context),
-                  SizedBox(height: healthDp(context, 20)),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed:
-                              _isLoading ? null : () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: const Color(0xFFD2D2D2),
-                              width: healthDp(context, 0.5),
-                            ),
-                            minimumSize: Size.fromHeight(healthDp(context, 40)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.only(
+                        top: healthDp(context, 20),
+                      ),
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(context, 27),
                           ),
-                          child: Text(
-                            '취소',
-                            style: TextStyle(
-                              color: _kMuted,
-                              fontSize: healthSp(context, 16),
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _barSectionTitle(context, '주문상품 정보'),
+                              SizedBox(height: healthDp(context, 10)),
+                              _productCard(context, item, edit),
+                              SizedBox(height: healthDp(context, 20)),
+                              _barSectionTitle(
+                                context,
+                                '상품 만족도',
+                                trailing: '*  필수',
+                                trailingColor: const Color(0xFFEF4444),
+                              ),
+                              SizedBox(height: healthDp(context, 10)),
+                              _scoreCard(context),
+                              SizedBox(height: healthDp(context, 20)),
+                              _barSectionTitle(
+                                context,
+                                '상품 리뷰',
+                                trailing: '*  필수',
+                                trailingColor: const Color(0xFFEF4444),
+                              ),
+                              SizedBox(height: healthDp(context, 10)),
+                              _reviewInputBlock(context),
+                              SizedBox(height: healthDp(context, 20)),
+                              _barSectionTitle(
+                                context,
+                                '사진 업로드',
+                                trailing: '(선택)',
+                                trailingColor: _kMuted,
+                              ),
+                              SizedBox(height: healthDp(context, 10)),
+                              _imageSection(context),
+                              SizedBox(height: healthDp(context, 20)),
+                            ],
                           ),
                         ),
-                      ),
-                      SizedBox(width: healthDp(context, 20)),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _kPink,
-                            minimumSize:
-                                Size.fromHeight(healthDp(context, 40)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? SizedBox(
-                                  width: healthDp(context, 18),
-                                  height: healthDp(context, 18),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: healthDp(context, 2),
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  widget._isEditMode ? '수정' : '등록',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: healthSp(context, 16),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ],
+                        const ReviewPolicyFooter(),
+                      ],
+                    ),
                   ),
+                  _bottomActionBar(context),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomActionBar(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(
+          healthDp(context, 27),
+          healthDp(context, 10),
+          healthDp(context, 27),
+          healthDp(context, 10),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: const Color(0xFFE9E9E9),
+              width: healthDp(context, 0.5),
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _isLoading ? null : () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: const Color(0xFFD2D2D2),
+                    width: healthDp(context, 0.5),
+                  ),
+                  minimumSize: Size.fromHeight(healthDp(context, 40)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: Text(
+                  '취소',
+                  style: TextStyle(
+                    color: _kMuted,
+                    fontSize: healthSp(context, 16),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 20)),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kPink,
+                  minimumSize: Size.fromHeight(healthDp(context, 40)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  ),
+                ),
+                child: _isLoading
+                    ? SizedBox(
+                        width: healthDp(context, 18),
+                        height: healthDp(context, 18),
+                        child: CircularProgressIndicator(
+                          strokeWidth: healthDp(context, 2),
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        widget._isEditMode ? '수정' : '등록',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(context, 16),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -623,93 +656,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   }
 
   /// 상품 만족도 — 0.1 단위 (4.8, 4.2 등)
-  double _snapTenthRating(double raw) {
-    if (raw <= 0) return 0.0;
-    final c = raw.clamp(0.1, 5.0);
-    return (c * 10).round() / 10.0;
-  }
-
-  Widget _fractionalStar(BuildContext context, double fill, double size) {
-    final f = fill.clamp(0.0, 1.0);
-    if (f <= 0) {
-      return Icon(Icons.star_border_rounded, color: _kPink, size: size);
-    }
-    if (f >= 1 - 1e-9) {
-      return Icon(Icons.star_rounded, color: _kPink, size: size);
-    }
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          Icon(Icons.star_border_rounded, color: _kPink, size: size),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ClipRect(
-              child: SizedBox(
-                width: size * f,
-                height: size,
-                child: OverflowBox(
-                  alignment: Alignment.centerLeft,
-                  minWidth: size,
-                  maxWidth: size,
-                  minHeight: size,
-                  maxHeight: size,
-                  child: Icon(Icons.star_rounded, color: _kPink, size: size),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _interactiveStarRow(
-    BuildContext context, {
-    required double rating,
-    required ValueChanged<double> onRatingChanged,
-    MainAxisAlignment alignment = MainAxisAlignment.center,
-  }) {
-    const starSize = 24.0;
-    const gap = 4.0;
-    final starDp = healthDp(context, starSize);
-    final gapDp = healthDp(context, gap);
-    final rowWidth = starDp * 5 + gapDp * 4;
-
-    void applyLocalDx(double dx) {
-      final t = (dx / rowWidth).clamp(0.0, 1.0);
-      final raw = t * 5.0;
-      if (raw <= 0) {
-        onRatingChanged(0);
-        return;
-      }
-      onRatingChanged(_snapTenthRating(raw));
-    }
-
-    final stars = Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: gapDp,
-      children: List.generate(
-        5,
-        (i) => _fractionalStar(context, rating - i, starDp),
-      ),
-    );
-
-    final interactive = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (d) => applyLocalDx(d.localPosition.dx),
-      onHorizontalDragUpdate: (d) => applyLocalDx(d.localPosition.dx),
-      child: SizedBox(width: rowWidth, child: stars),
-    );
-
-    if (alignment == MainAxisAlignment.center) {
-      return Center(child: interactive);
-    }
-    return interactive;
-  }
+  double _snapTenthRating(double raw) => appStarSnapTenth(raw);
 
   Widget _scoreCard(BuildContext context) {
     return Container(
@@ -745,10 +692,14 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
             ),
           ),
           SizedBox(height: healthDp(context, 4)),
-          _interactiveStarRow(
-            context,
+          AppInteractiveStarRating(
             rating: _score,
             onRatingChanged: (v) => setState(() => _score = v),
+            starSize: healthDp(context, 24),
+            gap: healthDp(context, 4),
+            color: _kPink,
+            alignment: MainAxisAlignment.center,
+            snapMode: AppStarSnapMode.tenth,
           ),
         ],
       ),

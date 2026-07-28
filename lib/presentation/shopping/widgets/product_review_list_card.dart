@@ -6,6 +6,7 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/coupon_service.dart';
+import '../../common/widgets/app_star_rating.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 const _kGmarket = 'Gmarket Sans TTF';
@@ -17,6 +18,8 @@ const _kMuted = Color(0xFF898686);
 class ProductReviewListCard extends StatefulWidget {
   final ReviewModel review;
   final bool showCouponSection;
+  /// null 이면 리뷰 종류(is_rvkind)로 판단. 일반 상품 화면에서는 false 고정.
+  final bool? showCategoryScores;
   final VoidCallback? onOpenDetail;
   final VoidCallback? onGuestLoginTap;
 
@@ -24,6 +27,7 @@ class ProductReviewListCard extends StatefulWidget {
     super.key,
     required this.review,
     this.showCouponSection = false,
+    this.showCategoryScores,
     this.onOpenDetail,
     this.onGuestLoginTap,
   });
@@ -48,8 +52,11 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     final review = widget.review;
     final imageH = healthDp(context, 321);
     final radius = healthDp(context, 10);
-    final total = review.totalIsScore ?? review.averageScore ?? 0.0;
+    final total = review.averageScore ?? 0.0;
     final imageCount = _reviewImageCount(review);
+    final isGeneral = review.isGeneralReview;
+    final showCategoryScores =
+        widget.showCategoryScores ?? !isGeneral;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,36 +125,38 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: healthDp(context, 10)),
-              Text(
-                review.isName ?? '익명',
-                style: TextStyle(
-                  color: _kTextDark,
-                  fontSize: healthSp(context, 16),
-                  fontFamily: _kGmarket,
-                  fontWeight: FontWeight.w700,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '|',
+                    style: TextStyle(
+                      color: _kTextDark,
+                      fontSize: healthSp(context, 16),
+                      fontFamily: _kGmarket,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(width: healthDp(context, 6)),
+                  Flexible(
+                    child: Text(
+                      review.isName ?? '익명',
+                      style: TextStyle(
+                        color: _kTextDark,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _kGmarket,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: healthDp(context, 10)),
               _ReviewTextBlock(
-                label: '좋았던 점',
                 text: review.isPositiveReviewText,
                 expanded: _expanded,
                 collapsedMaxLines: 2,
               ),
-              if (_expanded) ...[
-                SizedBox(height: healthDp(context, 10)),
-                _ReviewTextBlock(
-                  label: '아쉬운 점',
-                  text: review.isNegativeReviewText,
-                  expanded: true,
-                ),
-                SizedBox(height: healthDp(context, 10)),
-                _ReviewTextBlock(
-                  label: '꿀팁',
-                  text: review.isMoreReviewText,
-                  expanded: true,
-                ),
-              ],
               SizedBox(height: healthDp(context, 10)),
               _RatingScorePanel(
                 total: total,
@@ -155,6 +164,7 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
                 score2: review.score2,
                 score3: review.score3,
                 score4: review.score4,
+                showCategoryScores: showCategoryScores,
               ),
               if (widget.showCouponSection) ...[
                 _CouponHelpSection(
@@ -330,13 +340,11 @@ class _ImageDots extends StatelessWidget {
 }
 
 class _ReviewTextBlock extends StatelessWidget {
-  final String label;
   final String? text;
   final bool expanded;
   final int collapsedMaxLines;
 
   const _ReviewTextBlock({
-    required this.label,
     required this.text,
     required this.expanded,
     this.collapsedMaxLines = 2,
@@ -347,32 +355,17 @@ class _ReviewTextBlock extends StatelessWidget {
     final value = text?.trim() ?? '';
     if (value.isEmpty) return const SizedBox.shrink();
 
-    final labelStyle = TextStyle(
-      color: _kMuted,
-      fontSize: healthSp(context, 10),
-      fontFamily: _kGmarket,
-      fontWeight: FontWeight.w300,
-    );
-    final bodyStyle = TextStyle(
-      color: _kTextDark,
-      fontSize: healthSp(context, 12),
-      fontFamily: _kGmarket,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: labelStyle),
-        SizedBox(height: healthDp(context, 5)),
-        Text(
-          value,
-          style: bodyStyle,
-          maxLines: expanded ? null : collapsedMaxLines,
-          overflow: expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-        ),
-      ],
+    return Text(
+      value,
+      style: TextStyle(
+        color: _kTextDark,
+        fontSize: healthSp(context, 12),
+        fontFamily: _kGmarket,
+        fontWeight: FontWeight.w500,
+        height: 1.5,
+      ),
+      maxLines: expanded ? null : collapsedMaxLines,
+      overflow: expanded ? TextOverflow.visible : TextOverflow.ellipsis,
     );
   }
 }
@@ -383,6 +376,7 @@ class _RatingScorePanel extends StatelessWidget {
   final double score2;
   final double score3;
   final double score4;
+  final bool showCategoryScores;
 
   const _RatingScorePanel({
     required this.total,
@@ -390,6 +384,7 @@ class _RatingScorePanel extends StatelessWidget {
     required this.score2,
     required this.score3,
     required this.score4,
+    this.showCategoryScores = true,
   });
 
   @override
@@ -415,7 +410,11 @@ class _RatingScorePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            total.toStringAsFixed(1),
+            total <= 0
+                ? '0'
+                : ((total * 10).round() % 10 == 0
+                    ? total.toStringAsFixed(0)
+                    : total.toStringAsFixed(1)),
             style: TextStyle(
               color: _kPink,
               fontSize: healthSp(context, 20),
@@ -423,47 +422,56 @@ class _RatingScorePanel extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: Text(
-              '|',
-              style: TextStyle(
-                color: const Color(0xFF666666),
-                fontSize: healthSp(context, 18),
-                fontFamily: _kGmarket,
-                fontWeight: FontWeight.w300,
-                height: 1,
+          if (showCategoryScores) ...[
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+              child: Text(
+                '|',
+                style: TextStyle(
+                  color: const Color(0xFF666666),
+                  fontSize: healthSp(context, 18),
+                  fontFamily: _kGmarket,
+                  fontWeight: FontWeight.w300,
+                  height: 1,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _ScoreChip(label: '효과', value: score1),
-                      SizedBox(width: healthDp(context, 10)),
-                      _ScoreChip(label: '가성비', value: score2),
-                    ],
-                  ),
-                  SizedBox(width: healthDp(context, 10)),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _ScoreChip(label: '맛/향', value: score3),
-                      SizedBox(width: healthDp(context, 10)),
-                      _ScoreChip(label: '편리함', value: score4),
-                    ],
-                  ),
-                ],
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ScoreChip(label: '효과', value: score1),
+                        SizedBox(width: healthDp(context, 10)),
+                        _ScoreChip(label: '가성비', value: score2),
+                      ],
+                    ),
+                    SizedBox(width: healthDp(context, 10)),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ScoreChip(label: '맛/향', value: score3),
+                        SizedBox(width: healthDp(context, 10)),
+                        _ScoreChip(label: '편리함', value: score4),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+          ] else ...[
+            SizedBox(width: healthDp(context, 8)),
+            AppStarRating(
+              rating: total,
+              starSize: healthDp(context, 16),
+              gap: healthDp(context, 2),
+            ),
+          ],
         ],
       ),
     );
@@ -475,33 +483,6 @@ class _ScoreChip extends StatelessWidget {
   final double value;
 
   const _ScoreChip({required this.label, required this.value});
-
-  Widget _buildScoreStar(BuildContext context) {
-    const color = Color(0xFFFFCC00);
-    final size = healthDp(context, 10);
-
-    switch (value.round().clamp(1, 5)) {
-      case 5:
-        return Icon(Icons.star, color: color, size: size);
-      case 4:
-        return Icon(
-          Icons.star,
-          color: color.withValues(alpha: 0.75),
-          size: size,
-        );
-      case 3:
-        return Icon(Icons.star_half, color: color, size: size);
-      case 2:
-        return Icon(Icons.star_border, color: color, size: size);
-      case 1:
-      default:
-        return Icon(
-          Icons.star_border,
-          color: color.withValues(alpha: 0.35),
-          size: size,
-        );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -519,10 +500,10 @@ class _ScoreChip extends StatelessWidget {
           ),
         ),
         SizedBox(width: healthDp(context, 3)),
-        _buildScoreStar(context),
+        AppStarIcon(size: healthDp(context, 10)),
         SizedBox(width: healthDp(context, 1)),
         Text(
-          value.toString(),
+          value.round().clamp(0, 5).toString(),
           style: TextStyle(
             color: _kTextDark,
             fontSize: healthSp(context, 10),
@@ -779,6 +760,7 @@ class ProductReviewLoadMoreButton extends StatelessWidget {
 class ProductReviewListSection extends StatelessWidget {
   final List<ReviewModel> reviews;
   final bool showCouponSection;
+  final bool? showCategoryScores;
   final bool guestLoginLocked;
   final VoidCallback? onGuestLoginTap;
   final ValueChanged<ReviewModel>? onReviewTap;
@@ -787,6 +769,7 @@ class ProductReviewListSection extends StatelessWidget {
     super.key,
     required this.reviews,
     this.showCouponSection = false,
+    this.showCategoryScores,
     this.guestLoginLocked = false,
     this.onGuestLoginTap,
     this.onReviewTap,
@@ -796,16 +779,21 @@ class ProductReviewListSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (reviews.isEmpty) return const SizedBox.shrink();
 
+    // 게스트 잠금 시 첫 카드 부근에서 안내가 보이도록 최대 3개만 노출
+    final displayReviews =
+        guestLoginLocked ? reviews.take(3).toList() : reviews;
+
     final list = Column(
       children: [
-        for (var i = 0; i < reviews.length; i++) ...[
+        for (var i = 0; i < displayReviews.length; i++) ...[
           if (i > 0) SizedBox(height: healthDp(context, 48)),
           ProductReviewListCard(
-            review: reviews[i],
+            review: displayReviews[i],
             showCouponSection: showCouponSection,
+            showCategoryScores: showCategoryScores,
             onGuestLoginTap: onGuestLoginTap,
             onOpenDetail: onReviewTap != null
-                ? () => onReviewTap!(reviews[i])
+                ? () => onReviewTap!(displayReviews[i])
                 : null,
           ),
         ],
@@ -820,9 +808,15 @@ class ProductReviewListSection extends StatelessWidget {
         Positioned.fill(
           child: Material(
             color: Colors.white.withValues(alpha: 0.72),
-            child: Center(
+            child: Align(
+              alignment: Alignment.topCenter,
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: healthDp(context, 20)),
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 20),
+                  healthDp(context, 120),
+                  healthDp(context, 20),
+                  healthDp(context, 20),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -851,7 +845,7 @@ class ProductReviewListSection extends StatelessWidget {
                           fontSize: healthSp(context, 15),
                           color: Colors.white,
                           fontFamily: _kGmarket,
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -875,7 +869,7 @@ class ProductReviewListSection extends StatelessWidget {
                           '로그인 하기',
                           style: TextStyle(
                             fontSize: healthSp(context, 16),
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                             fontFamily: _kGmarket,
                           ),
                         ),

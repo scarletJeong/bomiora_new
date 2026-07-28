@@ -9,7 +9,6 @@ import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../core/utils/image_url_helper.dart';
-import '../../../core/utils/point_helper.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../../core/utils/product_share.dart';
 import '../../../core/utils/inf_code_tracker.dart';
@@ -29,10 +28,10 @@ import '../widgets/option_bottomup.dart';
 import '../widgets/recommend_product_bottomup.dart';
 import '../utils/cart_navigation.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
-import '../widgets/producrt_support_review.dart';
-import '../widgets/producrt_normal_review.dart';
+import 'product_reviews_screen.dart';
 import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
+import '../utils/product_info_spec_helper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -651,32 +650,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             // 제목 밑 설명 (it_basic)
             _buildBasicDescription(),
             SizedBox(height: healthDp(context, 10)),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 5),
-                  vertical: healthDp(context, 3),
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(healthDp(context, 999)),
-                  border: Border.all(
-                    color: const Color(0xFFFF5A95),
-                    width: healthDp(context, 0.5),
-                  ),
-                ),
-                child: Text(
-                  '한의약품',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 10),
-                    fontWeight: FontWeight.w300,
-                    color: const Color(0xFFFF5A95),
-                    fontFamily: _kGmarketSans,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: healthDp(context, 10)),
 
             _buildImageCarousel(_getProductImages()),
             SizedBox(height: healthDp(context, 10)),
@@ -693,6 +666,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             // 제품 스펙
             _buildProductSpecs(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _koreanMedicineBadge() {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 5),
+        vertical: healthDp(context, 3),
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(healthDp(context, 999)),
+        border: Border.all(
+          color: const Color(0xFFFF5A95),
+          width: healthDp(context, 0.5),
+        ),
+      ),
+      child: Text(
+        '한의약품',
+        style: TextStyle(
+          fontSize: healthSp(context, 10),
+          fontWeight: FontWeight.w300,
+          color: const Color(0xFFFF5A95),
+          fontFamily: _kGmarketSans,
+          height: 1.0,
         ),
       ),
     );
@@ -744,7 +743,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   Widget _buildSupportReviewTabContent() {
     final hideCoupon = _product?.isInfluencerProduct == true;
-    return ProductSupportReview(
+    return PrescriptionReviewTabPanel(
       reviews: _supporterReviews,
       isLoading: _isLoadingReviews,
       visibleCount: _visibleSupporterReviewCount,
@@ -762,13 +761,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildNormalReviewTabContent() {
-    return ProductNormalReview(
+    return PrescriptionReviewTabPanel(
       reviews: _generalReviews,
       isLoading: _isLoadingReviews,
       visibleCount: _visibleNormalReviewCount,
       guestLoginLocked: !_isReviewLoginOk,
       onGuestLoginTap: _onGuestReviewLoginTap,
       embedInParentScroll: true,
+      showCouponSection: false,
       onLoadMore: () {
         _safeSetState(() {
           _visibleNormalReviewCount += 8;
@@ -1026,54 +1026,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildProductSpecs() {
-    final mainSpecs = <Map<String, String>>[];
+    final mainSpecs = ProductInfoSpecHelper.buildSpecs(
+      info: _product!.additionalInfo,
+      price: _product!.price,
+      usePoint: _usePointConfig ?? true,
+      isInfluencerProduct: _product?.isInfluencerProduct == true,
+    );
 
-    if (_product!.additionalInfo != null) {
-      final info = _product!.additionalInfo!;
-      final weightRaw = info['it_weight'];
-      final weightValue = weightRaw?.toString().trim();
-      if (weightValue != null && weightValue.isNotEmpty) {
-        mainSpecs.add({
-          'label': '중량/용량',
-          'value': weightValue,
-        });
-      }
-
-      if (info['it_prescription'] != null &&
-          info['it_prescription'].toString().isNotEmpty) {
-        mainSpecs.add({
-          'label': '처방단위',
-          'value': info['it_prescription'].toString(),
-        });
-      }
-
-      if (info['it_takeway'] != null &&
-          info['it_takeway'].toString().isNotEmpty) {
-        mainSpecs.add({
-          'label': '복용방법',
-          'value': info['it_takeway'].toString(),
-        });
-      }
-
-      final pointText = PointHelper.calculatePointText(
-        pointType: info['it_point_type'],
-        point: info['it_point'],
-        usePoint: _usePointConfig ?? true,
-        price: _product!.price,
+    if (mainSpecs.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: healthDp(context, 20)),
+          Divider(
+            height: healthDp(context, 1),
+            thickness: healthDp(context, 1),
+            color: Colors.grey.shade300,
+          ),
+          SizedBox(height: healthDp(context, 10)),
+        ],
       );
-
-      if (pointText != null && _product?.isInfluencerProduct != true) {
-        mainSpecs.add({
-          'label': '적립포인트',
-          'value': pointText,
-        });
-      }
     }
-
-    const deliverySpec = {
-      'label': '배송비',
-      'value': '주문시 결제',
-    };
 
     final specTextStyle = TextStyle(
       fontSize: healthSp(context, 12),
@@ -1122,10 +1095,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       children.add(buildSpecRow(mainSpecs[i]));
     }
 
-    if (mainSpecs.isNotEmpty) {
-      children.add(SizedBox(height: itemGap));
-    }
-    children.add(buildSpecRow(deliverySpec));
     children.add(SizedBox(height: healthDp(context, 20)));
     children.add(specDivider());
     children.add(SizedBox(height: healthDp(context, 10)));
@@ -1188,6 +1157,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ),
                     ),
                   ],
+                  SizedBox(width: healthDp(context, 8)),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: healthDp(context, 4)),
+                    child: _koreanMedicineBadge(),
+                  ),
                 ],
               ),
             ],

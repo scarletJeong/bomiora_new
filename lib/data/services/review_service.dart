@@ -104,6 +104,154 @@ class ReviewService {
     }
   }
 
+  /// 베스트 리뷰 목록 페이지 (`GET /api/user/reviews/main/best`)
+  ///
+  /// [page] 0부터. [mrNo]가 있으면 해당 리뷰가 속한 페이지로 맞춤.
+  static Future<Map<String, dynamic>> getMainHomeReviewsBest({
+    int page = 0,
+    int size = 5,
+    int? mrNo,
+  }) async {
+    try {
+      var query = 'page=$page&size=$size';
+      if (mrNo != null && mrNo > 0) {
+        query = '$query&mrNo=$mrNo';
+      }
+      final response = await ApiClient.get(
+        '${ApiEndpoints.mainHomeReviewsBest}?$query',
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        if (data['success'] != true) {
+          return {
+            'success': false,
+            'message':
+                data['message']?.toString() ?? '베스트 리뷰를 불러올 수 없습니다.',
+            'reviews': <MainHomeReviewModel>[],
+            'currentPage': 0,
+            'totalPages': 0,
+            'totalElements': 0,
+            'hasNext': false,
+            'focusPage': null,
+            'stats': const MainReviewStats(),
+          };
+        }
+        final raw = data['reviews'];
+        final list = <MainHomeReviewModel>[];
+        if (raw is List) {
+          for (final e in raw) {
+            if (e is Map) {
+              list.add(
+                MainHomeReviewModel.fromJson(Map<String, dynamic>.from(e)),
+              );
+            }
+          }
+        }
+        final statsRaw = data['stats'];
+        return {
+          'success': true,
+          'reviews': list,
+          'currentPage': _parseInt(data['currentPage'], page),
+          'totalPages': _parseInt(data['totalPages'], 0),
+          'totalElements': _parseInt(data['totalElements'], 0),
+          'hasNext': data['hasNext'] == true,
+          'focusPage': data['focusPage'] == null
+              ? null
+              : _parseInt(data['focusPage'], page),
+          'stats': MainReviewStats.fromJson(
+            statsRaw is Map ? Map<String, dynamic>.from(statsRaw) : null,
+          ),
+        };
+      }
+      return {
+        'success': false,
+        'message': '베스트 리뷰를 불러올 수 없습니다.',
+        'reviews': <MainHomeReviewModel>[],
+        'currentPage': 0,
+        'totalPages': 0,
+        'totalElements': 0,
+        'hasNext': false,
+        'focusPage': null,
+        'stats': const MainReviewStats(),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '베스트 리뷰 조회 중 오류: $e',
+        'reviews': <MainHomeReviewModel>[],
+        'currentPage': 0,
+        'totalPages': 0,
+        'totalElements': 0,
+        'hasNext': false,
+        'focusPage': null,
+        'stats': const MainReviewStats(),
+      };
+    }
+  }
+
+  /// 전체 승인 리뷰 목록 (`GET /api/user/reviews`)
+  ///
+  /// [rvkind] `'general'` | `'supporter'` | null(전체)
+  /// [page] 0부터
+  static Future<Map<String, dynamic>> getAllReviews({
+    String? rvkind,
+    int page = 0,
+    int size = 6,
+  }) async {
+    try {
+      var query = 'page=$page&size=$size';
+      if (rvkind != null && rvkind.isNotEmpty) {
+        query = '$query&rvkind=$rvkind';
+      }
+      final response = await ApiClient.get('/api/user/reviews?$query');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<ReviewModel> reviews = [];
+        if (data['reviews'] != null) {
+          reviews = (data['reviews'] as List)
+              .map((review) => ReviewModel.fromJson(review))
+              .toList();
+        }
+        return {
+          'success': true,
+          'reviews': reviews,
+          'currentPage': _parseInt(data['currentPage'], page),
+          'totalPages': _parseInt(data['totalPages'], 0),
+          'totalElements': _parseInt(data['totalElements'], 0),
+          'hasNext': data['hasNext'] == true,
+        };
+      }
+      final errorData = json.decode(response.body);
+      return {
+        'success': false,
+        'message': errorData['message'] ?? '리뷰 목록을 불러올 수 없습니다.',
+        'reviews': <ReviewModel>[],
+        'currentPage': 0,
+        'totalPages': 0,
+        'totalElements': 0,
+        'hasNext': false,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '리뷰 목록 조회 중 오류가 발생했습니다: $e',
+        'reviews': <ReviewModel>[],
+        'currentPage': 0,
+        'totalPages': 0,
+        'totalElements': 0,
+        'hasNext': false,
+      };
+    }
+  }
+
+  static int _parseInt(dynamic v, [int fallback = 0]) {
+    if (v == null) return fallback;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? fallback;
+  }
+
   /// 특정 상품의 리뷰 목록 조회
   /// 
   /// [itId] 상품 ID

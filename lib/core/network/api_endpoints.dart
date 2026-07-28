@@ -65,6 +65,8 @@ class ApiEndpoints {
 
   // 리뷰 관련 — 메인 홈 베스트 리뷰는 Node `bomiora_main_review` (쿼리: ?size=8)
   static const String mainHomeReviews = '/api/user/reviews/main';
+  /// 베스트 리뷰 목록 페이지 (?page=0&size=5&mrNo=)
+  static const String mainHomeReviewsBest = '/api/user/reviews/main/best';
 
   static const String productReviews = '/api/reviews/product';
   static const String addReview = '/api/reviews/add';

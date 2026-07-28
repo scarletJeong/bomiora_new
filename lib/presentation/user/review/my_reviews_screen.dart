@@ -6,6 +6,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/confirm_dialog.dart';
 import '../../common/widgets/centered_empty_state.dart';
+import '../../common/widgets/app_star_rating.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -87,13 +88,6 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     if (r.isRvkind.toLowerCase() == 'general') return true;
     final raw = (r.itKind ?? '').trim().toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
     return raw == 'general' || raw == 'normal' || raw == 'goods' || raw == 'product';
-  }
-
-  /// 일반 상품 리뷰 카드 상단 만족도 — `total_is_score` (없으면 0)
-  double _generalReviewTotalRating(ReviewModel r) {
-    final t = r.totalIsScore;
-    if (t == null || t <= 0) return 0.0;
-    return t.clamp(0.0, 5.0);
   }
 
   /// 정수는 `4`, 0.1 단위 소수는 `3.1`, `4.8` 형태로 표시
@@ -292,79 +286,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
     return '${r.isTime == null ? '-' : DateDisplayFormatter.formatYmd(r.isTime!)} 작성';
   }
 
-  double _snapTenthForDisplay(double raw) {
-    if (raw <= 0) return 0.0;
-    final c = raw.clamp(0.1, 5.0);
-    return (c * 10).round() / 10.0;
-  }
-
-  Widget _fractionalStar(double fill, double size) {
-    final f = fill.clamp(0.0, 1.0);
-    if (f <= 0) {
-      return Icon(Icons.star_border_rounded, color: _kPink, size: size);
-    }
-    if (f >= 1 - 1e-9) {
-      return Icon(Icons.star_rounded, color: _kPink, size: size);
-    }
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          Icon(Icons.star_border_rounded, color: _kPink, size: size),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ClipRect(
-              child: SizedBox(
-                width: size * f,
-                height: size,
-                child: OverflowBox(
-                  alignment: Alignment.centerLeft,
-                  minWidth: size,
-                  maxWidth: size,
-                  minHeight: size,
-                  maxHeight: size,
-                  child: Icon(Icons.star_rounded, color: _kPink, size: size),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _starsRowFromRating(double rating, {double size = 14}) {
-    final r = _snapTenthForDisplay(rating.clamp(0.0, 5.0));
-    final gap = size * 4 / 24;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: gap,
-      children: List.generate(5, (i) => _fractionalStar(r - i, size)),
-    );
-  }
-
-  Widget _starsRowInt(int score, {required double size}) {
-    final s = score.clamp(0, 5);
-    final gap = size * 4 / 24;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: gap,
-      children: List.generate(5, (i) {
-        return Icon(
-          i < s ? Icons.star_rounded : Icons.star_border_rounded,
-          size: size,
-          color: i < s ? _kPink : const Color(0xFFD2D2D2),
-        );
-      }),
-    );
-  }
-
   /// 비대면 카드 — 평점 2×2 그리드(효과·가성비 / 향·맛·복용 편의성), 셀마다 별 5개.
   Widget _prescriptionRatingCell(String label, double score) {
-    final s = score.round().clamp(0, 5);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(healthDp(context, 12)),
@@ -386,7 +309,12 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             ),
           ),
           SizedBox(height: healthDp(context, 4)),
-          _starsRowInt(s, size: healthDp(context, 16)),
+          AppStarRating(
+            rating: score,
+            starSize: healthDp(context, 16),
+            gap: healthDp(context, 16) * 4 / 24,
+            color: _kPink,
+          ),
         ],
       ),
     );
@@ -705,12 +633,8 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Widget _expandedGeneralCard(ReviewModel r) {
-    final starScore = _generalReviewTotalRating(r);
-    final body = [
-      r.isPositiveReviewText,
-      r.isNegativeReviewText,
-      if (_hasReviewBodyText(r.isMoreReviewText)) r.isMoreReviewText,
-    ].map(_reviewBodyPlain).whereType<String>().join('\n\n');
+    final starScore = (r.averageScore ?? 0).clamp(0.0, 5.0);
+    final body = _reviewBodyPlain(r.isPositiveReviewText) ?? '';
 
     return Container(
       width: double.infinity,
@@ -729,13 +653,19 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _productHeaderRow(r),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 2)),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _starsRowFromRating(starScore, size: healthDp(context, 18)),
+                AppStarRating(
+                  rating: starScore,
+                  starSize: healthDp(context, 18),
+                  gap: healthDp(context, 18) * 4 / 24,
+                  color: _kPink,
+                  preciseFill: true,
+                ),
                 SizedBox(width: healthDp(context, 8)),
                 Text(
                   _formatGeneralReviewRating(starScore),
