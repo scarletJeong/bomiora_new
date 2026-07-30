@@ -9,9 +9,9 @@ import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
-import 'health_profile_done_screen.dart';
 
 class HealthProfileFormScreen extends StatefulWidget {
   /// [HealthProfileListScreen] 등에서 push 시 `RouteSettings.name`으로 넣어야 함.
@@ -23,7 +23,7 @@ class HealthProfileFormScreen extends StatefulWidget {
   final List<int>? initialSectionIndices;
   /// 앱바 제목용 (예: 카드 제목이 `건강 정보`와 다를 때 별도 제목). null이면 해당 섹션의 `title` 사용.
   final String? editScreenTitle;
-  /// 전체 문진표 모드에서 처음 열 페이지 (0~4). `initialSectionIndices`가 있으면 무시됩니다.
+  /// 전체 문진표 모드에서 처음 열 페이지 (0~3). `initialSectionIndices`가 있으면 무시됩니다.
   final int? initialWizardIndex;
 
   const HealthProfileFormScreen({
@@ -59,10 +59,10 @@ class _Answer6MenuLine extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
         decoration: BoxDecoration(
           border: showBottomDivider
-              ? const Border(
+              ? Border(
                   bottom: BorderSide(
-                    width: 0.3,
-                    color: Color(0x7FD2D2D2),
+                    width: healthDp(context, 0.3),
+                    color: const Color(0x7FD2D2D2),
                   ),
                 )
               : null,
@@ -109,6 +109,22 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   OverlayEntry? _answer6MenuOverlay;
   ScrollController? _answer6MenuScrollController;
 
+  /// BMI 안내 팝업 (현재 체중 라벨 아이콘)
+  final GlobalKey _bmiGuideIconKey = GlobalKey();
+  OverlayEntry? _bmiGuideOverlay;
+
+  /// 주로 하는 운동 > 기타 커스텀 종목
+  final List<String> _exerciseOthers = [];
+  bool _exerciseOtherDraftOpen = false;
+  final TextEditingController _exerciseOtherDraftCtrl = TextEditingController();
+  final FocusNode _exerciseOtherDraftFocus = FocusNode();
+
+  /// 복용중인 약 > 기타 약명
+  final List<String> _medicationOthers = [];
+  bool _medicationOtherDraftOpen = false;
+  final TextEditingController _medicationOtherDraftCtrl = TextEditingController();
+  final FocusNode _medicationOtherDraftFocus = FocusNode();
+
   /// 생년월일 `TextFormField` 재마운트용(프리필/기존 데이터 로드 시만 증가). 입력마다 바꾸면 포커스가 끊김.
   int _wizardBirthFieldKeySeed = 0;
 
@@ -119,14 +135,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   static const Color _pfPinkSoft = Color(0x0CFF3787);
   static const Color _pfBorder = Color(0x7FD2D2D2);
   static const int _answer6MenuMaxVisibleRows = 4;
-  static const double _answer6MenuRowGap = 5;
-  static const double _answer6MenuRowExtent = 46; // vertical padding 10*2 + fontSize 16 × height 1.2
   static const List<String> _stepLabels = [
     '기본 정보',
     '식습관',
     '운동습관',
     '건강 정보',
-    '다이어트 약',
   ];
 
   static const List<String> _wizardStepIconAssets = [
@@ -134,7 +147,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     AppAssets.profile2,
     AppAssets.profile3,
     AppAssets.profile4,
-    AppAssets.profile5,
   ];
 
   @override
@@ -162,6 +174,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     
     _loadUser();
     _initializeSections();
+    _exerciseOtherDraftFocus.addListener(_onExerciseOtherDraftFocusChange);
+    _medicationOtherDraftFocus.addListener(_onMedicationOtherDraftFocusChange);
+  }
+
+  void _onExerciseOtherDraftFocusChange() {
+    if (_exerciseOtherDraftFocus.hasFocus) return;
+    _commitExerciseOtherDraft();
+  }
+
+  void _onMedicationOtherDraftFocusChange() {
+    if (_medicationOtherDraftFocus.hasFocus) return;
+    _commitMedicationOtherDraft();
   }
 
   void _loadUser() async {
@@ -278,12 +302,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         questions: [
           HealthProfileQuestion(
             id: 'answer_7',
-            question: '하루 끼니',
+            question: '하루 식사 횟수',
             type: 'grid',
             options: HealthProfileQuestionnaireOptions.mealsPerDay,
-            columns: 2,
+            columns: 4,
           ),
-          HealthProfileQuestion(id: 'answer_7_1', question: '식사 시간', type: 'mealtime'),
+          HealthProfileQuestion(id: 'answer_7_1', question: '식사시간', type: 'mealtime'),
           HealthProfileQuestion(
             id: 'answer_8',
             question: '식습관',
@@ -303,12 +327,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         ],
       ),
       HealthProfileSection(
-        title: '운동 빈도',
+        title: '운동습관',
         description: '',
         questions: [
           HealthProfileQuestion(
             id: 'answer_10',
-            question: '운동 빈도',
+            question: '운동습관',
             type: 'grid',
             options: HealthProfileQuestionnaireOptions.exerciseFrequency,
             columns: 2,
@@ -324,12 +348,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         ],
       ),
       HealthProfileSection(
-        title: '현재 질환',
+        title: '건강 정보',
         description: '',
         questions: [
           HealthProfileQuestion(
             id: 'answer_11',
-            question: '현재 질환',
+            question: '질병',
             type: 'grid',
             options: HealthProfileQuestionnaireOptions.diseases,
             columns: 2,
@@ -337,7 +361,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           ),
           HealthProfileQuestion(
             id: 'answer_12',
-            question: '복용 중인 약',
+            question: '복용중인 약',
             type: 'grid',
             options: HealthProfileQuestionnaireOptions.medications,
             columns: 2,
@@ -345,20 +369,14 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           ),
           HealthProfileQuestion(
             id: 'answer_12_other',
-            question: '기타 (복용 중인 약)',
+            question: '기타 약 정보',
             type: 'text',
-            hint: '기타 약물명을 입력해주세요',
+            hint: '복용중인 약 이름을 입력해주세요',
             isRequired: false,
           ),
-        ],
-      ),
-      HealthProfileSection(
-        title: '다이어트 약',
-        description: '',
-        questions: [
           HealthProfileQuestion(
             id: 'answer_13',
-            question: '다이어트 약',
+            question: '다이어트약 복용 경험',
             type: 'radio',
             options: ['있음', '없음'],
           ),
@@ -386,11 +404,22 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     } else {
       _formData['answer_2'] = rawGender;
     }
-    _formData['answer_3'] = profile.answer3;
+    // answer3: 신규 UI는 목표 체중. 레거시(감량량)면 현재체중−감량으로 변환해 표시.
+    final rawGoalOrLoss = profile.answer3.trim();
+    final a3 = double.tryParse(rawGoalOrLoss.replaceAll(',', ''));
+    final w = double.tryParse(profile.answer5.trim().replaceAll(',', ''));
+    if (a3 != null && w != null && a3 > 0 && a3 < 30) {
+      final goal = w - a3;
+      _formData['answer_3'] = goal == goal.roundToDouble()
+          ? goal.toStringAsFixed(0)
+          : goal.toStringAsFixed(1);
+    } else {
+      _formData['answer_3'] = profile.answer3;
+    }
     _formData['answer_4'] = profile.answer4;
     _formData['answer_5'] = profile.answer5;
     _formData['answer_6'] = _normalizeDietPeriodOption(profile.answer6);
-    _formData['answer_7'] = profile.answer7;
+    _formData['answer_7'] = _normalizeMealsPerDay(profile.answer7);
     
     // 식사시간 파싱 (| 기준으로 분리)
     // 예: 122||222|555,666,777 -> 1식: 122, 2식: (없음), 3식: 222, 기타: 555,666,777
@@ -406,14 +435,22 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     
     // answer_8 (식습관) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer8.isNotEmpty) {
-      _formData['answer_8'] = profile.answer8.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      _formData['answer_8'] = profile.answer8
+          .split('|')
+          .map(_normalizeChipOptionLabel)
+          .where((e) => e.isNotEmpty)
+          .toList();
     } else {
       _formData['answer_8'] = [];
     }
     
     // answer_9 (자주 먹는 음식) - 파이프(|)로 구분된 문자열을 List로 변환
     if (profile.answer9.isNotEmpty) {
-      _formData['answer_9'] = profile.answer9.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      _formData['answer_9'] = profile.answer9
+          .split('|')
+          .map(_normalizeChipOptionLabel)
+          .where((e) => e.isNotEmpty)
+          .toList();
     } else {
       _formData['answer_9'] = [];
     }
@@ -422,7 +459,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       profile.answer10,
       answer10TypesRaw: profile.answer102,
       setFrequency: (f) => _formData['answer_10'] = f,
-      setTypes: (t) => _formData['answer_10_types'] = t,
+      setTypes: (t) => _applyLoadedExerciseTypes(t),
     );
 
     bool rawMeansNoHealth(String raw) {
@@ -442,6 +479,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           .map((e) {
             if (e == '없음' || e == '해당없음') return '해당 없음';
             if (e == '심혈관') return '심혈증';
+            if (e.contains('내분비') &&
+                (e.contains('신장') || e.contains('대사') || e.contains('영양'))) {
+              return '내분비, 영양, 대사질환';
+            }
             return e;
           })
           .toList();
@@ -449,28 +490,35 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
     // answer_11 (질병)
     if (rawMeansNoHealth(profile.answer11)) {
-      _formData['answer_11'] = <String>['해당 없음'];
+      _formData['answer_11'] = <String>['해당없음'];
     } else if (profile.answer11.isNotEmpty) {
       _formData['answer_11'] = normalizeDiseaseMedicationParts(
         profile.answer11.split('|'),
-      );
+      ).map((e) => e == '해당 없음' ? '해당없음' : e).toList();
     } else {
-      _formData['answer_11'] = <String>['해당 없음'];
+      _formData['answer_11'] = <String>['해당없음'];
     }
 
     // 복용중인 약 (기타 파싱 유지)
     if (profile.answer12.isNotEmpty) {
-      if (profile.answer12.contains('|')) {
-        final parts = profile.answer12.split('|');
+      if (profile.answer12.contains('|') ||
+          profile.answer12.contains('기타:')) {
+        final parts = profile.answer12.contains('|')
+            ? profile.answer12.split('|')
+            : [profile.answer12];
         final answer12List = <String>[];
-        String? otherValue;
+        final otherValues = <String>[];
 
         for (final part in parts) {
           final trimmed = part.trim();
           if (trimmed.startsWith('기타:')) {
-            otherValue = trimmed.substring(3).trim();
-            answer12List.add('기타');
-          } else {
+            final rawOther = trimmed.substring(3).trim();
+            for (final o in rawOther.split(RegExp(r'[,|]'))) {
+              final t = o.trim();
+              if (t.isNotEmpty && !otherValues.contains(t)) otherValues.add(t);
+            }
+            if (!answer12List.contains('기타')) answer12List.add('기타');
+          } else if (trimmed.isNotEmpty) {
             answer12List.add(trimmed);
           }
         }
@@ -480,15 +528,22 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             (normalized.length == 1 && normalized.first == '해당 없음')) {
           _formData['answer_12'] = <String>['해당 없음'];
           _formData.remove('answer_12_other');
+          _medicationOthers.clear();
+          _medicationOtherDraftOpen = false;
         } else {
           _formData['answer_12'] = normalized;
-          if (otherValue != null && otherValue.isNotEmpty) {
-            _formData['answer_12_other'] = otherValue;
-          }
+          _medicationOthers
+            ..clear()
+            ..addAll(otherValues);
+          _medicationOtherDraftOpen =
+              normalized.contains('기타') && otherValues.isEmpty;
+          _formData['answer_12_other'] = otherValues.join(', ');
         }
       } else {
         if (profile.answer12 == '기타') {
           _formData['answer_12'] = ['기타'];
+          _medicationOthers.clear();
+          _medicationOtherDraftOpen = true;
         } else if (rawMeansNoHealth(profile.answer12)) {
           _formData['answer_12'] = <String>['해당 없음'];
         } else {
@@ -555,6 +610,301 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       }
     }
     return t;
+  }
+
+  String _normalizeMealsPerDay(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    const legacy = {
+      '하루 1식': '1회',
+      '하루 2식': '2회',
+      '하루 3식': '3회',
+      '하루 3식 이상': '3회 이상',
+      '하루 4식': '3회 이상',
+    };
+    if (legacy.containsKey(t)) return legacy[t]!;
+    final options = HealthProfileQuestionnaireOptions.mealsPerDay;
+    if (options.contains(t)) return t;
+    return t;
+  }
+
+  /// 칩 라벨 공백/개행·오타(다이터트) 정규화
+  String _normalizeChipOptionLabel(String raw) {
+    var s = raw.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (s.contains('샐러드') &&
+        (s.contains('다이어트') || s.contains('다이터트'))) {
+      return '샐러드/다이어트식단';
+    }
+    return s;
+  }
+
+  void _applyLoadedExerciseTypes(List<String> loaded) {
+    final known = HealthProfileQuestionnaireOptions.exerciseTypes.toSet();
+    final selected = <String>[];
+    final others = <String>[];
+    for (final raw in loaded) {
+      final t = raw.trim();
+      if (t.isEmpty) continue;
+      if (t == '기타') {
+        if (!selected.contains('기타')) selected.add('기타');
+        continue;
+      }
+      if (known.contains(t)) {
+        if (!selected.contains(t)) selected.add(t);
+      } else {
+        if (!others.contains(t)) others.add(t);
+      }
+    }
+    if (others.isNotEmpty && !selected.contains('기타')) {
+      selected.add('기타');
+    }
+    _formData['answer_10_types'] = selected;
+    _exerciseOthers
+      ..clear()
+      ..addAll(others);
+    _exerciseOtherDraftOpen = selected.contains('기타') && others.isEmpty;
+    _exerciseOtherDraftCtrl.clear();
+  }
+
+  bool _isExerciseOtherSelected() {
+    final raw = _formData['answer_10_types'];
+    if (raw is List) return raw.map((e) => e.toString()).contains('기타');
+    return raw?.toString() == '기타';
+  }
+
+  void _clearExerciseOthers() {
+    _exerciseOthers.clear();
+    _exerciseOtherDraftOpen = false;
+    _exerciseOtherDraftCtrl.clear();
+  }
+
+  void _commitExerciseOtherDraft() {
+    final text = _exerciseOtherDraftCtrl.text.trim();
+    if (text.isEmpty) return;
+    if (_exerciseOthers.contains(text)) {
+      _exerciseOtherDraftCtrl.clear();
+      setState(() => _exerciseOtherDraftOpen = false);
+      return;
+    }
+    setState(() {
+      _exerciseOthers.add(text);
+      _exerciseOtherDraftCtrl.clear();
+      _exerciseOtherDraftOpen = false;
+    });
+  }
+
+  void _removeExerciseOtherAt(int index) {
+    setState(() {
+      if (index < 0 || index >= _exerciseOthers.length) return;
+      _exerciseOthers.removeAt(index);
+      if (_exerciseOthers.isEmpty && _isExerciseOtherSelected()) {
+        _exerciseOtherDraftOpen = true;
+      }
+    });
+  }
+
+  void _openExerciseOtherDraft() {
+    final text = _exerciseOtherDraftCtrl.text.trim();
+    if (text.isNotEmpty && !_exerciseOthers.contains(text)) {
+      _exerciseOthers.add(text);
+      _exerciseOtherDraftCtrl.clear();
+    }
+    setState(() {
+      _exerciseOtherDraftOpen = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _exerciseOtherDraftFocus.requestFocus();
+    });
+  }
+
+  void _syncMedicationOtherFormData() {
+    _formData['answer_12_other'] = [
+      ..._medicationOthers,
+      if (_medicationOtherDraftCtrl.text.trim().isNotEmpty)
+        _medicationOtherDraftCtrl.text.trim(),
+    ].join(', ');
+  }
+
+  void _clearMedicationOthers() {
+    _medicationOthers.clear();
+    _medicationOtherDraftOpen = false;
+    _medicationOtherDraftCtrl.clear();
+    _formData['answer_12_other'] = '';
+  }
+
+  void _commitMedicationOtherDraft() {
+    final text = _medicationOtherDraftCtrl.text.trim();
+    if (text.isEmpty) return;
+    if (_medicationOthers.contains(text)) {
+      _medicationOtherDraftCtrl.clear();
+      setState(() {
+        _medicationOtherDraftOpen = false;
+        _syncMedicationOtherFormData();
+      });
+      return;
+    }
+    setState(() {
+      _medicationOthers.add(text);
+      _medicationOtherDraftCtrl.clear();
+      _medicationOtherDraftOpen = false;
+      _syncMedicationOtherFormData();
+    });
+  }
+
+  void _removeMedicationOtherAt(int index) {
+    setState(() {
+      if (index < 0 || index >= _medicationOthers.length) return;
+      _medicationOthers.removeAt(index);
+      if (_medicationOthers.isEmpty && _isMedicationOtherSelected()) {
+        _medicationOtherDraftOpen = true;
+      }
+      _syncMedicationOtherFormData();
+    });
+  }
+
+  bool _isMedicationOtherSelected() {
+    final raw = _formData['answer_12'];
+    if (raw is List) return raw.map((e) => e.toString()).contains('기타');
+    return raw?.toString() == '기타';
+  }
+
+  void _openMedicationOtherDraft() {
+    final text = _medicationOtherDraftCtrl.text.trim();
+    if (text.isNotEmpty && !_medicationOthers.contains(text)) {
+      _medicationOthers.add(text);
+      _medicationOtherDraftCtrl.clear();
+    }
+    setState(() {
+      _medicationOtherDraftOpen = true;
+      _syncMedicationOtherFormData();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _medicationOtherDraftFocus.requestFocus();
+    });
+  }
+
+  void _hideBmiGuideOverlay() {
+    _bmiGuideOverlay?.remove();
+    _bmiGuideOverlay = null;
+  }
+
+  void _toggleBmiGuideOverlay() {
+    if (_bmiGuideOverlay != null) {
+      _hideBmiGuideOverlay();
+      return;
+    }
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+    final iconCtx = _bmiGuideIconKey.currentContext;
+    if (iconCtx == null) return;
+    final box = iconCtx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final overlayBox = overlay.context.findRenderObject() as RenderBox?;
+    if (overlayBox == null) return;
+
+    final iconTopLeft = box.localToGlobal(Offset.zero, ancestor: overlayBox);
+    final iconSize = box.size;
+    // 라벨 아래·아이콘 왼쪽 정렬에 가깝게 배치
+    final left = (iconTopLeft.dx - healthDp(context, 8))
+        .clamp(healthDp(context, 16), double.infinity);
+    final top = iconTopLeft.dy + iconSize.height + healthDp(context, 8);
+
+    _bmiGuideOverlay = OverlayEntry(
+      builder: (ctx) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _hideBmiGuideOverlay,
+                child: const ColoredBox(color: Colors.transparent),
+              ),
+            ),
+            Positioned(
+              left: left,
+              top: top,
+              child: Material(
+                color: Colors.transparent,
+                child: _buildBmiGuidePopup(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    overlay.insert(_bmiGuideOverlay!);
+  }
+
+  Widget _buildBmiGuidePopup() {
+    Widget row(Color color, String text) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: healthDp(context, 8),
+            height: healthDp(context, 8),
+            decoration: ShapeDecoration(
+              color: color,
+              shape: const OvalBorder(),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 4)),
+          Text(
+            text,
+            style: TextStyle(
+              color: const Color(0xFF898686),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.all(healthDp(context, 14)),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 15)),
+        ),
+        shadows: [
+          BoxShadow(
+            color: const Color(0x0C000000),
+            blurRadius: healthDp(context, 10),
+            offset: Offset(healthDp(context, 4), healthDp(context, 4)),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'BMI 상태 안내',
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          row(const Color(0xFF60A5FA), '저체중 (18.5 미만)'),
+          SizedBox(height: healthDp(context, 10)),
+          row(const Color(0xFF4ADE80), '정상 (18.5 ~ 22.9)'),
+          SizedBox(height: healthDp(context, 10)),
+          row(const Color(0xFFFACC15), '과체중 (23 ~ 24.9)'),
+          SizedBox(height: healthDp(context, 10)),
+          row(const Color(0xFFFB923C), '비만 (25 ~ 29.9)'),
+          SizedBox(height: healthDp(context, 10)),
+          row(const Color(0xFFF87171), '고도비만 (30 이상)'),
+        ],
+      ),
+    );
   }
 
   @override
@@ -627,14 +977,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _wizardStepQuestionsColumn(_sections[1], 1),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: healthDp(context, 20)),
-              child: Divider(
-                height: healthDp(context, 1),
-                thickness: healthDp(context, 1),
-                color: _pfBorder,
-              ),
-            ),
+            SizedBox(height: healthDp(context, 20)),
             _wizardStepQuestionsColumn(_sections[2], 2),
           ],
         ),
@@ -722,37 +1065,26 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       color: Colors.white,
       child: Stack(
         children: [
-          Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  healthDp(context, 27),
-                  healthDp(context, 12),
-                  healthDp(context, 27),
-                  0,
-                ),
-                child: _buildWizardStepIndicator(),
-              ),
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    clipBehavior: Clip.hardEdge,
-                    onPageChanged: (page) {
-                      setState(() => _currentPage = page);
-                    },
-                    itemCount: _sections.length,
-                    itemBuilder: (context, index) {
-                      return RepaintBoundary(
-                        child: _buildWizardStepScrollable(_sections[index], index),
-                      );
-                    },
+          Form(
+            key: _formKey,
+            child: PageView.builder(
+              controller: _pageController,
+              clipBehavior: Clip.hardEdge,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (page) {
+                setState(() => _currentPage = page);
+              },
+              itemCount: _sections.length,
+              itemBuilder: (context, index) {
+                return RepaintBoundary(
+                  child: _buildWizardStepScrollable(
+                    _sections[index],
+                    index,
+                    showBottomBar: true,
                   ),
-                ),
-              ),
-              _buildWizardBottomBar(),
-            ],
+                );
+              },
+            ),
           ),
           if (_isLoading)
             const Positioned.fill(
@@ -814,7 +1146,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     child: Container(
                       height: tabH,
                       decoration: BoxDecoration(
-                        border: Border.all(color: _pfPink),
+                        border: Border.all(color: _pfPink, width: healthDp(context, 1)),
                         borderRadius:
                             BorderRadius.circular(healthDp(context, 10)),
                       ),
@@ -873,108 +1205,222 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       children: [
         for (var i = 0; i < visible.length; i++) ...[
           _buildFigmaQuestionBlock(visible[i], stepIndex),
-          if (i < visible.length - 1)
-            Padding(
-              padding: EdgeInsets.only(
-                top: healthDp(context, 8),
-                bottom: healthDp(context, 16),
-              ),
-              child: Divider(
-                height: healthDp(context, 1),
-                thickness: healthDp(context, 1),
-                color: _pfBorder,
-              ),
-            ),
+          if (i < visible.length - 1) SizedBox(height: healthDp(context, 20)),
         ],
       ],
     );
   }
 
-  Widget _buildWizardStepScrollable(HealthProfileSection section, int stepIndex) {
+  Widget _buildWizardStepScrollable(
+    HealthProfileSection section,
+    int stepIndex, {
+    bool showBottomBar = false,
+  }) {
+    final isFullWizard =
+        widget.initialSectionIndices == null ||
+        widget.initialSectionIndices!.isEmpty;
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 20), healthDp(context, 27), healthDp(context, 16)),
-      child: _wizardStepQuestionsColumn(section, stepIndex),
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 10),
+        healthDp(context, 27),
+        healthDp(context, 16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isFullWizard) ...[
+            _buildWizardStepHero(stepIndex),
+            SizedBox(height: healthDp(context, 30)),
+          ],
+          _wizardStepQuestionsColumn(section, stepIndex),
+          if (showBottomBar) ...[
+            SizedBox(height: healthDp(context, 24)),
+            _buildWizardBottomBar(),
+            SizedBox(height: healthDp(context, 8)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Figma: `1/4` 배지 + "OOO님의 …" 헤드라인
+  Widget _buildWizardStepHero(int stepIndex) {
+    final name = (_currentUser?.name.trim().isNotEmpty ?? false)
+        ? _currentUser!.name.trim()
+        : '회원';
+    final total = _sections.length;
+    final step = stepIndex + 1;
+
+    final (String emphasis, String prefix, String suffix) = switch (stepIndex) {
+      0 => ('기본정보', '님의 맞춤 처방을 위해\n', '를 입력해 주세요'),
+      1 => ('식습관', '님의 ', '을 체크해볼게요.'),
+      2 => ('운동습관', '님의 ', '을 체크해볼게요.'),
+      _ => ('건강상태', '님의 ', '를 체크해볼게요.'),
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 14),
+            vertical: healthDp(context, 4),
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFAFAFA),
+            borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+          ),
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '$step',
+                  style: TextStyle(
+                    color: const Color(0xFF0F172A),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.43,
+                  ),
+                ),
+                TextSpan(
+                  text: '/$total',
+                  style: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                    height: 1.43,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: name,
+                style: TextStyle(
+                  color: const Color(0xFF0F172A),
+                  fontSize: healthSp(context, 22),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: healthSp(context, -2),
+                ),
+              ),
+              TextSpan(
+                text: prefix,
+                style: TextStyle(
+                  color: const Color(0xFF0F172A),
+                  fontSize: healthSp(context, 22),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: healthSp(context, -2),
+                ),
+              ),
+              TextSpan(
+                text: emphasis,
+                style: TextStyle(
+                  color: const Color(0xFF0F172A),
+                  fontSize: healthSp(context, 22),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: healthSp(context, -2),
+                ),
+              ),
+              TextSpan(
+                text: suffix,
+                style: TextStyle(
+                  color: const Color(0xFF0F172A),
+                  fontSize: healthSp(context, 22),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: healthSp(context, -2),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildWizardBottomBar() {
     final last = _currentPage >= _sections.length - 1;
-    final canFinish = last ? _isAllWizardStepsFilled() : true;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(healthDp(context, 27), healthDp(context, 4), healthDp(context, 27), healthDp(context, 20)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          if (_currentPage > 0)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _isLoading ? null : _previousPage,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  vertical: healthDp(context, 8),
-                  horizontal: healthDp(context, 4),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.chevron_left,
-                      color: Colors.grey[700],
-                      size: healthDp(context, 20),
-                    ),
-                    Text(
-                      '이전',
-                      style: TextStyle(
-                        color: const Color(0xFF898686),
-                        fontSize: healthSp(context, 16),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+    final stepFilled = _isWizardStepFilled(_currentPage);
+    final canProceed = last ? _isAllWizardStepsFilled() : stepFilled;
+    return Row(
+      children: [
+        if (_currentPage > 0) ...[
+          SizedBox(
+            width: healthDp(context, 45),
+            height: healthDp(context, 45),
+            child: OutlinedButton(
+              onPressed: _isLoading ? null : _previousPage,
+              style: OutlinedButton.styleFrom(
+                padding: EdgeInsets.zero,
+                side: BorderSide(width: healthDp(context, 1), color: const Color(0x7FD2D2D2)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 8)),
                 ),
               ),
-            )
-          else
-            SizedBox(width: healthDp(context, 72)),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _isLoading || !canFinish
-                ? null
-                : (last ? _submitForm : _nextPage),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                vertical: healthDp(context, 8),
-                horizontal: healthDp(context, 4),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    last ? '완료' : '다음',
-                    style: TextStyle(
-                      color: canFinish
-                          ? const Color(0xFFFF5A8D)
-                          : const Color(0xFFBDBDBD),
-                      fontSize: healthSp(context, 16),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(width: healthDp(context, 4)),
-                  Icon(
-                    last ? Icons.check : Icons.chevron_right,
-                    color: canFinish
-                        ? const Color(0xFFFF5A8D)
-                        : const Color(0xFFBDBDBD),
-                    size: healthDp(context, 20),
-                  ),
-                ],
+              child: Icon(
+                Icons.chevron_left,
+                color: const Color(0xFF898686),
+                size: healthDp(context, 22),
               ),
             ),
           ),
+          SizedBox(width: healthDp(context, 10)),
         ],
-      ),
+        Expanded(
+          child: SizedBox(
+            height: healthDp(context, 45),
+            child: FilledButton(
+              onPressed: _isLoading
+                  ? null
+                  : () {
+                      if (!canProceed) {
+                        AppToastOverlay.show(
+                          context,
+                          '모든 문진표를 작성해야합니다',
+                        );
+                        return;
+                      }
+                      if (last) {
+                        _submitForm();
+                      } else {
+                        _nextPage();
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: canProceed
+                    ? const Color(0xFFFF5A8D)
+                    : const Color(0xFFD2D2D2),
+                disabledBackgroundColor: const Color(0xFFD2D2D2),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: Text(
+                last ? '완료' : '다음',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: healthSp(context, 16),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1049,6 +1495,18 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           }
           if (q.id == 'answer_10') {
             if (!_nonEmptyList(_formData['answer_10_types'])) return false;
+            if (_isExerciseOtherSelected()) {
+              final hasCommitted =
+                  _exerciseOthers.any((e) => e.trim().isNotEmpty);
+              final hasDraft = _exerciseOtherDraftCtrl.text.trim().isNotEmpty;
+              if (!hasCommitted && !hasDraft) return false;
+            }
+          }
+          if (q.id == 'answer_12' && _isMedicationOtherSelected()) {
+            final hasCommitted =
+                _medicationOthers.any((e) => e.trim().isNotEmpty);
+            final hasDraft = _medicationOtherDraftCtrl.text.trim().isNotEmpty;
+            if (!hasCommitted && !hasDraft) return false;
           }
           break;
         case 'radio':
@@ -1062,9 +1520,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       }
     }
 
-    // 다이어트약 상세(있음) 필수값
+    // 다이어트약 상세(있음) 필수값 — 건강정보(3/4)에 포함
     final a13 = _formData['answer_13']?.toString().trim() ?? '';
-    if (stepIndex == 4 && (a13 == '있음' || a13 == '2')) {
+    if (stepIndex == 3 && (a13 == '있음' || a13 == '2')) {
       if (!_nonEmptyString(_formData['answer_13_medicine'])) return false;
       if (!_nonEmptyString(_formData['answer_13_period'])) return false;
       if (!_nonEmptyString(_formData['answer_13_dosage'])) return false;
@@ -1091,125 +1549,73 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   bool _showPerQuestionCaption(HealthProfileQuestion q, int stepIndex) {
     if (q.type == 'wizard_basic') return false;
-    if (q.type == 'radio' && q.id == 'answer_13') return false;
-    if (q.type == 'mealtime') return true;
-    // 전체 마법사: 섹션 첫 그리드는 단계 제목과 중복되면 캡션 생략(운동 빈도만).
-    // 부분 수정·식습관+운동 병합: 단계 제목이 없으므로 answer_10(운동 빈도) 캡션도 표시.
-    final isFullWizard = widget.initialSectionIndices == null ||
-        widget.initialSectionIndices!.isEmpty;
-    if (isFullWizard && _isFirstVisibleInStep(stepIndex, q.id)) {
-      if (q.type == 'grid' && q.id != 'answer_10_types') return false;
-    }
+    // 기타 약 정보는 전용 카드 헤더를 쓰므로 바깥 캡션 생략
+    if (q.id == 'answer_12_other') return false;
     return true;
   }
 
   Widget _buildFigmaQuestionBlock(HealthProfileQuestion question, int stepIndex) {
     final hintInlineIds = const <String>{
-      'answer_12', // 복용 중인 약
-      'answer_10_types', // 주로 하는 운동
-      'answer_8', // 식습관
-      'answer_9', // 자주 먹는 음식
-      'answer_11', // 질병
+      'answer_12',
+      'answer_10_types',
+      'answer_8',
+      'answer_9',
+      'answer_11',
     };
-    final showInlineMultipleHint = question.allowMultiple && hintInlineIds.contains(question.id);
-    final inlineHintRightAlignedIds = const <String>{};
-    final inlineHintRightAligned =
-        showInlineMultipleHint && inlineHintRightAlignedIds.contains(question.id);
+    final showInlineMultipleHint =
+        question.allowMultiple && hintInlineIds.contains(question.id);
 
     return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 24)),
+      padding: EdgeInsets.only(bottom: healthDp(context, 4)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if ((widget.initialSectionIndices == null ||
-                  widget.initialSectionIndices!.isEmpty) &&
-              _isFirstVisibleInStep(stepIndex, question.id)) ...[
-            _buildFigmaStepHeading(stepIndex),
-            SizedBox(height: healthDp(context, 20)),
-          ],
           if (_showPerQuestionCaption(question, stepIndex) &&
               question.type != 'mealtime') ...[
-            _figmaTitleLeadingBarRow(
+            Row(
               crossAxisAlignment: CrossAxisAlignment.center,
-              child: showInlineMultipleHint
-                  ? (inlineHintRightAligned
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                question.question,
-                                style: _figmaSectionTitleStyle(),
-                              ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.only(left: healthDp(context, 8)),
-                              child: Text(
-                                '*중복선택가능',
-                                style: _figmaMultiHintStyle(context),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: healthDp(context, 5),
-                          runSpacing: healthDp(context, 4),
-                          children: [
-                            Text(
-                              question.question,
-                              style: _figmaSectionTitleStyle(),
-                            ),
-                            Text(
-                              '*중복선택가능',
-                              style: _figmaMultiHintStyle(context),
-                            ),
-                          ],
-                        ))
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            question.question,
-                            style: _figmaSectionTitleStyle(),
-                          ),
-                        ),
-                        if (question.allowMultiple)
-                          Padding(
-                            padding:
-                                EdgeInsets.only(left: healthDp(context, 8)),
-                            child: Text(
-                              '*중복선택가능',
-                              style: _figmaMultiHintStyle(context),
-                            ),
-                          ),
-                      ],
-                    ),
-            ),
-            SizedBox(height: healthDp(context, 20)),
-          ],
-          if (question.type == 'mealtime') ...[
-            SizedBox(height: healthDp(context, 8)),
-            _figmaTitleLeadingBarRow(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: healthDp(context, 5),
-                runSpacing: healthDp(context, 4),
-                children: [
-                  Text(
-                    '식사 시간',
-                    style: _figmaSectionTitleStyle(),
+              children: [
+                Text(
+                  question.question,
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+                if (showInlineMultipleHint) ...[
+                  SizedBox(width: healthDp(context, 10)),
                   Text(
-                    '*해당되는 입력란에만 입력하세요',
+                    '*중복선택가능',
                     style: _figmaMultiHintStyle(context),
                   ),
                 ],
-              ),
+              ],
             ),
-            SizedBox(height: healthDp(context, 20)),
+            SizedBox(height: healthDp(context, 10)),
+          ],
+          if (question.type == 'mealtime') ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  '식사시간',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(width: healthDp(context, 10)),
+                Text(
+                  '*해당되는 입력란에만 입력하세요',
+                  style: _figmaMultiHintStyle(context),
+                ),
+              ],
+            ),
+            SizedBox(height: healthDp(context, 10)),
           ],
           _buildFigmaInput(question),
         ],
@@ -1298,190 +1704,583 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         return _buildFigmaMealtimeTable();
       case 'grid':
         return _buildFigmaGrid(question);
+      case 'text':
+        if (question.id == 'answer_12_other') {
+          return _buildOtherMedicationCard();
+        }
+        return _buildFigmaLabeledField(question);
       default:
         return _buildFigmaLabeledField(question);
     }
   }
 
+  Widget _buildOtherMedicationCard() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 14)),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 15)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '기타 약 정보',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openMedicationOtherDraft,
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                  child: Container(
+                    height: healthDp(context, 28),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 10),
+                    ),
+                    decoration: ShapeDecoration(
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+                        borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.add,
+                          size: healthDp(context, 14),
+                          color: const Color(0xFF898686),
+                        ),
+                        SizedBox(width: healthDp(context, 2)),
+                        Text(
+                          '추가',
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: healthDp(context, 14)),
+          Container(height: healthDp(context, 1), color: _pfBorder),
+          SizedBox(height: healthDp(context, 20)),
+          if (_medicationOthers.isNotEmpty)
+            Wrap(
+              spacing: healthDp(context, 8),
+              runSpacing: healthDp(context, 8),
+              children: [
+                for (var i = 0; i < _medicationOthers.length; i++)
+                  _buildMedicationOtherChip(_medicationOthers[i], i),
+              ],
+            ),
+          if (_medicationOtherDraftOpen || _medicationOthers.isEmpty) ...[
+            if (_medicationOthers.isNotEmpty)
+              SizedBox(height: healthDp(context, 8)),
+            _buildMedicationOtherDraftField(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMedicationOtherChip(String label, int index) {
+    return Container(
+      height: healthDp(context, 45),
+      padding: EdgeInsets.only(
+        left: healthDp(context, 14),
+        right: healthDp(context, 8),
+      ),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF8FAFC),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 50)),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(width: healthDp(context, 4)),
+          GestureDetector(
+            onTap: () => _removeMedicationOtherAt(index),
+            behavior: HitTestBehavior.opaque,
+            child: Icon(
+              Icons.close,
+              size: healthSp(context, 16),
+              color: const Color(0xFF898686),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMedicationOtherDraftField() {
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 45),
+      child: TextField(
+        controller: _medicationOtherDraftCtrl,
+        focusNode: _medicationOtherDraftFocus,
+        textInputAction: TextInputAction.done,
+        textAlignVertical: TextAlignVertical.center,
+        onSubmitted: (_) => _commitMedicationOtherDraft(),
+        onChanged: (_) {
+          _syncMedicationOtherFormData();
+          setState(() {});
+        },
+        style: TextStyle(
+          color: const Color(0xFF1A1A1E),
+          fontSize: healthSp(context, 14),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: '복용중인 약 이름을 입력해주세요',
+          hintStyle: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 14),
+            vertical: 0,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            borderSide: BorderSide(width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
+          ),
+        ),
+      ),
+    );
+  }
+
   double _figmaLabeledControlHeight(BuildContext context) =>
-      healthDp(context, 40);
+      healthDp(context, 45);
 
   Widget _buildFigmaBirthAndGender() {
+    final height = double.tryParse(
+      (_formData['answer_4']?.toString() ?? '').replaceAll(',', ''),
+    );
+    final weight = double.tryParse(
+      (_formData['answer_5']?.toString() ?? '').replaceAll(',', ''),
+    );
+    final goal = double.tryParse(
+      (_formData['answer_3']?.toString() ?? '').replaceAll(',', ''),
+    );
+    final remaining =
+        (weight != null && goal != null) ? weight - goal : null;
+    final bmi = (height != null && height > 0 && weight != null)
+        ? weight / ((height / 100) * (height / 100))
+        : null;
+    final bmiCat = _formBmiCategory(bmi);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _figmaLabeledRow(
-          label: '생년월일',
-          labelPadding: EdgeInsets.only(left: healthDp(context, 15)),
-          labelBoxHeight: _figmaLabeledControlHeight(context),
-          field: SizedBox(
-            height: _figmaLabeledControlHeight(context),
-            child: TextFormField(
-            key: ValueKey<int>(_wizardBirthFieldKeySeed),
-            initialValue: _birthYyyymmddDisplayForWizardField(),
-            textAlignVertical: TextAlignVertical.center,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(8),
-            ],
-            style: _figmaFieldTextStyle(context),
-            decoration: _figmaInputDecoration(context, hint: 'YYYYMMDD'),
-            onChanged: (v) {
-              final s = (v ?? '').trim();
-              if (!mounted) return;
-              setState(() {
-                _formData['answer_1'] = s;
-                if (s.length == 8) {
-                  _formData['birth_year'] = s.substring(0, 4);
-                  _formData['birth_month'] = s.substring(4, 6);
-                  _formData['birth_day'] = s.substring(6, 8);
-                } else {
-                  _formData['birth_year'] = '';
-                  _formData['birth_month'] = '';
-                  _formData['birth_day'] = '';
-                }
-              });
-            },
-            validator: (v) {
-              if (v == null || v.length != 8) return '생년월일 8자리를 입력해주세요';
-              final y = int.tryParse(v.substring(0, 4));
-              final m = int.tryParse(v.substring(4, 6));
-              final d = int.tryParse(v.substring(6, 8));
-              if (y == null || m == null || d == null) return '올바른 날짜를 입력해주세요';
-              try {
-                final dt = DateTime(y, m, d);
-                if (dt.isAfter(DateTime.now())) return '미래 날짜는 입력할 수 없습니다';
-              } catch (_) {
-                return '올바른 날짜를 입력해주세요';
-              }
-              return null;
-            },
-            onSaved: (v) {
-              final s = (v ?? '').trim();
-              if (s.length == 8) {
-                _formData['answer_1'] = s;
-                _formData['birth_year'] = s.substring(0, 4);
-                _formData['birth_month'] = s.substring(4, 6);
-                _formData['birth_day'] = s.substring(6, 8);
-              }
-            },
-          ),
+        // 생년월일 | 성별
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _figmaStackField(
+                label: '생년월일',
+                child: SizedBox(
+                  height: _figmaLabeledControlHeight(context),
+                  child: TextFormField(
+                    key: ValueKey<int>(_wizardBirthFieldKeySeed),
+                    initialValue: _birthYyyymmddDisplayForWizardField(),
+                    textAlignVertical: TextAlignVertical.center,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(8),
+                    ],
+                    style: _figmaFieldTextStyle(context),
+                    decoration:
+                        _figmaInputDecoration(context, hint: 'YYYYMMDD'),
+                    onChanged: (v) {
+                      final s = v.trim();
+                      if (!mounted) return;
+                      setState(() {
+                        _formData['answer_1'] = s;
+                        if (s.length == 8) {
+                          _formData['birth_year'] = s.substring(0, 4);
+                          _formData['birth_month'] = s.substring(4, 6);
+                          _formData['birth_day'] = s.substring(6, 8);
+                        } else {
+                          _formData['birth_year'] = '';
+                          _formData['birth_month'] = '';
+                          _formData['birth_day'] = '';
+                        }
+                      });
+                    },
+                    validator: (v) {
+                      if (v == null || v.length != 8) {
+                        return '생년월일 8자리를 입력해주세요';
+                      }
+                      final y = int.tryParse(v.substring(0, 4));
+                      final m = int.tryParse(v.substring(4, 6));
+                      final d = int.tryParse(v.substring(6, 8));
+                      if (y == null || m == null || d == null) {
+                        return '올바른 날짜를 입력해주세요';
+                      }
+                      try {
+                        final dt = DateTime(y, m, d);
+                        if (dt.isAfter(DateTime.now())) {
+                          return '미래 날짜는 입력할 수 없습니다';
+                        }
+                      } catch (_) {
+                        return '올바른 날짜를 입력해주세요';
+                      }
+                      return null;
+                    },
+                    onSaved: (v) {
+                      final s = (v ?? '').trim();
+                      if (s.length == 8) {
+                        _formData['answer_1'] = s;
+                        _formData['birth_year'] = s.substring(0, 4);
+                        _formData['birth_month'] = s.substring(4, 6);
+                        _formData['birth_day'] = s.substring(6, 8);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 8)),
+            Expanded(
+              child: _figmaStackField(
+                label: '성별',
+                child: FormField<String>(
+                  initialValue: _formData['answer_2']?.toString(),
+                  validator: (v) {
+                    final g =
+                        (v ?? _formData['answer_2']?.toString() ?? '').trim();
+                    if (g != 'M' && g != 'F') return '성별을 선택해주세요';
+                    return null;
+                  },
+                  onSaved: (_) {},
+                  builder: (state) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _genderChip(
+                            label: '여',
+                            selected: _formData['answer_2'] == 'F',
+                            onTap: () {
+                              setState(() => _formData['answer_2'] = 'F');
+                              state.didChange('F');
+                            },
+                          ),
+                        ),
+                        SizedBox(width: healthDp(context, 8)),
+                        Expanded(
+                          child: _genderChip(
+                            label: '남',
+                            selected: _formData['answer_2'] == 'M',
+                            onTap: () {
+                              setState(() => _formData['answer_2'] = 'M');
+                              state.didChange('M');
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: healthDp(context, 20)),
+        // 키
+        _figmaStackField(
+          label: '키',
+          child: _suffixField(
+            questionId: 'answer_4',
+            hint: '키',
+            suffix: 'cm',
+            requiredMsg: '키를 입력해주세요',
+            allowDecimal: true,
           ),
         ),
-        SizedBox(height: healthDp(context, 16)),
-        _figmaLabeledRow(
-          label: '성별',
-          labelAlign: TextAlign.right,
-          labelBoxHeight: _figmaLabeledControlHeight(context),
-          field: FormField<String>(
-            initialValue: _formData['answer_2']?.toString(),
-            validator: (v) {
-              final g = (v ?? _formData['answer_2']?.toString() ?? '').trim();
-              if (g != 'M' && g != 'F') return '성별을 선택해주세요';
-              return null;
-            },
-            onSaved: (_) {},
-            builder: (state) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
+        SizedBox(height: healthDp(context, 20)),
+        // 현재 체중 | 목표 체중
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _figmaStackField(
+                label: '현재 체중',
+                labelTrailing: GestureDetector(
+                  key: _bmiGuideIconKey,
+                  onTap: _toggleBmiGuideOverlay,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: healthDp(context, 4)),
+                    child: SvgPicture.asset(
+                      AppAssets.guideIcon,
+                      width: healthSp(context, 12),
+                      height: healthSp(context, 12),
+                    ),
+                  ),
+                ),
+                child: _suffixField(
+                  questionId: 'answer_5',
+                  hint: '체중',
+                  suffix: 'kg',
+                  requiredMsg: '현재 체중을 입력해주세요',
+                  allowDecimal: true,
+                ),
+              ),
+            ),
+            SizedBox(width: healthDp(context, 8)),
+            Expanded(
+              child: _figmaStackField(
+                label: '목표 체중',
+                child: _suffixField(
+                  questionId: 'answer_3',
+                  hint: '목표',
+                  suffix: 'kg',
+                  requiredMsg: '목표 체중을 입력해주세요',
+                  allowDecimal: true,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (remaining != null || bmi != null) ...[
+          SizedBox(height: healthDp(context, 10)),
+          Column(
+            children: [
+              if (remaining != null)
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 14),
+                    vertical: healthDp(context, 10),
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAFAFA),
+                    borderRadius:
+                        BorderRadius.circular(healthDp(context, 50)),
+                  ),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '목표 체중까지',
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' - ',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              '${remaining.abs() == remaining.abs().roundToDouble() ? remaining.abs().toStringAsFixed(0) : remaining.abs().toStringAsFixed(1)} kg ',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        TextSpan(
+                          text: remaining >= 0 ? '남았어요' : '초과했어요',
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              if (bmi != null && bmiCat != null) ...[
+                SizedBox(height: healthDp(context, 10)),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 14),
+                    vertical: healthDp(context, 10),
+                  ),
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFFAFAFA),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 50)),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: _genderChip(
-                          label: '여',
-                          selected: _formData['answer_2'] == 'F',
-                          onTap: () {
-                            setState(() => _formData['answer_2'] = 'F');
-                            state.didChange('F');
-                          },
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'BMI',
+                              style: TextStyle(
+                                color: const Color(0xFF898686),
+                                fontSize: healthSp(context, 12),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' ',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: healthSp(context, 12),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextSpan(
+                              text: bmi.toStringAsFixed(1),
+                              style: TextStyle(
+                                color: const Color(0xFF1A1A1E),
+                                fontSize: healthSp(context, 12),
+                                fontFamily: 'Gmarket Sans TTF',
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(width: healthDp(context, 10)),
-                      Expanded(
-                        child: _genderChip(
-                          label: '남',
-                          selected: _formData['answer_2'] == 'M',
-                          onTap: () {
-                            setState(() => _formData['answer_2'] = 'M');
-                            state.didChange('M');
-                          },
+                      SizedBox(width: healthDp(context, 4)),
+                      Container(
+                        width: healthDp(context, 1),
+                        height: healthDp(context, 14),
+                        color: const Color(0x7FD2D2D2),
+                      ),
+                      SizedBox(width: healthDp(context, 4)),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 14),
+                          vertical: healthDp(context, 4),
+                        ),
+                        decoration: ShapeDecoration(
+                          color: bmiCat.$2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 50)),
+                          ),
+                        ),
+                        child: Text(
+                          bmiCat.$1,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 11),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  if (state.hasError) ...[
-                    SizedBox(height: healthDp(context, 4)),
-                    SizedBox(
-                      height: 16,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          state.errorText ?? '',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                            fontSize: healthSp(context, 12),
-                            fontFamily: 'Gmarket Sans TTF',
-                            height: 1.1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              );
-            },
-          ),
-        ),
-        SizedBox(height: healthDp(context, 16)),
-        _figmaLabeledRow(
-          label: '키/\n몸무게',
-          labelAlign: TextAlign.right,
-          field: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _suffixField(
-                  questionId: 'answer_4',
-                  hint: '키',
-                  suffix: 'cm',
-                  requiredMsg: '키를 입력해주세요',
                 ),
-              ),
-              SizedBox(width: healthDp(context, 10)),
-              Expanded(
-                child: _suffixField(
-                  questionId: 'answer_5',
-                  hint: '몸무게',
-                  suffix: 'kg',
-                  requiredMsg: '몸무게를 입력해주세요',
-                ),
-              ),
+              ],
             ],
           ),
-        ),
-        SizedBox(height: healthDp(context, 16)),
-        _figmaLabeledRow(
-          label: '목표감량\n체중',
-          labelAlign: TextAlign.right,
-          field: _suffixField(
-            questionId: 'answer_3',
-            hint: '목표',
-            suffix: 'kg',
-            requiredMsg: '목표 감량 체중을 입력해주세요',
-          ),
-        ),
-        SizedBox(height: healthDp(context, 16)),
-        _figmaLabeledRow(
-          label: '다이어트\n목표 기간',
-          labelAlign: TextAlign.right,
-          field: _buildAnswer6Dropdown(),
+        ],
+        SizedBox(height: healthDp(context, 20)),
+        _figmaStackField(
+          label: '다이어트 목표 기간',
+          child: _buildAnswer6Dropdown(),
         ),
       ],
     );
+  }
+
+  Widget _figmaStackField({
+    required String label,
+    required Widget child,
+    Widget? labelTrailing,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: const Color(0xFF898686),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (labelTrailing != null) labelTrailing,
+          ],
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        child,
+      ],
+    );
+  }
+
+  (String, Color)? _formBmiCategory(double? bmi) {
+    if (bmi == null) return null;
+    if (bmi < 18.5) return ('저체중', const Color(0xFF60A5FA));
+    if (bmi < 23) return ('정상', const Color(0xFF4ADE80));
+    if (bmi < 25) return ('과체중', const Color(0xFFFACC15));
+    if (bmi < 30) return ('비만', const Color(0xFFFB923C));
+    return ('고도비만', const Color(0xFFEF4444));
   }
 
   TextStyle _figmaFieldTextStyle(BuildContext context) => TextStyle(
@@ -1501,6 +2300,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   InputDecoration _figmaInputDecoration(BuildContext context, {String? hint}) {
     return InputDecoration(
       isDense: true,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
       hintText: hint,
       hintStyle: TextStyle(
         color: const Color(0xFF898686),
@@ -1508,25 +2309,25 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         fontFamily: 'Gmarket Sans TTF',
       ),
       contentPadding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
+        horizontal: healthDp(context, 14),
         vertical: healthDp(context, 14),
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderRadius: BorderRadius.circular(healthDp(context, 15)),
         borderSide: BorderSide(
           width: healthDp(context, 1),
           color: _pfBorder,
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderRadius: BorderRadius.circular(healthDp(context, 15)),
         borderSide: BorderSide(
           width: healthDp(context, 1),
           color: _pfBorder,
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 7)),
+        borderRadius: BorderRadius.circular(healthDp(context, 15)),
         borderSide: BorderSide(
           width: healthDp(context, 1),
           color: _pfPink,
@@ -1546,20 +2347,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         height: _figmaLabeledControlHeight(context),
         alignment: Alignment.center,
         decoration: ShapeDecoration(
-          color: selected ? _pfPinkSoft : Colors.transparent,
+          color: selected ? const Color(0x0CFF5A8D) : Colors.transparent,
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
-              color: selected ? _pfPink : _pfBorder,
+              color: selected ? const Color(0xFFFF5A8D) : _pfBorder,
             ),
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderRadius: BorderRadius.circular(healthDp(context, 15)),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898383),
-            fontSize: healthSp(context, 16),
+            color: selected ? const Color(0xFF1A1A1E) : const Color(0xFF898383),
+            fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
           ),
@@ -1573,6 +2374,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     required String hint,
     required String suffix,
     required String requiredMsg,
+    bool allowDecimal = false,
   }) {
     return FormField<String>(
       initialValue: (_formData[questionId]?.toString() ?? '').trim(),
@@ -1588,8 +2390,15 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           children: [
             TextFormField(
               initialValue: state.value,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              keyboardType: allowDecimal
+                  ? const TextInputType.numberWithOptions(decimal: true)
+                  : TextInputType.number,
+              inputFormatters: [
+                if (allowDecimal)
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                else
+                  FilteringTextInputFormatter.digitsOnly,
+              ],
               style: _figmaFieldTextStyle(context),
               decoration: _figmaInputDecoration(context, hint: hint).copyWith(
                 suffixText: suffix,
@@ -1600,7 +2409,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 state.didChange(v);
                 if (!mounted) return;
                 setState(() {
-                  _formData[questionId] = (v ?? '').trim();
+                  _formData[questionId] = v.trim();
                 });
               },
               validator: (_) => null,
@@ -1656,8 +2465,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           children: [
             Container(
               key: _answer6FieldKey,
-              height: healthDp(context, 40),
-              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+              height: healthDp(context, 50),
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
               decoration: ShapeDecoration(
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
@@ -1665,20 +2474,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     width: healthDp(context, 1),
                     color: _pfBorder,
                   ),
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  borderRadius: BorderRadius.circular(healthDp(context, 15)),
                 ),
               ),
               alignment: Alignment.center,
               child: InkWell(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                onTap: () => _openAnswer6Menu(
+                borderRadius: BorderRadius.circular(healthDp(context, 15)),
+                onTap: () => _openAnswer6BottomSheet(
                   options: options,
                   onSelected: (v) {
-                    _removeAnswer6MenuOverlay();
                     if (!mounted) return;
                     setState(() {
                       _formData['answer_6'] = v;
                     });
+                    state.didChange(v);
                   },
                 ),
                 child: Row(
@@ -1691,17 +2500,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         style: TextStyle(
                           color: selected == null
                               ? const Color(0xFF898686)
-                              : const Color(0xFF1A1A1A),
-                          fontSize: healthSp(context, 16),
+                              : const Color(0xFF1A1A1E),
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: healthDp(context, 18),
-                      color: Colors.black87,
+                    Transform.rotate(
+                      angle: 4.71, // ~270deg chevron
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: healthDp(context, 18),
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -1735,128 +2547,100 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     _answer6MenuScrollController = null;
   }
 
+  Future<void> _openAnswer6BottomSheet({
+    required List<String> options,
+    required ValueChanged<String> onSelected,
+  }) async {
+    _removeAnswer6MenuOverlay();
+    final contentW = MobileLayoutWrapper.contentWidthOf(context);
+    final current = _formData['answer_6']?.toString().trim() ?? '';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints(maxWidth: contentW),
+      builder: (ctx) {
+        return Container(
+          width: contentW,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.55,
+          ),
+          padding: EdgeInsets.fromLTRB(
+            healthDp(ctx, 27),
+            healthDp(ctx, 12),
+            healthDp(ctx, 27),
+            healthDp(ctx, 24) + MediaQuery.paddingOf(ctx).bottom,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(healthDp(ctx, 50)),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: healthDp(ctx, 45),
+                height: healthDp(ctx, 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD2D2D2),
+                  borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
+                ),
+              ),
+              SizedBox(height: healthDp(ctx, 16)),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  separatorBuilder: (_, __) => Divider(
+                    height: healthDp(ctx, 1),
+                    color: const Color(0x7FD2D2D2),
+                  ),
+                  itemBuilder: (_, i) {
+                    final opt = options[i];
+                    final selected = opt == current;
+                    return InkWell(
+                      onTap: () {
+                        onSelected(opt);
+                        Navigator.of(ctx).pop();
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: healthDp(ctx, 14),
+                        ),
+                        child: Text(
+                          opt,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: selected
+                                ? const Color(0xFFFF5A8D)
+                                : const Color(0xFF1A1A1E),
+                            fontSize: healthSp(ctx, 16),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight:
+                                selected ? FontWeight.w500 : FontWeight.w300,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ignore: unused_element
   void _openAnswer6Menu({
     required List<String> options,
     required ValueChanged<String> onSelected,
   }) {
-    _removeAnswer6MenuOverlay();
-    _answer6MenuScrollController = ScrollController();
-    final ctx = _answer6FieldKey.currentContext;
-    if (ctx == null) return;
-    final box = ctx.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-
-    final overlay = Overlay.of(context);
-    final pos = box.localToGlobal(Offset.zero);
-    final topCandidate = pos.dy + box.size.height + healthDp(context, 4);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final menuWidth = box.size.width.clamp(
-      healthDp(context, 160),
-      screenWidth - healthDp(context, 16),
-    );
-    final rowExtent = healthDp(context, _answer6MenuRowExtent);
-    final rowGapScaled = healthDp(context, _answer6MenuRowGap);
-    final edgePad = healthDp(context, 8);
-
-    final totalListHeight = options.isEmpty
-        ? rowExtent
-        : (options.length * rowExtent + (options.length - 1) * rowGapScaled);
-
-    final cappedHeight = (_answer6MenuMaxVisibleRows * rowExtent) +
-        ((_answer6MenuMaxVisibleRows - 1) * rowGapScaled);
-    final desiredHeight = totalListHeight > cappedHeight ? cappedHeight : totalListHeight;
-
-    final screenHeight = MediaQuery.of(context).size.height;
-    final availableBelow = screenHeight - topCandidate - edgePad;
-    final availableAbove = pos.dy - edgePad;
-    final minUsableHeight = rowExtent * 2;
-
-    final openUp = availableBelow < minUsableHeight && availableAbove > availableBelow;
-    final maxHeight = openUp ? availableAbove : availableBelow;
-    final menuHeight = desiredHeight.clamp(rowExtent, maxHeight);
-    final menuScrolls = totalListHeight > menuHeight;
-
-    final top = openUp
-        ? (pos.dy - healthDp(context, 4) - menuHeight)
-        : topCandidate;
-
-    _answer6MenuOverlay = OverlayEntry(
-      builder: (overlayContext) => Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _removeAnswer6MenuOverlay,
-              child: const SizedBox.expand(),
-            ),
-          ),
-          Positioned(
-            left: pos.dx.clamp(
-              edgePad,
-              MediaQuery.sizeOf(overlayContext).width - menuWidth - edgePad,
-            ),
-            top: top,
-            width: menuWidth,
-            child: Material(
-              color: Colors.transparent,
-              child: DefaultTextStyle(
-                style: TextStyle(
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontSize: healthSp(context, 16),
-                  fontWeight: FontWeight.w300,
-                  color: Colors.black,
-                  height: 1.2,
-                ),
-                child: Container(
-                  padding: EdgeInsets.all(healthDp(overlayContext, 10)),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(healthDp(overlayContext, 10)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0x19000000),
-                        blurRadius: healthDp(overlayContext, 4),
-                        offset: Offset.zero,
-                      ),
-                    ],
-                  ),
-                  child: SizedBox(
-                    height: menuHeight,
-                    child: Scrollbar(
-                      controller: _answer6MenuScrollController,
-                      thumbVisibility: menuScrolls,
-                      child: SingleChildScrollView(
-                        controller: _answer6MenuScrollController,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (var i = 0; i < options.length; i++) ...[
-                              if (i > 0)
-                                SizedBox(height: rowGapScaled),
-                              _Answer6MenuLine(
-                                label: options[i],
-                                showBottomDivider: i < options.length - 1,
-                                onTap: () {
-                                  onSelected(options[i]);
-                                  _removeAnswer6MenuOverlay();
-                                },
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    overlay.insert(_answer6MenuOverlay!);
+    _openAnswer6BottomSheet(options: options, onSelected: onSelected);
   }
 
   Widget _figmaLabeledRow({
@@ -1915,16 +2699,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '다이어트약 복용 경험',
-          style: TextStyle(
-            fontSize: healthSp(context, 14),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFF1A1A1A),
-          ),
-        ),
-        SizedBox(height: healthDp(context, 10)),
         Row(
           children: [
             Expanded(
@@ -1960,7 +2734,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         width: healthDp(context, 1),
                         color: isYes ? _pfPink : _pfBorder,
                       ),
-                      borderRadius: BorderRadius.circular(healthDp(context, 7)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 15)),
                     ),
                   ),
                   child: Text(
@@ -1992,7 +2766,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                         width: healthDp(context, 1),
                         color: isNo ? _pfPink : _pfBorder,
                       ),
-                      borderRadius: BorderRadius.circular(healthDp(context, 7)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 15)),
                     ),
                   ),
                   child: Text(
@@ -2026,26 +2800,28 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   Widget _buildDietDrugDetailCard() {
     return Container(
-      padding: EdgeInsets.all(healthDp(context, 20)),
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 14)),
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: _pfBorder),
-          borderRadius: BorderRadius.circular(7),
+          side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '다이어트약 상세 정보',
-                style: TextStyle(
-                  fontSize: healthSp(context, 14),
-                  fontFamily: 'Gmarket Sans TTF',
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF1A1A1A),
+              Expanded(
+                child: Text(
+                  '다이어트약 상세 정보',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               Material(
@@ -2060,52 +2836,34 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       _dietDetailResetTick++;
                     });
                   },
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
                   child: Container(
-                    height: healthDp(context, 24),
-                    padding: EdgeInsets.symmetric(horizontal: healthDp(context, 8)),
+                    height: healthDp(context, 28),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 10),
+                    ),
                     clipBehavior: Clip.antiAlias,
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
-                        side: const BorderSide(width: 1, color: _pfPink),
-                        borderRadius: BorderRadius.circular(4),
+                        side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+                        borderRadius: BorderRadius.circular(healthDp(context, 50)),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        SizedBox(
-                          width: healthDp(context, 10),
-                          height: healthDp(context, 10),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(healthDp(context, 4)),
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '🗑️',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: healthSp(context, 9),
-                                  fontFamily: 'Pretendard Variable',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1,
-                                ),
-                              ),
-                            ),
-                          ),
+                        Icon(
+                          Icons.refresh,
+                          size: healthDp(context, 14),
+                          color: const Color(0xFF898686),
                         ),
                         SizedBox(width: healthDp(context, 2)),
                         Text(
                           '초기화',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: _pfPink,
-                            fontSize: healthSp(context, 10),
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 12),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
                           ),
@@ -2117,159 +2875,345 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               ),
             ],
           ),
-          const Divider(color: _pfBorder),
-          SizedBox(height: healthDp(context, 8)),
+          SizedBox(height: healthDp(context, 14)),
+          Container(height: healthDp(context, 1), color: _pfBorder),
+          SizedBox(height: healthDp(context, 20)),
           _detailRow('복용 약명', 'answer_13_medicine', '약명'),
-          _detailRow('복용 기간', 'answer_13_period', '예: 3개월'),
-          _detailRow('복용 횟수', 'answer_13_dosage', '예: 1-2회'),
-          _detailRow('부작용', 'answer_13_sideeffect', '예: 불면, 심장 두근거림'),
+          SizedBox(height: healthDp(context, 20)),
+          _detailRow('복용 기간', 'answer_13_period', '예: 1주'),
+          SizedBox(height: healthDp(context, 20)),
+          _detailRow('복용 횟수', 'answer_13_dosage', '예: 하루 1-2회'),
+          SizedBox(height: healthDp(context, 20)),
+          _detailRow('부작용', 'answer_13_sideeffect', '예: 잠이 안와요'),
         ],
       ),
     );
   }
 
   Widget _detailRow(String label, String id, String hint) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: healthDp(context, 10)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: healthDp(context, 60),
-            child: Text(
-              label,
-              textAlign: TextAlign.right,
-              style: TextStyle(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 12),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        SizedBox(
+          height: healthDp(context, 45),
+          child: TextFormField(
+            key: ValueKey<String>('diet_$id:$_dietDetailResetTick'),
+            initialValue: _formData[id]?.toString() ?? '',
+            textAlignVertical: TextAlignVertical.center,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: const Color(0xFF898686),
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w300,
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 10),
+                vertical: 0,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 15)),
+                borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 15)),
+                borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 15)),
+                borderSide: BorderSide(width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
               ),
             ),
+            onChanged: (v) {
+              _formData[id] = v;
+              setState(() {});
+            },
+            onSaved: (v) => _formData[id] = v ?? '',
           ),
-          SizedBox(width: healthDp(context, 12)),
-          Expanded(
-            child: TextFormField(
-              key: ValueKey<String>('diet_$id:$_dietDetailResetTick'),
-              initialValue: _formData[id]?.toString() ?? '',
-              decoration: _figmaInputDecoration(context, hint: hint),
-              style: _figmaFieldTextStyle(context),
-              onChanged: (v) {
-                _formData[id] = v;
-                setState(() {});
-              },
-              onSaved: (v) => _formData[id] = v ?? '',
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildFigmaMealtimeTable() {
-    final headerStyle = TextStyle(
-      color: const Color(0xFF1A1A1A),
-      fontSize: healthSp(context, 13),
-      fontFamily: 'Gmarket Sans TTF',
-      fontWeight: FontWeight.w300,
-    );
+    final slots = <({String label, String key})>[
+      (label: '아침', key: 'meal_1'),
+      (label: '점심', key: 'meal_2'),
+      (label: '저녁', key: 'meal_3'),
+      (label: '기타', key: 'meal_other'),
+    ];
 
-    TableCell headerCell(String label) {
-      return TableCell(
-        verticalAlignment: TableCellVerticalAlignment.middle,
-        child: SizedBox(
-          height: healthDp(context, 36),
-          child: Center(
-            child: Text(
-              label,
-              style: headerStyle,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      );
-    }
-
-    TableCell fieldCell(
-      String fieldKey, {
-      int maxLines = 1,
-      double? minHeight,
-      String? hint,
-    }) {
-      final h = minHeight ?? healthDp(context, 36);
-      return TableCell(
-        verticalAlignment: TableCellVerticalAlignment.middle,
-        child: SizedBox(
-          height: h,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: healthDp(context, 6),
-              vertical: healthDp(context, 4),
-            ),
-            child: TextFormField(
-              initialValue: _formData[fieldKey]?.toString() ?? '',
-              maxLines: maxLines,
-              keyboardType:
-                  maxLines > 1 ? TextInputType.multiline : TextInputType.text,
-              textAlignVertical: TextAlignVertical.center,
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                filled: false,
-                contentPadding: EdgeInsets.zero,
-                hintText: hint,
-                hintStyle: TextStyle(
-                  fontSize: healthSp(context, 11),
-                  fontFamily: 'Gmarket Sans TTF',
-                  color: const Color(0xFF898383),
-                  fontWeight: FontWeight.w500,
-                  height: 1.3,
-                ),
-              ),
-              style: TextStyle(
-                fontSize: healthSp(context, 13),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF1A1A1A),
-              ),
-              onSaved: (v) => _formData[fieldKey] = v ?? '',
-            ),
-          ),
-        ),
-      );
-    }
-
-    /// 1행: 1식·2식·3식·4식 라벨 / 2행: 입력 (4열)
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: _pfBorder),
+        borderRadius: BorderRadius.circular(healthDp(context, 15)),
+        border: Border.all(color: _pfBorder, width: healthDp(context, 1)),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Table(
-        border: TableBorder.all(color: _pfBorder, width: 1),
-        defaultColumnWidth: const FlexColumnWidth(1),
-        children: [
-          TableRow(
-            decoration: const BoxDecoration(color: Color(0xFFF9F9F9)),
-            children: [
-              headerCell('1식'),
-              headerCell('2식'),
-              headerCell('3식'),
-              headerCell('4식'),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < slots.length; i++) ...[
+              if (i > 0)
+                Container(width: healthDp(context, 1), color: _pfBorder),
+              Expanded(
+                child: _mealTimeSlotRow(
+                  label: slots[i].label,
+                  fieldKey: slots[i].key,
+                ),
+              ),
             ],
-          ),
-          TableRow(
-            children: [
-              fieldCell('meal_1', hint: '예: 8시'),
-              fieldCell('meal_2', hint: '예: 12시'),
-              fieldCell('meal_3', hint: '예: 19시'),
-              fieldCell('meal_other', hint: '예: 21시'),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _mealTimeSlotRow({
+    required String label,
+    required String fieldKey,
+  }) {
+    final raw = (_formData[fieldKey]?.toString() ?? '').trim();
+    final display = raw.isEmpty ? '-' : raw;
+    final empty = raw.isEmpty || raw == '-';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showMealTimePickerBottomSheet(fieldKey),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 6),
+            vertical: healthDp(context, 14),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: healthDp(context, 4)),
+              Text(
+                display,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: empty
+                      ? const Color(0xFF898686)
+                      : const Color(0xFF1A1A1E),
+                  fontSize: healthSp(context, 14),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMealTimePickerBottomSheet(String fieldKey) async {
+    final raw = (_formData[fieldKey]?.toString() ?? '').trim();
+    var hour = 12;
+    var minute = 0;
+    final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(raw);
+    if (m != null) {
+      hour = (int.tryParse(m.group(1)!) ?? 12).clamp(0, 23);
+      minute = (int.tryParse(m.group(2)!) ?? 0).clamp(0, 59);
+    }
+
+    final contentW = MobileLayoutWrapper.contentWidthOf(context);
+    final hourCtrl = FixedExtentScrollController(initialItem: hour);
+    final minuteCtrl = FixedExtentScrollController(initialItem: minute);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints(maxWidth: contentW),
+      builder: (ctx) {
+        var selH = hour;
+        var selM = minute;
+        return StatefulBuilder(
+          builder: (ctx, setModal) {
+            return Container(
+              width: contentW,
+              padding: EdgeInsets.fromLTRB(
+                healthDp(ctx, 30),
+                healthDp(ctx, 20),
+                healthDp(ctx, 30),
+                healthDp(ctx, 20) + MediaQuery.paddingOf(ctx).bottom,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(healthDp(ctx, 50)),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: healthDp(ctx, 45),
+                    height: healthDp(ctx, 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD2D2D2),
+                      borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
+                    ),
+                  ),
+                  SizedBox(height: healthDp(ctx, 20)),
+                  SizedBox(
+                    height: healthDp(ctx, 180),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ListWheelScrollView.useDelegate(
+                            controller: hourCtrl,
+                            itemExtent: healthDp(ctx, 40),
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (i) {
+                              setModal(() => selH = i);
+                            },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: 24,
+                              builder: (_, i) => Center(
+                                child: Text(
+                                  i.toString().padLeft(2, '0'),
+                                  style: TextStyle(
+                                    color: i == selH
+                                        ? const Color(0xFF1A1A1A)
+                                        : const Color(0xFF898686),
+                                    fontSize: healthSp(
+                                      ctx,
+                                      i == selH ? 22 : 16,
+                                    ),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: i == selH
+                                        ? FontWeight.w500
+                                        : FontWeight.w300,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: healthDp(ctx, 4),
+                          ),
+                          child: Text(
+                            ':',
+                            style: TextStyle(
+                              fontSize: healthSp(ctx, 22),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: ListWheelScrollView.useDelegate(
+                            controller: minuteCtrl,
+                            itemExtent: healthDp(ctx, 40),
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (i) {
+                              setModal(() => selM = i);
+                            },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: 60,
+                              builder: (_, i) => Center(
+                                child: Text(
+                                  i.toString().padLeft(2, '0'),
+                                  style: TextStyle(
+                                    color: i == selM
+                                        ? const Color(0xFF1A1A1A)
+                                        : const Color(0xFF898686),
+                                    fontSize: healthSp(
+                                      ctx,
+                                      i == selM ? 22 : 16,
+                                    ),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: i == selM
+                                        ? FontWeight.w500
+                                        : FontWeight.w300,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: healthDp(ctx, 16)),
+                  SizedBox(
+                    width: double.infinity,
+                    height: healthDp(ctx, 45),
+                    child: FilledButton(
+                      onPressed: () {
+                        final value =
+                            '${selH.toString().padLeft(2, '0')}:${selM.toString().padLeft(2, '0')}';
+                        Navigator.of(ctx).pop();
+                        if (!mounted) return;
+                        setState(() => _formData[fieldKey] = value);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5A8D),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(healthDp(ctx, 10)),
+                        ),
+                      ),
+                      child: Text(
+                        '등록',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(ctx, 16),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    hourCtrl.dispose();
+    minuteCtrl.dispose();
   }
 
   String _canonicalHealthNoneGridOption(String questionId, String opt) {
@@ -2279,9 +3223,16 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         questionId != 'answer_12') {
       return opt;
     }
-    final o = opt.trim();
-    if (o == '해당없음' || o == '없음' || o == '해당 없음') return '해당 없음';
-    return opt;
+    final o = (questionId == 'answer_8' || questionId == 'answer_9')
+        ? _normalizeChipOptionLabel(opt)
+        : opt.trim();
+    if (o == '해당없음' || o == '없음' || o == '해당 없음') {
+      if (questionId == 'answer_8' || questionId == 'answer_11') {
+        return '해당없음';
+      }
+      return '해당 없음';
+    }
+    return o;
   }
 
   Widget _buildFigmaGrid(HealthProfileQuestion question) {
@@ -2295,7 +3246,10 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       if (raw != null) selected = [raw.toString()];
     }
     if (isMulti &&
-        (question.id == 'answer_11' || question.id == 'answer_12')) {
+        (question.id == 'answer_8' ||
+            question.id == 'answer_9' ||
+            question.id == 'answer_11' ||
+            question.id == 'answer_12')) {
       selected = selected
           .map((e) => _canonicalHealthNoneGridOption(question.id, e))
           .toList();
@@ -2316,14 +3270,15 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       setState(() {
         final optC = _canonicalHealthNoneGridOption(question.id, opt);
         if (question.id == 'answer_8') {
-          if (optC == '해당 없음') {
-            _formData[question.id] = isMulti ? <String>['해당 없음'] : '해당 없음';
+          if (optC == '해당없음') {
+            _formData[question.id] = isMulti ? <String>['해당없음'] : '해당없음';
             return;
           }
           if (isMulti) {
             final list = selected
                 .map((e) => _canonicalHealthNoneGridOption(question.id, e))
                 .toList();
+            list.remove('해당없음');
             list.remove('해당 없음');
             if (list.contains(optC)) {
               list.remove(optC);
@@ -2335,8 +3290,14 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
           }
         }
         if (question.id == 'answer_11' || question.id == 'answer_12') {
-          if (optC == '해당 없음') {
-            _formData[question.id] = isMulti ? <String>['해당 없음'] : '해당 없음';
+          final noneLabel =
+              question.id == 'answer_11' ? '해당없음' : '해당 없음';
+          if (optC == noneLabel || optC == '해당 없음' || optC == '해당없음') {
+            _formData[question.id] =
+                isMulti ? <String>[noneLabel] : noneLabel;
+            if (question.id == 'answer_12') {
+              _clearMedicationOthers();
+            }
             return;
           }
           if (isMulti) {
@@ -2344,14 +3305,45 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 .map((e) => _canonicalHealthNoneGridOption(question.id, e))
                 .toList();
             list.remove('해당 없음');
+            list.remove('해당없음');
             if (list.contains(optC)) {
               list.remove(optC);
+              if (question.id == 'answer_12' && optC == '기타') {
+                _clearMedicationOthers();
+              }
             } else {
               list.add(optC);
+              if (question.id == 'answer_12' && optC == '기타') {
+                _medicationOtherDraftOpen = _medicationOthers.isEmpty;
+                if (_medicationOtherDraftOpen) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _medicationOtherDraftFocus.requestFocus();
+                  });
+                }
+              }
             }
             _formData[question.id] = list;
             return;
           }
+        }
+        if (question.id == 'answer_10_types' && isMulti) {
+          final list = List<String>.from(selected);
+          if (list.contains(opt)) {
+            list.remove(opt);
+            if (opt == '기타') _clearExerciseOthers();
+          } else {
+            list.add(opt);
+            if (opt == '기타') {
+              _exerciseOtherDraftOpen = _exerciseOthers.isEmpty;
+              if (_exerciseOtherDraftOpen) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _exerciseOtherDraftFocus.requestFocus();
+                });
+              }
+            }
+          }
+          _formData[question.id] = list;
+          return;
         }
         if (isMulti) {
           final list = List<String>.from(selected);
@@ -2367,7 +3359,6 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       });
     }
 
-    final rows = <Widget>[];
     var gridOptions = List<String>.from(options);
     String? fullWidthNoneLabel;
     for (final candidate in const ['해당 없음', '해당없음', '없음']) {
@@ -2382,108 +3373,407 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       }
     }
 
-    for (var i = 0; i < gridOptions.length; i += 2) {
-      rows.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _figmaOptionCell(
-                gridOptions[i],
-                cellSelected(gridOptions[i]),
-                () => toggle(gridOptions[i]),
-                fontSize: question.id == 'answer_7' ? 14 : null,
-              ),
-            ),
-            SizedBox(width: healthDp(context, 10)),
-            if (i + 1 < gridOptions.length)
-              Expanded(
+    Widget pairedChipRows() {
+      final rows = <Widget>[];
+      for (var i = 0; i < gridOptions.length; i += 2) {
+        if (i > 0) rows.add(SizedBox(height: healthDp(context, 8)));
+        final left = gridOptions[i];
+        final hasRight = i + 1 < gridOptions.length;
+        rows.add(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
                 child: _figmaOptionCell(
-                  gridOptions[i + 1],
-                  cellSelected(gridOptions[i + 1]),
-                  () => toggle(gridOptions[i + 1]),
-                  fontSize: question.id == 'answer_7' ? 14 : null,
+                  left,
+                  cellSelected(left),
+                  () => toggle(left),
+                  stretchWidth: true,
                 ),
-              )
-            else
-              const Expanded(child: SizedBox()),
-          ],
-        ),
-      );
-      if (i + 2 < gridOptions.length) {
-        rows.add(SizedBox(height: healthDp(context, 10)));
-      }
-    }
-
-    if (fullWidthNoneLabel != null) {
-      final noneLabel = fullWidthNoneLabel;
-      rows.add(SizedBox(height: healthDp(context, 10)));
-      rows.add(
-        Row(
-          children: [
-            Expanded(
-              child: _figmaOptionCell(
-                noneLabel,
-                cellSelected(noneLabel),
-                () => toggle(noneLabel),
-                stretchWidth: true,
-                fontSize: question.id == 'answer_7' ? 14 : null,
               ),
-            ),
-          ],
-        ),
+              if (hasRight) ...[
+                SizedBox(width: healthDp(context, 6)),
+                Flexible(
+                  child: _figmaOptionCell(
+                    gridOptions[i + 1],
+                    cellSelected(gridOptions[i + 1]),
+                    () => toggle(gridOptions[i + 1]),
+                    stretchWidth: true,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: rows,
       );
     }
 
-    return Column(children: rows);
+    List<List<String>>? presetRows;
+    if (question.id == 'answer_9') {
+      presetRows = HealthProfileQuestionnaireOptions.foodPreferenceRows;
+    } else if (question.id == 'answer_10') {
+      presetRows = HealthProfileQuestionnaireOptions.exerciseFrequencyRows;
+    } else if (question.id == 'answer_10_types') {
+      presetRows = HealthProfileQuestionnaireOptions.exerciseTypeRows;
+    } else if (question.id == 'answer_11') {
+      presetRows = HealthProfileQuestionnaireOptions.diseaseRows;
+    } else if (question.id == 'answer_12') {
+      presetRows = HealthProfileQuestionnaireOptions.medicationRows;
+    }
+
+    // 피그마처럼 칩은 내용 너비. Row로 한 줄 유지(Wrap이면 긴 칩이 아래로 떨어짐).
+    Widget buildPresetChipRows(List<List<String>> rows) {
+      final available = gridOptions.toSet();
+      final widgets = <Widget>[];
+      for (final row in rows) {
+        final opts = row.where(available.contains).toList();
+        if (opts.isEmpty) continue;
+        if (widgets.isNotEmpty) {
+          widgets.add(SizedBox(height: healthDp(context, 8)));
+        }
+        widgets.add(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              for (var i = 0; i < opts.length; i++) ...[
+                if (i > 0) SizedBox(width: healthDp(context, 8)),
+                _figmaOptionCell(
+                  opts[i],
+                  cellSelected(opts[i]),
+                  () => toggle(opts[i]),
+                ),
+              ],
+            ],
+          ),
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: widgets,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (question.id == 'answer_7')
+          Row(
+            children: [
+              for (var i = 0; i < gridOptions.length; i++) ...[
+                if (i > 0) SizedBox(width: healthDp(context, 8)),
+                Expanded(
+                  child: _figmaOptionCell(
+                    gridOptions[i],
+                    cellSelected(gridOptions[i]),
+                    () => toggle(gridOptions[i]),
+                    stretchWidth: true,
+                  ),
+                ),
+              ],
+            ],
+          )
+        else if (question.id == 'answer_8')
+          pairedChipRows()
+        else if (presetRows != null)
+          buildPresetChipRows(presetRows)
+        else
+          Wrap(
+            spacing: healthDp(context, 8),
+            runSpacing: healthDp(context, 8),
+            children: [
+              for (final opt in gridOptions)
+                _figmaOptionCell(
+                  opt,
+                  cellSelected(opt),
+                  () => toggle(opt),
+                ),
+            ],
+          ),
+        if (fullWidthNoneLabel != null) ...[
+          SizedBox(height: healthDp(context, 8)),
+          _figmaOptionCell(
+            fullWidthNoneLabel,
+            cellSelected(fullWidthNoneLabel),
+            () => toggle(fullWidthNoneLabel!),
+            stretchWidth: true,
+          ),
+        ],
+        if (question.id == 'answer_10_types' && _isExerciseOtherSelected()) ...[
+          SizedBox(height: healthDp(context, 10)),
+          _buildOtherExerciseCard(),
+        ],
+      ],
+    );
   }
+
+  Widget _buildOtherExerciseCard() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 14)),
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 15)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '기타 운동',
+                  style: TextStyle(
+                    color: const Color(0xFF1A1A1E),
+                    fontSize: healthSp(context, 14),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openExerciseOtherDraft,
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                  child: Container(
+                    height: healthDp(context, 28),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 10),
+                    ),
+                    decoration: ShapeDecoration(
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+                        borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.add,
+                          size: healthDp(context, 14),
+                          color: const Color(0xFF898686),
+                        ),
+                        SizedBox(width: healthDp(context, 2)),
+                        Text(
+                          '추가',
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: healthDp(context, 14)),
+          Container(height: healthDp(context, 1), color: _pfBorder),
+          SizedBox(height: healthDp(context, 20)),
+          if (_exerciseOthers.isNotEmpty)
+            Wrap(
+              spacing: healthDp(context, 8),
+              runSpacing: healthDp(context, 8),
+              children: [
+                for (var i = 0; i < _exerciseOthers.length; i++)
+                  _buildExerciseOtherChip(_exerciseOthers[i], i),
+              ],
+            ),
+          if (_exerciseOtherDraftOpen || _exerciseOthers.isEmpty) ...[
+            if (_exerciseOthers.isNotEmpty)
+              SizedBox(height: healthDp(context, 8)),
+            _buildExerciseOtherDraftField(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseOtherChip(String label, int index) {
+    return Container(
+      height: healthDp(context, 45),
+      padding: EdgeInsets.only(
+        left: healthDp(context, 14),
+        right: healthDp(context, 8),
+      ),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF8FAFC),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 50)),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(width: healthDp(context, 4)),
+          GestureDetector(
+            onTap: () => _removeExerciseOtherAt(index),
+            behavior: HitTestBehavior.opaque,
+            child: Icon(
+              Icons.close,
+              size: healthSp(context, 16),
+              color: const Color(0xFF898686),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseOtherDraftField() {
+    return SizedBox(
+      width: double.infinity,
+      height: healthDp(context, 45),
+      child: TextField(
+        controller: _exerciseOtherDraftCtrl,
+        focusNode: _exerciseOtherDraftFocus,
+        textInputAction: TextInputAction.done,
+        textAlignVertical: TextAlignVertical.center,
+        onSubmitted: (_) => _commitExerciseOtherDraft(),
+        onChanged: (_) => setState(() {}),
+        style: TextStyle(
+          color: const Color(0xFF1A1A1E),
+          fontSize: healthSp(context, 14),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: '운동을 입력해주세요',
+          hintStyle: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 14),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 14),
+            vertical: 0,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            borderSide: BorderSide(width: healthDp(context, 1), color: _pfBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            borderSide: BorderSide(width: healthDp(context, 1), color: const Color(0xFFFF5A8D)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  int _chipCharCount(String label) =>
+      label.replaceAll(RegExp(r'\s'), '').replaceAll('\n', '').length;
+
+  /// 3글자 이하(한식·해산물·유제품 등)는 피그마처럼 71 고정.
+  bool _isFixedShortChip(String label) => _chipCharCount(label) <= 3;
+
+  /// 4글자(호흡계통 등)는 82 고정.
+  bool _isFixedFourChip(String label) => _chipCharCount(label) == 4;
 
   Widget _figmaOptionCell(
     String label,
     bool selected,
     VoidCallback onTap, {
     bool stretchWidth = false,
-    double? fontSize,
   }) {
-    // 줄바꿈이 있을 때만 작은 글꼴(한 줄 10자 이상이어도 운동 빈도 등은 16px 유지)
-    final bool compactLabel = label.contains('\n');
-    final baseFontSize = fontSize ?? (compactLabel ? 12 : 14);
+    final display = _normalizeChipOptionLabel(label);
+    final isSaladDiet = display == '샐러드/다이어트식단';
+    final isLateNight = display.contains('야식');
+    final isCaffeine = display.contains('카페인');
+    final chars = _chipCharCount(display);
+    final fixedShort =
+        !stretchWidth && !isSaladDiet && _isFixedShortChip(display);
+    final fixedFour =
+        !stretchWidth && !isSaladDiet && _isFixedFourChip(display);
+    final fixedWidth = fixedShort || fixedFour;
+    // 야식 패딩 더 축소, 카페인은 조금 더 여유
+    final hPad = healthDp(
+      context,
+      isSaladDiet
+          ? 14
+          : (fixedWidth
+              ? 6
+              : (isLateNight
+                  ? 2
+                  : (isCaffeine
+                      ? 6
+                      : (stretchWidth
+                          ? 4
+                          : (chars == 5
+                              ? 14
+                              : (chars < 5 ? 6 : 14)))))),
+    );
+
+    final text = Text(
+      display,
+      textAlign: TextAlign.center,
+      maxLines: 1,
+      softWrap: false,
+      style: TextStyle(
+        color: selected
+            ? const Color(0xFF1A1A1E)
+            : const Color(0xFF898383),
+        fontSize: healthSp(context, 14),
+        fontFamily: 'Gmarket Sans TTF',
+        fontWeight: FontWeight.w500,
+      ),
+    );
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: stretchWidth ? double.infinity : null,
-        constraints: BoxConstraints(
-          minHeight: healthDp(context, 40),
-          maxHeight: healthDp(context, 40),
-        ),
-        padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 8),
-          vertical: healthDp(context, 6),
-        ),
+        width: stretchWidth
+            ? double.infinity
+            : (fixedShort
+                ? healthDp(context, 71)
+                : (fixedFour ? healthDp(context, 82) : null)),
+        height: healthDp(context, 45),
+        padding: EdgeInsets.symmetric(horizontal: hPad),
         alignment: Alignment.center,
+        clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
-          color: selected ? _pfPinkSoft : Colors.transparent,
+          color: selected ? const Color(0x0CFF5A8D) : Colors.transparent,
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
-              color: selected ? _pfPink : _pfBorder,
+              color: selected ? const Color(0xFFFF5A8D) : _pfBorder,
             ),
-            borderRadius: BorderRadius.circular(healthDp(context, 7)),
+            borderRadius: BorderRadius.circular(
+              healthDp(context, selected ? 36 : 50),
+            ),
           ),
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: selected ? const Color(0xFF1A1A1A) : const Color(0xFF898383),
-            fontSize: healthSp(context, baseFontSize),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-            height: compactLabel ? 1.05 : 1.2,
-          ),
-        ),
+        // FittedBox는 부모를 꽉 채우므로 샐러드(내용 너비)에는 쓰지 않음
+        child: stretchWidth || fixedWidth
+            ? FittedBox(fit: BoxFit.scaleDown, child: text)
+            : text,
       ),
     );
   }
@@ -2811,8 +4101,8 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: healthDp(context, 8),
+        mainAxisSpacing: healthDp(context, 8),
         childAspectRatio: 2.5,
       ),
       itemCount: options.length,
@@ -2831,7 +4121,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   currentList.remove(option);
                   // "기타" 선택 해제 시 입력 필드 초기화
                   if (question.id == 'answer_12' && option == '기타') {
-                    _formData['answer_12_other'] = '';
+                    _clearMedicationOthers();
                   }
                 } else {
                   currentList.add(option);
@@ -2847,7 +4137,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
               color: isSelected ? const Color(0xFFFFE5EE) : Colors.white,
               border: Border.all(
                 color: isSelected ? const Color(0xFFFF3787) : Colors.grey.shade300,
-                width: isSelected ? 2 : 1,
+                width: healthDp(context, isSelected ? 2 : 1),
               ),
               borderRadius: BorderRadius.circular(healthDp(context, 8)),
             ),
@@ -2888,6 +4178,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   void _nextPage() {
     if (!_isWizardStepFilled(_currentPage)) {
+      AppToastOverlay.show(context, '모든 문진표를 작성해야합니다');
       _formKey.currentState?.validate();
       return;
     }
@@ -2909,6 +4200,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   void _submitForm() async {
     if (!_isAllWizardStepsFilled()) {
+      AppToastOverlay.show(context, '모든 문진표를 작성해야합니다');
       _formKey.currentState?.validate();
       return;
     }
@@ -2923,18 +4215,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         await _saveHealthProfile();
         
         if (mounted) {
-          final isFullWizard =
-              widget.initialSectionIndices == null || widget.initialSectionIndices!.isEmpty;
-          if (isFullWizard) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HealthProfileDoneScreen()),
-            );
+          AppToastOverlay.show(context, '문진표 수정 완료하였습니다');
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(true);
           } else {
-            // `pushReplacementNamed`만 쓰면 [이전 목록(미작성)] 위에 [새 /profile]만 얹혀
-            // 뒤로가기 시 이전 목록으로 가며 "문진표가 없습니다"가 다시 보임.
             Navigator.of(context).pushNamedAndRemoveUntil(
               '/profile',
-              (route) => route.isFirst,
+              (route) => false,
             );
           }
         }
@@ -2957,9 +4244,22 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   }
 
   String _composeAnswer10Types() {
-    return HealthProfilePayload.composeAnswer10TypesOnly(
-      _formData['answer_10_types'],
-    );
+    final raw = _formData['answer_10_types'];
+    final list = <String>[];
+    if (raw is List) {
+      for (final e in raw) {
+        final s = e.toString().trim();
+        if (s.isEmpty || s == '기타') continue;
+        list.add(s);
+      }
+    }
+    for (final o in _exerciseOthers) {
+      final t = o.trim();
+      if (t.isNotEmpty && !list.contains(t)) list.add(t);
+    }
+    final draft = _exerciseOtherDraftCtrl.text.trim();
+    if (draft.isNotEmpty && !list.contains(draft)) list.add(draft);
+    return list.join('|');
   }
 
   Future<void> _saveHealthProfile() async {
@@ -2995,7 +4295,12 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       answer11: HealthProfilePayload.formatListToString(_formData['answer_11']),
       answer12: HealthProfilePayload.formatAnswer12(
         _formData['answer_12'],
-        _formData['answer_12_other']?.toString(),
+        null,
+        otherValues: [
+          ..._medicationOthers,
+          if (_medicationOtherDraftCtrl.text.trim().isNotEmpty)
+            _medicationOtherDraftCtrl.text.trim(),
+        ],
       ),
       answer13: HealthProfilePayload.encodeAnswer13ForApi(
         _formData['answer_13']?.toString(),
@@ -3324,12 +4629,20 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   @override
   void deactivate() {
     _removeAnswer6MenuOverlay();
+    _hideBmiGuideOverlay();
     super.deactivate();
   }
 
   @override
   void dispose() {
     _removeAnswer6MenuOverlay();
+    _hideBmiGuideOverlay();
+    _exerciseOtherDraftFocus.removeListener(_onExerciseOtherDraftFocusChange);
+    _exerciseOtherDraftFocus.dispose();
+    _exerciseOtherDraftCtrl.dispose();
+    _medicationOtherDraftFocus.removeListener(_onMedicationOtherDraftFocusChange);
+    _medicationOtherDraftFocus.dispose();
+    _medicationOtherDraftCtrl.dispose();
     _pageController.dispose();
     super.dispose();
   }

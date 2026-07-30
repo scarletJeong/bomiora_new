@@ -17,36 +17,36 @@ abstract final class HealthProfileQuestionnaireOptions {
   ];
 
   static const List<String> mealsPerDay = [
-    '하루 1식',
-    '하루 2식',
-    '하루 3식',
-    '하루 3식 이상',
+    '1회',
+    '2회',
+    '3회',
+    '3회 이상',
   ];
 
   static const List<String> eatingHabits = [
     '과식 주3회 이상',
-    '군것질\n 주 3회 이상',
+    '군것질 주 3회 이상',
     '야식 주 3회 이상',
-    '카페인음료\n 1일 3잔 이상',
+    '카페인음료 1일 3잔 이상',
     '해당없음',
   ];
 
   static const List<String> foodPreference = [
     '한식',
-    '육식',
     '양식',
-    '해산물',
     '중식',
+    '육식',
+    '해산물',
     '튀김',
-    '샐러드/다이터트\n식단',
-    '과일',
     '빵/떡',
     '유제품',
+    '과일',
+    '샐러드/다이어트식단',
   ];
 
   static const List<String> exerciseFrequency = [
     '일주일 1회 이하',
-    '일주일 2~3회',
+    '일주일 2회 ~ 3회',
     '일주일 4회 ~ 6회',
     '매일',
   ];
@@ -58,7 +58,7 @@ abstract final class HealthProfileQuestionnaireOptions {
     '자전거 타기',
     '수영',
     '요가/필라테스',
-    '웨이트 트레이닝',    
+    '웨이트 트레이닝',
     '구기 종목',
     '홈트레이닝',
     '기타',
@@ -68,16 +68,16 @@ abstract final class HealthProfileQuestionnaireOptions {
     '간질환',
     '호흡계통',
     '심혈증',
+    '피부',
     '비뇨생식계통',
     '뼈/관절',
     '신경계통',
     '특이질환',
-    '피부',
-    '소화계통',
     '정신/행동',
-    '내분비,영양,\n신장질환',
+    '소화계통',
     '당뇨',
-    '해당 없음',
+    '내분비, 영양, 대사질환',
+    '해당없음',
   ];
 
   static const List<String> medications = [
@@ -96,5 +96,43 @@ abstract final class HealthProfileQuestionnaireOptions {
     '피임약',
     '기타',
     '해당 없음',
+  ];
+
+  /// 자주 먹는 음식 칩 행 배치
+  static const List<List<String>> foodPreferenceRows = [
+    ['한식', '양식', '중식', '육식'],
+    ['해산물', '튀김', '빵/떡', '유제품'],
+    ['과일', '샐러드/다이어트식단'],
+  ];
+
+  /// 운동습관(빈도) 칩 행 배치
+  static const List<List<String>> exerciseFrequencyRows = [
+    ['일주일 1회 이하', '일주일 2회 ~ 3회'],
+    ['일주일 4회 ~ 6회', '매일'],
+  ];
+
+  /// 주로 하는 운동 칩 행 배치
+  static const List<List<String>> exerciseTypeRows = [
+    ['걷기/산책', '러닝/조깅', '등산'],
+    ['자전거 타기', '수영', '요가/필라테스'],
+    ['웨이트 트레이닝', '구기 종목'],
+    ['홈트레이닝', '기타'],
+  ];
+
+  /// 질병 칩 행 배치 (해당없음은 별도 full-width)
+  static const List<List<String>> diseaseRows = [
+    ['간질환', '호흡계통', '심혈증', '피부'],
+    ['비뇨생식계통', '뼈/관절', '신경계통'],
+    ['특이질환', '정신/행동', '소화계통'],
+    ['당뇨', '내분비, 영양, 대사질환'],
+  ];
+
+  /// 복용중인 약 칩 행 배치 (해당 없음은 별도 full-width)
+  static const List<List<String>> medicationRows = [
+    ['혈압약', '다이어트약', '갑상선약'],
+    ['피부과약', '항생제', '스테로이드제'],
+    ['당뇨약', '위산분비 억제제', '정신과약'],
+    ['항히스타민제', '항혈전제', '소염진통제'],
+    ['피임약', '기타'],
   ];
 }

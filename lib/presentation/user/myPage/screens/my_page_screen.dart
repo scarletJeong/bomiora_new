@@ -493,7 +493,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             '로그인',
             style: TextStyle(
               fontSize: healthSp(context, 13),
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               color: Colors.white,
             ),
           ),
