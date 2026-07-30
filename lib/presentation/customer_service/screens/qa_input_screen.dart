@@ -13,7 +13,7 @@ import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../models/qa_inquiry_draft.dart';
 
-/// �ű� 1:1 ���� �ۼ� (���� ȭ�鿡�� ���á��Է¡��߰����� �̾)
+/// 1:1 문의 작성 (작성 전 선택 후 입력 가능)
 class QaInputScreen extends StatefulWidget {
   final QaInquiryDraft draft;
 
@@ -25,7 +25,7 @@ class QaInputScreen extends StatefulWidget {
 
 class _QaInputScreenState extends State<QaInputScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _userBubble = Color(0xFFFFD6E4);
+  static const Color _userBubble = Color(0x0DFF5A8D);
   static const Color _inputBarBg = Color(0xFFF8F9FA);
   static const Color _inputFieldBg = Color(0xFFE7E8E9);
   static const Color _hint = Color(0x66584045);
@@ -48,9 +48,10 @@ class _QaInputScreenState extends State<QaInputScreen> {
   String? _selectedTopic;
   int? _createdWrId;
   bool _hasTyped = false;
-  /// CS�� ��� ���� �ñ��ϽŰ���?���� ���� �ں��� �Է� ����
+  /// CS 채널 문의 질문 표시 여부
   bool _inquiryPromptShown = false;
   DateTime? _promptShownAt;
+  DateTime? _guideShownAt;
   final List<String> _sentMessages = [];
 
   QaInquiryDraft get _draft => widget.draft;
@@ -58,34 +59,42 @@ class _QaInputScreenState extends State<QaInputScreen> {
   bool get _isEtc => _draft.category == '기타';
 
   bool get _needsTopic =>
-      _draft.category == '주문' ||
-      _draft.category == '상품' ||
-      _draft.category == '기타';
+      _draft.category == '주문' || _draft.category == '상품';
 
   bool get _canType =>
       !_threadClosed &&
-      (!_needsTopic || (_selectedTopic != null && _inquiryPromptShown));
+      (_isEtc
+          ? _inquiryPromptShown
+          : (!_needsTopic || (_selectedTopic != null && _inquiryPromptShown)));
 
   bool get _showCloseBadge =>
       !_threadClosed && (_hasTyped || _createdWrId != null);
 
-  List<String> get _topics => QaInquiryDraft.topicsFor(_draft.category);
+  List<String> get _topics =>
+      QaInquiryDraft.topicsFor(_draft.category, _draft.majorCategory);
 
   String get _guideMessage => QaInquiryDraft.guideMessage(_draft.category);
 
-  String _etcTopicGuide(String topic) => QaInquiryDraft.etcTopicGuide(topic);
-
   String get _caName {
+    final major = (_draft.majorCategory ?? '').trim();
     if (_selectedTopic == null || _selectedTopic!.isEmpty) {
-      return _draft.category;
+      if (major.isEmpty) return _draft.category;
+      return '${_draft.category}|$major';
     }
-    return '${_draft.category}|$_selectedTopic';
+    if (major.isEmpty) return '${_draft.category}|$_selectedTopic';
+    return '${_draft.category}|$major|$_selectedTopic';
   }
 
   @override
   void initState() {
     super.initState();
     _inputController.addListener(_onInputChanged);
+    if (_isEtc) {
+      _inquiryPromptShown = true;
+      _promptShownAt = DateTime.now();
+    } else if (_needsTopic) {
+      _guideShownAt = DateTime.now();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _canType) _inputFocus.requestFocus();
     });
@@ -144,25 +153,6 @@ class _QaInputScreenState extends State<QaInputScreen> {
     final now = DateTime.now();
     setState(() {
       _selectedTopic = topic;
-      // �ֹ�/��ǰ: Ĩ ���� CS ������Ʈ �� �Է� ����
-      // ��Ÿ: 1�� �ȳ� + ������ ����ϱ⡹ �� ������Ʈ
-      if (!_isEtc) {
-        _inquiryPromptShown = true;
-        _promptShownAt = now;
-      }
-    });
-    _scrollToBottom();
-    if (!_isEtc) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _canType) _inputFocus.requestFocus();
-      });
-    }
-  }
-
-  void _onContinueInquiry() {
-    if (_inquiryPromptShown) return;
-    final now = DateTime.now();
-    setState(() {
       _inquiryPromptShown = true;
       _promptShownAt = now;
     });
@@ -192,14 +182,14 @@ class _QaInputScreenState extends State<QaInputScreen> {
       final draft = _draft;
       final Map<String, dynamic> result;
       if (_createdWrId == null) {
-        // ù ���� �� DB ���� (���� ȭ�� ����)
+        // 처음 문의 데이터베이스 생성 (초기 질문 입력)
         result = await QaService.create(
           subject: draft.buildSubject(text),
           content: draft.buildContent(text),
           primaryType: _caName,
         );
       } else {
-        // �߰� ����
+        // 추가 문의 데이터베이스 생성
         result = await QaService.create(
           subject: text.length > 40 ? '${text.substring(0, 40)}…' : text,
           content: text,
@@ -237,7 +227,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
   Future<void> _confirmAndClose() async {
     if (_closing || _threadClosed) return;
 
-    // ���� DB ���� �� �� �׳� ������
+    // 문의 데이터베이스 종료
     if (_createdWrId == null) {
       if (!mounted) return;
       Navigator.pop(context, false);
@@ -304,7 +294,14 @@ class _QaInputScreenState extends State<QaInputScreen> {
                       _draft.category == '주문' ||
                       _draft.category == '상품')
                     _buildTargetCard(context),
-                  if (_needsTopic) ...[
+                  if (_isEtc) ...[
+                    SizedBox(height: healthDp(context, 16)),
+                    _buildCsBubble(
+                      context,
+                      text: QaInquiryDraft.etcAskPrompt,
+                      timeLabel: _formatAmPmTime(_promptShownAt),
+                    ),
+                  ] else if (_needsTopic) ...[
                     SizedBox(height: healthDp(context, 16)),
                     _buildCsGuide(context),
                     if (_selectedTopic != null) ...[
@@ -312,17 +309,8 @@ class _QaInputScreenState extends State<QaInputScreen> {
                       _buildUserBubble(
                         context,
                         _selectedTopic!,
+                        timeLabel: _formatAmPmTime(_promptShownAt),
                       ),
-                      if (_isEtc) ...[
-                        SizedBox(height: healthDp(context, 12)),
-                        _buildCsMessage(
-                          context,
-                          text: _etcTopicGuide(_selectedTopic!),
-                          footer: _inquiryPromptShown
-                              ? null
-                              : _buildContinueButton(context),
-                        ),
-                      ],
                       if (_inquiryPromptShown) ...[
                         SizedBox(height: healthDp(context, 12)),
                         _buildCsBubble(
@@ -338,6 +326,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
                     _buildUserBubble(context, msg),
                   ],
                   if (!_needsTopic &&
+                      !_isEtc &&
                       !_draft.hasTarget &&
                       _sentMessages.isEmpty)
                     Padding(
@@ -381,7 +370,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFFAAAAAA),
             fontSize: healthSp(context, 11),
             fontFamily: _font,
             fontWeight: FontWeight.w400,
@@ -406,7 +395,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _pink),
+                side: BorderSide(width: healthDp(context, 1), color: _pink),
                 borderRadius: BorderRadius.circular(healthDp(context, 9999)),
               ),
             ),
@@ -414,7 +403,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
               '문의를 종료합니다.',
               style: TextStyle(
                 color: _pink,
-                fontSize: healthSp(context, 8),
+                fontSize: healthSp(context, 10),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
               ),
@@ -428,9 +417,11 @@ class _QaInputScreenState extends State<QaInputScreen> {
   Widget _buildTargetCard(BuildContext context) {
     final draft = _draft;
     final imageUrl = (draft.imageUrl ?? '').trim();
-    final badgeLabel = draft.category == '주문'
-        ? '주문문의'
-        : (draft.category == '상품' ? '상품문의' : draft.category);
+    final badgeLabel = (draft.selectTabLabel ?? '').trim().isNotEmpty
+        ? draft.selectTabLabel!.trim()
+        : (draft.category == '주문'
+            ? '주문문의'
+            : (draft.category == '상품' ? '상품문의' : draft.category));
 
     return Container(
       padding: EdgeInsets.all(healthDp(context, 12)),
@@ -438,7 +429,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
         color: const Color(0xFFF8F9FA),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
-          side: const BorderSide(color: _csBorder),
+          side: BorderSide(color: _csBorder, width: healthDp(context, 1)),
         ),
       ),
       child: Row(
@@ -453,10 +444,15 @@ class _QaInputScreenState extends State<QaInputScreen> {
                   ? Image.network(
                       ImageUrlHelper.getImageUrl(imageUrl),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.image_outlined),
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.image_outlined,
+                        size: healthDp(context, 24),
+                      ),
                     )
-                  : const Icon(Icons.image_outlined),
+                  : Icon(
+                      Icons.image_outlined,
+                      size: healthDp(context, 24),
+                    ),
             ),
           ),
           SizedBox(width: healthDp(context, 12)),
@@ -472,7 +468,10 @@ class _QaInputScreenState extends State<QaInputScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0x14FF5A8D),
                     borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                    border: Border.all(color: _pink.withValues(alpha: 0.35)),
+                    border: Border.all(
+                      color: _pink.withValues(alpha: 0.35),
+                      width: healthDp(context, 1),
+                    ),
                   ),
                   child: Text(
                     badgeLabel,
@@ -491,6 +490,16 @@ class _QaInputScreenState extends State<QaInputScreen> {
                     style: TextStyle(
                       color: _muted,
                       fontSize: healthSp(context, 10),
+                      fontWeight: FontWeight.w300,
+                      fontFamily: _font,
+                    ),
+                  )
+                else if ((draft.itSubject ?? '').trim().isNotEmpty)
+                  Text(
+                    draft.itSubject!.trim(),
+                    style: TextStyle(
+                      color: _muted,
+                      fontSize: healthSp(context, 10),
                       fontFamily: _font,
                     ),
                   )
@@ -505,6 +514,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
                   ),
                 if ((draft.category == '주문' &&
                         (draft.odId ?? '').isNotEmpty) ||
+                    (draft.itSubject ?? '').trim().isNotEmpty ||
                     draft.brandName?.trim().isNotEmpty == true)
                   SizedBox(height: healthDp(context, 2)),
                 Text(
@@ -513,13 +523,27 @@ class _QaInputScreenState extends State<QaInputScreen> {
                       : '선택 항목',
                   style: TextStyle(
                     color: _ink,
-                    fontSize: healthSp(context, 10),
+                    fontSize: healthSp(context, 12),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if ((draft.optionText ?? '').trim().isNotEmpty) ...[
+                  SizedBox(height: healthDp(context, 2)),
+                  Text(
+                    draft.optionText!.trim(),
+                    style: TextStyle(
+                      color: _muted,
+                      fontSize: healthSp(context, 10),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 if (draft.price != null) ...[
                   SizedBox(height: healthDp(context, 2)),
                   Text(
@@ -544,6 +568,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
     return _buildCsMessage(
       context,
       text: _guideMessage,
+      timeLabel: _formatAmPmTime(_guideShownAt ?? DateTime.now()),
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -556,7 +581,7 @@ class _QaInputScreenState extends State<QaInputScreen> {
                 _TopicChip(
                   label: topic,
                   selected: _selectedTopic == topic,
-                  // ���� �� ���� ��Ȱ�� (���� �Ұ�, Ĩ�� ����)
+                  // 선택 후 칩 비활성 (변경 불가, 칩만 표시)
                   enabled: _selectedTopic == null,
                   onTap: () => _onSelectTopic(topic),
                 ),
@@ -575,35 +600,6 @@ class _QaInputScreenState extends State<QaInputScreen> {
     return _buildCsMessage(context, text: text, timeLabel: timeLabel);
   }
 
-  Widget _buildContinueButton(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: healthDp(context, 12)),
-      child: GestureDetector(
-        onTap: _onContinueInquiry,
-        child: Container(
-          width: double.infinity,
-          height: healthDp(context, 40),
-          alignment: Alignment.center,
-          decoration: ShapeDecoration(
-            color: _pink,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(healthDp(context, 10)),
-            ),
-          ),
-          child: Text(
-            '문의 계속하기',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: healthSp(context, 14),
-              fontFamily: _font,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCsMessage(
     BuildContext context, {
     required String text,
@@ -620,14 +616,14 @@ class _QaInputScreenState extends State<QaInputScreen> {
         Container(
           width: avatar,
           height: avatar,
-          decoration: const BoxDecoration(
-            color: Color(0xFFDDE3EB),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDDE3EB),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 4,
-                offset: Offset(0, 1),
+                color: const Color(0x14000000),
+                blurRadius: healthDp(context, 4),
+                offset: Offset(0, healthDp(context, 1)),
               ),
             ],
           ),
@@ -640,81 +636,84 @@ class _QaInputScreenState extends State<QaInputScreen> {
         ),
         SizedBox(width: healthDp(context, 8)),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.only(left: healthDp(context, 2)),
-                child: Text(
-                  'Bomi CS',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: healthSp(context, 11),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
+          child: Padding(
+            // 상대(유저) 쪽 프로필 라인 — 아바타+간격만큼 오른쪽 여백
+            padding: EdgeInsets.only(right: avatar + healthDp(context, 8)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: healthDp(context, 2)),
+                  child: Text(
+                    '보미오라 CS',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: healthSp(context, 11),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: healthDp(context, 4)),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: CustomPaint(
-                      painter: _ChatBubblePainter(
-                        color: Colors.white,
-                        borderColor: const Color(0xFFE7E8E9),
-                        isUser: false,
-                        radius: r,
-                        tailSize: tail,
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          healthDp(context, 14) + tail,
-                          healthDp(context, 10),
-                          healthDp(context, 14),
-                          healthDp(context, 10),
+                SizedBox(height: healthDp(context, 4)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CustomPaint(
+                        painter: _ChatBubblePainter(
+                          color: Colors.white,
+                          borderColor: const Color(0xFFE7E8E9),
+                          isUser: false,
+                          radius: r,
+                          tailSize: tail,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              text,
-                              style: TextStyle(
-                                color: _csText,
-                                fontSize: healthSp(context, 12),
-                                fontFamily: _font,
-                                fontWeight: FontWeight.w500,
-                                height: 1.5,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            healthDp(context, 14) + tail,
+                            healthDp(context, 10),
+                            healthDp(context, 14),
+                            healthDp(context, 10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                text,
+                                style: TextStyle(
+                                  color: _csText,
+                                  fontSize: healthSp(context, 12),
+                                  fontFamily: _font,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.5,
+                                ),
                               ),
-                            ),
-                            if (footer != null) footer,
-                          ],
+                              if (footer != null) footer,
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                      // 질문 시간 표시
+                      if (timeLabel.isNotEmpty) ...[
+                        SizedBox(height: healthDp(context, 4)),
+                        Text(
+                          timeLabel.replaceAll('\n', ' '),
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: healthSp(context, 8),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  if (timeLabel.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: healthDp(context, 6),
-                        bottom: healthDp(context, 2),
-                      ),
-                      child: Text(
-                        timeLabel.replaceAll('\n', ' '),
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: healthSp(context, 10),
-                          fontFamily: _font,
-                          fontWeight: FontWeight.w400,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -728,32 +727,20 @@ class _QaInputScreenState extends State<QaInputScreen> {
   }) {
     final r = healthDp(context, 16);
     final tail = healthDp(context, 8);
+    // CS 프로필(아바타+간격) 라인을 넘지 않도록 왼쪽 여백
+    final profileGutter = healthDp(context, 36) + healthDp(context, 8);
 
     return Align(
       alignment: Alignment.centerRight,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (timeLabel.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(right: healthDp(context, 6)),
-              child: Text(
-                timeLabel,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: _muted,
-                  fontSize: healthSp(context, 10),
-                  fontFamily: _font,
-                  fontWeight: FontWeight.w400,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          Flexible(
-            child: CustomPaint(
+      child: Padding(
+        padding: EdgeInsets.only(left: profileGutter),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            CustomPaint(
               painter: _ChatBubblePainter(
                 color: _userBubble,
+                borderColor: _userBubble,
                 isUser: true,
                 radius: r,
                 tailSize: tail,
@@ -777,8 +764,24 @@ class _QaInputScreenState extends State<QaInputScreen> {
                 ),
               ),
             ),
-          ),
-        ],
+            if (timeLabel.isNotEmpty) ...[
+              SizedBox(height: healthDp(context, 4)),
+              Padding(
+                padding: EdgeInsets.only(right: tail),
+                child: Text(
+                  timeLabel.replaceAll('\n', ' '),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: healthSp(context, 8),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -790,9 +793,11 @@ class _QaInputScreenState extends State<QaInputScreen> {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.all(healthDp(context, 12)),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: _inputBarBg,
-          border: Border(top: BorderSide(width: 1, color: _csBorder)),
+          border: Border(
+            top: BorderSide(width: healthDp(context, 1), color: _csBorder),
+          ),
         ),
         child: IgnorePointer(
           ignoring: locked,
@@ -837,9 +842,9 @@ class _QaInputScreenState extends State<QaInputScreen> {
                           border: InputBorder.none,
                           hintText: locked
                               ? (_threadClosed
-                                  ? '종료된 문의입니다. 추가 질문은 불가합니다.'
-                                  : '현재는 텍스트를 입력할 수 없어요.')
-                              : '문의하실 내용을 입력해주세요',
+                                  ? '문의가 종료되었습니다'
+                                  : '궁금하신 사항을 선택해 주세요')
+                              : '궁금하신 사항을 입력해주세요',
                           hintStyle: TextStyle(
                             color: _hint,
                             fontSize: healthSp(context, locked ? 13 : 15),
@@ -872,8 +877,8 @@ class _QaInputScreenState extends State<QaInputScreen> {
                             ? SizedBox(
                                 width: healthDp(context, 14),
                                 height: healthDp(context, 14),
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: healthDp(context, 2),
                                   color: Colors.white,
                                 ),
                               )
@@ -933,7 +938,7 @@ class _TopicChip extends StatelessWidget {
               borderRadius: BorderRadius.circular(healthDp(context, 999)),
               border: Border.all(
                 color: active ? _pink : _border,
-                width: active ? 1.5 : 1,
+                width: healthDp(context, active ? 1.5 : 1),
               ),
             ),
             child: Text(
@@ -968,14 +973,15 @@ class _ChatBubblePainter extends CustomPainter {
   });
 
   Path _buildPath(Size size) {
-    final r = radius.clamp(4.0, size.shortestSide / 2);
-    final t = tailSize.clamp(4.0, 14.0);
+    // radius/tailSize는 호출부에서 healthDp로 전달됨 → 클램프도 비율로 맞춤
+    final r = radius.clamp(radius * 0.25, size.shortestSide / 2);
+    final t = tailSize.clamp(radius * 0.25, radius);
     final w = size.width;
     final h = size.height;
     final path = Path();
 
     if (isUser) {
-      // ���� ��� ���� ? ���� ����
+      // 사용자 버블 경로
       final bodyRight = w - t;
       path.moveTo(r, 0);
       path.lineTo(w, 0);
@@ -1000,7 +1006,7 @@ class _ChatBubblePainter extends CustomPainter {
       );
       path.close();
     } else {
-      // ���� ��� ���� ? ���� ����
+      // 챗봇 버블 경로
       final bodyLeft = t;
       path.moveTo(0, 0);
       path.lineTo(w - r, 0);
@@ -1031,22 +1037,32 @@ class _ChatBubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final path = _buildPath(size);
-    canvas.drawShadow(path, const Color(0x14000000), 3, false);
+    final stroke = borderColor;
+    // radius = healthDp(16) 기준 → stroke≈1, shadow≈2
+    final strokeW = (radius / 16).clamp(0.75, 3.0);
+    final elev = (radius / 8).clamp(1.0, 4.0);
+
+    canvas.drawShadow(path, const Color(0x0A000000), elev, true);
+
+    canvas.save();
+    canvas.clipPath(path);
     canvas.drawPath(
       path,
       Paint()
         ..color = color
-        ..style = PaintingStyle.fill,
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
     );
-    if (borderColor != null) {
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = borderColor!
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
+    canvas.restore();
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = stroke ?? const Color(0x40FF5A8D)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeW
+        ..isAntiAlias = true,
+    );
   }
 
   @override

@@ -3,11 +3,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/qa/qa_inquiry_model.dart';
+import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/services/qa_service.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
+import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../models/qa_inquiry_draft.dart';
@@ -26,7 +29,7 @@ class QaDetailScreen extends StatefulWidget {
 
 class _QaDetailScreenState extends State<QaDetailScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
-  static const Color _userBubble = Color(0xFFFFD6E4);
+  static const Color _userBubble = Color(0x0DFF5A8D);
   static const Color _datePill = Color(0x99E7E8E9);
   static const Color _csBorder = Color(0x33E0BEC4);
   static const Color _csText = Color(0xFF191C1D);
@@ -43,6 +46,9 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
   String? _errorMessage;
   bool _didInitialScroll = false;
   bool _sending = false;
+  /// 예전 문의 대비 — 상품코드로 조회한 it_subject / 이미지
+  String? _resolvedItSubjectLabel;
+  String? _resolvedImageUrl;
 
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _inputController = TextEditingController();
@@ -76,8 +82,11 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
            _inquiry = payload.inquiry;
           _thread = payload.thread;
           _rootWrId = payload.rootWrId;
+          _resolvedItSubjectLabel = null;
+          _resolvedImageUrl = null;
           _isLoading = false;
         });
+        await _resolveProductCardExtras();
         await _loadRepliesForThread();
       } else {
         setState(() {
@@ -91,6 +100,60 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  String? _productSubjectLabel(String? raw, {String? productKind}) {
+    final subject = stripProductCatalogHtml(raw);
+    if (isBomioraHospitalProductSubject(subject)) {
+      return '보미오라 한의원';
+    }
+    if (shouldShowProductCardSubject(subject)) {
+      return subject;
+    }
+    final kind = (productKind ?? '').trim().toLowerCase();
+    if (kind.isNotEmpty && kind != 'general') {
+      return '보미오라 한의원';
+    }
+    return subject.isNotEmpty ? subject : null;
+  }
+
+  Future<void> _resolveProductCardExtras() async {
+    final root = _rootQuestion;
+    if (root == null) return;
+    final category = root.inquiryCategoryLabel;
+    if (category != '상품' && category != '주문') return;
+
+    final needSubject = category == '상품' &&
+        (root.subjectItSubject ?? '').trim().isEmpty;
+    final needImage = (root.subjectImageUrl ?? '').trim().isEmpty;
+    if (!needSubject && !needImage) return;
+
+    final itId = (root.subjectProductCode ?? '').trim();
+    if (itId.isEmpty) return;
+
+    try {
+      final product = await ProductRepository.getProductDetail(itId);
+      if (!mounted || product == null) return;
+
+      String? label;
+      if (needSubject) {
+        label = _productSubjectLabel(
+          product.itSubject,
+          productKind: product.productKind,
+        );
+      }
+      final image = needImage ? (product.imageUrl ?? '').trim() : '';
+
+      if ((label == null || label.isEmpty) && image.isEmpty) return;
+      setState(() {
+        if (label != null && label.isNotEmpty) {
+          _resolvedItSubjectLabel = label;
+        }
+        if (image.isNotEmpty) {
+          _resolvedImageUrl = image;
+        }
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadRepliesForThread() async {
@@ -188,12 +251,12 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         .trim();
   }
 
-  /// �亯 �ۼ� �ð� ? ���� ���� `wr_last`
+  /// 답변 작성 시간 ? 문의 마지막 답변 시간 `wr_last`
   String _answerDatetimeFor(QaInquiry q) => q.wrLast.trim();
 
-  /// �ð����� ������ �Ľ�
-  /// - Ÿ���� ����(`2026-07-20 17:17:20`) �� ǥ�ÿ� ����(���ð�) �״��
-  /// - Ÿ���� ����(`...Z`, `+09:00`) �� �Ľ� �� `toLocal()`
+  /// 답변 시간 파싱
+  /// - 답변 시간(`2026-07-20 17:17:20`) 연월일 시간(오전/오후) 파싱
+  /// - 답변 시간(`...Z`, `+09:00`) 시간 파싱 `toLocal()`
   DateTime? _parseDate(String raw) {
     final t = raw.trim();
     if (t.isEmpty) return null;
@@ -206,7 +269,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
 
     if (hasTz) {
       try {
-        // ISO / JS ��Ķ �� Ÿ���� ���� �� ��� ���÷� ��ȯ
+        // ISO / JS 시간 파싱 답변 시간 변환
         final parsed = DateTime.parse(
           t.contains('T') ? t : t.replaceFirst(' ', 'T'),
         );
@@ -216,7 +279,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       }
     }
 
-    // 2026-07-20 15:30:00 / 2026.07.20 15:30:00.000 ? ���ð� �״��
+    // 2026-07-20 15:30:00 / 2026.07.20 15:30:00.000 ? 답변 시간 파싱
     final m = RegExp(
       r'^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?',
     ).firstMatch(t);
@@ -262,7 +325,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
           int.parse(js.group(5)!),
           int.parse(js.group(6)!),
         );
-        // GMT �������� ������ ������ hasTz�� �̹� ó������ �� ����
+        // GMT 시간 파싱 답변 시간 변환
         return wall;
       }
     }
@@ -299,25 +362,30 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
 
     final root = _rootQuestion;
     final category = root?.inquiryCategoryLabel ?? '';
+    final major = root?.inquiryMajorLabel ?? '';
     final topic = root?.inquiryDetailLabel ?? '';
-    final hasTopicFlow = (category == '주문' ||
-            category == '상품' ||
-            category == '기타') &&
+    final hasTopicFlow = (category == '주문' || category == '상품') &&
         topic.isNotEmpty;
 
-    if (root != null && hasTopicFlow) {
+    if (root != null && category == '기타') {
       maybeDate(root.wrDatetime);
-      if (category == '주문' || category == '상품') {
-        items.add(_ChatItem.target(root));
-      }
-      items.add(_ChatItem.topicGuide(category: category, selectedTopic: topic));
-      items.add(_ChatItem.topicUser(text: topic));
-      if (category == '기타') {
-        items.add(_ChatItem.cs(
-          text: QaInquiryDraft.etcTopicGuide(topic),
-          datetime: root.wrDatetime,
-        ));
-      }
+      items.add(_ChatItem.cs(
+        text: QaInquiryDraft.etcAskPrompt,
+        datetime: root.wrDatetime,
+      ));
+    } else if (root != null && hasTopicFlow) {
+      maybeDate(root.wrDatetime);
+      items.add(_ChatItem.target(root));
+      items.add(_ChatItem.topicGuide(
+        category: category,
+        majorCategory: major,
+        selectedTopic: topic,
+        datetime: root.wrDatetime,
+      ));
+      items.add(_ChatItem.topicUser(
+        text: topic,
+        datetime: root.wrDatetime,
+      ));
       items.add(_ChatItem.cs(
         text: QaInquiryDraft.askPrompt,
         datetime: root.wrDatetime,
@@ -470,7 +538,9 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                     child: _buildTopicGuide(
                       context,
                       category: item.topicCategory!,
+                      majorCategory: item.majorCategory ?? '',
                       selectedTopic: item.selectedTopic!,
+                      datetime: item.csDatetime ?? '',
                     ),
                   );
                 case _ChatItemType.topicUser:
@@ -479,6 +549,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                     child: _buildTopicUserBubble(
                       context,
                       text: item.topicUserText!,
+                      datetime: item.csDatetime ?? '',
                     ),
                   );
                 case _ChatItemType.user:
@@ -519,14 +590,14 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
             decoration: ShapeDecoration(
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                side: const BorderSide(width: 1, color: _pink),
+                side: BorderSide(width: healthDp(context, 1), color: _pink),
                 borderRadius: BorderRadius.circular(healthDp(context, 9999)),
               ),
-              shadows: const [
+              shadows: [
                 BoxShadow(
-                  color: Color(0x0C000000),
-                  blurRadius: 2,
-                  offset: Offset(0, 1),
+                  color: const Color(0x0C000000),
+                  blurRadius: healthDp(context, 2),
+                  offset: Offset(0, healthDp(context, 1)),
                 ),
               ],
             ),
@@ -534,7 +605,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
               '문의를 종료합니다.',
               style: TextStyle(
                 color: _pink,
-                fontSize: healthSp(context, 8),
+                fontSize: healthSp(context, 10),
                 fontFamily: _font,
                 fontWeight: FontWeight.w500,
               ),
@@ -561,7 +632,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.black,
+            color: const Color(0xFFAAAAAA),
             fontSize: healthSp(context, 11),
             fontFamily: _font,
             fontWeight: FontWeight.w400,
@@ -574,17 +645,32 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
 
   Widget _buildTargetCard(BuildContext context, QaInquiry root) {
     final category = root.inquiryCategoryLabel;
-    final badgeLabel = category == '주문'
-        ? '주문문의'
-        : (category == '상품' ? '상품문의' : category);
+    final badgeLabel = (root.subjectTabLabel ?? '').trim().isNotEmpty
+        ? root.subjectTabLabel!.trim()
+        : (category == '주문'
+            ? '주문문의'
+            : (category == '상품' ? '상품문의' : category));
     final brandOrOrder = category == '주문' &&
             (root.subjectOrderId ?? '').isNotEmpty
         ? '주문번호 ${root.subjectOrderId}'
-        : (root.subjectBrandName ?? '');
+        : '';
+    final itSubject = (root.subjectItSubject ?? '').trim().isNotEmpty
+        ? root.subjectItSubject!.trim()
+        : (_resolvedItSubjectLabel ?? '').trim();
+    final brandName = (root.subjectBrandName ?? '').trim();
+    final topLabel = brandOrOrder.isNotEmpty
+        ? brandOrOrder
+        : (itSubject.isNotEmpty
+            ? itSubject
+            : brandName);
     final productName = (root.subjectProductName ?? '').trim().isNotEmpty
         ? root.subjectProductName!.trim()
         : root.listCardTitle;
+    final optionText = (root.subjectOptionText ?? '').trim();
     final price = root.subjectPrice;
+    final imageUrl = (root.subjectImageUrl ?? '').trim().isNotEmpty
+        ? root.subjectImageUrl!.trim()
+        : (_resolvedImageUrl ?? '').trim();
 
     return Container(
       padding: EdgeInsets.all(healthDp(context, 12)),
@@ -592,7 +678,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         color: const Color(0xFFF8F9FA),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(healthDp(context, 12)),
-          side: const BorderSide(color: _csBorder),
+          side: BorderSide(color: _csBorder, width: healthDp(context, 1)),
         ),
       ),
       child: Row(
@@ -603,7 +689,19 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
               width: healthDp(context, 56),
               height: healthDp(context, 56),
               color: const Color(0xFFE8E8E8),
-              child: const Icon(Icons.image_outlined),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      ImageUrlHelper.getImageUrl(imageUrl),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.image_outlined,
+                        size: healthDp(context, 24),
+                      ),
+                    )
+                  : Icon(
+                      Icons.image_outlined,
+                      size: healthDp(context, 24),
+                    ),
             ),
           ),
           SizedBox(width: healthDp(context, 12)),
@@ -619,7 +717,10 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0x14FF5A8D),
                     borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                    border: Border.all(color: _pink.withValues(alpha: 0.35)),
+                    border: Border.all(
+                      color: _pink.withValues(alpha: 0.35),
+                      width: healthDp(context, 1),
+                    ),
                   ),
                   child: Text(
                     badgeLabel,
@@ -632,14 +733,16 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                   ),
                 ),
                 SizedBox(height: healthDp(context, 2)),
-                if (brandOrOrder.isNotEmpty) ...[
+                if (topLabel.isNotEmpty) ...[
                   Text(
-                    brandOrOrder,
+                    topLabel,
                     style: TextStyle(
                       color: const Color(0xFF898686),
                       fontSize: healthSp(context, 10),
                       fontFamily: _font,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: healthDp(context, 2)),
                 ],
@@ -647,13 +750,27 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                   productName,
                   style: TextStyle(
                     color: const Color(0xFF1A1A1A),
-                    fontSize: healthSp(context, 10),
+                    fontSize: healthSp(context, 12),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (optionText.isNotEmpty) ...[
+                  SizedBox(height: healthDp(context, 2)),
+                  Text(
+                    optionText,
+                    style: TextStyle(
+                      color: const Color(0xFF898686),
+                      fontSize: healthSp(context, 10),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 if (price != null) ...[
                   SizedBox(height: healthDp(context, 2)),
                   Text(
@@ -677,10 +794,13 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
   Widget _buildTopicGuide(
     BuildContext context, {
     required String category,
+    required String majorCategory,
     required String selectedTopic,
+    required String datetime,
   }) {
-    final topics = QaInquiryDraft.topicsFor(category);
+    final topics = QaInquiryDraft.topicsFor(category, majorCategory);
     final guide = QaInquiryDraft.guideMessage(category);
+    final time = _formatAmPmTime(datetime).replaceAll('\n', ' ');
     final avatar = healthDp(context, 36);
     final r = healthDp(context, 16);
     final tail = healthDp(context, 8);
@@ -691,14 +811,14 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         Container(
           width: avatar,
           height: avatar,
-          decoration: const BoxDecoration(
-            color: Color(0xFFDDE3EB),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDDE3EB),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 4,
-                offset: Offset(0, 1),
+                color: const Color(0x14000000),
+                blurRadius: healthDp(context, 4),
+                offset: Offset(0, healthDp(context, 1)),
               ),
             ],
           ),
@@ -711,68 +831,94 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         ),
         SizedBox(width: healthDp(context, 8)),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.only(left: healthDp(context, 2)),
-                child: Text(
-                  'Bomi CS',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: healthSp(context, 11),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
+          child: Padding(
+            // 상대(유저) 쪽 프로필 라인 — 아바타+간격만큼 오른쪽 여백
+            padding: EdgeInsets.only(right: avatar + healthDp(context, 8)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: healthDp(context, 2)),
+                  child: Text(
+                    '보미오라 CS',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: healthSp(context, 11),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w300,
+                      height: 1,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: healthDp(context, 4)),
-              CustomPaint(
-                painter: _ChatBubblePainter(
-                  color: Colors.white,
-                  borderColor: const Color(0xFFE7E8E9),
-                  isUser: false,
-                  radius: r,
-                  tailSize: tail,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 14) + tail,
-                    healthDp(context, 10),
-                    healthDp(context, 14),
-                    healthDp(context, 10),
-                  ),
+                SizedBox(height: healthDp(context, 4)),
+                Align(
+                  alignment: Alignment.centerLeft,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        guide,
-                        style: TextStyle(
-                          color: _csText,
-                          fontSize: healthSp(context, 12),
-                          fontFamily: _font,
-                          fontWeight: FontWeight.w500,
-                          height: 1.5,
+                      CustomPaint(
+                        painter: _ChatBubblePainter(
+                          color: Colors.white,
+                          borderColor: const Color(0xFFE7E8E9),
+                          isUser: false,
+                          radius: r,
+                          tailSize: tail,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            healthDp(context, 14) + tail,
+                            healthDp(context, 10),
+                            healthDp(context, 14),
+                            healthDp(context, 10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                guide,
+                                style: TextStyle(
+                                  color: _csText,
+                                  fontSize: healthSp(context, 12),
+                                  fontFamily: _font,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.5,
+                                ),
+                              ),
+                              SizedBox(height: healthDp(context, 12)),
+                              Wrap(
+                                spacing: healthDp(context, 8),
+                                runSpacing: healthDp(context, 8),
+                                children: [
+                                  for (final t in topics)
+                                    _TopicChip(
+                                      label: t,
+                                      selected: t == selectedTopic,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      SizedBox(height: healthDp(context, 12)),
-                      Wrap(
-                        spacing: healthDp(context, 8),
-                        runSpacing: healthDp(context, 8),
-                        children: [
-                          for (final t in topics)
-                            _TopicChip(
-                              label: t,
-                              selected: t == selectedTopic,
-                            ),
-                        ],
-                      ),
+                      if (time.isNotEmpty) ...[
+                        SizedBox(height: healthDp(context, 4)),
+                        Text(
+                          time,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 8),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -782,107 +928,133 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
   Widget _buildTopicUserBubble(
     BuildContext context, {
     required String text,
+    required String datetime,
   }) {
+    final time = _formatAmPmTime(datetime).replaceAll('\n', ' ');
     final r = healthDp(context, 16);
     final tail = healthDp(context, 8);
+    final profileGutter = healthDp(context, 36) + healthDp(context, 8);
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Flexible(
-          child: CustomPaint(
-            painter: _ChatBubblePainter(
-              color: _userBubble,
-              isUser: true,
-              radius: r,
-              tailSize: tail,
-            ),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 14),
-                healthDp(context, 10),
-                healthDp(context, 14) + tail,
-                healthDp(context, 10),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: EdgeInsets.only(left: profileGutter),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            CustomPaint(
+              painter: _ChatBubblePainter(
+                color: _userBubble,
+                borderColor: _userBubble,
+                isUser: true,
+                radius: r,
+                tailSize: tail,
               ),
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: Colors.black.withValues(alpha: 0.95),
-                  fontSize: healthSp(context, 12),
-                  fontFamily: _font,
-                  fontWeight: FontWeight.w500,
-                  height: 1.5,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 14),
+                  healthDp(context, 10),
+                  healthDp(context, 14) + tail,
+                  healthDp(context, 10),
+                ),
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    color: Colors.black.withValues(alpha: 0.95),
+                    fontSize: healthSp(context, 12),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUserBubble(BuildContext context, QaInquiry q) {
-    final text = q.displayQuestionText;
-    final time = _formatAmPmTime(q.wrDatetime);
-    final r = healthDp(context, 16);
-    final tail = healthDp(context, 8);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (time.isNotEmpty)
+            if (time.isNotEmpty) ...[
+              SizedBox(height: healthDp(context, 4)),
               Padding(
-                padding: EdgeInsets.only(right: healthDp(context, 6)),
+                padding: EdgeInsets.only(right: tail),
                 child: Text(
                   time,
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     color: const Color(0xFF898686),
-                    fontSize: healthSp(context, 10),
+                    fontSize: healthSp(context, 8),
                     fontFamily: _font,
-                    fontWeight: FontWeight.w400,
-                    height: 1.5,
+                    fontWeight: FontWeight.w300,
                   ),
                 ),
               ),
-            Flexible(
-              child: CustomPaint(
-                painter: _ChatBubblePainter(
-                  color: _userBubble,
-                  isUser: true,
-                  radius: r,
-                  tailSize: tail,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    healthDp(context, 14),
-                    healthDp(context, 10),
-                    healthDp(context, 14) + tail,
-                    healthDp(context, 10),
-                  ),
-                  child: text.isEmpty
-                      ? const SizedBox.shrink()
-                      : Text(
-                          text,
-                          style: TextStyle(
-                            color: Colors.black.withValues(alpha: 0.95),
-                            fontSize: healthSp(context, 12),
-                            fontFamily: _font,
-                            fontWeight: FontWeight.w500,
-                            height: 1.5,
-                          ),
-                        ),
-                ),
-              ),
-            ),
+            ],
           ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildUserBubble(BuildContext context, QaInquiry q) {
+    final text = q.displayQuestionText;
+    final time = _formatAmPmTime(q.wrDatetime).replaceAll('\n', ' ');
+    final r = healthDp(context, 16);
+    final tail = healthDp(context, 8);
+    // CS 프로필(아바타+간격) 라인을 넘지 않도록 왼쪽 여백
+    final profileGutter = healthDp(context, 36) + healthDp(context, 8);
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: EdgeInsets.only(left: profileGutter),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            CustomPaint(
+              painter: _ChatBubblePainter(
+                color: _userBubble,
+                borderColor: _userBubble,
+                isUser: true,
+                radius: r,
+                tailSize: tail,
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 14),
+                  healthDp(context, 10),
+                  healthDp(context, 14) + tail,
+                  healthDp(context, 10),
+                ),
+                child: text.isEmpty
+                    ? const SizedBox.shrink()
+                    : Text(
+                        text,
+                        style: TextStyle(
+                          color: Colors.black.withValues(alpha: 0.95),
+                          fontSize: healthSp(context, 12),
+                          fontFamily: _font,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                        ),
+                      ),
+              ),
+            ),
+            if (time.isNotEmpty) ...[
+              SizedBox(height: healthDp(context, 4)),
+              Padding(
+                // 꼬리 너비만큼 들여 카드 본문 오른쪽과 맞춤
+                padding: EdgeInsets.only(right: tail),
+                child: Text(
+                  time,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 8),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -892,25 +1064,24 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
     required String datetime,
   }) {
     if (text.trim().isEmpty) return const SizedBox.shrink();
-    final time = _formatAmPmTime(datetime);
+    final time = _formatAmPmTime(datetime).replaceAll('\n', ' ');
     final avatar = healthDp(context, 36);
     final r = healthDp(context, 16);
     final tail = healthDp(context, 8);
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: avatar,
           height: avatar,
-          decoration: const BoxDecoration(
-            color: Color(0xFFDDE3EB),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDDE3EB),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 4,
-                offset: Offset(0, 1),
+                color: const Color(0x14000000),
+                blurRadius: healthDp(context, 4),
+                offset: Offset(0, healthDp(context, 1)),
               ),
             ],
           ),
@@ -923,75 +1094,76 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
         ),
         SizedBox(width: healthDp(context, 8)),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.only(left: healthDp(context, 2)),
-                child: Text(
-                  'Bomi CS',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: healthSp(context, 11),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
+          child: Padding(
+            // 상대(유저) 쪽 프로필 라인 — 아바타+간격만큼 오른쪽 여백
+            padding: EdgeInsets.only(right: avatar + healthDp(context, 8)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: healthDp(context, 2)),
+                  child: Text(
+                    '보미오라 CS',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: healthSp(context, 11),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: healthDp(context, 4)),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: CustomPaint(
-                      painter: _ChatBubblePainter(
-                        color: Colors.white,
-                        borderColor: const Color(0xFFE7E8E9),
-                        isUser: false,
-                        radius: r,
-                        tailSize: tail,
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          healthDp(context, 14) + tail,
-                          healthDp(context, 10),
-                          healthDp(context, 14),
-                          healthDp(context, 10),
+                SizedBox(height: healthDp(context, 4)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CustomPaint(
+                        painter: _ChatBubblePainter(
+                          color: Colors.white,
+                          borderColor: const Color(0xFFE7E8E9),
+                          isUser: false,
+                          radius: r,
+                          tailSize: tail,
                         ),
-                        child: Text(
-                          text,
-                          style: TextStyle(
-                            color: _csText,
-                            fontSize: healthSp(context, 12),
-                            fontFamily: _font,
-                            fontWeight: FontWeight.w500,
-                            height: 1.5,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            healthDp(context, 14) + tail,
+                            healthDp(context, 10),
+                            healthDp(context, 14),
+                            healthDp(context, 10),
+                          ),
+                          child: Text(
+                            text,
+                            style: TextStyle(
+                              color: _csText,
+                              fontSize: healthSp(context, 12),
+                              fontFamily: _font,
+                              fontWeight: FontWeight.w500,
+                              height: 1.5,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  if (time.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: healthDp(context, 6),
-                        bottom: healthDp(context, 2),
-                      ),
-                      child: Text(
-                        time.replaceAll('\n', ' '),
-                        style: TextStyle(
-                          color: const Color(0xFF898686),
-                          fontSize: healthSp(context, 10),
-                          fontFamily: _font,
-                          fontWeight: FontWeight.w400,
-                          height: 1.5,
+                      if (time.isNotEmpty) ...[
+                        SizedBox(height: healthDp(context, 4)),
+                        Text(
+                          time,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 8),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w300,
+                          ),
                         ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1006,9 +1178,11 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.all(healthDp(context, 12)),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: _inputBarBg,
-          border: Border(top: BorderSide(width: 1, color: _csBorder)),
+          border: Border(
+            top: BorderSide(width: healthDp(context, 1), color: _csBorder),
+          ),
         ),
         child: IgnorePointer(
           ignoring: closed,
@@ -1052,7 +1226,7 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                           isDense: true,
                           border: InputBorder.none,
                           hintText: closed
-                              ? '종료된 문의입니다. 추가 질문은 불가합니다.'
+                              ? '문의가 종료되었습니다'
                               : '문의하실 내용을 입력해주세요',
                           hintStyle: TextStyle(
                             color: _hint,
@@ -1084,8 +1258,8 @@ class _QaDetailScreenState extends State<QaDetailScreen> {
                             ? SizedBox(
                                 width: healthDp(context, 14),
                                 height: healthDp(context, 14),
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: healthDp(context, 2),
                                   color: Colors.white,
                                 ),
                               )
@@ -1116,6 +1290,7 @@ class _ChatItem {
   final String? csText;
   final String? csDatetime;
   final String? topicCategory;
+  final String? majorCategory;
   final String? selectedTopic;
   final String? topicUserText;
 
@@ -1126,6 +1301,7 @@ class _ChatItem {
     this.csText,
     this.csDatetime,
     this.topicCategory,
+    this.majorCategory,
     this.selectedTopic,
     this.topicUserText,
   });
@@ -1148,20 +1324,26 @@ class _ChatItem {
 
   factory _ChatItem.topicGuide({
     required String category,
+    required String majorCategory,
     required String selectedTopic,
+    required String datetime,
   }) =>
       _ChatItem._(
         type: _ChatItemType.topicGuide,
         topicCategory: category,
+        majorCategory: majorCategory,
         selectedTopic: selectedTopic,
+        csDatetime: datetime,
       );
 
   factory _ChatItem.topicUser({
     required String text,
+    required String datetime,
   }) =>
       _ChatItem._(
         type: _ChatItemType.topicUser,
         topicUserText: text,
+        csDatetime: datetime,
       );
 }
 
@@ -1192,7 +1374,7 @@ class _TopicChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(healthDp(context, 999)),
           border: Border.all(
             color: selected ? _pink : _border,
-            width: selected ? 1.5 : 1,
+            width: healthDp(context, selected ? 1.5 : 1),
           ),
         ),
         child: Text(
@@ -1209,7 +1391,7 @@ class _TopicChip extends StatelessWidget {
   }
 }
 
-/// ��ü+������ �� Path�� �׷� ������ ���� ����
+/// 사용자 버블 경로 그리기
 class _ChatBubblePainter extends CustomPainter {
   final Color color;
   final Color? borderColor;
@@ -1226,14 +1408,15 @@ class _ChatBubblePainter extends CustomPainter {
   });
 
   Path _buildPath(Size size) {
-    final r = radius.clamp(4.0, size.shortestSide / 2);
-    final t = tailSize.clamp(4.0, 14.0);
+    // radius/tailSize는 호출부에서 healthDp로 전달됨 → 클램프도 비율로 맞춤
+    final r = radius.clamp(radius * 0.25, size.shortestSide / 2);
+    final t = tailSize.clamp(radius * 0.25, radius);
     final w = size.width;
     final h = size.height;
     final path = Path();
 
     if (isUser) {
-      // ���� ��� ���� ? ���� ����
+      // 사용자 버블 경로
       final bodyRight = w - t;
       path.moveTo(r, 0);
       path.lineTo(w, 0);
@@ -1258,7 +1441,7 @@ class _ChatBubblePainter extends CustomPainter {
       );
       path.close();
     } else {
-      // ���� ��� ���� ? ���� ����
+      // 챗봇 버블 경로
       final bodyLeft = t;
       path.moveTo(0, 0);
       path.lineTo(w - r, 0);
@@ -1289,22 +1472,35 @@ class _ChatBubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final path = _buildPath(size);
-    canvas.drawShadow(path, const Color(0x14000000), 3, false);
+    final stroke = borderColor;
+    // radius = healthDp(16) 기준 → stroke≈1, shadow≈2
+    final strokeW = (radius / 16).clamp(0.75, 3.0);
+    final elev = (radius / 8).clamp(1.0, 4.0);
+
+    // 그림자가 배경처럼 테두리 밖으로 번지지 않도록 약하게만
+    canvas.drawShadow(path, const Color(0x0A000000), elev, true);
+
+    // 배경은 Path 안으로만 채움
+    canvas.save();
+    canvas.clipPath(path);
     canvas.drawPath(
       path,
       Paint()
         ..color = color
-        ..style = PaintingStyle.fill,
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
     );
-    if (borderColor != null) {
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = borderColor!
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
+    canvas.restore();
+
+    // 테두리를 마지막에 그려 배경이 밖으로 보이지 않게 함
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = stroke ?? const Color(0x40FF5A8D)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeW
+        ..isAntiAlias = true,
+    );
   }
 
   @override

@@ -142,7 +142,7 @@ class QaInquiry {
     return !isStructuredSubject;
   }
 
-  /// 문의 카테고리 라벨 (목록 배지용) — `주문|결제` 형태면 앞부분
+  /// 문의 카테고리 라벨 (목록 배지용) — `주문|예약/결제|결제 문의` 형태면 앞부분
   String get inquiryCategoryLabel {
     final ca = caName?.trim() ?? '';
     if (ca.isNotEmpty) {
@@ -156,13 +156,23 @@ class QaInquiry {
     return '';
   }
 
-  /// 상세 유형 (`ca_name`의 `|` 뒤) — 예: 결제, 배송
+  /// 큰 카테고리 (`ca_name` 2번째) — 예: 상품문의, 예약/결제
+  String get inquiryMajorLabel {
+    final ca = caName?.trim() ?? '';
+    if (!ca.contains('|')) return '';
+    final parts = ca.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    if (parts.length >= 3) return parts[1];
+    return '';
+  }
+
+  /// 상세 칩 (`ca_name` 마지막) — 예: 결제 문의, 배송
+  /// 구버전 `주문|결제` 도 지원
   String get inquiryDetailLabel {
     final ca = caName?.trim() ?? '';
     if (!ca.contains('|')) return '';
-    final parts = ca.split('|');
+    final parts = ca.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (parts.length < 2) return '';
-    return parts.sublist(1).join('|').trim();
+    return parts.last;
   }
 
   String? _subjectField(String key) {
@@ -177,8 +187,13 @@ class QaInquiry {
 
   String? get subjectProductName => _subjectField('상품');
   String? get subjectBrandName => _subjectField('브랜드');
+  String? get subjectItSubject => _subjectField('품목');
+  String? get subjectProductCode => _subjectField('상품코드');
   String? get subjectOrderId => _subjectField('주문번호');
   String? get subjectOrderDate => _subjectField('주문일');
+  String? get subjectOptionText => _subjectField('옵션');
+  String? get subjectTabLabel => _subjectField('탭');
+  String? get subjectImageUrl => _subjectField('이미지');
   int? get subjectPrice {
     final raw = _subjectField('가격');
     if (raw == null || raw.isEmpty) return null;

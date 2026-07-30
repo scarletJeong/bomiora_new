@@ -7,7 +7,7 @@ import '../models/qa_inquiry_draft.dart';
 import 'qa_input_screen.dart';
 import 'qa_item_select_screen.dart';
 
-/// 1:1 문의 — 카테고리 선택 (상품 / 주문 / 기타)
+/// 1:1 문의 — 카테고리 선택 (주문 / 상품 / 기타)
 class QaCategoryScreen extends StatefulWidget {
   const QaCategoryScreen({super.key});
 
@@ -21,10 +21,31 @@ class _QaCategoryScreenState extends State<QaCategoryScreen> {
   static const String _font = 'Gmarket Sans TTF';
 
   String? _selected;
+  String? _majorCategory;
+
+  bool get _canNext {
+    if (_selected == null) return false;
+    if (_selected == '기타') return true;
+    return _majorCategory != null && _majorCategory!.isNotEmpty;
+  }
+
+  void _onSelectCategory(String category) {
+    setState(() {
+      if (_selected == category) {
+        _selected = null;
+        _majorCategory = null;
+        return;
+      }
+      _selected = category;
+      if (category == '기타') {
+        _majorCategory = null;
+      }
+    });
+  }
 
   Future<void> _onNext() async {
     final selected = _selected;
-    if (selected == null) return;
+    if (selected == null || !_canNext) return;
 
     if (selected == '기타') {
       final result = await Navigator.push<Object>(
@@ -46,6 +67,7 @@ class _QaCategoryScreenState extends State<QaCategoryScreen> {
           mode: selected == '상품'
               ? QaItemSelectMode.product
               : QaItemSelectMode.order,
+          majorCategory: _majorCategory!,
         ),
       ),
     );
@@ -83,33 +105,38 @@ class _QaCategoryScreenState extends State<QaCategoryScreen> {
                 ),
                 SizedBox(height: healthDp(context, 20)),
                 _CategoryCard(
-                  title: '상품',
-                  description: '상품 관련 문의를 남겨주세요',
-                  examples: const [
-                    '배송 기간이 궁금해요',
-                    '옵션/구성이 궁금해요',
-                  ],
-                  selected: _selected == '상품',
-                  onTap: () => setState(() => _selected = '상품'),
-                ),
-                SizedBox(height: healthDp(context, 12)),
-                _CategoryCard(
                   title: '주문',
                   description: '주문 관련 문의를 남겨주세요',
-                  examples: const [
-                    '배송 상태를 확인하고 싶어요',
-                    '교환/반품이 필요해요',
-                  ],
                   selected: _selected == '주문',
-                  onTap: () => setState(() => _selected = '주문'),
+                  onTap: () => _onSelectCategory('주문'),
                 ),
+                if (_selected == '주문') ...[
+                  SizedBox(height: healthDp(context, 10)),
+                  _MajorCategoryPanel(
+                    selected: _majorCategory,
+                    onSelected: (v) => setState(() => _majorCategory = v),
+                  ),
+                ],
+                SizedBox(height: healthDp(context, 12)),
+                _CategoryCard(
+                  title: '상품',
+                  description: '상품 관련 문의를 남겨주세요',
+                  selected: _selected == '상품',
+                  onTap: () => _onSelectCategory('상품'),
+                ),
+                if (_selected == '상품') ...[
+                  SizedBox(height: healthDp(context, 10)),
+                  _MajorCategoryPanel(
+                    selected: _majorCategory,
+                    onSelected: (v) => setState(() => _majorCategory = v),
+                  ),
+                ],
                 SizedBox(height: healthDp(context, 12)),
                 _CategoryCard(
                   title: '기타',
                   description: '운영 관련 문의를 남겨주세요',
-                  examples: const [],
                   selected: _selected == '기타',
-                  onTap: () => setState(() => _selected = '기타'),
+                  onTap: () => _onSelectCategory('기타'),
                 ),
               ],
             ),
@@ -124,15 +151,13 @@ class _QaCategoryScreenState extends State<QaCategoryScreen> {
                 healthDp(context, 5),
               ),
               child: GestureDetector(
-                onTap: _selected == null ? null : _onNext,
+                onTap: _canNext ? _onNext : null,
                 child: Container(
                   width: double.infinity,
                   height: healthDp(context, 40),
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
-                    color: _selected == null
-                        ? _pink.withValues(alpha: 0.4)
-                        : _pink,
+                    color: _canNext ? _pink : _pink.withValues(alpha: 0.4),
                     shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(healthDp(context, 10)),
@@ -157,17 +182,98 @@ class _QaCategoryScreenState extends State<QaCategoryScreen> {
   }
 }
 
+class _MajorCategoryPanel extends StatelessWidget {
+  final String? selected;
+  final ValueChanged<String> onSelected;
+
+  const _MajorCategoryPanel({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  static const Color _pink = Color(0xFFFF5A8D);
+  static const Color _ink = Color(0xFF1A1A1A);
+  static const Color _muted = Color(0xFF898686);
+  static const Color _border = Color(0x7FD2D2D2);
+  static const String _font = 'Gmarket Sans TTF';
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(healthDp(context, 12)),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFFAFAFA),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _border),
+          borderRadius: BorderRadius.circular(healthDp(context, 12)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '문의유형을 선택해주세요',
+            style: TextStyle(
+              color: _muted,
+              fontSize: healthSp(context, 12),
+              fontFamily: _font,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          for (final major in QaInquiryDraft.majorCategories) ...[
+            InkWell(
+              onTap: () => onSelected(major),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 12),
+                  vertical: healthDp(context, 10),
+                ),
+                decoration: ShapeDecoration(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      width: healthDp(
+                        context,
+                        selected == major ? 1.5 : 1,
+                      ),
+                      color: selected == major ? _pink : _border,
+                    ),
+                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
+                  ),
+                ),
+                child: Text(
+                  major,
+                  style: TextStyle(
+                    color: selected == major ? _pink : _ink,
+                    fontSize: healthSp(context, 13),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            if (major != QaInquiryDraft.majorCategories.last)
+              SizedBox(height: healthDp(context, 8)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _CategoryCard extends StatelessWidget {
   final String title;
   final String description;
-  final List<String> examples;
   final bool selected;
   final VoidCallback onTap;
 
   const _CategoryCard({
     required this.title,
     required this.description,
-    required this.examples,
     required this.selected,
     required this.onTap,
   });
@@ -192,7 +298,7 @@ class _CategoryCard extends StatelessWidget {
             color: Colors.white,
             shape: RoundedRectangleBorder(
               side: BorderSide(
-                width: selected ? 1.5 : 1,
+                width: healthDp(context, selected ? 1.5 : 1),
                 color: selected ? _pink : _border,
               ),
               borderRadius: BorderRadius.circular(healthDp(context, 12)),
@@ -221,57 +327,6 @@ class _CategoryCard extends StatelessWidget {
                   height: 1.4,
                 ),
               ),
-              if (examples.isNotEmpty) ...[
-                SizedBox(height: healthDp(context, 12)),
-                for (final example in examples)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: healthDp(context, 6)),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: healthDp(context, 6),
-                            vertical: healthDp(context, 2),
-                          ),
-                          decoration: ShapeDecoration(
-                            shape: RoundedRectangleBorder(
-                              side: const BorderSide(
-                                width: 1,
-                                color: _border,
-                              ),
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 4)),
-                            ),
-                          ),
-                          child: Text(
-                            '예시',
-                            style: TextStyle(
-                              color: _muted,
-                              fontSize: healthSp(context, 8),
-                              fontFamily: _font,
-                              fontWeight: FontWeight.w500,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: healthDp(context, 8)),
-                        Expanded(
-                          child: Text(
-                            example,
-                            style: TextStyle(
-                              color: _muted,
-                              fontSize: healthSp(context, 10),
-                              fontFamily: _font,
-                              fontWeight: FontWeight.w400,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
             ],
           ),
         ),
