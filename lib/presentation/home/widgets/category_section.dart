@@ -1,11 +1,13 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
-import '../../../presentation/shopping/utils/get_product.dart' show ProductCategoryItem;
+import '../../../presentation/shopping/utils/get_product.dart'
+    show
+        ProductCategoryItem,
+        productGeneralCategoryChipLabel,
+        productPrescriptionCategoryMenuLabel;
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -17,9 +19,17 @@ class CategorySection extends StatefulWidget {
 }
 
 class _CategorySectionState extends State<CategorySection> {
-  static const int _initialVisibleCount = 5;
-  static const int _expandStep = 5;
-  static const int _maxCarouselProducts = 10;
+  /// 카테고리당 캐러셀 최대 노출 수 (+More 포함)
+  static const int _kMaxDisplay = 4;
+
+  /// 고정 탭 순서: 비대면 10·20 → 일반 a0(쉐이크) → 비대면 50·80 → 일반 나머지(a0 제외)
+  static const List<({String id, String label, String kind})> _kPinnedTabs = [
+    (id: '10', label: '다이어트', kind: 'prescription'),
+    (id: '20', label: '디톡스', kind: 'prescription'),
+    (id: 'a0', label: '다이어트쉐이크', kind: 'general'),
+    (id: '50', label: '건강면역', kind: 'prescription'),
+    (id: '80', label: '심신안정', kind: 'prescription'),
+  ];
 
   List<ProductCategoryItem> _tabs = const [];
   int _selectedTabIndex = 0;
@@ -27,7 +37,6 @@ class _CategorySectionState extends State<CategorySection> {
   bool _tabsLoading = true;
   String? _tabsError;
   final Map<String, List<Product>> _productsByCategory = {};
-  final Map<String, int> _visibleCountByCategory = {};
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -41,12 +50,6 @@ class _CategorySectionState extends State<CategorySection> {
     if (index < 0 || index >= _tabs.length || index == _selectedTabIndex) {
       return;
     }
-    final cacheKey = _cacheKeyForTab(_tabs[index]);
-    final products = _productsByCategory[cacheKey];
-    if (products != null) {
-      _visibleCountByCategory[cacheKey] =
-          _initialVisibleCountFor(products.length);
-    }
     setState(() => _selectedTabIndex = index);
     _loadProductsForCurrentTab();
   }
@@ -59,8 +62,16 @@ class _CategorySectionState extends State<CategorySection> {
     });
 
     try {
-      final tabs = await ProductCategoryCatalog.generalCategories();
+      final results = await Future.wait([
+        ProductCategoryCatalog.prescriptionCategories(),
+        ProductCategoryCatalog.generalCategories(),
+      ]);
       if (!mounted || requestToken != _tabsRequestToken) return;
+
+      final tabs = _buildHomeTabs(
+        prescription: results[0],
+        general: results[1],
+      );
 
       setState(() {
         _tabsLoading = false;
@@ -87,6 +98,73 @@ class _CategorySectionState extends State<CategorySection> {
     }
   }
 
+  List<ProductCategoryItem> _buildHomeTabs({
+    required List<ProductCategoryItem> prescription,
+    required List<ProductCategoryItem> general,
+  }) {
+    final rxById = <String, ProductCategoryItem>{
+      for (final t in prescription) t.categoryId.trim().toLowerCase(): t,
+    };
+    final gnById = <String, ProductCategoryItem>{
+      for (final t in general) t.categoryId.trim().toLowerCase(): t,
+    };
+
+    final out = <ProductCategoryItem>[];
+    final usedGeneralIds = <String>{};
+
+    for (final pinned in _kPinnedTabs) {
+      final id = pinned.id.toLowerCase();
+      if (pinned.kind == 'prescription') {
+        final src = rxById[id];
+        out.add(
+          ProductCategoryItem(
+            label: _chipLabel(
+              src?.label ?? pinned.label,
+              productKind: 'prescription',
+            ),
+            categoryId: pinned.id,
+            productKind: 'prescription',
+          ),
+        );
+      } else {
+        final src = gnById[id];
+        out.add(
+          ProductCategoryItem(
+            label: src?.label.trim().isNotEmpty == true
+                ? productGeneralCategoryChipLabel(src!.label)
+                : pinned.label,
+            categoryId: pinned.id,
+            productKind: 'general',
+          ),
+        );
+        usedGeneralIds.add(id);
+      }
+    }
+
+    for (final g in general) {
+      final id = g.categoryId.trim().toLowerCase();
+      if (id.isEmpty || id == 'a0' || usedGeneralIds.contains(id)) continue;
+      out.add(
+        ProductCategoryItem(
+          label: productGeneralCategoryChipLabel(g.label),
+          categoryId: g.categoryId,
+          productKind: 'general',
+        ),
+      );
+    }
+
+    return out;
+  }
+
+  String _chipLabel(String raw, {required String productKind}) {
+    final t = raw.trim();
+    if (t.isEmpty) return t;
+    if (productKind == 'prescription') {
+      return productPrescriptionCategoryMenuLabel(t);
+    }
+    return productGeneralCategoryChipLabel(t);
+  }
+
   @override
   void dispose() {
     _tabsRequestToken++;
@@ -95,16 +173,6 @@ class _CategorySectionState extends State<CategorySection> {
 
   String _cacheKeyForTab(ProductCategoryItem tab) =>
       '${tab.productKind}:${tab.categoryId}';
-
-  int _initialVisibleCountFor(int productCount) =>
-      math.min(_initialVisibleCount, productCount);
-
-  int _visibleCountFor(String cacheKey, List<Product> products) =>
-      _visibleCountByCategory[cacheKey] ??
-      _initialVisibleCountFor(products.length);
-
-  int _maxVisibleFor(List<Product> products) =>
-      math.min(products.length, _maxCarouselProducts);
 
   Future<void> _loadProductsForCurrentTab() async {
     if (_tabs.isEmpty) return;
@@ -123,13 +191,11 @@ class _CategorySectionState extends State<CategorySection> {
         categoryId: tab.categoryId,
         productKind: tab.productKind,
         page: 1,
-        pageSize: 10,
+        pageSize: _kMaxDisplay,
       );
       if (!mounted) return;
       setState(() {
         _productsByCategory[cacheKey] = products;
-        _visibleCountByCategory[cacheKey] =
-            _initialVisibleCountFor(products.length);
         _isLoading = false;
       });
     } catch (_) {
@@ -145,33 +211,29 @@ class _CategorySectionState extends State<CategorySection> {
     if (_tabs.isEmpty) return;
 
     final tab = _tabs[_selectedTabIndex];
+    final isGeneral = tab.productKind == 'general';
     Navigator.pushNamed(
       context,
-      '/product-general/',
+      isGeneral ? '/product-general/' : '/product/',
       arguments: <String, dynamic>{
         'categoryId': tab.categoryId,
         'categoryName': tab.label,
-        'productKind': 'general',
+        'productKind': tab.productKind,
       },
     );
   }
 
   void _openProductDetail(Product product) {
-    Navigator.pushNamed(context, '/product-general/${product.id}');
-  }
-
-  void _onMoreTap(String cacheKey, List<Product> products) {
-    final visible = _visibleCountFor(cacheKey, products);
-    final maxVisible = _maxVisibleFor(products);
-
-    if (visible < maxVisible) {
-      setState(() {
-        _visibleCountByCategory[cacheKey] =
-            math.min(visible + _expandStep, maxVisible);
-      });
-      return;
-    }
-    _openCategoryProductList();
+    final kind = (product.productKind ??
+            (_tabs.isEmpty
+                ? 'general'
+                : _tabs[_selectedTabIndex].productKind))
+        .trim()
+        .toLowerCase();
+    final route = kind == 'prescription'
+        ? '/product/${product.id}'
+        : '/product-general/${product.id}';
+    Navigator.pushNamed(context, route);
   }
 
   @override
@@ -192,8 +254,8 @@ class _CategorySectionState extends State<CategorySection> {
     final cacheKey = _cacheKeyForTab(selectedCategory);
     final products =
         _productsByCategory[cacheKey] ?? const <Product>[];
-    final visibleCount = _visibleCountFor(cacheKey, products);
-    final displayProducts = products.take(visibleCount).toList();
+    final displayProducts = products.take(_kMaxDisplay).toList();
+    final showMoreOnLast = products.length >= _kMaxDisplay;
 
     return Container(
       width: double.infinity,
@@ -285,9 +347,9 @@ class _CategorySectionState extends State<CategorySection> {
                   height: m.carouselHeight,
                   child: _buildCarouselBody(
                     context: context,
-                    cacheKey: cacheKey,
                     products: products,
                     displayProducts: displayProducts,
+                    showMoreOnLast: showMoreOnLast,
                     layout: m,
                   ),
                 ),
@@ -301,9 +363,9 @@ class _CategorySectionState extends State<CategorySection> {
 
   Widget _buildCarouselBody({
     required BuildContext context,
-    required String cacheKey,
     required List<Product> products,
     required List<Product> displayProducts,
+    required bool showMoreOnLast,
     required _CategoryHomeLayout layout,
   }) {
     if (_isLoading && products.isEmpty) {
@@ -353,12 +415,13 @@ class _CategorySectionState extends State<CategorySection> {
         itemBuilder: (context, index) {
           final product = displayProducts[index];
           final isLast = index == displayProducts.length - 1;
+          final showMore = isLast && showMoreOnLast;
           return _CategoryProductCard(
             product: product,
             layout: layout,
-            showMoreOverlay: isLast,
-            onTap: isLast
-                ? () => _onMoreTap(cacheKey, products)
+            showMoreOverlay: showMore,
+            onTap: showMore
+                ? _openCategoryProductList
                 : () => _openProductDetail(product),
           );
         },
