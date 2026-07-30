@@ -63,8 +63,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   double _score2 = 0;
   double _score3 = 0;
   double _score4 = 0;
-  /// 처방 리뷰 공통 상품 만족도 0=미선택, 0.5~5(0.5 단위) → `total_is_score`
-  double _totalSatisfaction = 0;
   int _weightLossKg = 1;
 
   final _positiveController = TextEditingController();
@@ -87,9 +85,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       _score2 = _snapTenthRating(editing.isScore2.toDouble());
       _score3 = _snapTenthRating(editing.isScore3.toDouble());
       _score4 = _snapTenthRating(editing.isScore4.toDouble());
-      final totalRaw = (editing.totalIsScore ?? 0).toDouble();
-      _totalSatisfaction =
-          totalRaw > 0 ? _snapTenthRating(totalRaw) : 0.0;
       final w = editing.isOutageNum ?? 0;
       _weightLossKg = _snapWeightKg(w);
       _positiveController.text = editing.isPositiveReviewText ?? '';
@@ -106,7 +101,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       return;
     }
     _weightLossKg = 1;
-    _totalSatisfaction = 0.0;
   }
 
   @override
@@ -697,8 +691,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
           trailingColor: const Color(0xFFEF4444),
         ),
         SizedBox(height: healthDp(context, 10)),
-        _buildTotalSatisfactionSummaryCard(),
-        SizedBox(height: healthDp(context, 10)),
         _scoreRow('효과', _score1, (v) => setState(() => _score1 = v)),
         SizedBox(height: healthDp(context, 10)),
         _scoreRow('가성비', _score2, (v) => setState(() => _score2 = v)),
@@ -723,58 +715,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     return raw;
   }
 
-  String _formatTenthRatingDisplay(double rating) {
-    if (rating < 0.05) return '0.0';
-    final v = _snapTenthRating(rating);
-    if ((v * 10).round() % 10 == 0) {
-      return v.toStringAsFixed(0);
-    }
-    return v.toStringAsFixed(1);
-  }
-
-  /// 공통 상품 만족도(별) — `total_is_score` 저장
-  Widget _buildTotalSatisfactionSummaryCard() {
-    final display = _formatTenthRatingDisplay(_totalSatisfaction);
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-        vertical: healthDp(context, 12),
-      ),
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: healthDp(context, 1),
-            color: const Color(0xFFD2D2D2),
-          ),
-          borderRadius: BorderRadius.circular(healthDp(context, 12)),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            display,
-            style: TextStyle(
-              color: _kPink,
-              fontSize: healthSp(context, 20),
-              fontFamily: _kFont,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          AppInteractiveStarRating(
-            rating: _totalSatisfaction,
-            onRatingChanged: (v) => setState(() => _totalSatisfaction = v),
-            starSize: healthDp(context, 24),
-            gap: healthDp(context, 4),
-            color: _kPink,
-            alignment: MainAxisAlignment.center,
-            snapMode: AppStarSnapMode.tenth,
-          ),
-        ],
-      ),
-    );
-  }
   static const double _scoreLabelWidthBase = 56;
 
   Widget _scoreRow(String label, double score, ValueChanged<double> onChanged) {
@@ -1116,8 +1056,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       return;
     }
 
-    if (_totalSatisfaction < 0.1 ||
-        _score1 < 0.1 ||
+    if (_score1 < 0.1 ||
         _score2 < 0.1 ||
         _score3 < 0.1 ||
         _score4 < 0.1) {
@@ -1157,7 +1096,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       }
 
       // 작성/수정 공용 리뷰 모델 생성
-      final totalSat = _snapTenthRating(_totalSatisfaction);
+      // total_is_score 는 백엔드에서 효과~편리함 평균으로 저장 (클라에서 보내지 않음)
       final review = ReviewModel(
         isId: editTarget?.isId,
         mbId: user.id,
@@ -1168,7 +1107,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
         isScore2: _snapTenthRating(_score2),
         isScore3: _snapTenthRating(_score3),
         isScore4: _snapTenthRating(_score4),
-        totalIsScore: totalSat,
         isRvkind: editTarget?.isRvkind ?? 'prescription',
         isRecommend: editTarget?.isRecommend ?? 'y',
         isPositiveReviewText: _positiveController.text,
@@ -1186,14 +1124,32 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
       final result = _isEditMode && editTarget?.isId != null
           ? await ReviewService.updateReview(editTarget!.isId!, review)
           : await ReviewService.createReview(review);
-      
-      if (mounted) {
-        if (result['success'] == true) {
-          Navigator.pop(context, true);
-        }
+
+      if (!mounted) return;
+      final message = (result['message'] as String?)?.trim();
+      if (result['success'] == true) {
+        AppToastOverlay.show(
+          context,
+          (message != null && message.isNotEmpty)
+              ? message
+              : (_isEditMode ? '리뷰가 수정되었습니다.' : '리뷰가 작성되었습니다.'),
+        );
+        Navigator.pop(context, true);
+      } else {
+        AppToastOverlay.show(
+          context,
+          (message != null && message.isNotEmpty)
+              ? message
+              : (_isEditMode ? '리뷰 수정에 실패했습니다.' : '리뷰 작성에 실패했습니다.'),
+        );
       }
     } catch (_) {
-      // 스낵바 없이 조용히 실패 처리
+      if (mounted) {
+        AppToastOverlay.show(
+          context,
+          _isEditMode ? '리뷰 수정 중 오류가 발생했습니다.' : '리뷰 작성 중 오류가 발생했습니다.',
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {

@@ -51,7 +51,22 @@ class ReviewModel {
   
   // 편의 getter들
   bool get isSupporterReview => isRvkind == 'supporter';
+  /// 리뷰 종류: 비서포터(일반 리뷰 탭). 일반 *상품* 여부와 다름
   bool get isGeneralReview => isRvkind == 'general';
+  /// 상품 종류: 일반 스토어 상품
+  bool get isGeneralProduct {
+    final k = (itKind ?? '').trim().toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+    return k == 'general' || k == 'normal' || k == 'goods' || k == 'product';
+  }
+  /// 상품 종류: 비대면/처방
+  bool get isPrescriptionProduct {
+    final k = (itKind ?? '').trim().toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+    if (k.isEmpty) return false;
+    return k.contains('prescription') ||
+        k.contains('nonface') ||
+        k == 'rx' ||
+        k.contains('telemedicine');
+  }
   bool get isSatisfied => isRecommend == 'y';
   double get score1 => isScore1;
   double get score2 => isScore2;

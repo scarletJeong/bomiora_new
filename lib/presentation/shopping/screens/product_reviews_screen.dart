@@ -60,6 +60,8 @@ class PrescriptionReviewTabPanel extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: hPad),
               child: ProductReviewListSection(
                 reviews: visible,
+                // 비대면 상세: 서포터/일반(비서포터) 모두 효과·가성비·맛향·편리함 표시
+                showCategoryScores: true,
                 showCouponSection: showCouponSection,
                 guestLoginLocked: guestLoginLocked,
                 onGuestLoginTap: onGuestLoginTap,

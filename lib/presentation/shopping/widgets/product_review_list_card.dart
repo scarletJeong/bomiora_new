@@ -54,69 +54,76 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     final radius = healthDp(context, 10);
     final total = review.averageScore ?? 0.0;
     final imageCount = _reviewImageCount(review);
-    final isGeneral = review.isGeneralReview;
-    final showCategoryScores =
-        widget.showCategoryScores ?? !isGeneral;
+    // 카테고리 점수: 화면에서 지정 > 상품종류(it_kind) > 리뷰종류(is_rvkind) 순
+    // is_rvkind=general 은 "비서포터"이지 일반상품이 아님
+    final showCategoryScores = widget.showCategoryScores ??
+        (review.itKind != null && review.itKind!.trim().isNotEmpty
+            ? !review.isGeneralProduct
+            : !review.isGeneralReview);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(radius),
-              child: SizedBox(
-                width: double.infinity,
-                height: imageH,
-                child: _buildImage(review, imageH, imageCount),
+        if (imageCount > 0) ...[
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: imageH,
+                  child: _buildImage(review, imageH, imageCount),
+                ),
               ),
-            ),
-            if (review.isSupporterReview)
-              Positioned(
-                left: healthDp(context, 8),
-                top: healthDp(context, 8),
-                child: _SupporterBadge(),
-              ),
-            if (imageCount > 1) ...[
-              Positioned(
-                left: healthDp(context, 4),
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: _ReviewImageNavButton(
-                    icon: Icons.chevron_left,
-                    enabled: _imageIndex > 0,
-                    onTap: () => _imagePageController?.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
+              if (review.isSupporterReview)
+                Positioned(
+                  left: healthDp(context, 8),
+                  top: healthDp(context, 8),
+                  child: _SupporterBadge(),
+                ),
+              if (imageCount > 1) ...[
+                Positioned(
+                  left: healthDp(context, 4),
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _ReviewImageNavButton(
+                      icon: Icons.chevron_left,
+                      enabled: _imageIndex > 0,
+                      onTap: () => _imagePageController?.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                right: healthDp(context, 4),
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: _ReviewImageNavButton(
-                    icon: Icons.chevron_right,
-                    enabled: _imageIndex < imageCount - 1,
-                    onTap: () => _imagePageController?.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
+                Positioned(
+                  right: healthDp(context, 4),
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _ReviewImageNavButton(
+                      icon: Icons.chevron_right,
+                      enabled: _imageIndex < imageCount - 1,
+                      onTap: () => _imagePageController?.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
-        ),
-        if (imageCount > 1) ...[
-          SizedBox(height: healthDp(context, 8)),
-          _ImageDots(
-            count: imageCount,
-            index: _imageIndex,
           ),
+          if (imageCount > 1) ...[
+            SizedBox(height: healthDp(context, 8)),
+            _ImageDots(
+              count: imageCount,
+              index: _imageIndex,
+            ),
+          ],
+        ] else if (review.isSupporterReview) ...[
+          _SupporterBadge(),
         ],
         GestureDetector(
           onTap: () => setState(() => _expanded = !_expanded),
@@ -151,12 +158,40 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
                   ),
                 ],
               ),
+              if (_prescriptionMetaLine(review) != null) ...[
+                SizedBox(height: healthDp(context, 4)),
+                Text(
+                  _prescriptionMetaLine(review)!,
+                  style: TextStyle(
+                    color: _kMuted,
+                    fontSize: healthSp(context, 11),
+                    fontFamily: _kGmarket,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
               SizedBox(height: healthDp(context, 10)),
               _ReviewTextBlock(
                 text: review.isPositiveReviewText,
                 expanded: _expanded,
                 collapsedMaxLines: 2,
               ),
+              if (_expanded) ...[
+                if ((review.isNegativeReviewText ?? '').trim().isNotEmpty) ...[
+                  SizedBox(height: healthDp(context, 10)),
+                  _ReviewLabeledText(
+                    label: '아쉬운 점',
+                    text: review.isNegativeReviewText!,
+                  ),
+                ],
+                if ((review.isMoreReviewText ?? '').trim().isNotEmpty) ...[
+                  SizedBox(height: healthDp(context, 10)),
+                  _ReviewLabeledText(
+                    label: '꿀팁',
+                    text: review.isMoreReviewText!,
+                  ),
+                ],
+              ],
               SizedBox(height: healthDp(context, 10)),
               _RatingScorePanel(
                 total: total,
@@ -179,27 +214,36 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
     );
   }
 
-  int _reviewImageCount(ReviewModel review) {
-    if (review.images.isNotEmpty) return review.images.length;
-    final fallback = review.productImage;
-    return fallback != null && fallback.isNotEmpty ? 1 : 0;
+  String? _prescriptionMetaLine(ReviewModel review) {
+    if (!review.isPrescriptionProduct) return null;
+    final parts = <String>[];
+    if (review.isHeight != null && review.isHeight! > 0) {
+      parts.add('${review.isHeight}cm');
+    }
+    if (review.isOutageNum != null && review.isOutageNum! > 0) {
+      parts.add('${review.isOutageNum}kg 감량');
+    }
+    if (review.isPayMthod == 'solo') {
+      parts.add('내돈내산');
+    }
+    if (parts.isEmpty) return null;
+    return parts.join('  ');
   }
+
+  int _reviewImageCount(ReviewModel review) => review.images.length;
 
   Widget _buildImage(ReviewModel review, double imageH, int imageCount) {
     if (imageCount == 0) {
-      return _imagePlaceholder(imageH);
+      return const SizedBox.shrink();
     }
 
     if (imageCount == 1) {
-      final url = review.images.isNotEmpty
-          ? ImageUrlHelper.getReviewImageUrl(review.images.first)
-          : ImageUrlHelper.convertToLocalUrl(review.productImage!);
       return Image.network(
-        url,
+        ImageUrlHelper.getReviewImageUrl(review.images.first),
         fit: BoxFit.cover,
         width: double.infinity,
         height: imageH,
-        errorBuilder: (_, __, ___) => _imagePlaceholder(imageH),
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       );
     }
 
@@ -216,22 +260,9 @@ class _ProductReviewListCardState extends State<ProductReviewListCard> {
           fit: BoxFit.cover,
           width: double.infinity,
           height: imageH,
-          errorBuilder: (_, __, ___) => _imagePlaceholder(imageH),
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         );
       },
-    );
-  }
-
-  Widget _imagePlaceholder(double imageH) {
-    return Container(
-      width: double.infinity,
-      height: imageH,
-      color: Colors.grey[200],
-      child: Icon(
-        Icons.rate_review,
-        size: healthDp(context, 40),
-        color: Colors.grey[400],
-      ),
     );
   }
 }
@@ -335,6 +366,45 @@ class _ImageDots extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+class _ReviewLabeledText extends StatelessWidget {
+  final String label;
+  final String text;
+
+  const _ReviewLabeledText({
+    required this.label,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: _kMuted,
+            fontSize: healthSp(context, 11),
+            fontFamily: _kGmarket,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: healthDp(context, 4)),
+        Text(
+          text.trim(),
+          style: TextStyle(
+            color: _kTextDark,
+            fontSize: healthSp(context, 12),
+            fontFamily: _kGmarket,
+            fontWeight: FontWeight.w500,
+            height: 1.5,
+          ),
+        ),
+      ],
     );
   }
 }

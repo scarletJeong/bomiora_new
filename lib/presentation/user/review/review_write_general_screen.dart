@@ -269,8 +269,35 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
       }
 
       if (!mounted) return;
+      final message = (result['message'] as String?)?.trim();
       if (result['success'] == true) {
+        AppToastOverlay.show(
+          context,
+          (message != null && message.isNotEmpty)
+              ? message
+              : (widget._isEditMode
+                  ? '리뷰가 수정되었습니다.'
+                  : '리뷰가 작성되었습니다.'),
+        );
         Navigator.pop(context, true);
+      } else {
+        AppToastOverlay.show(
+          context,
+          (message != null && message.isNotEmpty)
+              ? message
+              : (widget._isEditMode
+                  ? '리뷰 수정에 실패했습니다.'
+                  : '리뷰 작성에 실패했습니다.'),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToastOverlay.show(
+          context,
+          widget._isEditMode
+              ? '리뷰 수정 중 오류가 발생했습니다.'
+              : '리뷰 작성 중 오류가 발생했습니다.',
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
