@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
@@ -7,13 +6,13 @@ import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'recommend_product.dart';
 
-/// 가로 한 화면에 보이는 정사각형 카드 수
-const double kRecommendBottomSheetItemsPerViewport = 2.2;
+/// 한 화면에 모두 보이는 추천 카드 수 (스크롤 없음)
+const int kRecommendBottomSheetVisibleCount = 3;
 
-/// 카드 너비 대비 이미지 정사각형 비율 (살짝 작게)
-const double kRecommendBottomSheetImageScale = 0.9;
+/// 카드 너비 대비 이미지 정사각형 비율
+const double kRecommendBottomSheetImageScale = 1.0;
 
-/// 바텀시트 추천 카드 레이아웃 (인라인 행과 동일 크기)
+/// 바텀시트 / 인라인 추천 카드 레이아웃 — [itemCount]장이 가로로 딱 맞게
 ({
   double cardWidth,
   double imageSize,
@@ -23,14 +22,16 @@ const double kRecommendBottomSheetImageScale = 0.9;
 }) computeRecommendBottomSheetCardLayout(
   BuildContext context,
   double innerWidth, {
-  double itemsPerViewport = kRecommendBottomSheetItemsPerViewport,
+  int itemCount = kRecommendBottomSheetVisibleCount,
 }) {
-  final crossGap = healthDp(context, 12);
+  final count = itemCount < 1 ? 1 : itemCount;
+  final crossGap = healthDp(context, 10);
   final imageGap = healthDp(context, 6);
   final textBlockH = healthDp(context, 52);
-  final cardWidth = innerWidth > crossGap
-      ? (innerWidth - crossGap) / itemsPerViewport
-      : innerWidth * 0.42;
+  final totalGaps = crossGap * (count - 1);
+  final cardWidth = innerWidth > totalGaps
+      ? (innerWidth - totalGaps) / count
+      : innerWidth / count;
   final imageSize = cardWidth * kRecommendBottomSheetImageScale;
   final listHeight = imageSize + imageGap + textBlockH;
   return (
@@ -39,6 +40,70 @@ const double kRecommendBottomSheetImageScale = 0.9;
     listHeight: listHeight,
     crossGap: crossGap,
     textBlockHeight: textBlockH,
+  );
+}
+
+Widget _buildFixedRecommendRow({
+  required BuildContext context,
+  required List<Product> products,
+  required ValueChanged<Product> onProductTap,
+  required double innerWidth,
+}) {
+  if (products.isEmpty) return const SizedBox.shrink();
+
+  final visibleSlots = products.length <= kRecommendBottomSheetVisibleCount
+      ? products.length
+      : kRecommendBottomSheetVisibleCount;
+  final layout = computeRecommendBottomSheetCardLayout(
+    context,
+    innerWidth,
+    itemCount: visibleSlots,
+  );
+
+  // 3개 이하면 스크롤 없이 전부 표시
+  if (products.length <= kRecommendBottomSheetVisibleCount) {
+    return SizedBox(
+      height: layout.listHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < products.length; i++) ...[
+            if (i > 0) SizedBox(width: layout.crossGap),
+            SizedBox(
+              width: layout.cardWidth,
+              child: RecommendSquareProductCard(
+                product: products[i],
+                imageSize: layout.imageSize,
+                textBlockHeight: layout.textBlockHeight,
+                onTap: () => onProductTap(products[i]),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // 인플루언서 등 3개 초과: 같은 카드 크기로 가로 스크롤
+  return SizedBox(
+    height: layout.listHeight,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      itemCount: products.length,
+      separatorBuilder: (_, __) => SizedBox(width: layout.crossGap),
+      itemBuilder: (context, index) {
+        return SizedBox(
+          width: layout.cardWidth,
+          child: RecommendSquareProductCard(
+            product: products[index],
+            imageSize: layout.imageSize,
+            textBlockHeight: layout.textBlockHeight,
+            onTap: () => onProductTap(products[index]),
+          ),
+        );
+      },
+    ),
   );
 }
 
@@ -98,7 +163,7 @@ Future<void> showRecommendProductBottomup({
               size: Size(contentW, MediaQuery.sizeOf(context).height),
             ),
             child: RecommendProductBottomSheet(
-              products: products.take(4).toList(),
+              products: products,
               headline: headline,
               title: title,
               primaryButtonLabel: primaryButtonLabel,
@@ -137,7 +202,6 @@ class RecommendProductBottomSheet extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final innerWidth = constraints.maxWidth - sheetPadding * 2;
-        final layout = computeRecommendBottomSheetCardLayout(context, innerWidth);
 
         return ClipRRect(
           borderRadius: BorderRadius.only(
@@ -239,29 +303,11 @@ class RecommendProductBottomSheet extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: healthDp(context, 12)),
-                    SizedBox(
-                      height: layout.listHeight,
-                      child: ScrollConfiguration(
-                        behavior: const _HorizontalDragScrollBehavior(),
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: products.length,
-                          separatorBuilder: (_, __) =>
-                              SizedBox(width: layout.crossGap),
-                          itemBuilder: (context, index) {
-                            return SizedBox(
-                              width: layout.cardWidth,
-                              child: RecommendSquareProductCard(
-                                product: products[index],
-                                imageSize: layout.imageSize,
-                                textBlockHeight: layout.textBlockHeight,
-                                onTap: () => onProductTap(products[index]),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+                    _buildFixedRecommendRow(
+                      context: context,
+                      products: products,
+                      onProductTap: onProductTap,
+                      innerWidth: innerWidth,
                     ),
                     if (onGoToCart != null) ...[
                       SizedBox(height: healthDp(context, 20)),
@@ -306,7 +352,7 @@ class RecommendProductBottomSheet extends StatelessWidget {
   }
 }
 
-/// 인라인 정사각형 추천 행 — 바텀시트와 동일 카드 크기
+/// 인라인 정사각형 추천 행 — 바텀시트와 동일 (3장 고정, 스크롤 없음)
 class RecommendProductSquareRow extends StatelessWidget {
   final List<Product> products;
   final ValueChanged<Product> onProductTap;
@@ -324,30 +370,11 @@ class RecommendProductSquareRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final innerWidth = constraints.maxWidth.clamp(0.0, double.infinity);
-        final layout = computeRecommendBottomSheetCardLayout(context, innerWidth);
-
-        return SizedBox(
-          height: layout.listHeight,
-          child: ScrollConfiguration(
-            behavior: const _HorizontalDragScrollBehavior(),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: products.length,
-              separatorBuilder: (_, __) => SizedBox(width: layout.crossGap),
-              itemBuilder: (context, index) {
-                return SizedBox(
-                  width: layout.cardWidth,
-                  child: RecommendSquareProductCard(
-                    product: products[index],
-                    imageSize: layout.imageSize,
-                    textBlockHeight: layout.textBlockHeight,
-                    onTap: () => onProductTap(products[index]),
-                  ),
-                );
-              },
-            ),
-          ),
+        return _buildFixedRecommendRow(
+          context: context,
+          products: products,
+          onProductTap: onProductTap,
+          innerWidth: innerWidth,
         );
       },
     );
@@ -411,6 +438,7 @@ class RecommendSquareProductCard extends StatelessWidget {
           SizedBox(height: healthDp(context, 6)),
           SizedBox(
             height: textBlockHeight,
+            width: imageSize,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -463,15 +491,4 @@ class RecommendSquareProductCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HorizontalDragScrollBehavior extends MaterialScrollBehavior {
-  const _HorizontalDragScrollBehavior();
-
-  @override
-  Set<PointerDeviceKind> get dragDevices => const {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-      };
 }

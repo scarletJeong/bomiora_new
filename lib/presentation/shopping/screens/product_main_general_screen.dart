@@ -14,15 +14,14 @@ import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../home/widgets/mdpick_section.dart';
 import '../widgets/product_main/product_main_category_tap.dart';
-import '../widgets/recommend_product.dart';
 import '../utils/get_product.dart';
 
 /// 헬스케어 스토어 메인 중간 이미지 (카테고리 칩 아래)
 const String _kMidBannerAsset = AppAssets.generalMainBanner;
 
 const int _kMaxCategoryProducts = 4;
-const int _kMdPickLimit = 4;
 
 double _contentHorizontalPad(BuildContext context) => healthDp(context, 27);
 
@@ -44,7 +43,6 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
   final Map<String, List<Product>> _byCategory = {};
   List<ProductCategoryItem> _categories =
       List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
-  List<Product> _mdPickProducts = [];
   Product? _weekDealProduct;
   bool _loading = true;
   String? _error;
@@ -62,10 +60,6 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
     });
     try {
       final categories = await ProductCategoryCatalog.generalCategories();
-      final mdPick = await ProductRepository.getMdPickProducts(
-        limit: _kMdPickLimit,
-        productKind: 'general',
-      );
       final categoryResults = await Future.wait(
         categories.map(
           (c) => ProductRepository.getProductsByCategory(
@@ -79,7 +73,6 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
       if (!mounted) return;
       setState(() {
         _categories = categories;
-        _mdPickProducts = mdPick;
         _byCategory.clear();
         for (var i = 0; i < categories.length; i++) {
           _byCategory[categories[i].categoryId] = categoryResults[i];
@@ -253,38 +246,20 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
               : () => _openProductDetail(_weekDealProduct!),
         ),
       ),
-      if (_mdPickProducts.isNotEmpty) ...[
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              _contentHorizontalPad(context),
-              healthDp(context, 12),
-              _contentHorizontalPad(context),
-              healthDp(context, 8),
-            ),
-            child: RecommendProductSection(
-              title: "MD's Pick",
-              showLeadingBar: true,
-              titleStyle: TextStyle(
-                color: Colors.black,
-                fontSize: healthSp(context, 16),
-                fontFamily: _font,
-                fontWeight: FontWeight.w700,
-                letterSpacing: healthSp(context, -1.44),
-              ),
-              excludedProductNames: const [],
-              products: _mdPickProducts,
-              onProductTap: _openProductDetail,
-              prescriptionGroupOrdering: false,
-              maxItems: _kMdPickLimit,
-              itemsPerViewport: 2.1,
-              horizontalGap: healthDp(context, 5),
-              hideWhenEmpty: true,
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: healthDp(context, 12),
+            bottom: healthDp(context, 8),
+          ),
+          child: MdPickSection(
+            padding: EdgeInsets.symmetric(
+              horizontal: _contentHorizontalPad(context),
             ),
           ),
         ),
-        SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 8))),
-      ],
+      ),
+      SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 8))),
       const SliverToBoxAdapter(
         child: ProductMainCategoryTap(productKind: 'general'),
       ),

@@ -220,6 +220,10 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     return total;
   }
 
+  int _calculateTotalQuantity() {
+    return _selectedOptions.values.fold(0, (sum, qty) => sum + qty);
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -230,6 +234,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           topRight: Radius.circular(healthDp(context, 30)),
         ),
         child: Container(
+          width: double.infinity,
           color: Colors.white,
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.7,
@@ -276,6 +281,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                                 ),
                                 SizedBox(height: healthDp(context, 20)),
                                 _buildSelectedOptionsList(),
+                                _buildTotalAmountSection(),
                               ],
                             ],
                           ),
@@ -289,6 +295,105 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTotalAmountSection() {
+    final totalQty = _calculateTotalQuantity();
+    final totalPrice = _formatPrice(_calculateTotalPrice());
+    final letterSpacing = healthSp(context, -1.44);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 20)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '총 ',
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: letterSpacing,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '$totalQty',
+                      style: TextStyle(
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: letterSpacing,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '개',
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1E),
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: letterSpacing,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '총금액',
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1E),
+                      fontSize: healthSp(context, 16),
+                      fontFamily: _kGmarketSans,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: letterSpacing,
+                    ),
+                  ),
+                  SizedBox(width: healthDp(context, 8)),
+                  Text(
+                    '${totalPrice}원',
+                    style: TextStyle(
+                      color: const Color(0xFFFF5A8D),
+                      fontSize: healthSp(context, 20),
+                      fontFamily: _kGmarketSans,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (widget.userPoint != null) ...[
+            SizedBox(height: healthDp(context, 8)),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '보유 포인트 ${_formatPrice(widget.userPoint!)}P',
+                style: TextStyle(
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kGmarketSans,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: healthSp(context, -1.08),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -496,10 +601,49 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     );
   }
 
+  ButtonStyle _sheetOutlinedButtonStyle({required bool enabled}) {
+    final height = healthDp(context, 40);
+    return OutlinedButton.styleFrom(
+      minimumSize: Size(0, height),
+      maximumSize: Size(double.infinity, height),
+      fixedSize: Size.fromHeight(height),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      foregroundColor: const Color(0xFFFF5A8D),
+      disabledForegroundColor: const Color(0xFFBDBDBD),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      ),
+      side: BorderSide(
+        color: enabled ? const Color(0xFFFF5A8D) : const Color(0xFFD2D2D2),
+      ),
+    );
+  }
+
+  ButtonStyle _sheetFilledButtonStyle() {
+    final height = healthDp(context, 40);
+    return ElevatedButton.styleFrom(
+      minimumSize: Size(0, height),
+      maximumSize: Size(double.infinity, height),
+      fixedSize: Size.fromHeight(height),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      backgroundColor: const Color(0xFFFF4081),
+      foregroundColor: Colors.white,
+      disabledBackgroundColor: Colors.grey[300],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      ),
+    );
+  }
+
   Widget _buildGeneralBottomActionRow({
     required VoidCallback? onCart,
     required VoidCallback? onBuy,
   }) {
+    final cartEnabled = onCart != null;
     return Row(
       children: [
         if (widget.onToggleFavorite != null) ...[
@@ -509,24 +653,13 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         Expanded(
           child: OutlinedButton(
             onPressed: onCart,
-            style: OutlinedButton.styleFrom(
-              padding: EdgeInsets.symmetric(
-                vertical: healthDp(context, 10),
-                horizontal: healthDp(context, 10),
-              ),
-              foregroundColor: const Color(0xFFFF5A8D),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              ),
-              side: const BorderSide(color: Color(0xFFFF5A8D)),
-            ),
+            style: _sheetOutlinedButtonStyle(enabled: cartEnabled),
             child: Text(
               '장바구니',
               style: TextStyle(
                 fontSize: healthSp(context, 16),
                 fontWeight: FontWeight.w500,
                 fontFamily: _kGmarketSans,
-                color: const Color(0xFFFF5A8D),
               ),
             ),
           ),
@@ -535,18 +668,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         Expanded(
           child: ElevatedButton(
             onPressed: onBuy,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF4081),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(
-                vertical: healthDp(context, 10),
-                horizontal: healthDp(context, 10),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              ),
-              disabledBackgroundColor: Colors.grey[300],
-            ),
+            style: _sheetFilledButtonStyle(),
             child: Text(
               '구매하기',
               style: TextStyle(
@@ -562,131 +684,53 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   }
 
   Widget _buildBottomActions() {
-    return Column(
-      children: [
-          if (_selectedOptions.isNotEmpty) ...[
-            SizedBox(height: healthDp(context, 3)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '총 구매 금액',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 14),
-                    fontFamily: _kGmarketSans,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  '${_calculateTotalPrice().toString().replaceAllMapped(
-                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                        (Match m) => '${m[1]},',
-                      )}원',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 18),
-                    fontFamily: _kGmarketSans,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFFFF5A8D),
-                  ),
-                ),
+    return widget.productKind == 'general'
+        ? _buildGeneralBottomActionRow(
+            onCart: _selectedOptions.isEmpty ? null : widget.onAddToCart,
+            onBuy: _selectedOptions.isEmpty ? null : widget.onBuyNow,
+          )
+        : Row(
+            children: [
+              if (widget.onToggleFavorite != null) ...[
+                _buildFavoriteButton(),
+                SizedBox(width: healthDp(context, 10)),
               ],
-            ),
-            if (widget.userPoint != null) ...[
-              SizedBox(height: healthDp(context, 5)),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    '보유 포인트 ${widget.userPoint!.toString().replaceAllMapped(
-                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                          (Match m) => '${m[1]},',
-                        )}P',
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _selectedOptions.isEmpty
+                      ? null
+                      : widget.onAddToPrescriptionCart,
+                  style: _sheetOutlinedButtonStyle(
+                    enabled: _selectedOptions.isNotEmpty,
+                  ),
+                  child: Text(
+                    '진료담기',
                     style: TextStyle(
-                      fontSize: healthSp(context, 12),
+                      fontSize: healthSp(context, 16),
+                      fontWeight: FontWeight.w500,
                       fontFamily: _kGmarketSans,
-                      color: Colors.black,
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: healthSp(context, -1.08),
                     ),
                   ),
-                ],
+                ),
+              ),
+              SizedBox(width: healthDp(context, 10)),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed:
+                      _selectedOptions.isEmpty ? null : widget.onReserve,
+                  style: _sheetFilledButtonStyle(),
+                  child: Text(
+                    '처방 예약 하기',
+                    style: TextStyle(
+                      fontSize: healthSp(context, 16),
+                      fontWeight: FontWeight.w500,
+                      fontFamily: _kGmarketSans,
+                    ),
+                  ),
+                ),
               ),
             ],
-          ],
-          if (_selectedOptions.isNotEmpty) SizedBox(height: healthDp(context, 10)),
-          widget.productKind == 'general'
-              ? _buildGeneralBottomActionRow(
-                  onCart:
-                      _selectedOptions.isEmpty ? null : widget.onAddToCart,
-                  onBuy: _selectedOptions.isEmpty ? null : widget.onBuyNow,
-                )
-                : Row(
-                    children: [
-                      if (widget.onToggleFavorite != null) ...[
-                        _buildFavoriteButton(),
-                        SizedBox(width: healthDp(context, 10)),
-                      ],
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _selectedOptions.isEmpty
-                              ? null
-                              : widget.onAddToPrescriptionCart,
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              vertical: healthDp(context, 10),
-                              horizontal: healthDp(context, 10),
-                            ),
-                            foregroundColor: const Color(0xFFFF5A8D),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
-                            side: const BorderSide(color: Color(0xFFFF5A8D)),
-                          ),
-                          child: Text(
-                            '진료담기',
-                            style: TextStyle(
-                              fontSize: healthSp(context, 16),
-                              fontWeight: FontWeight.w500,
-                              fontFamily: _kGmarketSans,
-                              color: const Color(0xFFFF5A8D),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: healthDp(context, 10)),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _selectedOptions.isEmpty
-                              ? null
-                              : widget.onReserve,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF4081),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              vertical: healthDp(context, 10),
-                              horizontal: healthDp(context, 10),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(healthDp(context, 10)),
-                            ),
-                            disabledBackgroundColor: Colors.grey[300],
-                          ),
-                          child: Text(
-                            '처방 예약 하기',
-                            style: TextStyle(
-                              fontSize: healthSp(context, 16),
-                              fontWeight: FontWeight.w500,
-                              fontFamily: _kGmarketSans,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-      ],
-    );
+          );
   }
 
   Widget _buildQuantityControl({

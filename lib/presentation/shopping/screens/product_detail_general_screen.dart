@@ -21,6 +21,7 @@ import '../../../core/network/api_endpoints.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/models/product/product_option_model.dart';
 import '../../../data/repositories/product/product_option_repository.dart';
+import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
@@ -28,6 +29,7 @@ import '../widgets/option_bottomup.dart';
 import '../widgets/recommend_product.dart';
 import '../widgets/recommend_product_bottomup.dart';
 import '../utils/cart_navigation.dart';
+import '../utils/get_product.dart';
 import '../utils/get_review.dart';
 import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
@@ -205,7 +207,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   Widget _buildRecommendedSection() {
     if (_recommendedProducts.isEmpty) return const SizedBox.shrink();
 
-    final products = _recommendedProducts.take(4).toList();
+    final products = _recommendedProducts;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         healthDp(context, 27),
@@ -425,32 +427,77 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       primaryTextTheme:
           baseTheme.primaryTextTheme.apply(fontFamily: _kGmarketSans),
     );
-    return MobileAppLayoutWrapper(
-      backgroundColor: Colors.white,
-      child: Theme(
-        data: detailTheme,
-        child: DefaultTextStyle.merge(
-          style: const TextStyle(fontFamily: _kGmarketSans),
-          child: Scaffold(
-            backgroundColor: Colors.white,
-            body: Stack(
-              children: [
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _hasError
-                        ? _buildErrorState()
-                        : _product == null
-                            ? _buildErrorState()
-                            : _buildProductDetail(),
-                if (!_isLoading && !_hasError && _product != null)
-                  _buildFloatingTransparentAppBar(),
-              ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleGeneralDetailBack();
+      },
+      child: MobileAppLayoutWrapper(
+        backgroundColor: Colors.white,
+        child: Theme(
+          data: detailTheme,
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: _kGmarketSans),
+            child: Scaffold(
+              backgroundColor: Colors.white,
+              body: Stack(
+                children: [
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _hasError
+                          ? _buildErrorState()
+                          : _product == null
+                              ? _buildErrorState()
+                              : _buildProductDetail(),
+                  if (!_isLoading && !_hasError && _product != null)
+                    _buildFloatingTransparentAppBar(),
+                ],
+              ),
+              bottomNavigationBar:
+                  _product == null ? null : _buildBottomActionBar(),
             ),
-            bottomNavigationBar:
-                _product == null ? null : _buildBottomActionBar(),
           ),
         ),
       ),
+    );
+  }
+
+  /// 뒤로가기: 스택이 있으면 pop, 없거나 갈 곳 없으면 일반 목록 맨 앞 카테고리
+  Future<void> _handleGeneralDetailBack() async {
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    await _goToGeneralProductListFirstCategory();
+  }
+
+  Future<void> _goToGeneralProductListFirstCategory() async {
+    if (!mounted) return;
+
+    var categoryId = productGeneralCategoryListFallback.first.categoryId;
+    var categoryName = productGeneralCategoryListFallback.first.label;
+    try {
+      final cats = await ProductCategoryCatalog.generalCategories();
+      if (cats.isNotEmpty) {
+        categoryId = cats.first.categoryId;
+        categoryName = cats.first.label;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    // 웹에서 disposed view 렌더 충돌을 줄이기 위해 다음 프레임에 이동
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(
+      '/product-general/',
+      arguments: <String, dynamic>{
+        'categoryId': categoryId,
+        'categoryName': categoryName,
+        'productKind': 'general',
+      },
     );
   }
 
@@ -1240,13 +1287,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
                   color: Colors.black,
                   size: healthDp(context, 28),
                 ),
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  } else {
-                    Navigator.of(context).pushReplacementNamed('/home');
-                  }
-                },
+                onPressed: _handleGeneralDetailBack,
               ),
             ],
           ),
@@ -1476,6 +1517,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           _safeSetState(() {
             _selectedOptions.clear();
           });
+          await _loadRecommendedProducts();
+          if (!mounted) return;
           await _showRecommendProductBottomup();
         }
       },
@@ -1734,6 +1777,8 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         Navigator.of(context).pop();
         final success = await _addGeneralProductToCart(quantity: quantity);
         if (!mounted || !success) return;
+        await _loadRecommendedProducts();
+        if (!mounted) return;
         await _showRecommendProductBottomup();
       },
       onBuyNow: (quantity) async {

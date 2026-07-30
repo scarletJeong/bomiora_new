@@ -25,6 +25,7 @@ import '../../../data/repositories/product/product_option_repository.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../widgets/product_tail_info_section.dart';
 import '../widgets/option_bottomup.dart';
+import '../widgets/recommend_product.dart';
 import '../widgets/recommend_product_bottomup.dart';
 import '../utils/cart_navigation.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
@@ -74,6 +75,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   // 옵션 관련 상태
   List<ProductOption> _productOptions = [];
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
+
+  /// 장바구니 추천 바텀시트와 동일한 API 목록 (`추가 상품 구매하기`)
+  List<Product> _recommendedProducts = [];
 
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
@@ -159,11 +163,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
       // 찜하기 상태 확인
       await _checkFavoriteStatus();
+      await _loadRecommendedProducts();
     } catch (e) {
       _safeSetState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = '제품 정보를 불러오는데 실패했습니다: $e';
+      });
+    }
+  }
+
+  Future<void> _loadRecommendedProducts() async {
+    if (_product == null) return;
+
+    try {
+      final products =
+          await CartService.getProductRecommendProducts(_product!.id);
+      if (!mounted) return;
+      setState(() {
+        _recommendedProducts = products;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _recommendedProducts = [];
       });
     }
   }
@@ -715,8 +738,49 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           changeContentText:
               _product?.additionalInfo?['it_change_content']?.toString(),
         ),
+        _buildRecommendedSection(),
         SizedBox(height: healthDp(context, 56)),
       ],
+    );
+  }
+
+  Widget _buildRecommendedSection() {
+    if (_recommendedProducts.isEmpty) return const SizedBox.shrink();
+
+    final products = _recommendedProducts;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 20),
+        healthDp(context, 27),
+        healthDp(context, 40),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: healthDp(context, 1),
+                height: healthDp(context, 14),
+                margin: EdgeInsets.only(right: healthDp(context, 6)),
+                color: const Color(0xFF1A1A1A),
+              ),
+              Text(
+                '추가 상품 구매하기',
+                style: shoppingSectionTitleStyle(context),
+              ),
+            ],
+          ),
+          SizedBox(height: healthDp(context, 12)),
+          // 바텀시트(함께 구매하기 좋은 상품)와 동일 상품·가로 카드
+          RecommendProductSquareRow(
+            products: products,
+            onProductTap: _openRecommendProduct,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1473,6 +1537,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _safeSetState(() {
             _selectedOptions.clear();
           });
+          await _loadRecommendedProducts();
+          if (!mounted) return;
+          await _showRecommendProductBottomup();
         }
       },
       onAddToPrescriptionCart: () async {
@@ -1496,6 +1563,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           navigateToCart: false,
         );
         if (added != null && mounted) {
+          await _loadRecommendedProducts();
+          if (!mounted) return;
           await _showRecommendProductBottomup();
         }
       },
