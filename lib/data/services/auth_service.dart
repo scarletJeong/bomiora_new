@@ -8,6 +8,7 @@ import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
 import 'fcm_service_stub.dart'
     if (dart.library.io) 'fcm_service.dart';
+import 'prescription_purchase_history_service.dart';
 import 'recent_view_service.dart';
 
 class AuthService {
@@ -71,6 +72,7 @@ class AuthService {
 
   // 로그아웃 (모든 데이터 삭제)
   static Future<void> logout() async {
+    await PrescriptionPurchaseHistoryService.clearCurrentUserCache();
     final prefs = await SharedPreferences.getInstance();
     
     await prefs.remove(_userKey);
