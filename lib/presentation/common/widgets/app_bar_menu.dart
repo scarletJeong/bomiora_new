@@ -332,9 +332,16 @@ class _AppBarMenuState extends State<AppBarMenu> {
                         ),
                       ],
                     ),
-                    IgnorePointer(
-                      child: Align(
-                        alignment: Alignment.center,
+                    Align(
+                      alignment: Alignment.center,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            '/home',
+                            (route) => false,
+                          );
+                        },
                         child: SizedBox(
                           width: logoW,
                           height: logoH,
