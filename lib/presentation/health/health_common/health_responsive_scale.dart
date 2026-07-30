@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 /// Health 화면 전용 텍스트 스케일.
 ///
 /// - 375 기준: 1.0
-/// - 650 기준: 650/375
+/// - 650 기준: 1.5 (375↔650 사이는 선형 보간)
 /// - 화면 폭은 375~650으로 클램프
 double healthTextScaleByWidth(double width) {
   final clamped = width.clamp(375.0, 650.0);
-  return clamped / 375.0;
+  // 1.0 + (w - 375) / (650 - 375) * (1.5 - 1.0)
+  return 1.0 + (clamped - 375.0) / 275.0 * 0.5;
 }
 
 /// 375 기준 폰트 크기를 Health 레이아웃 폭 기준으로 스케일합니다.

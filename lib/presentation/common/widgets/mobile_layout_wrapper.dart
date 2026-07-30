@@ -30,7 +30,6 @@ class _LayoutScaffoldMessengerState extends ScaffoldMessengerState {
     );
     final sideMargin = ((screenW - panelW) / 2).clamp(0.0, double.infinity);
     const inset = 16.0;
-    final barWidth = (panelW - inset * 2).clamp(0.0, panelW);
 
     return SnackBar(
       key: snackBar.key,
@@ -44,7 +43,6 @@ class _LayoutScaffoldMessengerState extends ScaffoldMessengerState {
         16,
       ),
       padding: snackBar.padding,
-      width: barWidth,
       shape: snackBar.shape,
       behavior: SnackBarBehavior.floating,
       duration: snackBar.duration,
@@ -207,6 +205,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
   final Color? backgroundColor;
   final Color? outerBackgroundColor;
   final double maxWidth;
+  final bool resizeToAvoidBottomInset;
 
   const MobileAppLayoutWrapper({
     super.key,
@@ -221,6 +220,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
     this.backgroundColor,
     this.outerBackgroundColor,
     this.maxWidth = 650,
+    this.resizeToAvoidBottomInset = true,
   });
 
   /// 앱 콘텐츠 패널 가로 폭 (다이얼로그·오버레이 정렬용)
@@ -242,6 +242,7 @@ class MobileAppLayoutWrapper extends StatelessWidget {
       drawer: drawer,
       endDrawer: endDrawer,
       bottomNavigationBar: bottomNavigationBar,
+      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       body: child,
     );
   }
