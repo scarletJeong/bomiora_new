@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import '../widgets/banner_slider.dart';
-import '../widgets/review_section.dart';
-import '../widgets/product_section.dart';
-import '../widgets/category_section.dart';
-import '../widgets/guidebook_section.dart';
-import '../../../data/services/auth_service.dart';
-import '../../../data/models/user/user_model.dart';
+
 import '../../user/myPage/screens/my_page_screen.dart';
 import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../widgets/banner_slider.dart';
+import '../widgets/review_section.dart';
+import '../widgets/product_section.dart';
+import '../widgets/mdpick_section.dart';
+import '../widgets/category_section.dart';
+import '../widgets/guidebook_section.dart';
 import '../widgets/notice_section.dart';
 import '../widgets/event_section.dart';
 
@@ -28,7 +28,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  UserModel? _currentUser;
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -36,46 +35,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-    _loadCurrentUser();
-  }
-
-  Future<void> _loadCurrentUser() async {
-    final user = await AuthService.getUser();
-    if (!mounted) return;
-    setState(() {
-      _currentUser = user;
-    });
-  }
-
-  Future<void> _handleLogout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('정말 로그아웃하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('로그아웃'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await AuthService.logout();
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home',
-          (route) => false,
-        );
-      }
-    }
   }
 
   @override
@@ -115,34 +74,29 @@ class _HomeScreenState extends State<HomeScreen> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          // 메인 배너 슬라이더
           const BannerSlider(),
           SizedBox(height: sectionGap),
 
-          // 웰니스 섹션 - 주석처리
-          //const WellnessSection(), 
-
-          // 신상품 섹션
+          // 신상품 (it_kind 무관 · 최신 4개)
           const ProductSection(),
           SizedBox(height: sectionGap),
-          
-          // 카테고리 섹션
+
           const CategorySection(),
           SizedBox(height: sectionGap),
 
-          // 가이드북 섹션
+          // MD's Pick (it_type5 + general + ca_id≠a0 · 4개)
+          const MdPickSection(),
+          SizedBox(height: sectionGap),
+
           const GuidebookSection(),
           SizedBox(height: sectionGap),
 
-          // 리뷰 섹션
           const ReviewSection(),
           SizedBox(height: sectionGap),
 
-          // 공지사항 섹션
           const NoticeSection(),
           SizedBox(height: sectionGap),
 
-          // 이벤트 섹션
           const EventSection(),
           SizedBox(height: sectionGap),
           const AppFooter(),

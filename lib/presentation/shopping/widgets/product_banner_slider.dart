@@ -6,6 +6,10 @@ import '../../../data/models/home/banner_model.dart';
 import '../../../data/services/banner_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
+/// 홈·상품 목록 공통 배너 높이 (375 기준).
+/// 기존 상품목록 190에서 소폭 상향.
+const double kSharedBannerHeightBase = 210;
+
 class ProductBannerSlider extends StatefulWidget {
   /// 375 기준 배너 높이 — [healthDp]로 스케일.
   final double heightBase;
@@ -15,7 +19,7 @@ class ProductBannerSlider extends StatefulWidget {
 
   const ProductBannerSlider({
     super.key,
-    this.heightBase = 190,
+    this.heightBase = kSharedBannerHeightBase,
     this.productKind,
   });
 

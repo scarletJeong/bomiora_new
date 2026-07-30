@@ -5,6 +5,8 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
 import '../../../data/services/banner_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../shopping/widgets/product_banner_slider.dart'
+    show kSharedBannerHeightBase;
 
 class BannerSlider extends StatefulWidget {
   const BannerSlider({super.key});
@@ -41,7 +43,7 @@ class _BannerSliderState extends State<BannerSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final bannerH = healthDp(context, 323.08);
+    final bannerH = healthDp(context, kSharedBannerHeightBase);
     final borderW = healthDp(context, 1);
     final indicatorBottom = healthDp(context, 10);
     final dotSize = healthDp(context, 8);
