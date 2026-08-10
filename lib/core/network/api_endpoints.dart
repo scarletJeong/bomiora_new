@@ -154,8 +154,16 @@ class ApiEndpoints {
   static const String downloadHelpCoupon = '/api/user/coupons/help-coupon';
 
   // 상품 옵션 관련
-  static String productOptions(String productId) =>
-      '/api/products/$productId/options';
+  static String productOptions(String productId, {int? ioType}) {
+    var endpoint = '/api/products/$productId/options';
+    if (ioType != null) {
+      endpoint += '?io_type=$ioType';
+    }
+    return endpoint;
+  }
+
+  static String productSupplyProducts(String productId) =>
+      '/api/products/$productId/supply-products';
 
   // 문의 관련
   // 1:1 문의 (QA)

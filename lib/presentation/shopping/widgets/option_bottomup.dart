@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/models/product/product_option_model.dart';
+import '../../../data/services/cart_service.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import 'option_selector.dart';
 
@@ -42,6 +43,8 @@ Future<void> showProductOptionBottomup({
   String? productKindOverride,
   bool isFavorite = false,
   VoidCallback? onToggleFavorite,
+  List<SupplyCartLine> supplyLines = const [],
+  ValueChanged<List<SupplyCartLine>>? onSupplyLinesChanged,
 }) async {
   if (options.isEmpty) {
     if (product.ctKind == 'general') {
@@ -107,6 +110,9 @@ Future<void> showProductOptionBottomup({
               stepLabel: stepLabel,
               monthsLabel: monthsLabel,
               userPoint: userPoint,
+              product: product,
+              supplyLines: supplyLines,
+              onSupplyLinesChanged: onSupplyLinesChanged,
               productKind: productKindOverride ??
                   product.productKind ??
                   product.additionalInfo?['it_kind']?.toString(),

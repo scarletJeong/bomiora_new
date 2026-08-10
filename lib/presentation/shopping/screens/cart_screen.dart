@@ -8,11 +8,13 @@ import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../../data/models/cart/cart_item_model.dart';
+import '../../../data/models/cart/cart_line_group.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import '../widgets/get_cartImage.dart';
+import '../widgets/cart_add_group_card.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;
@@ -47,9 +49,11 @@ class _CartScreenState extends State<CartScreen> {
   bool selectAll = false; // 현재 탭의 전체 선택 상태
   final ScrollController _scrollController = ScrollController();
 
+  List<CartLineGroup> get _displayedGroups =>
+      cartGroupsForTab(cartItems, prescriptionTab: true);
+
   List<CartItem> get _displayedCartItems {
-    // 탭 제거: 처방상품 장바구니만 노출
-    return cartItems.where((item) => item.isPrescription).toList();
+    return _displayedGroups.expand((g) => g.allItems).toList();
   }
 
   Set<int> get _displayedItemIds {
@@ -285,7 +289,7 @@ class _CartScreenState extends State<CartScreen> {
     int sum = 0;
     for (var item in _displayedCartItems) {
       if (selectedItems.contains(item.ctId)) {
-        sum += item.ctPrice;
+        sum += item.lineAmount;
       }
     }
     return sum;
@@ -311,6 +315,7 @@ class _CartScreenState extends State<CartScreen> {
 
   List<Map<String, dynamic>> _cartItemsToBookingOptions(List<CartItem> items) {
     return items
+        .where((item) => !item.isSupplyAdd)
         .map(
           (item) => <String, dynamic>{
             'it_id': item.itId,
@@ -319,7 +324,7 @@ class _CartScreenState extends State<CartScreen> {
             'name': item.ctOption.isNotEmpty ? item.ctOption : item.itName,
             'price': item.ioPrice ?? 0,
             'quantity': item.ctQty,
-            'totalPrice': item.ctPrice,
+            'totalPrice': item.lineAmount,
             'ct_kind': item.ctKind,
           },
         )
@@ -337,12 +342,17 @@ class _CartScreenState extends State<CartScreen> {
         .toList();
     if (selectedCartItems.isEmpty) return;
 
+    final mainItem = selectedCartItems.firstWhere(
+      (e) => !e.isSupplyAdd,
+      orElse: () => selectedCartItems.first,
+    );
+
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
         builder: (context) => PrescriptionProfileScreen(
-          productId: selectedCartItems.first.itId,
-          productName: selectedCartItems.first.itName,
+          productId: mainItem.itId,
+          productName: mainItem.itName,
           selectedOptions: _cartItemsToBookingOptions(selectedCartItems),
           cartCtIdsForCheckout:
               selectedCartItems.map((e) => e.ctId).toList(),
@@ -463,9 +473,50 @@ class _CartScreenState extends State<CartScreen> {
                                       ],
                                       _buildSelectAllRow(),
                                       SizedBox(height: healthDp(context, 12)),
-                                      ..._displayedCartItems.expand(
-                                        (item) => [
-                                          _buildCartItemCard(item),
+                                      ..._displayedGroups.expand(
+                                        (group) => [
+                                          CartAddGroupCard(
+                                            group: group,
+                                            selectedItems: selectedItems,
+                                            buildParentOrMainCard: (item,
+                                                    {required isChild,
+                                                    footer}) =>
+                                                _buildCartItemCard(
+                                              item,
+                                              footer: footer,
+                                            ),
+                                            onToggleSelect: (item, selected) {
+                                              setState(() {
+                                                if (selected) {
+                                                  selectedItems.add(item.ctId);
+                                                } else {
+                                                  selectedItems
+                                                      .remove(item.ctId);
+                                                }
+                                                selectAll =
+                                                    _displayedCartItems
+                                                            .isNotEmpty &&
+                                                        _displayedItemIds
+                                                            .difference(
+                                                                selectedItems)
+                                                            .isEmpty;
+                                              });
+                                              _persistCartSelection();
+                                            },
+                                            onChildQuantityChanged:
+                                                (item, qty) {
+                                              _updateQuantity(item.ctId, qty);
+                                            },
+                                            onChildDelete: (item) {
+                                              _deleteCartItem(item.ctId);
+                                            },
+                                            onChildOpenDetail: (item) {
+                                              Navigator.pushNamed(
+                                                context,
+                                                '/product/${item.itId}',
+                                              );
+                                            },
+                                          ),
                                           SizedBox(
                                               height: healthDp(context, 12)),
                                         ],
@@ -680,6 +731,8 @@ class _CartScreenState extends State<CartScreen> {
     const double checkboxBase = 18;
     final boxSize = healthDp(context, checkboxBase);
     final scale = boxSize / checkboxBase;
+    const borderColor = Color(0xFFD2D2D2);
+    const checkPink = Color(0xFFFF5A8D);
 
     return SizedBox(
       width: boxSize,
@@ -690,10 +743,9 @@ class _CartScreenState extends State<CartScreen> {
           child: Theme(
             data: Theme.of(context).copyWith(
               checkboxTheme: CheckboxThemeData(
-                side: BorderSide(
-                  color: const Color(0xFFD2D2D2),
-                  width: healthDp(context, 1),
-                ),
+                fillColor: WidgetStateProperty.all(Colors.white),
+                checkColor: WidgetStateProperty.all(checkPink),
+                side: const BorderSide(color: borderColor, width: 1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(healthDp(context, 4)),
                 ),
@@ -702,8 +754,11 @@ class _CartScreenState extends State<CartScreen> {
             child: Checkbox(
               value: value,
               onChanged: onChanged,
-              activeColor: const Color(0xFFFF5A8D),
-              checkColor: Colors.white,
+              fillColor: WidgetStateProperty.all(Colors.white),
+              checkColor: checkPink,
+              side: WidgetStateBorderSide.resolveWith(
+                (_) => const BorderSide(color: borderColor, width: 1),
+              ),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
             ),
@@ -751,9 +806,6 @@ class _CartScreenState extends State<CartScreen> {
         fontWeight: FontWeight.w500,
         letterSpacing: healthSp(context, -0.90),
       );
-
-  bool _isPrescriptionKind(CartItem item) =>
-      item.ctKind.trim().toLowerCase() == 'prescription';
 
   /// 옵션/규격 줄 — `ct_option`의 ` / ` 또는 `it_subject` + `ct_option` 조합
   Widget? _buildCartItemOptionRow(CartItem item) {
@@ -855,18 +907,20 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCartItemCard(CartItem item) {
+  Widget _buildCartItemCard(CartItem item, {Widget? footer}) {
     final isSelected = selectedItems.contains(item.ctId);
-    final isPrescription = _isPrescriptionKind(item);
+    // ct_kind / it_kind / 예약정보 통합 판별 (ct_kind만 보면 회색선·레이아웃이 어긋남)
+    final isPrescription = item.isPrescription;
     final categoryLabel = (item.productType != null &&
             item.productType!.trim().isNotEmpty)
         ? item.productType!.trim()
         : (item.isPrescription ? '한의약품' : null);
     final optionRow = _buildCartItemOptionRow(item);
+    final cardPad = healthDp(context, 10);
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 10)),
+      padding: EdgeInsets.all(cardPad),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
@@ -891,10 +945,25 @@ class _CartScreenState extends State<CartScreen> {
                     value: isSelected,
                     onChanged: (bool? value) {
                       setState(() {
-                        if (value ?? false) {
+                        final checked = value ?? false;
+                        if (checked) {
                           selectedItems.add(item.ctId);
+                          for (final g in _displayedGroups) {
+                            if (g.parent.ctId == item.ctId) {
+                              for (final c in g.children) {
+                                selectedItems.add(c.ctId);
+                              }
+                            }
+                          }
                         } else {
                           selectedItems.remove(item.ctId);
+                          for (final g in _displayedGroups) {
+                            if (g.parent.ctId == item.ctId) {
+                              for (final c in g.children) {
+                                selectedItems.remove(c.ctId);
+                              }
+                            }
+                          }
                         }
                         selectAll = _displayedCartItems.isNotEmpty &&
                             _displayedItemIds.difference(selectedItems).isEmpty;
@@ -1015,14 +1084,6 @@ class _CartScreenState extends State<CartScreen> {
                 healthDp(context, 10),
                 healthDp(context, 10),
               ),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    width: healthDp(context, 0.5),
-                    color: const Color(0x7FD2D2D2),
-                  ),
-                ),
-              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -1036,7 +1097,7 @@ class _CartScreenState extends State<CartScreen> {
                         _updateQuantity(item.ctId, item.ctQty + 1),
                   ),
                   Text(
-                    '${PriceFormatter.format(item.ctPrice)}원',
+                    '${PriceFormatter.format(item.lineAmount)}원',
                     style: TextStyle(
                       color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 16),
@@ -1063,7 +1124,7 @@ class _CartScreenState extends State<CartScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    '${PriceFormatter.format(item.ctPrice)}원',
+                    '${PriceFormatter.format(item.lineAmount)}원',
                     style: TextStyle(
                       color: const Color(0xFF1A1A1A),
                       fontSize: healthSp(context, 16),
@@ -1074,6 +1135,7 @@ class _CartScreenState extends State<CartScreen> {
                 ],
               ),
             ),
+          if (footer != null) footer,
         ],
       ),
     );

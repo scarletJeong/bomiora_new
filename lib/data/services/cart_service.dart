@@ -7,6 +7,26 @@ import '../../data/models/cart/cart_item_model.dart';
 import '../../data/models/product/product_model.dart';
 import '../../data/models/product/product_option_model.dart';
 
+/// 옵션 시트에서 고른 연결상품 라인 (장바구니 담기용)
+class SupplyCartLine {
+  final String productId;
+  final String productName;
+  final int basePrice;
+  final ProductOption? option;
+  final int quantity;
+  /// 이 추가상품이 묶인 본상품 선택 라인 id
+  final String? attachedMainLineId;
+
+  const SupplyCartLine({
+    required this.productId,
+    required this.productName,
+    required this.basePrice,
+    this.option,
+    this.quantity = 1,
+    this.attachedMainLineId,
+  });
+}
+
 class CartService {
   static void _attachInfCode(Map<String, dynamic> requestData) {
     final code = InfCodeTracker.current;
@@ -76,15 +96,23 @@ class CartService {
         .toList();
   }
 
+  /// 일반상품 병합용 매칭: (parent, it_id, option).
+  ///
+  /// - 본품: parent 빈값 / 추가상품: parent=부모 it_id → 역할이 다르면 별도 라인.
+  /// - 다이어트(본)+디톡스(추가)와 디톡스(본)+다이어트(추가)는 공존.
   static CartItem? findMatchingShoppingItem({
     required List<CartItem> items,
     required String productId,
     String? optionId,
     String? optionText,
+    String? parentItId,
   }) {
     final targetOption = (optionText ?? '').trim();
+    final targetParent = (parentItId ?? '').trim();
     for (final item in items) {
       if (item.itId != productId) continue;
+      final itemParent = (item.parentItId ?? '').trim();
+      if (itemParent != targetParent) continue;
 
       if (optionId != null && optionId.isNotEmpty) {
         if (item.ioId == optionId) return item;
@@ -99,9 +127,13 @@ class CartService {
       if (item.ctOption.trim().isEmpty && targetOption.isEmpty) {
         return item;
       }
+      if (item.ctOption.trim() == targetOption && targetOption.isNotEmpty) {
+        return item;
+      }
     }
     return null;
   }
+
   /// 장바구니에 상품 추가 (동일 상품·옵션이 있으면 수량 합산)
   static Future<Map<String, dynamic>> addOrMergeToCart({
     required String productId,
@@ -110,8 +142,10 @@ class CartService {
     String? optionId,
     String? optionText,
     int? optionPrice,
+    int? ioType,
     String? odId,
     String? ctKind,
+    String? parentItId,
     String? ctStatus,
     bool mergeIfExists = true,
   }) async {
@@ -124,6 +158,7 @@ class CartService {
           productId: productId,
           optionId: optionId,
           optionText: optionText,
+          parentItId: parentItId,
         );
         if (existing != null) {
           return updateCartQuantity(
@@ -141,8 +176,10 @@ class CartService {
       optionId: optionId,
       optionText: optionText,
       optionPrice: optionPrice,
+      ioType: ioType,
       odId: odId,
       ctKind: ctKind,
+      parentItId: parentItId,
       ctStatus: ctStatus,
     );
   }
@@ -155,8 +192,10 @@ class CartService {
     String? optionId,
     String? optionText,
     int? optionPrice,
+    int? ioType,
     String? odId, // 처방 예약 플로우의 경우 od_id 전달
-    String? ctKind, // 상품 종류 (prescription, general) - 없으면 백엔드에서 판단
+    String? ctKind, // 상품 종류 (prescription | general)
+    String? parentItId,
     String? ctStatus, // 장바구니 상태 (쇼핑, 임시 등)
   }) async {
     try {
@@ -168,7 +207,7 @@ class CartService {
         };
       }
 
-      final requestData = {
+      final requestData = <String, dynamic>{
         'mb_id': user.id,
         'it_id': productId,
         'quantity': quantity,
@@ -182,13 +221,25 @@ class CartService {
         requestData['option_price'] = optionPrice ?? 0;
       }
 
+      if (ioType != null) {
+        requestData['io_type'] = ioType;
+      }
+
       // od_id가 있으면 추가 (처방 예약 플로우)
       if (odId != null && odId.isNotEmpty) {
         requestData['od_id'] = odId;
       }
 
-      // ct_kind가 있으면 추가 (상품 종류)
-      if (ctKind != null && ctKind.isNotEmpty) {
+      // parent: 추가상품의 부모 it_id (본품이면 생략)
+      if (parentItId != null && parentItId.isNotEmpty) {
+        requestData['parent'] = parentItId;
+        requestData['parent_it_id'] = parentItId;
+      }
+
+      // ct_kind: 상품 종류만 (supply_add| 인코딩 금지 — 관계는 parent 컬럼)
+      if (ctKind != null &&
+          ctKind.isNotEmpty &&
+          !ctKind.toLowerCase().startsWith('supply_add|')) {
         requestData['ct_kind'] = ctKind;
       }
 
@@ -231,6 +282,7 @@ class CartService {
     String? odId, // 처방 예약 플로우의 경우 od_id 전달
     String? ctStatus,
     bool mergeIfExists = false,
+    List<SupplyCartLine>? supplyLines,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -245,32 +297,43 @@ class CartService {
       int failCount = 0;
       List<String> errorMessages = [];
       final addedCtIds = <int>[];
+      String? sharedOdId = odId;
 
       // 각 옵션별로 장바구니에 추가
       for (final entry in selectedOptions.entries) {
         final option = entry.key;
         final quantity = entry.value;
-        final totalPrice = (product.price + option.price) * quantity;
+        final ioType = option.ioType;
+        final int linePrice;
+        if (ioType == 1 || ioType == 2 || ioType == 3) {
+          linePrice = 0;
+        } else {
+          linePrice = (product.price + option.price) * quantity;
+        }
 
         // ct_option 형식: "디톡스 / 3일" (단계 / 개월수일)
         String ctOptionText;
         if (option.months != null) {
-          // "디톡스 / 3일" 형태로 변환
           ctOptionText = '${option.step} / ${option.months}일';
+        } else if (option.subOption.isNotEmpty) {
+          ctOptionText = option.subOption.isNotEmpty
+              ? '${option.step} / ${option.subOption}'
+              : option.step;
+          if (option.step.isEmpty) ctOptionText = option.displayText;
         } else {
-          // 개월수가 없으면 단계만
-          ctOptionText = option.step;
+          ctOptionText = option.step.isNotEmpty ? option.step : option.displayText;
         }
 
         final result = await addOrMergeToCart(
           productId: product.id,
           quantity: quantity,
-          price: totalPrice,
+          price: linePrice,
           optionId: option.id,
-          optionText: ctOptionText, // "디톡스 / 3일" 형태
+          optionText: ctOptionText,
           optionPrice: option.price,
-          odId: odId, // 처방 예약 플로우의 경우 od_id 전달
-          ctKind: product.ctKind, // 상품 종류 전달
+          ioType: ioType,
+          odId: sharedOdId,
+          ctKind: product.ctKind,
           ctStatus: ctStatus,
           mergeIfExists: mergeIfExists,
         );
@@ -279,9 +342,50 @@ class CartService {
           successCount++;
           final ctId = ctIdFromCartResponseData(result['data']);
           if (ctId != null) addedCtIds.add(ctId);
+          final data = result['data'];
+          if (data is Map && sharedOdId == null) {
+            final od = data['od_id'] ?? data['odId'];
+            if (od != null) sharedOdId = od.toString();
+          }
         } else {
           failCount++;
           errorMessages.add('${option.displayText}: ${result['message']}');
+        }
+      }
+
+      // 연결상품 라인 (본상품 담기 성공 후)
+      if (supplyLines != null && supplyLines.isNotEmpty && successCount > 0) {
+        for (final line in supplyLines) {
+          final qty = line.quantity;
+          final ioType = line.option?.ioType ?? 0;
+          final int price;
+          if (ioType == 1 || ioType == 2 || ioType == 3) {
+            price = line.basePrice * qty;
+          } else {
+            price = (line.basePrice + (line.option?.price ?? 0)) * qty;
+          }
+          final optionText = line.option?.displayText ?? '';
+          final result = await addToCart(
+            productId: line.productId,
+            quantity: qty,
+            price: price,
+            optionId: line.option?.id,
+            optionText: optionText,
+            optionPrice: line.option?.price ?? 0,
+            ioType: ioType,
+            odId: sharedOdId,
+            parentItId: product.id,
+            // 상품 종류는 서버가 item_new.it_kind로 채움. 관계는 parent.
+            ctStatus: ctStatus,
+          );
+          if (result['success'] == true) {
+            successCount++;
+            final ctId = ctIdFromCartResponseData(result['data']);
+            if (ctId != null) addedCtIds.add(ctId);
+          } else {
+            failCount++;
+            errorMessages.add('${line.productName}: ${result['message']}');
+          }
         }
       }
 
@@ -291,6 +395,7 @@ class CartService {
           'success': true,
           'message': '모든 상품이 장바구니에 추가되었습니다.',
           'cart_ids': addedCtIds,
+          'od_id': sharedOdId,
         };
       } else if (successCount > 0) {
         await ensureCartItemsSelected(addedCtIds);
@@ -299,6 +404,7 @@ class CartService {
           'message': '일부 상품이 장바구니에 추가되었습니다.',
           'errors': errorMessages,
           'cart_ids': addedCtIds,
+          'od_id': sharedOdId,
         };
       } else {
         return {
@@ -329,6 +435,8 @@ class CartService {
       }
 
       final response = await ApiClient.get(url);
+      // 304는 캐시 히트인데 body가 비어 추천이 안 뜨는 경우가 있어 200만 성공 처리
+      // (ApiClient GET에 no-cache 헤더로 304 자체를 줄임)
       if (response.statusCode != 200) return [];
 
       final data = json.decode(response.body);

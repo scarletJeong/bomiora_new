@@ -19,6 +19,13 @@ class Product {
   final double? rating;
   final int? reviewCount;
   final Map<String, dynamic>? additionalInfo;
+  /// 종속선택옵션 1/2 라벨·제목 (관리자 it_depopt*)
+  final String? depOption1Subject;
+  final String? depOption1Label;
+  final String? depOption2Subject;
+  final String? depOption2Label;
+  /// 연결상품 it_id 목록 (it_supply_items)
+  final List<String> supplyItemIds;
 
   Product({
     required this.id,
@@ -36,6 +43,11 @@ class Product {
     this.rating,
     this.reviewCount,
     this.additionalInfo,
+    this.depOption1Subject,
+    this.depOption1Label,
+    this.depOption2Subject,
+    this.depOption2Label,
+    this.supplyItemIds = const [],
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -97,6 +109,31 @@ class Product {
           normalized['it_review_cnt'] ??
           normalized['it_use_cnt']),
       additionalInfo: mergedAdditionalInfo,
+      depOption1Subject: _pickDepText(
+        normalized,
+        rawFields,
+        'depOption1Subject',
+        'it_depopt1_subject',
+      ),
+      depOption1Label: _pickDepText(
+        normalized,
+        rawFields,
+        'depOption1Label',
+        'it_depopt1_label',
+      ),
+      depOption2Subject: _pickDepText(
+        normalized,
+        rawFields,
+        'depOption2Subject',
+        'it_depopt2_subject',
+      ),
+      depOption2Label: _pickDepText(
+        normalized,
+        rawFields,
+        'depOption2Label',
+        'it_depopt2_label',
+      ),
+      supplyItemIds: _parseSupplyItemIds(normalized, rawFields, id),
     );
   }
 
@@ -117,7 +154,55 @@ class Product {
       'rating': rating,
       'reviewCount': reviewCount,
       'additionalInfo': additionalInfo,
+      'depOption1Subject': depOption1Subject,
+      'depOption1Label': depOption1Label,
+      'depOption2Subject': depOption2Subject,
+      'depOption2Label': depOption2Label,
+      'supplyItemIds': supplyItemIds,
     };
+  }
+
+  static String? _pickDepText(
+    Map<String, dynamic> normalized,
+    Map<String, dynamic> rawFields,
+    String camelKey,
+    String snakeKey,
+  ) {
+    final v = NodeValueParser.asString(normalized[camelKey]) ??
+        NodeValueParser.asString(normalized[snakeKey]) ??
+        NodeValueParser.asString(rawFields[camelKey]) ??
+        NodeValueParser.asString(rawFields[snakeKey]);
+    final t = v?.trim();
+    if (t == null || t.isEmpty) return null;
+    return t;
+  }
+
+  static List<String> _parseSupplyItemIds(
+    Map<String, dynamic> normalized,
+    Map<String, dynamic> rawFields,
+    String selfId,
+  ) {
+    final raw = normalized['supplyItemIds'] ??
+        normalized['it_supply_items'] ??
+        rawFields['supplyItemIds'] ??
+        rawFields['it_supply_items'];
+    final ids = <String>[];
+    void push(String? s) {
+      final t = (s ?? '').trim();
+      if (t.isEmpty || t == selfId) return;
+      if (!ids.contains(t)) ids.add(t);
+    }
+
+    if (raw is List) {
+      for (final e in raw) {
+        push(e?.toString());
+      }
+    } else if (raw is String) {
+      for (final part in raw.split(RegExp(r'[,|\s]+'))) {
+        push(part);
+      }
+    }
+    return ids;
   }
 
   static int _parsePrice(dynamic value) {

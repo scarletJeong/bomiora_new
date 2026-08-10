@@ -6,6 +6,32 @@ import '../../models/product/product_model.dart';
 import '../../services/auth_service.dart';
 
 class ProductRepository {
+  static List<Product> _parseProductList(dynamic data) {
+    if (data is Map && data['success'] == true && data['data'] != null) {
+      final raw = data['data'];
+      if (raw is List) {
+        return raw
+            .whereType<Map>()
+            .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+            .toList();
+      }
+    } else if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    } else if (data is Map && data['products'] != null) {
+      final raw = data['products'];
+      if (raw is List) {
+        return raw
+            .whereType<Map>()
+            .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
+            .toList();
+      }
+    }
+    return const [];
+  }
+
   // 카테고리별 상품 목록 가져오기
   static Future<List<Product>> getProductsByCategory({
     required String categoryId,
@@ -32,26 +58,7 @@ class ProductRepository {
       if (response.statusCode == 200) {
         try {
           final data = json.decode(response.body);
-          
-          // 응답 구조에 따라 처리
-          if (data is Map && data['success'] == true && data['data'] != null) {
-            final List<dynamic> products = data['data'];
-            return products
-                .whereType<Map>()
-                .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-                .toList();
-          } else if (data is List) {
-            return data
-                .whereType<Map>()
-                .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-                .toList();
-          } else if (data is Map && data['products'] != null) {
-            final List<dynamic> products = data['products'];
-            return products
-                .whereType<Map>()
-                .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-                .toList();
-          }
+          return _parseProductList(data);
         } catch (e) {
         }
       }
@@ -159,41 +166,39 @@ class ProductRepository {
     }
   }
 
-  // 신상품 목록 가져오기
-  static Future<List<Product>> getNewProducts({int limit = 10}) async {
+  /// 신상품 — API 정렬(`it_order, it_id desc`) 그대로, [limit]개
+  static Future<List<Product>> getNewProducts({int limit = 4}) async {
     try {
-      final response = await ApiClient.get('${ApiEndpoints.newProducts}?limit=$limit');
-      
+      final response = await ApiClient.get(
+        '${ApiEndpoints.newProducts}?limit=$limit',
+      );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
-        if (data is Map && data['success'] == true && data['data'] != null) {
-          final List<dynamic> products = data['data'];
-          return products
-              .whereType<Map>()
-              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
-        } else if (data is List) {
-          return data
-              .whereType<Map>()
-              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+        var list = _parseProductList(data);
+
+        if (limit > 0 && list.length > limit) {
+          return list.take(limit).toList();
         }
+        return list;
       }
-      
+
       return [];
     } catch (e) {
       return [];
     }
   }
 
-  /// MD pick (it_type5 = 1) — 웹 get_new_product()와 동일
+  /// MD pick — API(`/md-pick`)가 it_type5 + 정렬.
+  /// 클라이언트: it_kind=general + ca_id ≠ a0, 최대 [limit]개
   static Future<List<Product>> getMdPickProducts({
     int limit = 4,
-    String? productKind,
+    String? productKind = 'general',
   }) async {
     try {
-      var endpoint = '${ApiEndpoints.mdPickProducts}?limit=$limit';
+      // ca_id≠a0 필터 후 limit를 맞추기 위해 여유분 요청
+      final fetchLimit = limit <= 0 ? 20 : (limit * 5).clamp(limit, 50);
+      var endpoint = '${ApiEndpoints.mdPickProducts}?limit=$fetchLimit';
       if (productKind != null && productKind.isNotEmpty) {
         endpoint += '&it_kind=${Uri.encodeComponent(productKind)}';
       }
@@ -202,25 +207,30 @@ class ProductRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
-        if (data is Map && data['success'] == true && data['data'] != null) {
-          final List<dynamic> products = data['data'];
-          return products
-              .whereType<Map>()
-              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
-        } else if (data is List) {
-          return data
-              .whereType<Map>()
-              .map((json) => Product.fromJson(Map<String, dynamic>.from(json)))
-              .toList();
+        final list = _parseProductList(data);
+        final filtered = list.where(_isHomeMdPickEligible).toList();
+        if (limit > 0 && filtered.length > limit) {
+          return filtered.take(limit).toList();
         }
+        return filtered;
       }
 
       return [];
     } catch (e) {
       return [];
     }
+  }
+
+  /// it_kind=general(또는 비어 있음) + ca_id가 a0이 아님.
+  /// it_type5는 `/md-pick` API에서 이미 선별되므로 응답 필드로 재검증하지 않음.
+  static bool _isHomeMdPickEligible(Product product) {
+    final kind = (product.productKind ?? '').trim().toLowerCase();
+    if (kind.isNotEmpty && kind != 'general') return false;
+
+    final caId = product.categoryId.trim().toLowerCase();
+    if (caId.isEmpty || caId == 'a0') return false;
+
+    return true;
   }
 
   /// 웹 get_categories_with_products — 판매 중 상품이 있는 1단계 카테고리

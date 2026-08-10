@@ -14,7 +14,15 @@ class CartItem {
   final int ctQty; // 수량
   final String? ioId; // 옵션 ID
   final int? ioPrice; // 옵션 가격
-  final String ctKind; // 상품 종류 (general, prescription)
+  final int ioType; // 0~3
+  final String ctKind; // 상품 종류 (general | prescription)
+  /// 파싱된 kind: general | prescription | supply_add(parent 있을 때)
+  final String kind;
+  /// 상품 마스터 `item_new.it_kind` (prescription | general …)
+  final String? itKind;
+  final String? parentItId;
+  /// 부모 상품의 it_supply_items (그룹핑 fallback)
+  final String? itSupplyItems;
   final DateTime? ctTime; // 장바구니 추가 시간
 
   // 처방 상품인 경우 예약 정보
@@ -47,7 +55,12 @@ class CartItem {
     required this.ctQty,
     this.ioId,
     this.ioPrice,
+    this.ioType = 0,
     required this.ctKind,
+    this.kind = 'general',
+    this.itKind,
+    this.parentItId,
+    this.itSupplyItems,
     this.ctTime,
     this.doctorName,
     this.reservationDate,
@@ -58,6 +71,22 @@ class CartItem {
     this.pointUsageRate = 10,
     this.ctSelect = false,
   });
+
+  /// 추가상품: `parent` 컬럼(또는 legacy ct_kind=supply_add|)에 부모 it_id가 있음
+  bool get isSupplyAdd {
+    final p = parentItId?.trim() ?? '';
+    if (p.isNotEmpty) return true;
+    return kind == 'supply_add' || ctKind.startsWith('supply_add|');
+  }
+
+  /// 라인 결제금액 (io_type 1~3은 io_price 반영)
+  int get lineAmount {
+    final io = ioPrice ?? 0;
+    if (ioType == 1 || ioType == 2 || ioType == 3) {
+      return ctPrice + io * ctQty;
+    }
+    return ctPrice;
+  }
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
@@ -111,7 +140,24 @@ class CartItem {
     final rawCtKind = NodeValueParser.asString(normalized['ct_kind']) ??
         NodeValueParser.asString(normalized['ctKind']) ??
         'general';
-    final normalizedCtKind = _normalizeKind(rawCtKind);
+    final parentFromCol = (NodeValueParser.asString(normalized['parent']) ??
+            NodeValueParser.asString(normalized['parent_it_id']) ??
+            NodeValueParser.asString(normalized['parentItId']) ??
+            '')
+        .trim();
+    final parentItId = parentFromCol.isNotEmpty
+        ? parentFromCol
+        : _parseParentItId(rawCtKind);
+    final hasParent = (parentItId ?? '').trim().isNotEmpty;
+    // ct_kind는 상품 종류만 (legacy supply_add| 는 general로 취급)
+    final productCtKind = rawCtKind.trim().toLowerCase().startsWith('supply_add|')
+        ? 'general'
+        : (rawCtKind.trim().isEmpty ? 'general' : rawCtKind.trim());
+    final parsedKind = hasParent
+        ? 'supply_add'
+        : (NodeValueParser.asString(normalized['kind']) ??
+            _parseKindToken(productCtKind));
+    final normalizedCtKind = _normalizeKind(productCtKind);
     final hpReservationDate =
         NodeValueParser.asString(normalized['hp_rsvt_date'])?.trim();
     final hpReservationStart =
@@ -153,10 +199,22 @@ class CartItem {
       ctQty: _parseInt(normalized['ct_qty'] ?? normalized['ctQty'] ?? 1),
       ioId: NodeValueParser.asString(normalized['io_id']) ??
           NodeValueParser.asString(normalized['ioId']),
-      ioPrice: normalized['io_price'] != null
+      ioPrice: normalized['io_price'] != null || normalized['ioPrice'] != null
           ? _parseInt(normalized['io_price'] ?? normalized['ioPrice'])
           : null,
-      ctKind: normalizedCtKind,
+      ioType: _parseInt(normalized['io_type'] ?? normalized['ioType'] ?? 0)
+          .clamp(0, 3),
+      ctKind: productCtKind,
+      kind: parsedKind,
+      itKind: _parseItKind(
+        NodeValueParser.asString(normalized['it_kind']) ??
+            NodeValueParser.asString(normalized['itKind']) ??
+            NodeValueParser.asString(normalized['product_kind']) ??
+            NodeValueParser.asString(normalized['productKind']),
+      ),
+      parentItId: hasParent ? parentItId : null,
+      itSupplyItems: NodeValueParser.asString(normalized['it_supply_items']) ??
+          NodeValueParser.asString(normalized['itSupplyItems']),
       ctTime: ctTime,
       doctorName: doctorName ??
           NodeValueParser.asString(normalized['hp_doc_name']) ??
@@ -257,7 +315,13 @@ class CartItem {
       'ct_qty': ctQty,
       'io_id': ioId,
       'io_price': ioPrice,
+      'io_type': ioType,
       'ct_kind': ctKind,
+      'kind': kind,
+      'it_kind': itKind,
+      'parent': parentItId ?? '',
+      'parent_it_id': parentItId,
+      'it_supply_items': itSupplyItems,
       'ct_time': ctTime?.toIso8601String(),
       'doctor_name': doctorName,
       'reservation_date': reservationDate?.toIso8601String(),
@@ -293,6 +357,32 @@ class CartItem {
         kind.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim().toLowerCase();
     if (cleaned.isEmpty) return 'general';
     return cleaned;
+  }
+
+  static String _parseKindToken(String rawCtKind) {
+    final cleaned = _normalizeKind(rawCtKind);
+    if (cleaned.startsWith('supply_add|')) return 'supply_add';
+    if (cleaned == 'prescription') return 'prescription';
+    return 'general';
+  }
+
+  static String? _parseItKind(String? raw) {
+    final cleaned = _normalizeKind(raw ?? '');
+    if (cleaned.isEmpty || cleaned == 'general') {
+      return cleaned.isEmpty ? null : 'general';
+    }
+    if (cleaned == 'prescription') return 'prescription';
+    return cleaned;
+  }
+
+  static String? _parseParentItId(String rawCtKind) {
+    final cleaned = rawCtKind.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
+    const prefix = 'supply_add|';
+    if (cleaned.toLowerCase().startsWith(prefix)) {
+      final id = cleaned.substring(prefix.length).trim();
+      return id.isEmpty ? null : id;
+    }
+    return null;
   }
 
   static int _parsePointUsageRate(dynamic value, String ctKind) {
@@ -331,7 +421,7 @@ class CartItem {
   }
 
   String get formattedPrice {
-    return '${ctPrice.toString().replaceAllMapped(
+    return '${lineAmount.toString().replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]},',
         )}원';
@@ -344,13 +434,16 @@ class CartItem {
   }
 
   bool get needsPrescriptionBooking =>
-      _normalizeKind(ctKind) == 'prescription' && !hasReservationSchedule;
+      !isSupplyAdd && isPrescription && !hasReservationSchedule;
 
   bool get isPrescription {
-    final kind = _normalizeKind(ctKind);
-    if (kind == 'prescription') {
-      return true;
-    }
+    if (isSupplyAdd) return false;
+    final k = _normalizeKind(kind);
+    if (k == 'prescription') return true;
+    final ck = _normalizeKind(ctKind);
+    if (ck == 'prescription') return true;
+    final ik = _normalizeKind(itKind ?? '');
+    if (ik == 'prescription') return true;
     if (doctorName != null && doctorName!.trim().isNotEmpty) return true;
     if (hasReservationSchedule) return true;
     return false;

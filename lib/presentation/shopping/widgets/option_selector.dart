@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/models/product/product_model.dart';
 import '../../../data/models/product/product_option_model.dart';
+import '../../../data/repositories/product/product_option_repository.dart';
+import '../../../data/services/cart_service.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -12,7 +15,10 @@ class OptionSelectorBottomSheet extends StatefulWidget {
   final String monthsLabel;
   final int? userPoint;
   final String? productKind;
+  final Product? product;
+  final List<SupplyCartLine> supplyLines;
   final Function(Map<ProductOption, int>) onOptionsChanged;
+  final ValueChanged<List<SupplyCartLine>>? onSupplyLinesChanged;
   final VoidCallback onAddToCart;
   final VoidCallback onAddToPrescriptionCart;
   final VoidCallback onReserve;
@@ -29,7 +35,10 @@ class OptionSelectorBottomSheet extends StatefulWidget {
     required this.monthsLabel,
     this.userPoint,
     this.productKind,
+    this.product,
+    this.supplyLines = const [],
     required this.onOptionsChanged,
+    this.onSupplyLinesChanged,
     required this.onAddToCart,
     required this.onAddToPrescriptionCart,
     required this.onReserve,
@@ -45,6 +54,19 @@ class OptionSelectorBottomSheet extends StatefulWidget {
 
 
 const String _kGmarketSans = 'Gmarket Sans TTF';
+
+/// 본상품 선택 라인 (같은 옵션이면 수량 증가, 다른 옵션이면 새 카드)
+class _MainLineItem {
+  final String lineId;
+  final ProductOption option;
+  int quantity;
+
+  _MainLineItem({
+    required this.lineId,
+    required this.option,
+    this.quantity = 1,
+  });
+}
 
 TextStyle _optionLabelTextStyle(BuildContext context) => TextStyle(
       color: const Color(0xFF1A1A1E),
@@ -68,12 +90,6 @@ String _formatPrice(int value) {
       );
 }
 
-String _extractStepShort(String step) {
-  final match = RegExp(r'\[?0*(\d+)단계\]?').firstMatch(step);
-  if (match != null) return '${match.group(1)}단계';
-  return step.trim();
-}
-
 String? _extractDiscountSuffix(ProductOption option) {
   for (final source in [option.id, option.step, option.subOption]) {
     final match = RegExp(r'\(-\s*\d+%\s*\)').firstMatch(source);
@@ -82,19 +98,32 @@ String? _extractDiscountSuffix(ProductOption option) {
   return null;
 }
 
+/// 선택 카드용 짧은 상품명: 디톡스환 / 다이어트환
+String _cardProductShortLabel({
+  String? name,
+  String? categoryId,
+  String? extra,
+}) {
+  final blob = '${name ?? ''} ${extra ?? ''}';
+  final ca = (categoryId ?? '').trim();
+  if (blob.contains('디톡스') || ca == '20') return '디톡스환';
+  if (blob.contains('다이어트') || ca == '10') return '다이어트환';
+  final cleaned = (name ?? '').trim();
+  return cleaned.isNotEmpty ? cleaned : '상품';
+}
+
+/// 선택 카드 옵션 줄: 단계명 전체 + 개월/하위옵션
 String _selectedOptionValueText(ProductOption option) {
-  final stepShort = _extractStepShort(option.step);
-  final months = option.months;
-  if (months != null) {
-    return '$stepShort/${months}개월';
-  }
+  final step = option.step.trim();
   if (option.subOption.isNotEmpty) {
-    if (stepShort.isNotEmpty && stepShort != option.step) {
-      return '$stepShort/${option.subOption}';
-    }
-    return option.subOption;
+    return step.isNotEmpty ? '$step / ${option.subOption}' : option.subOption;
   }
-  return stepShort.isNotEmpty ? stepShort : option.step;
+  if (option.months != null) {
+    return step.isNotEmpty
+        ? '$step / ${option.months}개월'
+        : '${option.months}개월';
+  }
+  return step.isNotEmpty ? step : option.displayText;
 }
 
 class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
@@ -108,20 +137,114 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   late Map<ProductOption, int> _selectedOptions;
   late bool _isFavorite;
 
+  ProductOption? _selectedDep1;
+  ProductOption? _selectedDep2;
+  List<ProductOption> get _dep1Options =>
+      widget.options.where((o) => o.isDep1).toList();
+  List<ProductOption> get _dep2Options =>
+      widget.options.where((o) => o.isDep2).toList();
+
+  List<Product> _supplyProducts = [];
+  bool _supplyLoading = false;
+  Product? _pickedSupplyProduct;
+  List<ProductOption> _pickedSupplyOptions = [];
+  ProductOption? _pickedSupplyOption;
+  late List<SupplyCartLine> _supplyLines;
+
+  /// 본상품 선택 라인 (카드 단위)
+  final List<_MainLineItem> _mainLines = [];
+  int _mainLineSeq = 0;
+
+  /// 추가상품 옵션 (상위/하위) 분리용
+  final Map<String, List<ProductOption>> _supplyGroupedByStep = {};
+  final Map<int, List<ProductOption>> _supplyGroupedByMonths = {};
+  final List<String> _supplyStepGroups = [];
+  final List<int> _supplyMonthsGroups = [];
+  String? _supplySelectedStep;
+  int? _supplySelectedMonths;
+  String _supplyStepLabel = '옵션';
+  String _supplyMonthsLabel = '세부 옵션';
+  /// 추가상품이 묶일 현재 본상품 라인 id
+  String? _latestMainLineId;
+
+  bool get _hasMainSelection => _mainLines.isNotEmpty;
+
+  bool get _canCheckout => _hasMainSelection;
+
+  bool get _showSupplyProductPicker => _supplyProducts.length > 1;
+
+  bool get _supplyMonthsEnabled => _supplySelectedStep != null;
+
+  String _newMainLineId() =>
+      'main_${++_mainLineSeq}_${DateTime.now().microsecondsSinceEpoch}';
+
+  void _hydrateMainLines(Map<ProductOption, int> map) {
+    _mainLines.clear();
+    for (final e in map.entries) {
+      if (e.key.isMain || e.key.ioType == 0) {
+        _mainLines.add(
+          _MainLineItem(
+            lineId: _newMainLineId(),
+            option: e.key,
+            quantity: e.value,
+          ),
+        );
+      }
+    }
+    _latestMainLineId =
+        _mainLines.isNotEmpty ? _mainLines.last.lineId : null;
+  }
+
+  Map<ProductOption, int> _buildOptionsMapForParent() {
+    final map = <ProductOption, int>{};
+    for (final line in _mainLines) {
+      ProductOption? existing;
+      for (final k in map.keys) {
+        if (k.id == line.option.id) {
+          existing = k;
+          break;
+        }
+      }
+      if (existing != null) {
+        map[existing] = (map[existing] ?? 0) + line.quantity;
+      } else {
+        map[line.option] = line.quantity;
+      }
+    }
+    for (final e in _selectedOptions.entries) {
+      if (e.key.isDependent) {
+        map[e.key] = e.value;
+      }
+    }
+    return map;
+  }
+
+  void _emitOptionsChanged() {
+    widget.onOptionsChanged(_buildOptionsMapForParent());
+  }
+
   @override
   void initState() {
     super.initState();
-    _selectedOptions = Map<ProductOption, int>.from(widget.selectedOptions);
+    _selectedOptions = {};
+    for (final e in widget.selectedOptions.entries) {
+      if (e.key.isDependent) {
+        _selectedOptions[e.key] = e.value;
+      }
+    }
+    _hydrateMainLines(widget.selectedOptions);
+    _supplyLines = List<SupplyCartLine>.from(widget.supplyLines);
     _isFavorite = widget.isFavorite;
     _initializeGroups();
+    _loadSupplyProducts();
   }
 
   @override
   void didUpdateWidget(covariant OptionSelectorBottomSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedOptions != widget.selectedOptions) {
+    if (oldWidget.supplyLines != widget.supplyLines) {
       setState(() {
-        _selectedOptions = Map<ProductOption, int>.from(widget.selectedOptions);
+        _supplyLines = List<SupplyCartLine>.from(widget.supplyLines);
       });
     }
     if (oldWidget.isFavorite != widget.isFavorite) {
@@ -129,11 +252,211 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     }
   }
 
+  Future<void> _loadSupplyProducts() async {
+    final product = widget.product;
+    if (product == null || product.supplyItemIds.isEmpty) return;
+    setState(() => _supplyLoading = true);
+    final list =
+        await ProductOptionRepository.getSupplyProducts(product.id);
+    if (!mounted) return;
+    setState(() {
+      _supplyProducts = list;
+      _supplyLoading = false;
+    });
+    // 추가상품이 1개면 상품 선택 드롭다운 생략 → 바로 옵션 로드
+    if (list.length == 1) {
+      await _onSupplyProductPicked(list.first);
+    }
+  }
+
+  void _resetSupplyOptionSelection({bool clearProduct = false}) {
+    _pickedSupplyOption = null;
+    _supplySelectedStep = null;
+    _supplySelectedMonths = null;
+    _supplyGroupedByStep.clear();
+    _supplyGroupedByMonths.clear();
+    _supplyStepGroups.clear();
+    _supplyMonthsGroups.clear();
+    if (clearProduct) {
+      _pickedSupplyProduct = null;
+      _pickedSupplyOptions = [];
+    }
+  }
+
+  void _applySupplyOptionLabels(Product product) {
+    final raw = product.additionalInfo?['it_option_subject']?.toString() ??
+        product.additionalInfo?['itOptionSubject']?.toString() ??
+        '';
+    final subjectLabels = raw
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    // 기본값 — 상품 옵션 라벨이 있으면 덮어씀
+    _supplyStepLabel = '옵션';
+    _supplyMonthsLabel = '세부 옵션';
+
+    if (subjectLabels.length >= 2) {
+      _supplyStepLabel = subjectLabels[0];
+      _supplyMonthsLabel = subjectLabels[1];
+    } else if (subjectLabels.length == 1) {
+      // 라벨이 1개면 보이는 드롭다운(상위 또는 하위)에 동일 적용
+      final only = subjectLabels.first;
+      _supplyStepLabel = only;
+      _supplyMonthsLabel = only;
+    }
+
+    debugPrint(
+      '[추가상품] it_option_subject="$raw" '
+      '→ stepLabel="$_supplyStepLabel", monthsLabel="$_supplyMonthsLabel"',
+    );
+  }
+
+  void _initializeSupplyOptionGroups() {
+    _supplyGroupedByStep.clear();
+    _supplyStepGroups.clear();
+    _supplySelectedStep = null;
+    _supplySelectedMonths = null;
+    _supplyGroupedByMonths.clear();
+    _supplyMonthsGroups.clear();
+
+    for (final option in _pickedSupplyOptions) {
+      final step = option.step.isNotEmpty ? option.step : option.displayText;
+      if (!_supplyGroupedByStep.containsKey(step)) {
+        _supplyGroupedByStep[step] = [];
+        _supplyStepGroups.add(step);
+      }
+      _supplyGroupedByStep[step]!.add(option);
+    }
+
+    if (_supplyStepGroups.length == 1) {
+      _supplySelectedStep = _supplyStepGroups.first;
+    }
+    _updateSupplyMonthsGroups();
+  }
+
+  void _updateSupplyMonthsGroups() {
+    _supplyGroupedByMonths.clear();
+    _supplyMonthsGroups.clear();
+    if (_supplySelectedStep == null) return;
+
+    final stepOptions = _supplyGroupedByStep[_supplySelectedStep] ?? [];
+    for (final option in stepOptions) {
+      final months = option.months;
+      if (months == null) continue;
+      if (!_supplyGroupedByMonths.containsKey(months)) {
+        _supplyGroupedByMonths[months] = [];
+        _supplyMonthsGroups.add(months);
+      }
+      _supplyGroupedByMonths[months]!.add(option);
+    }
+    _supplyMonthsGroups.sort();
+  }
+
+  /// 하위(개월)가 없을 때 같은 상위 옵션의 세부 선택지
+  List<ProductOption> get _supplySubOptionsForStep {
+    if (_supplySelectedStep == null) return const [];
+    return _supplyGroupedByStep[_supplySelectedStep] ?? const [];
+  }
+
+  Future<void> _onSupplyProductPicked(Product product) async {
+    setState(() {
+      _resetSupplyOptionSelection(clearProduct: false);
+      _pickedSupplyProduct = product;
+      _pickedSupplyOptions = [];
+      _applySupplyOptionLabels(product);
+    });
+    final opts =
+        await ProductOptionRepository.getProductOptions(product.id);
+    if (!mounted) return;
+
+    final mainOpts = opts.where((o) => o.isMain).toList();
+    final resolved = mainOpts.isNotEmpty ? mainOpts : opts;
+
+    // ignore: avoid_print
+    print('========== [추가상품 옵션] ${product.name} (${product.id}) ==========');
+    // ignore: avoid_print
+    print('it_option_subject: ${product.additionalInfo?['it_option_subject']}');
+    // ignore: avoid_print
+    print('옵션 개수: ${resolved.length} (전체 ${opts.length}, type0 ${mainOpts.length})');
+    for (var i = 0; i < resolved.length; i++) {
+      final o = resolved[i];
+      // ignore: avoid_print
+      print(
+        '  [$i] id=${o.id} ioType=${o.ioType} '
+        'step="${o.step}" months=${o.months} '
+        'sub="${o.subOption}" price=${o.price} '
+        'display="${o.displayText}"',
+      );
+    }
+    // ignore: avoid_print
+    print('========================================================');
+
+    setState(() {
+      _pickedSupplyOptions = resolved;
+      _initializeSupplyOptionGroups();
+      debugPrint(
+        '[추가상품] groups step=${_supplyStepGroups.length} '
+        'months=${_supplyMonthsGroups.length} '
+        'labels=$_supplyStepLabel / $_supplyMonthsLabel',
+      );
+    });
+  }
+
+  void _addSupplyLineFromOption(ProductOption option) {
+    if (!_hasMainSelection) return;
+    setState(() => _pickedSupplyOption = option);
+    _addSupplyLine();
+  }
+
+  void _addSupplyLine() {
+    final product = _pickedSupplyProduct;
+    if (product == null) return;
+    if (!_hasMainSelection) return;
+    final option = _pickedSupplyOption;
+    // 옵션이 있는데 미선택이면 추가 안 함
+    if (_pickedSupplyOptions.isNotEmpty && option == null) return;
+
+    final attachId = _latestMainLineId ?? _mainLines.lastOrNull?.lineId;
+
+    setState(() {
+      _supplyLines.add(
+        SupplyCartLine(
+          productId: product.id,
+          productName: product.name,
+          basePrice: product.price,
+          option: option,
+          quantity: 1,
+          attachedMainLineId: attachId,
+        ),
+      );
+      // 같은 추가상품으로 다른 옵션을 더 고를 수 있게 옵션 선택만 초기화
+      _pickedSupplyOption = null;
+      _supplySelectedMonths = null;
+      if (_supplyStepGroups.length > 1) {
+        _supplySelectedStep = null;
+        _updateSupplyMonthsGroups();
+      } else if (_supplyStepGroups.length == 1) {
+        _supplySelectedStep = _supplyStepGroups.first;
+        _updateSupplyMonthsGroups();
+      }
+      // 복수 추가상품일 때만 상품 선택도 초기화(다시 고르게)
+      if (_showSupplyProductPicker) {
+        // 상품은 유지하고 옵션만 리셋 — 같은 상품 연속 추가 편의
+      }
+    });
+    _notifySupplyChanged();
+  }
+
   void _initializeGroups() {
     _groupedOptionsByStep.clear();
     _stepGroups.clear();
 
-    for (final option in widget.options) {
+    final mainOptions = widget.options.where((o) => o.isMain).toList();
+    final source = mainOptions.isNotEmpty ? mainOptions : widget.options;
+
+    for (final option in source) {
       final step = option.step;
       if (!_groupedOptionsByStep.containsKey(step)) {
         _groupedOptionsByStep[step] = [];
@@ -170,18 +493,35 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
 
   void _addOption(ProductOption option) {
     setState(() {
-      ProductOption? existing;
-      for (final selected in _selectedOptions.keys) {
-        if (selected.id == option.id) {
-          existing = selected;
-          break;
+      if (option.isMain || option.ioType == 0) {
+        final existingIndex =
+            _mainLines.indexWhere((l) => l.option.id == option.id);
+        if (existingIndex >= 0) {
+          _mainLines[existingIndex].quantity++;
+          _latestMainLineId = _mainLines[existingIndex].lineId;
+        } else {
+          final line = _MainLineItem(
+            lineId: _newMainLineId(),
+            option: option,
+            quantity: 1,
+          );
+          _mainLines.add(line);
+          _latestMainLineId = line.lineId;
         }
-      }
-
-      if (existing != null) {
-        _selectedOptions[existing] = (_selectedOptions[existing] ?? 0) + 1;
+        _attachSelectedDepOptions();
       } else {
-        _selectedOptions[option] = 1;
+        ProductOption? existing;
+        for (final selected in _selectedOptions.keys) {
+          if (selected.id == option.id) {
+            existing = selected;
+            break;
+          }
+        }
+        if (existing != null) {
+          _selectedOptions[existing] = (_selectedOptions[existing] ?? 0) + 1;
+        } else {
+          _selectedOptions[option] = 1;
+        }
       }
 
       _selectedMonths = null;
@@ -191,7 +531,50 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       _updateMonthsGroups();
     });
 
-    widget.onOptionsChanged(Map<ProductOption, int>.from(_selectedOptions));
+    _emitOptionsChanged();
+  }
+
+  void _attachSelectedDepOptions() {
+    void put(ProductOption? dep) {
+      if (dep == null) return;
+      ProductOption? existing;
+      for (final selected in _selectedOptions.keys) {
+        if (selected.id == dep.id) {
+          existing = selected;
+          break;
+        }
+      }
+      if (existing != null) {
+        _selectedOptions[existing] = (_selectedOptions[existing] ?? 0) + 1;
+      } else {
+        _selectedOptions[dep] = 1;
+      }
+    }
+
+    put(_selectedDep1);
+    put(_selectedDep2);
+  }
+
+  void _clearDepSelections() {
+    _selectedDep1 = null;
+    _selectedDep2 = null;
+    final toRemove = _selectedOptions.keys
+        .where((o) => o.isDependent)
+        .toList();
+    for (final o in toRemove) {
+      _selectedOptions.remove(o);
+    }
+  }
+
+  void _updateMainLineQuantity(_MainLineItem line, int quantity) {
+    if (quantity <= 0) {
+      _removeMainLine(line);
+      return;
+    }
+    setState(() {
+      line.quantity = quantity;
+    });
+    _emitOptionsChanged();
   }
 
   void _updateOptionQuantity(ProductOption option, int quantity) {
@@ -202,26 +585,113 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     setState(() {
       _selectedOptions[option] = quantity;
     });
-    widget.onOptionsChanged(Map<ProductOption, int>.from(_selectedOptions));
+    _emitOptionsChanged();
+  }
+
+  void _removeMainLine(_MainLineItem line) {
+    setState(() {
+      _mainLines.removeWhere((l) => l.lineId == line.lineId);
+      _supplyLines.removeWhere((l) => l.attachedMainLineId == line.lineId);
+      if (_latestMainLineId == line.lineId) {
+        _latestMainLineId =
+            _mainLines.isNotEmpty ? _mainLines.last.lineId : null;
+      }
+      if (!_hasMainSelection) {
+        _clearDepSelections();
+        _supplyLines.clear();
+        _latestMainLineId = null;
+      }
+    });
+    _emitOptionsChanged();
+    _notifySupplyChanged();
   }
 
   void _removeOption(ProductOption option) {
+    if (option.isMain || option.ioType == 0) {
+      _MainLineItem? line;
+      for (final l in _mainLines) {
+        if (l.option.id == option.id) {
+          line = l;
+          break;
+        }
+      }
+      if (line != null) {
+        _removeMainLine(line);
+        return;
+      }
+    }
     setState(() {
       _selectedOptions.remove(option);
     });
-    widget.onOptionsChanged(Map<ProductOption, int>.from(_selectedOptions));
+    _emitOptionsChanged();
+  }
+
+  int _linePriceForOption(ProductOption option, int quantity) {
+    if (option.ioType == 1 || option.ioType == 2 || option.ioType == 3) {
+      return option.price * quantity;
+    }
+    return (widget.basePrice + option.price) * quantity;
   }
 
   int _calculateTotalPrice() {
     int total = 0;
+    for (final line in _mainLines) {
+      total += _linePriceForOption(line.option, line.quantity);
+    }
     _selectedOptions.forEach((option, quantity) {
-      total += (widget.basePrice + option.price) * quantity;
+      if (option.isDependent) {
+        total += _linePriceForOption(option, quantity);
+      }
     });
+    for (final line in _supplyLines) {
+      final optPrice = line.option?.price ?? 0;
+      total += (line.basePrice + optPrice) * line.quantity;
+    }
     return total;
   }
 
   int _calculateTotalQuantity() {
-    return _selectedOptions.values.fold(0, (sum, qty) => sum + qty);
+    final mainQty =
+        _mainLines.fold<int>(0, (sum, l) => sum + l.quantity);
+    final depQty = _selectedOptions.entries
+        .where((e) => e.key.isDependent)
+        .fold<int>(0, (sum, e) => sum + e.value);
+    final supplyQty =
+        _supplyLines.fold<int>(0, (sum, l) => sum + l.quantity);
+    return mainQty + depQty + supplyQty;
+  }
+
+  void _notifySupplyChanged() {
+    widget.onSupplyLinesChanged?.call(List<SupplyCartLine>.from(_supplyLines));
+  }
+
+  void _removeSupplyLine(int index) {
+    setState(() {
+      if (index >= 0 && index < _supplyLines.length) {
+        _supplyLines.removeAt(index);
+      }
+    });
+    _notifySupplyChanged();
+  }
+
+  void _updateSupplyQty(int index, int qty) {
+    if (index < 0 || index >= _supplyLines.length) return;
+    if (qty <= 0) {
+      _removeSupplyLine(index);
+      return;
+    }
+    final old = _supplyLines[index];
+    setState(() {
+      _supplyLines[index] = SupplyCartLine(
+        productId: old.productId,
+        productName: old.productName,
+        basePrice: old.basePrice,
+        option: old.option,
+        quantity: qty,
+        attachedMainLineId: old.attachedMainLineId,
+      );
+    });
+    _notifySupplyChanged();
   }
 
   @override
@@ -237,10 +707,10 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
           width: double.infinity,
           color: Colors.white,
           child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.7,
+            height: MediaQuery.of(context).size.height * 0.78,
             child: DraggableScrollableSheet(
               initialChildSize: 1.0,
-              minChildSize: 0.6,
+              minChildSize: 0.7,
               maxChildSize: 1.0,
               builder: (context, scrollController) {
                 final sheetPadding = healthDp(context, 30);
@@ -272,7 +742,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildSelectionFields(),
-                              if (_selectedOptions.isNotEmpty) ...[
+                              if (_mainLines.isNotEmpty ||
+                                  _selectedOptions.isNotEmpty ||
+                                  _supplyLines.isNotEmpty) ...[
                                 SizedBox(height: healthDp(context, 20)),
                                 Divider(
                                   height: healthDp(context, 1),
@@ -280,7 +752,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                                   color: Colors.grey[300],
                                 ),
                                 SizedBox(height: healthDp(context, 20)),
-                                _buildSelectedOptionsList(),
+                                _buildGroupedSelectionList(),
                                 _buildTotalAmountSection(),
                               ],
                             ],
@@ -404,41 +876,61 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     final monthsItems = _monthsGroups.map((months) {
       final option = _groupedOptionsByMonths[months]?.first;
       if (option == null) return '$months개월';
-      if (option.price <= 0) return '$months개월';
-      return '$months개월 (+${option.formattedPrice.replaceAll('원', '')})';
+      final discount = _extractDiscountSuffix(option);
+      final base =
+          discount != null ? '$months개월 $discount' : '$months개월';
+      if (option.price <= 0) return base;
+      return '$base (+${option.formattedPrice.replaceAll('원', '')})';
     }).toList();
+
+    final dep1Label =
+        widget.product?.depOption1Label?.trim().isNotEmpty == true
+            ? widget.product!.depOption1Label!
+            : (widget.product?.depOption1Subject?.trim().isNotEmpty == true
+                ? widget.product!.depOption1Subject!
+                : '추가 선택 1');
+    final dep2Label =
+        widget.product?.depOption2Label?.trim().isNotEmpty == true
+            ? widget.product!.depOption2Label!
+            : (widget.product?.depOption2Subject?.trim().isNotEmpty == true
+                ? widget.product!.depOption2Subject!
+                : '추가 선택 2');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_stepGroups.length > 1) ...[
-          _buildSelectionLabel(widget.stepLabel),
           DropdownBtn(
             items: _stepGroups,
             value: _selectedStep ?? '',
-            emptyText: '옵션 선택',
+            emptyText: widget.stepLabel,
             buttonHeight: dropdownHeight,
             itemFontSizeBase: 15.54,
             itemTextAlign: TextAlign.left,
+            scrollWhenItemCountExceeds: 6,
+            maxVisibleItemsWhenScrolling: 5.5,
             onChanged: (step) {
               setState(() {
                 _selectedStep = step;
                 _selectedMonths = null;
+                _clearDepSelections();
                 _updateMonthsGroups();
               });
+              _emitOptionsChanged();
             },
           ),
           SizedBox(height: healthDp(context, 8)),
         ],
-        _buildSelectionLabel(widget.monthsLabel),
         DropdownBtn(
           items: monthsItems,
           value: _selectedMonths != null ? '${_selectedMonths}개월' : '',
-          emptyText: _isMonthsEnabled ? '옵션 선택' : '상위 옵션 선택',
+          emptyText: widget.monthsLabel,
           enabled: _isMonthsEnabled || hasSingleSubjectFlow,
           buttonHeight: dropdownHeight,
           itemFontSizeBase: 15.54,
           itemTextAlign: TextAlign.left,
+          scrollWhenItemCountExceeds: 6,
+          maxVisibleItemsWhenScrolling: 5.5,
           onChanged: (label) {
             final monthsMatch = RegExp(r'^(\d+)').firstMatch(label);
             if (monthsMatch == null) return;
@@ -449,43 +941,528 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             _addOption(option);
           },
         ),
+        if (_dep1Options.isNotEmpty) ...[
+          SizedBox(height: healthDp(context, 8)),
+          DropdownBtn(
+            items: _dep1Options.map((o) => o.displayText).toList(),
+            value: _selectedDep1?.displayText ?? '',
+            emptyText: dep1Label,
+            enabled: _hasMainSelection,
+            buttonHeight: dropdownHeight,
+            itemFontSizeBase: 15.54,
+            itemTextAlign: TextAlign.left,
+            scrollWhenItemCountExceeds: 6,
+            maxVisibleItemsWhenScrolling: 5.5,
+            onChanged: (label) {
+              ProductOption? found;
+              for (final o in _dep1Options) {
+                if (o.displayText == label) {
+                  found = o;
+                  break;
+                }
+              }
+              if (found == null) return;
+              setState(() => _selectedDep1 = found);
+              if (_hasMainSelection) {
+                setState(() {
+                  _selectedOptions[found!] =
+                      (_selectedOptions[found] ?? 0) + 1;
+                });
+                _emitOptionsChanged();
+              }
+            },
+          ),
+        ],
+        if (_dep2Options.isNotEmpty) ...[
+          SizedBox(height: healthDp(context, 8)),
+          DropdownBtn(
+            items: _dep2Options.map((o) => o.displayText).toList(),
+            value: _selectedDep2?.displayText ?? '',
+            emptyText: dep2Label,
+            enabled: _hasMainSelection,
+            buttonHeight: dropdownHeight,
+            itemFontSizeBase: 15.54,
+            itemTextAlign: TextAlign.left,
+            scrollWhenItemCountExceeds: 6,
+            maxVisibleItemsWhenScrolling: 5.5,
+            onChanged: (label) {
+              ProductOption? found;
+              for (final o in _dep2Options) {
+                if (o.displayText == label) {
+                  found = o;
+                  break;
+                }
+              }
+              if (found == null) return;
+              setState(() => _selectedDep2 = found);
+              if (_hasMainSelection) {
+                setState(() {
+                  _selectedOptions[found!] =
+                      (_selectedOptions[found] ?? 0) + 1;
+                });
+                _emitOptionsChanged();
+              }
+            },
+          ),
+        ],
+        if (_supplyProducts.isNotEmpty || _supplyLoading) ...[
+          SizedBox(height: healthDp(context, 16)),
+          Padding(
+            padding: EdgeInsets.only(
+              left: healthDp(context, 2),
+              bottom: healthDp(context, 4),
+            ),
+            child: Text(
+              '추가 상품',
+              style: _optionLabelTextStyle(context),
+            ),
+          ),
+          if (!_hasMainSelection)
+            Padding(
+              padding: EdgeInsets.only(bottom: healthDp(context, 4)),
+              child: Text(
+                '본상품 옵션을 먼저 선택해 주세요.',
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kGmarketSans,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ),
+          if (_supplyLoading)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: healthDp(context, 8)),
+              child: const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else ...[
+            // 추가상품 2개 이상일 때만 상품 선택 드롭다운
+            if (_showSupplyProductPicker) ...[
+              DropdownBtn(
+                items: _supplyProducts.map((p) => p.name).toList(),
+                value: _pickedSupplyProduct?.name ?? '',
+                emptyText: '상품 선택',
+                enabled: _hasMainSelection,
+                buttonHeight: dropdownHeight,
+                itemFontSizeBase: 15.54,
+                itemTextAlign: TextAlign.left,
+                scrollWhenItemCountExceeds: 5,
+                maxVisibleItemsWhenScrolling: 4.5,
+                onChanged: (name) {
+                  if (!_hasMainSelection) return;
+                  Product? found;
+                  for (final p in _supplyProducts) {
+                    if (p.name == name) {
+                      found = p;
+                      break;
+                    }
+                  }
+                  if (found == null) return;
+                  _onSupplyProductPicked(found);
+                },
+              ),
+              SizedBox(height: healthDp(context, 8)),
+            ],
+            if (_hasMainSelection && _pickedSupplyProduct != null)
+              ..._buildSupplyOptionFields(
+                dropdownHeight: dropdownHeight,
+              ),
+          ],
+        ],
       ],
     );
   }
 
-  Widget _buildSelectionLabel(String text) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: healthDp(context, 2),
-        bottom: healthDp(context, 4),
+  /// 추가상품 옵션: 상위/하위가 있으면 드롭다운 분리, 없으면 단일 선택
+  List<Widget> _buildSupplyOptionFields({required double dropdownHeight}) {
+    if (_pickedSupplyOptions.isEmpty) {
+      return [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: _addSupplyLine,
+            child: const Text('추가 상품 담기'),
+          ),
+        ),
+      ];
+    }
+
+    final widgets = <Widget>[];
+    final hasSingleStep = _supplyStepGroups.length <= 1;
+    final hasMonths = _supplyMonthsGroups.isNotEmpty;
+    final subOptions = _supplySubOptionsForStep;
+
+    // 상위 옵션이 2개 이상이면 상위 드롭다운
+    if (_supplyStepGroups.length > 1) {
+      widgets.add(
+        DropdownBtn(
+          items: _supplyStepGroups,
+          value: _supplySelectedStep ?? '',
+          emptyText: _supplyStepLabel,
+          buttonHeight: dropdownHeight,
+          itemFontSizeBase: 15.54,
+          itemTextAlign: TextAlign.left,
+          scrollWhenItemCountExceeds: 5,
+          maxVisibleItemsWhenScrolling: 4.5,
+          onChanged: (label) {
+            if (!_supplyStepGroups.contains(label)) return;
+            setState(() {
+              _supplySelectedStep = label;
+              _supplySelectedMonths = null;
+              _pickedSupplyOption = null;
+              _updateSupplyMonthsGroups();
+            });
+            // 하위(개월/세부)가 없고 해당 상위 옵션이 1개면 바로 담기
+            final stepOpts = _supplyGroupedByStep[label] ?? const [];
+            if (_supplyMonthsGroups.isEmpty && stepOpts.length == 1) {
+              _addSupplyLineFromOption(stepOpts.first);
+            }
+          },
+        ),
+      );
+      widgets.add(SizedBox(height: healthDp(context, 8)));
+    }
+
+    // 하위(개월) 옵션이 있으면 개월 드롭다운
+    if (hasMonths) {
+      final monthsItems = _supplyMonthsGroups.map((months) {
+        final option = _supplyGroupedByMonths[months]?.first;
+        if (option == null) return '$months개월';
+        final discount = _extractDiscountSuffix(option);
+        final base =
+            discount != null ? '$months개월 $discount' : '$months개월';
+        if (option.price <= 0) return base;
+        return '$base (+${option.formattedPrice.replaceAll('원', '')})';
+      }).toList();
+
+      widgets.add(
+        DropdownBtn(
+          items: monthsItems,
+          value: _supplySelectedMonths != null
+              ? '${_supplySelectedMonths}개월'
+              : '',
+          emptyText: _supplyMonthsLabel,
+          enabled: _supplyMonthsEnabled || hasSingleStep,
+          buttonHeight: dropdownHeight,
+          itemFontSizeBase: 15.54,
+          itemTextAlign: TextAlign.left,
+          scrollWhenItemCountExceeds: 5,
+          maxVisibleItemsWhenScrolling: 4.5,
+          onChanged: (label) {
+            final monthsMatch = RegExp(r'^(\d+)').firstMatch(label);
+            if (monthsMatch == null) return;
+            final months = int.parse(monthsMatch.group(1)!);
+            final option = _supplyGroupedByMonths[months]?.first;
+            if (option == null) return;
+            setState(() => _supplySelectedMonths = months);
+            _addSupplyLineFromOption(option);
+          },
+        ),
+      );
+      // 두 번째 옵션 드롭다운용 스크롤 여유 (보유포인트 아래가 아니라 옵션 영역 쪽)
+      widgets.add(SizedBox(height: healthDp(context, 180)));
+      return widgets;
+    }
+
+    // 개월은 없지만 같은 상위 아래 세부 옵션이 여러 개면 하위 드롭다운
+    if (_supplySelectedStep != null && subOptions.length > 1) {
+      widgets.add(
+        DropdownBtn(
+          items: subOptions.map((o) {
+            final text = o.subOption.isNotEmpty ? o.subOption : o.displayText;
+            if (o.price <= 0) return text;
+            return '$text (+${o.formattedPrice.replaceAll('원', '')})';
+          }).toList(),
+          value: _pickedSupplyOption == null
+              ? ''
+              : (_pickedSupplyOption!.subOption.isNotEmpty
+                  ? _pickedSupplyOption!.subOption
+                  : _pickedSupplyOption!.displayText),
+          emptyText: _supplyMonthsLabel,
+          buttonHeight: dropdownHeight,
+          itemFontSizeBase: 15.54,
+          itemTextAlign: TextAlign.left,
+          scrollWhenItemCountExceeds: 5,
+          maxVisibleItemsWhenScrolling: 4.5,
+          onChanged: (label) {
+            ProductOption? found;
+            for (final o in subOptions) {
+              final text =
+                  o.subOption.isNotEmpty ? o.subOption : o.displayText;
+              if (label.startsWith(text) || label == text) {
+                found = o;
+                break;
+              }
+            }
+            if (found == null) return;
+            _addSupplyLineFromOption(found);
+          },
+        ),
+      );
+      widgets.add(SizedBox(height: healthDp(context, 180)));
+      return widgets;
+    }
+
+    // 상위만 여러 개이고 하위가 없으면: 상위 선택 시 바로 담기 (onChanged에서 처리)
+    if (_supplyStepGroups.length > 1) {
+      return widgets;
+    }
+
+    // 단일 옵션: 옵션 선택 드롭다운 1개
+    if (subOptions.length == 1) {
+      final only = subOptions.first;
+      widgets.add(
+        DropdownBtn(
+          items: [only.displayText],
+          value: '',
+          emptyText: _supplyStepLabel,
+          buttonHeight: dropdownHeight,
+          itemFontSizeBase: 15.54,
+          itemTextAlign: TextAlign.left,
+          scrollWhenItemCountExceeds: 5,
+          maxVisibleItemsWhenScrolling: 4.5,
+          onChanged: (_) => _addSupplyLineFromOption(only),
+        ),
+      );
+      return widgets;
+    }
+
+    // 비계층 폴백: 전체 옵션 단일 드롭다운
+    widgets.add(
+      DropdownBtn(
+        items: _pickedSupplyOptions.map((o) => o.displayText).toList(),
+        value: _pickedSupplyOption?.displayText ?? '',
+        emptyText: _supplyStepLabel,
+        buttonHeight: dropdownHeight,
+        itemFontSizeBase: 15.54,
+        itemTextAlign: TextAlign.left,
+        scrollWhenItemCountExceeds: 5,
+        maxVisibleItemsWhenScrolling: 4.5,
+        onChanged: (label) {
+          ProductOption? found;
+          for (final o in _pickedSupplyOptions) {
+            if (o.displayText == label) {
+              found = o;
+              break;
+            }
+          }
+          if (found == null) return;
+          _addSupplyLineFromOption(found);
+        },
       ),
-      child: Text(
-        text,
-        style: _optionLabelTextStyle(context),
-      ),
+    );
+
+    return widgets;
+  }
+
+  BorderRadius _selectionCardRadius({
+    required bool roundTop,
+    required bool roundBottom,
+  }) {
+    final r = healthDp(context, 10);
+    return BorderRadius.only(
+      topLeft: roundTop ? Radius.circular(r) : Radius.zero,
+      topRight: roundTop ? Radius.circular(r) : Radius.zero,
+      bottomLeft: roundBottom ? Radius.circular(r) : Radius.zero,
+      bottomRight: roundBottom ? Radius.circular(r) : Radius.zero,
     );
   }
 
-  Widget _buildSelectedOptionsList() {
+  Widget _buildGroupedSelectionList() {
+    final deps = _selectedOptions.entries
+        .where((e) => e.key.isDependent)
+        .toList();
+    final groupGap = healthDp(context, 16);
+    final usedSupplyIndexes = <int>{};
+    final children = <Widget>[];
+
+    for (var gi = 0; gi < _mainLines.length; gi++) {
+      final mainLine = _mainLines[gi];
+      final supplies = <MapEntry<int, SupplyCartLine>>[];
+      for (var i = 0; i < _supplyLines.length; i++) {
+        if (usedSupplyIndexes.contains(i)) continue;
+        final line = _supplyLines[i];
+        final match = line.attachedMainLineId == mainLine.lineId ||
+            (line.attachedMainLineId == null && gi == _mainLines.length - 1);
+        if (!match) continue;
+        usedSupplyIndexes.add(i);
+        supplies.add(MapEntry(i, line));
+      }
+
+      final isLastGroup = gi == _mainLines.length - 1 && deps.isEmpty;
+      final hasSupplies = supplies.isNotEmpty;
+
+      children.add(
+        _buildMainLineCard(
+          mainLine,
+          bottomMargin: hasSupplies ? 0 : (isLastGroup ? 0 : groupGap),
+          roundTop: true,
+          roundBottom: !hasSupplies,
+        ),
+      );
+      for (var si = 0; si < supplies.length; si++) {
+        final entry = supplies[si];
+        final isLastSupply = si == supplies.length - 1;
+        children.add(
+          _buildSupplyLineCard(
+            entry.key,
+            entry.value,
+            bottomMargin:
+                isLastSupply ? (isLastGroup ? 0 : groupGap) : 0,
+            roundTop: false,
+            roundBottom: isLastSupply,
+          ),
+        );
+      }
+    }
+
+    for (var i = 0; i < _supplyLines.length; i++) {
+      if (usedSupplyIndexes.contains(i)) continue;
+      children.add(
+        _buildSupplyLineCard(
+          i,
+          _supplyLines[i],
+          bottomMargin: groupGap,
+          roundTop: true,
+          roundBottom: true,
+        ),
+      );
+    }
+
+    for (var di = 0; di < deps.length; di++) {
+      final e = deps[di];
+      children.add(
+        _buildDepOptionCard(
+          e.key,
+          e.value,
+          bottomMargin: di == deps.length - 1 ? 0 : groupGap,
+        ),
+      );
+    }
+
     return Column(
-      children: _selectedOptions.entries.map((entry) {
-        final option = entry.key;
-        final quantity = entry.value;
-        return _buildSelectedOptionCard(option, quantity);
-      }).toList(),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
     );
   }
 
-  Widget _buildSelectedOptionCard(ProductOption option, int quantity) {
-    final lineTotal = (widget.basePrice + option.price) * quantity;
+  Widget _buildMainLineCard(
+    _MainLineItem line, {
+    double? bottomMargin,
+    bool roundTop = true,
+    bool roundBottom = true,
+  }) {
+    final option = line.option;
+    final quantity = line.quantity;
+    final lineTotal = _linePriceForOption(option, quantity);
     final valueText = _selectedOptionValueText(option);
     final discountSuffix = _extractDiscountSuffix(option);
-    final pinkValue = discountSuffix != null
-        ? '$valueText $discountSuffix'
-        : valueText;
+    final pinkValue =
+        (discountSuffix != null && !valueText.contains(discountSuffix))
+            ? '$valueText $discountSuffix'
+            : valueText;
+    final title = _cardProductShortLabel(
+      name: widget.product?.name,
+      categoryId: widget.product?.categoryId,
+      extra: widget.stepLabel,
+    );
+    final marginBottom = bottomMargin ?? healthDp(context, 8);
 
     return Container(
-      margin: EdgeInsets.only(bottom: healthDp(context, 8)),
+      margin: EdgeInsets.only(bottom: marginBottom),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: _selectionCardRadius(
+          roundTop: roundTop,
+          roundBottom: roundBottom,
+        ),
+        border: Border.all(color: const Color(0x7FD2D2D2)),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 12),
+              healthDp(context, 10),
+              healthDp(context, 30),
+              healthDp(context, 10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSelectedCardTitleBlock(
+                  title: title,
+                  optionLine: pinkValue,
+                ),
+                SizedBox(height: healthDp(context, 10)),
+                Row(
+                  children: [
+                    _buildQuantityControl(
+                      quantity: quantity,
+                      compact: true,
+                      onDecrease: quantity > 1
+                          ? () => _updateMainLineQuantity(line, quantity - 1)
+                          : null,
+                      onIncrease: () =>
+                          _updateMainLineQuantity(line, quantity + 1),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${_formatPrice(lineTotal)}원',
+                      style: TextStyle(
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: healthDp(context, 6),
+            right: healthDp(context, 6),
+            child: InkWell(
+              onTap: () => _removeMainLine(line),
+              borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              child: Padding(
+                padding: EdgeInsets.all(healthDp(context, 2)),
+                child: Icon(
+                  Icons.close,
+                  size: healthDp(context, 16),
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDepOptionCard(
+    ProductOption option,
+    int quantity, {
+    double? bottomMargin,
+  }) {
+    final lineTotal = _linePriceForOption(option, quantity);
+    final valueText = _selectedOptionValueText(option);
+    final title = option.isDep1
+        ? (widget.product?.depOption1Label ?? '추가선택1')
+        : (widget.product?.depOption2Label ?? '추가선택2');
+    final marginBottom = bottomMargin ?? healthDp(context, 8);
+
+    return Container(
+      margin: EdgeInsets.only(bottom: marginBottom),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(healthDp(context, 10)),
@@ -504,30 +1481,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: widget.stepLabel,
-                        style: _selectedCardLabelTextStyle(context),
-                      ),
-                      TextSpan(
-                        text: ' | ',
-                        style: _selectedCardLabelTextStyle(context).copyWith(
-                          color: const Color(0xFFBDBDBD),
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                      TextSpan(
-                        text: pinkValue,
-                        style: _selectedCardLabelTextStyle(context).copyWith(
-                          color: const Color(0xFFFF4081),
-                        ),
-                      ),
-                    ],
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                _buildSelectedCardTitleBlock(
+                  title: title,
+                  optionLine: valueText,
                 ),
                 SizedBox(height: healthDp(context, 10)),
                 Row(
@@ -561,6 +1517,133 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             right: healthDp(context, 6),
             child: InkWell(
               onTap: () => _removeOption(option),
+              borderRadius: BorderRadius.circular(healthDp(context, 4)),
+              child: Padding(
+                padding: EdgeInsets.all(healthDp(context, 2)),
+                child: Icon(
+                  Icons.close,
+                  size: healthDp(context, 16),
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 선택 카드 타이틀(상품명) + 옵션줄(자리바꿈)
+  Widget _buildSelectedCardTitleBlock({
+    required String title,
+    required String optionLine,
+  }) {
+    final labelStyle = _selectedCardLabelTextStyle(context);
+    final optionStyle = labelStyle.copyWith(
+      color: const Color(0xFFFF4081),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: labelStyle,
+          softWrap: true,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (optionLine.trim().isNotEmpty)
+          Text(
+            optionLine,
+            style: optionStyle,
+            softWrap: true,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSupplyLineCard(
+    int index,
+    SupplyCartLine line, {
+    double? bottomMargin,
+    bool roundTop = true,
+    bool roundBottom = true,
+  }) {
+    final optPrice = line.option?.price ?? 0;
+    final lineTotal = (line.basePrice + optPrice) * line.quantity;
+    final option = line.option;
+    final valueText =
+        option != null ? _selectedOptionValueText(option) : '';
+    final discountSuffix =
+        option != null ? _extractDiscountSuffix(option) : null;
+    final pinkValue =
+        (discountSuffix != null && !valueText.contains(discountSuffix))
+            ? '$valueText $discountSuffix'
+            : valueText;
+    final title =
+        '추가상품 : ${_cardProductShortLabel(name: line.productName)}';
+    final marginBottom = bottomMargin ?? healthDp(context, 8);
+
+    return Container(
+      margin: EdgeInsets.only(bottom: marginBottom),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: _selectionCardRadius(
+          roundTop: roundTop,
+          roundBottom: roundBottom,
+        ),
+        border: Border.all(color: const Color(0x7FD2D2D2)),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              healthDp(context, 12),
+              healthDp(context, 10),
+              healthDp(context, 30),
+              healthDp(context, 10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSelectedCardTitleBlock(
+                  title: title,
+                  optionLine: pinkValue,
+                ),
+                SizedBox(height: healthDp(context, 10)),
+                Row(
+                  children: [
+                    _buildQuantityControl(
+                      quantity: line.quantity,
+                      compact: true,
+                      onDecrease: line.quantity > 1
+                          ? () => _updateSupplyQty(index, line.quantity - 1)
+                          : null,
+                      onIncrease: () =>
+                          _updateSupplyQty(index, line.quantity + 1),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '+${_formatPrice(lineTotal)}원',
+                      style: TextStyle(
+                        fontSize: healthSp(context, 14),
+                        fontFamily: _kGmarketSans,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: healthDp(context, 6),
+            right: healthDp(context, 6),
+            child: InkWell(
+              onTap: () => _removeSupplyLine(index),
               borderRadius: BorderRadius.circular(healthDp(context, 4)),
               child: Padding(
                 padding: EdgeInsets.all(healthDp(context, 2)),
@@ -686,8 +1769,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
   Widget _buildBottomActions() {
     return widget.productKind == 'general'
         ? _buildGeneralBottomActionRow(
-            onCart: _selectedOptions.isEmpty ? null : widget.onAddToCart,
-            onBuy: _selectedOptions.isEmpty ? null : widget.onBuyNow,
+            onCart: _canCheckout ? widget.onAddToCart : null,
+            onBuy: _canCheckout ? widget.onBuyNow : null,
           )
         : Row(
             children: [
@@ -697,11 +1780,11 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               ],
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _selectedOptions.isEmpty
-                      ? null
-                      : widget.onAddToPrescriptionCart,
+                  onPressed: _canCheckout
+                      ? widget.onAddToPrescriptionCart
+                      : null,
                   style: _sheetOutlinedButtonStyle(
-                    enabled: _selectedOptions.isNotEmpty,
+                    enabled: _canCheckout,
                   ),
                   child: Text(
                     '진료담기',
@@ -716,8 +1799,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               SizedBox(width: healthDp(context, 10)),
               Expanded(
                 child: ElevatedButton(
-                  onPressed:
-                      _selectedOptions.isEmpty ? null : widget.onReserve,
+                  onPressed: _canCheckout ? widget.onReserve : null,
                   style: _sheetFilledButtonStyle(),
                   child: Text(
                     '처방 예약 하기',

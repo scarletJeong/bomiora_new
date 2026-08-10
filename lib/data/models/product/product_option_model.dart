@@ -8,12 +8,19 @@ class ProductOption {
   final String subOption; // 하위 옵션 전체 텍스트 (마지막 숫자부터 끝까지)
   final int price; // 옵션 가격
   final int stock; // 재고
-  final String? type; // 옵션 타입
-  
+  final String? type; // 옵션 타입 (문자열 하위호환)
+  /// 0=선택옵션, 1=추가옵션(레거시), 2=종속1, 3=종속2
+  final int ioType;
+
   // 하위 호환성을 위한 getter
   String get optionName => step; // 단계와 동일
   int? get days => months; // 개월수와 동일 (하위 호환)
-  
+  bool get isMain => ioType == 0;
+  bool get isDep1 => ioType == 2;
+  bool get isDep2 => ioType == 3;
+  bool get isLegacySupply => ioType == 1;
+  bool get isDependent => ioType == 2 || ioType == 3;
+
   ProductOption({
     required this.id,
     required this.productId,
@@ -23,6 +30,7 @@ class ProductOption {
     required this.price,
     required this.stock,
     this.type,
+    this.ioType = 0,
   });
   
   factory ProductOption.fromJson(Map<String, dynamic> json) {
@@ -37,7 +45,13 @@ class ProductOption {
     final step = _extractStep(ioId);
     final subOption = _extractSubOption(ioId);
     final months = _extractMonths(ioId);
-    
+    final parsedIoType = _parseInt(
+      normalized['io_type'] ??
+          normalized['ioType'] ??
+          normalized['type'] ??
+          0,
+    );
+
     return ProductOption(
       id: ioId,
       productId:
@@ -47,75 +61,72 @@ class ProductOption {
       step: step, // 상위 옵션
       months: months, // 숫자만
       subOption: subOption, // 하위 옵션 전체 텍스트
-      price: _parseInt(normalized['price'] ?? 0),
-      stock: _parseInt(normalized['stock'] ?? 0),
+      price: _parseInt(
+        normalized['price'] ??
+            normalized['io_price'] ??
+            normalized['ioPrice'] ??
+            0,
+      ),
+      stock: _parseInt(
+        normalized['stock'] ??
+            normalized['io_stock_qty'] ??
+            0,
+      ),
       type: NodeValueParser.asString(normalized['type']),
+      ioType: parsedIoType.clamp(0, 3),
     );
   }
   
-  /// io_id에서 상위 옵션 추출 (마지막 숫자 앞까지)
+  /// `N개월` 경계를 우선 사용.
+  /// 예: "[01단계]_디톡스_Detox2개월(-10%)" → 개월=2 (할인율 10이 아님)
+  static final RegExp _monthsBoundary = RegExp(r'(\d+)개월');
+
+  /// io_id에서 상위 옵션 추출 (`N개월` 앞까지)
   /// 예: "[01단계]소프트_Soft1개월" -> "[01단계]소프트_Soft"
-  ///     "[03단계]하드_Hard2개월" -> "[03단계]하드_Hard"
+  ///     "[01단계]_디톡스_Detox2개월(-10%)" -> "[01단계]_디톡스_Detox"
   static String _extractStep(String ioId) {
     if (ioId.isEmpty) return '';
-    // ']' 다음부터 마지막 숫자 앞까지 추출
-    final closeBracketIndex = ioId.lastIndexOf(']');
-    if (closeBracketIndex == -1) {
-      // ']'가 없으면 마지막 숫자 앞까지
-      return ioId.replaceAll(RegExp(r'\d+[^0-9]*$'), '');
+    final monthsMatch = _monthsBoundary.firstMatch(ioId);
+    if (monthsMatch != null) {
+      return _sanitizeText(ioId.substring(0, monthsMatch.start));
     }
-    
-    // ']' 이후 부분
-    final afterBracket = ioId.substring(closeBracketIndex + 1);
-    // 마지막 숫자 시작 위치 찾기
-    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(afterBracket);
-    if (lastNumberMatch != null) {
-      // ']'까지 + 마지막 숫자 앞까지
-      return _sanitizeText(
-        ioId.substring(0, closeBracketIndex + 1) +
-            afterBracket.substring(0, lastNumberMatch.start),
-      );
-    }
-    
-    return _sanitizeText(ioId);
-  }
-  
-  /// io_id에서 하위 옵션 전체 텍스트 추출 (마지막 숫자부터 끝까지)
-  /// 예: "[01단계]소프트_Soft1개월" -> "1개월"
-  ///     "[03단계]하드_Hard2개월" -> "2개월"
-  static String _extractSubOption(String ioId) {
-    if (ioId.isEmpty) return '';
-    // ']' 이후 부분에서 마지막 숫자부터 끝까지
-    final closeBracketIndex = ioId.lastIndexOf(']');
-    if (closeBracketIndex == -1) {
-      // ']'가 없으면 마지막 숫자부터 끝까지
-      final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
-      if (lastNumberMatch != null) {
-        return _sanitizeText(ioId.substring(lastNumberMatch.start));
-      }
-      return '';
-    }
-    
-    // ']' 이후 부분
-    final afterBracket = ioId.substring(closeBracketIndex + 1);
-    // 마지막 숫자 시작 위치 찾기
-    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(afterBracket);
-    if (lastNumberMatch != null) {
-      return _sanitizeText(afterBracket.substring(lastNumberMatch.start));
-    }
-    
-    return _sanitizeText(afterBracket);
-  }
-  
-  /// io_id에서 하위 옵션(개월수 포함) 추출
-  /// 예: "[01단계]소프트_Soft1개월" -> 1 (숫자만)
-  ///     "[03단계]하드_Hard2개월" -> 2 (숫자만)
-  static int? _extractMonths(String ioId) {
-    if (ioId.isEmpty) return null;
-    // 마지막 숫자 부분 추출
+    // fallback: 마지막 숫자 앞까지
     final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
     if (lastNumberMatch != null) {
-      final numberStr = lastNumberMatch.group(0)!.replaceAll(RegExp(r'[^0-9]'), '');
+      return _sanitizeText(ioId.substring(0, lastNumberMatch.start));
+    }
+    return _sanitizeText(ioId);
+  }
+
+  /// io_id에서 하위 옵션 전체 텍스트 추출 (`N개월`부터 끝까지)
+  /// 예: "[01단계]소프트_Soft1개월" -> "1개월"
+  ///     "[01단계]_디톡스_Detox2개월(-10%)" -> "2개월(-10%)"
+  static String _extractSubOption(String ioId) {
+    if (ioId.isEmpty) return '';
+    final monthsMatch = _monthsBoundary.firstMatch(ioId);
+    if (monthsMatch != null) {
+      return _sanitizeText(ioId.substring(monthsMatch.start));
+    }
+    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
+    if (lastNumberMatch != null) {
+      return _sanitizeText(ioId.substring(lastNumberMatch.start));
+    }
+    return '';
+  }
+
+  /// io_id에서 개월수 추출 (`N개월`의 N)
+  /// 예: "[01단계]소프트_Soft1개월" -> 1
+  ///     "[01단계]_디톡스_Detox2개월(-10%)" -> 2  (할인율 10 아님)
+  static int? _extractMonths(String ioId) {
+    if (ioId.isEmpty) return null;
+    final monthsMatch = _monthsBoundary.firstMatch(ioId);
+    if (monthsMatch != null) {
+      return int.tryParse(monthsMatch.group(1)!);
+    }
+    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
+    if (lastNumberMatch != null) {
+      final numberStr =
+          lastNumberMatch.group(0)!.replaceAll(RegExp(r'[^0-9]'), '');
       return int.tryParse(numberStr);
     }
     return null;
