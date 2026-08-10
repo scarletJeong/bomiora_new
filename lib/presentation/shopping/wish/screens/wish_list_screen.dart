@@ -274,7 +274,7 @@ class _WishListScreenState extends State<WishListScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(height: healthDp(context, 15)),
+              SizedBox(height: healthDp(context, 0)),
               _buildTabs(),
               SizedBox(height: healthDp(context, 10)),
               _buildHeader(),
@@ -712,7 +712,7 @@ class _WishListScreenState extends State<WishListScreen> {
               ),
               Padding(
                 padding: EdgeInsets.only(
-                  top: healthDp(context, 10),
+                  top: healthDp(context, 0),
                   left: healthDp(context, 10),
                   right: healthDp(context, 10),
                   bottom: healthDp(context, 10),
