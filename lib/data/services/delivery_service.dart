@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/delivery/delivery_model.dart';
 import '../../core/network/api_client.dart';
@@ -100,7 +101,22 @@ class OrderService {
           };
         }
 
-        final order = OrderDetailModel.fromJson(Map<String, dynamic>.from(data));
+        final raw = Map<String, dynamic>.from(data);
+        debugPrint(
+          '[OrderDetail][raw] keys=${raw.keys.toList()}',
+        );
+        debugPrint(
+          '[OrderDetail][raw] od_deposit_name=${raw['od_deposit_name']} '
+          'odDepositName=${raw['odDepositName']} '
+          'od_bank_account=${raw['od_bank_account'] ?? raw['odBankAccount']} '
+          'paymentMethodDetail=${raw['paymentMethodDetail']}',
+        );
+
+        final order = OrderDetailModel.fromJson(raw);
+        debugPrint(
+          '[OrderDetail][parsed] odDepositName=${order.odDepositName} '
+          'odBankAccount=${order.odBankAccount}',
+        );
         return {
           'success': true,
           'order': order,

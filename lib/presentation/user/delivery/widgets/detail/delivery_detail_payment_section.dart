@@ -88,15 +88,19 @@ class _DeliveryDetailPaymentSectionState
     final label = (widget.order.cancelReasonLabel ?? '').trim();
     if (label.isNotEmpty) return label;
     final type = (widget.order.cancelType ?? '').trim();
-    if (type == '고객직접') return '고객 요청';
+    if (type == '고객직접') return '고객요청';
     if (type == '시스템자동') return '입금기한만료';
-    if (type == '관리자') return '기타';
+    if (type == '관리자') return '고객요청(관리자)';
+    if (type == '기타') return '기타';
     final reason = (widget.order.cancelReason ?? '').trim();
-    if (reason.contains('고객') || reason.contains('직접')) return '고객 요청';
-    if (reason.contains('입금')) return '입금기한만료';
-    if (reason.contains('관리자')) return '기타';
-    // 메모/타입이 비어 있는 과거 앱 취소 건 → 고객 요청
-    return '고객 요청';
+    if (reason.contains('입금기한') || reason.contains('입금 기한')) {
+      return '입금기한만료';
+    }
+    if (reason.contains('본인 직접') || reason.contains('고객직접')) {
+      return '고객요청';
+    }
+    if (reason.contains('관리자')) return '고객요청(관리자)';
+    return '기타';
   }
 
   String get _cancelDateLabel {
@@ -107,7 +111,21 @@ class _DeliveryDetailPaymentSectionState
       return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)} '
           '${digits.substring(8, 10)}:${digits.substring(10, 12)}:${digits.substring(12, 14)}';
     }
+    if (digits.length >= 12) {
+      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)} '
+          '${digits.substring(8, 10)}:${digits.substring(10, 12)}:00';
+    }
     return raw;
+  }
+
+  int get _cancelledAmount {
+    if (widget.order.cancelPrice > 0) return widget.order.cancelPrice;
+    if (widget.order.totalPrice > 0) return widget.order.totalPrice;
+    final computed = widget.order.productPrice +
+        widget.order.deliveryFee -
+        _coupon -
+        _point;
+    return computed > 0 ? computed : 0;
   }
 
   @override
@@ -120,9 +138,6 @@ class _DeliveryDetailPaymentSectionState
 
   Widget _buildCancelled(BuildContext context) {
     final order = widget.order;
-    final bank = DeliveryDetailDepositCard.parseVirtualBankAccount(order);
-    final holder = _depositHolder(bank.holder);
-    final showDeposit = _isCash && bank.bankLine.trim().isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -134,43 +149,58 @@ class _DeliveryDetailPaymentSectionState
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                Row(
+                  children: [
+                    Text(
+                      '취소비용',
+                      style: TextStyle(
+                        color: DeliveryDetailSectionStyle.ink,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: DeliveryDetailSectionStyle.font,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -1.44,
+                      ),
+                    ),
+                    SizedBox(width: healthDp(context, 4)),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        size: healthDp(context, 16),
+                        color: DeliveryDetailSectionStyle.ink,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
                 Text(
-                  '결제 정보',
+                  '${PriceFormatter.format(_cancelledAmount)}원',
                   style: TextStyle(
-                    color: DeliveryDetailSectionStyle.ink,
+                    color: DeliveryDetailSectionStyle.pink,
                     fontSize: healthSp(context, 16),
                     fontFamily: DeliveryDetailSectionStyle.font,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -1.44,
-                  ),
-                ),
-                SizedBox(width: healthDp(context, 4)),
-                AnimatedRotation(
-                  turns: _expanded ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 180),
-                  child: Icon(
-                    Icons.keyboard_arrow_down,
-                    size: healthDp(context, 16),
-                    color: DeliveryDetailSectionStyle.ink,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
           ),
+          SizedBox(height: healthDp(context, 10)),
+          _infoRow(
+            context,
+            label: '취소일시',
+            value: _cancelDateLabel,
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          _infoRow(
+            context,
+            label: '취소 사유',
+            value: _cancelReasonLabel,
+          ),
           if (_expanded) ...[
-            SizedBox(height: healthDp(context, 10)),
-            _infoRow(
-              context,
-              label: '취소일시',
-              value: _cancelDateLabel,
-            ),
-            SizedBox(height: healthDp(context, 10)),
-            _infoRow(
-              context,
-              label: '취소 사유',
-              value: _cancelReasonLabel,
-            ),
             SizedBox(height: healthDp(context, 10)),
             Container(
               width: double.infinity,
@@ -217,71 +247,6 @@ class _DeliveryDetailPaymentSectionState
               label: '결제 방식',
               value: order.paymentMethod.isEmpty ? '-' : order.paymentMethod,
             ),
-            SizedBox(height: healthDp(context, 10)),
-            _infoRow(
-              context,
-              label: '결제 일시',
-              value: _paymentDateLabel,
-              valueStyle: TextStyle(
-                color: const Color(0xFF374151),
-                fontSize: healthSp(context, 14),
-                fontFamily: DeliveryDetailSectionStyle.font,
-                fontWeight: FontWeight.w500,
-                height: 1.43,
-              ),
-            ),
-            if (showDeposit) ...[
-              SizedBox(height: healthDp(context, 10)),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '입금정보',
-                    style: TextStyle(
-                      color: DeliveryDetailSectionStyle.muted,
-                      fontSize: healthSp(context, 12),
-                      fontFamily: DeliveryDetailSectionStyle.font,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -1.08,
-                    ),
-                  ),
-                  SizedBox(width: healthDp(context, 8)),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            bank.bankLine,
-                            textAlign: TextAlign.right,
-                            maxLines: 1,
-                            softWrap: false,
-                            style: TextStyle(
-                              color: DeliveryDetailSectionStyle.ink,
-                              fontSize: healthSp(context, 14),
-                              fontFamily: DeliveryDetailSectionStyle.font,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          holder.isEmpty ? '(예금주 : -)' : '(예금주 : $holder)',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: DeliveryDetailSectionStyle.ink,
-                            fontSize: healthSp(context, 14),
-                            fontFamily: DeliveryDetailSectionStyle.font,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ],
       ),

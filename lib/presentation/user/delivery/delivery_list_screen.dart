@@ -15,7 +15,10 @@ import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'widgets/delivery_address_change_popup.dart';
 import 'widgets/order_flow_dialogs.dart';
+import 'widgets/order_item_subject_groups.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../customer_service/screens/qa_category_screen.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 
 /// 주문내역 화면
 class DeliveryListScreen extends StatefulWidget {
@@ -25,11 +28,14 @@ class DeliveryListScreen extends StatefulWidget {
   State<DeliveryListScreen> createState() => _DeliveryListScreenState();
 }
 
+enum _CardActionStyle { primary, outlinePink, outlineGray }
+
 class _DeliveryListScreenState extends State<DeliveryListScreen> {
   // 주문 데이터
   List<OrderListModel> _allOrders = []; // 전체 주문 데이터
   List<OrderListModel> _displayedOrders = []; // 화면에 표시할 주문 데이터
   bool _isLoading = false;
+  String _selectedProductType = DeliveryProductType.prescription;
   String _selectedStatus = 'all';
   final ScrollController _scrollController = ScrollController();
 
@@ -38,6 +44,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kMuted2 = Color(0xFF898383);
   static const Color _kInk = Color(0xFF1A1A1A);
+
+  /// 주문상품 추가상품 펼침 키: `{odId}:{parentCtId}`
+  final Set<String> _expandedSupplyKeys = {};
 
   @override
   void initState() {
@@ -170,33 +179,69 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   
   /// 필터 적용
   void _applyFilter() {
+    final byType = _allOrders.where((order) {
+      if (_selectedProductType == DeliveryProductType.prescription) {
+        return order.isPrescriptionOrder;
+      }
+      return !order.isPrescriptionOrder;
+    });
+
     if (_selectedStatus == 'all') {
-      // 전체 표시 (내림차순)
-      _displayedOrders = List.from(_allOrders);
-    } else {
-      // 선택된 상태만 필터링
-      _displayedOrders = _allOrders.where((order) {
-        final displayStatus = order.displayStatus;
-        switch (_selectedStatus) {
-          case 'payment_waiting':
-            return displayStatus == '결제대기중' || order.odStatus == '주문';
-          case 'preparing':
-            return displayStatus == '배송준비중' || order.odStatus == '입금' || order.odStatus == '준비';
-          case 'delivering':
-            return displayStatus == '배송중' || order.odStatus == '배송';
-          case 'completed':
-            return displayStatus == '배송완료' || order.odStatus == '완료';
-          case 'cancelled':
-            return displayStatus.contains('취소') ||
-                order.odStatus.contains('취소') ||
-                displayStatus == '주문 취소';
-          default:
-            return true;
-        }
-      }).toList();
+      _displayedOrders = byType.toList();
+      return;
     }
+
+    _displayedOrders = byType.where((order) {
+      final displayStatus = order.displayStatus;
+      final od = order.odStatus;
+      switch (_selectedStatus) {
+        case 'payment_waiting':
+          return displayStatus == '결제대기중' || od == '주문';
+        case 'consultation_done':
+          if (displayStatus == '배송중' ||
+              displayStatus == '배송완료' ||
+              od == '배송' ||
+              od == '완료') {
+            return false;
+          }
+          return order.isConsultationDone ||
+              displayStatus == '상담완료' ||
+              displayStatus.contains('상담');
+        case 'paid':
+          return !order.isConsultationDone &&
+              (displayStatus == '결제완료' ||
+                  (od == '입금' && displayStatus != '상담완료') ||
+                  (order.isPrescriptionOrder &&
+                      od == '준비' &&
+                      displayStatus != '상담완료'));
+        case 'preparing':
+          return !order.isPrescriptionOrder &&
+              (displayStatus == '배송준비중' || od == '준비');
+        case 'delivering':
+          return displayStatus == '배송중' || od == '배송';
+        case 'completed':
+          return displayStatus == '배송완료' || od == '완료';
+        case 'cancelled':
+          return displayStatus.contains('취소') ||
+              od.contains('취소') ||
+              displayStatus == '주문 취소' ||
+              displayStatus == '주문취소';
+        default:
+          return true;
+      }
+    }).toList();
   }
-  
+
+  void _selectProductType(String productType) {
+    if (_selectedProductType == productType) return;
+    setState(() {
+      _selectedProductType = productType;
+      _selectedStatus = 'all';
+      _applyFilter();
+    });
+    _scrollToTop();
+  }
+
   /// 상태 필터 선택
   void _selectStatus(String status) {
     setState(() {
@@ -240,8 +285,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         slivers: [
           SliverToBoxAdapter(
             child: DeliveryStatusFilterBar(
+              selectedProductType: _selectedProductType,
+              onProductTypeSelected: _selectProductType,
               selectedKey: _selectedStatus,
               onSelected: _selectStatus,
+              statusEntries: _selectedProductType == DeliveryProductType.general
+                  ? DeliveryStatusFilterBar.generalStatusEntries
+                  : DeliveryStatusFilterBar.prescriptionStatusEntries,
             ),
           ),
           if (_isLoading)
@@ -289,10 +339,12 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       margin: EdgeInsets.only(bottom: healthDp(context, 10)),
       padding: EdgeInsets.all(healthDp(context, 20)),
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(healthDp(context, 4)),
-        border: Border.all(width: healthDp(context, 1), color: _kBorder),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: healthDp(context, 1), color: _kBorder),
+          borderRadius: BorderRadius.circular(healthDp(context, 15)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,14 +365,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: healthDp(context, 20)),
+                    SizedBox(height: healthDp(context, 10)),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '주문일자: ${order.orderDate}',
                           style: TextStyle(
-                            color: _kInk,
+                            color: _kMuted,
                             fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
@@ -331,7 +383,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                         Text(
                           '주문번호: ${order.odId}',
                           style: TextStyle(
-                            color: _kInk,
+                            color: _kMuted,
                             fontSize: healthSp(context, 10),
                             fontFamily: 'Gmarket Sans TTF',
                             fontWeight: FontWeight.w500,
@@ -369,31 +421,19 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
             ],
           ),
           SizedBox(height: healthDp(context, 20)),
+          ..._buildOrderProductBlocks(order),
+          SizedBox(height: healthDp(context, 10)),
           Container(
             width: double.infinity,
             height: healthDp(context, 1),
             color: _kBorder,
           ),
-          SizedBox(height: healthDp(context, 20)),
-          ..._buildOrderProductBlocks(order),
-          SizedBox(height: healthDp(context, 20)),
+          SizedBox(height: healthDp(context, 10)),
           Align(
             alignment: Alignment.centerRight,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (order.deliveryFee > 0) ...[
-                  Text(
-                    '(배송비: ${PriceFormatter.format(order.deliveryFee)}원)',
-                    style: TextStyle(
-                      color: _kMuted,
-                      fontSize: healthSp(context, 12),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 5)),
-                ],
                 Text(
                   '총 ${PriceFormatter.format(order.totalPrice)}원',
                   style: TextStyle(
@@ -403,6 +443,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                if (order.deliveryFee > 0) ...[
+                  SizedBox(height: healthDp(context, 5)),
+                  Text(
+                    '(배송비: ${PriceFormatter.format(order.deliveryFee)}원)',
+                    style: TextStyle(
+                      color: _kMuted,
+                      fontSize: healthSp(context, 12),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -422,31 +474,17 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   /// 한 주문의 상품 행들 (`items` 전부, 없으면 `firstProduct*` 요약 1행)
   List<Widget> _buildOrderProductBlocks(OrderListModel order) {
     if (order.items.isNotEmpty) {
-      final widgets = <Widget>[];
-      for (var i = 0; i < order.items.length; i++) {
-        if (i > 0) widgets.add(SizedBox(height: healthDp(context, 16)));
-        final item = order.items[i];
-        final showMoreHint =
-            order.items.length == 1 && order.odCartCount > 1;
-        widgets.add(
-          _buildOrderProductLineInk(
-            order.odId,
-            image: _buildProductImageFromItem(item),
-            title: _displayProductTitle(item),
-            qtyLine: _qtyLineForItem(item),
-            priceText: '${PriceFormatter.format(item.totalPrice)}원',
-            moreHint: showMoreHint ? '외 ${order.odCartCount - 1}개 상품' : null,
-          ),
-        );
+      if (!order.isPrescriptionOrder) {
+        return _buildGeneralGroupedProductBlocks(order);
       }
-      return widgets;
+      return _buildPrescriptionGroupedProductBlocks(order);
     }
 
     final qty = order.firstProductQty ?? 1;
     var qtyLine = '수량: $qty';
     final opt = order.firstProductOption;
     if (opt != null && opt.isNotEmpty) {
-      qtyLine += ' /$opt';
+      qtyLine += 'ㅣ$opt';
     }
 
     return [
@@ -462,23 +500,193 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     ];
   }
 
-  String _displayProductTitle(OrderItem item) {
-    final n = item.itName.trim();
-    if (n.isNotEmpty) return n;
-    final s = item.itSubject.trim();
-    if (s.isNotEmpty) return s;
-    return '상품명 없음';
-  }
+  List<Widget> _buildPrescriptionGroupedProductBlocks(OrderListModel order) {
+    final groups = groupOrderItemsWithSupply(order.items);
+    final widgets = <Widget>[];
+    for (var i = 0; i < groups.length; i++) {
+      if (i > 0) widgets.add(SizedBox(height: healthDp(context, 16)));
+      final group = groups[i];
+      final parent = group.parent;
+      final children = group.children;
+      final showMoreHint = groups.length == 1 &&
+          children.isEmpty &&
+          order.odCartCount > 1;
+      final key = '${order.odId}:${parent.ctId}';
+      final expanded = _expandedSupplyKeys.contains(key);
 
-  String _qtyLineForItem(OrderItem item) {
-    final parts = <String>['수량: ${item.ctQty}'];
-    final opt = item.ctOption;
-    if (opt != null && opt.trim().isNotEmpty) {
-      parts.add(opt.trim());
+      widgets.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildOrderProductLineInk(
+              order.odId,
+              image: _buildProductImageFromItem(parent),
+              title: orderItemDisplayTitle(parent),
+              qtyLine: orderItemQtyOptionLine(parent),
+              priceText: '${PriceFormatter.format(parent.totalPrice)}원',
+              moreHint:
+                  showMoreHint ? '외 ${order.odCartCount - 1}개 상품' : null,
+            ),
+            if (children.isNotEmpty) ...[
+              SizedBox(height: healthDp(context, 10)),
+              _buildSupplyExpandChip(
+                count: children.length,
+                expanded: expanded,
+                onTap: () {
+                  setState(() {
+                    if (expanded) {
+                      _expandedSupplyKeys.remove(key);
+                    } else {
+                      _expandedSupplyKeys.add(key);
+                    }
+                  });
+                },
+              ),
+              if (expanded) ...[
+                SizedBox(height: healthDp(context, 10)),
+                for (var ci = 0; ci < children.length; ci++) ...[
+                  if (ci > 0) SizedBox(height: healthDp(context, 8)),
+                  _buildOrderProductLineInk(
+                    order.odId,
+                    image: _buildProductImageFromItem(children[ci]),
+                    title: orderItemDisplayTitle(children[ci]),
+                    qtyLine: orderItemQtyOptionLine(children[ci]),
+                    priceText:
+                        '${PriceFormatter.format(children[ci].totalPrice)}원',
+                  ),
+                ],
+              ],
+            ],
+          ],
+        ),
+      );
     }
-    return parts.join(' / ');
+    return widgets;
   }
 
+  Widget _buildSupplyExpandChip({
+    required int count,
+    required bool expanded,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(healthDp(context, 8)),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 7),
+          ),
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: healthDp(context, 1.11),
+                color: const Color(0x3FFF5A8D),
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 8)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: healthDp(context, 5),
+                height: healthDp(context, 5),
+                decoration: const BoxDecoration(
+                  color: _kPink,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: healthDp(context, 6)),
+              Text(
+                '추가상품 $count개 포함',
+                style: TextStyle(
+                  color: _kPink,
+                  fontSize: healthSp(context, 11),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                expanded ? '접기' : '펼치기',
+                style: TextStyle(
+                  color: _kPink,
+                  fontSize: healthSp(context, 10),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(width: healthDp(context, 3)),
+              Icon(
+                expanded
+                    ? Icons.keyboard_arrow_up
+                    : Icons.keyboard_arrow_down,
+                size: healthSp(context, 14),
+                color: _kPink,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildGeneralGroupedProductBlocks(OrderListModel order) {
+    final groups = groupOrderItemsByItSubject(order.items);
+    final widgets = <Widget>[];
+    for (var gi = 0; gi < groups.length; gi++) {
+      if (gi > 0) {
+        widgets.add(SizedBox(height: healthDp(context, 10)));
+        widgets.add(
+          Container(
+            width: double.infinity,
+            height: 0.5,
+            color: const Color(0x7FD2D2D2),
+          ),
+        );
+        widgets.add(SizedBox(height: healthDp(context, 10)));
+      }
+      final subject = groups[gi].key;
+      final items = groups[gi].value;
+      widgets.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (subject.isNotEmpty) ...[
+              Text(
+                subject,
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: healthDp(context, 10)),
+            ],
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) SizedBox(height: healthDp(context, 10)),
+              _buildOrderProductLineInk(
+                order.odId,
+                image: _buildProductImageFromItem(items[i]),
+                title: orderItemDisplayTitle(items[i]),
+                qtyLine: orderItemQtyOptionLine(items[i]),
+                priceText: '${PriceFormatter.format(items[i].totalPrice)}원',
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+    return widgets;
+  }
+
+  /// 상품 행 — 주문번호와 동일하게 카드 좌측(패딩 20)에 맞춤
   Widget _buildOrderProductLineInk(
     String odId, {
     required Widget image,
@@ -493,7 +701,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           image,
-          SizedBox(width: healthDp(context, 20)),
+          SizedBox(width: healthDp(context, 10)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,6 +726,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                     fontSize: healthSp(context, 10),
                     fontFamily: 'Gmarket Sans TTF',
                     fontWeight: FontWeight.w500,
+                    letterSpacing: -0.90,
                   ),
                 ),
                 SizedBox(height: healthDp(context, 5)),
@@ -557,7 +766,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         ? ImageUrlHelper.normalizeThumbnailUrl(imageUrl, item.itId)
         : null;
 
-    final thumb = healthDp(context, 80);
+    final thumb = healthDp(context, 72);
     return Container(
       width: thumb,
       height: thumb,
@@ -603,71 +812,147 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     );
   }
 
-  /// 카드 하단 액션 — 왼쪽부터 1:핑크/흰 · 2:흰/핑크 · 3:회색/0xFF898686
+  /// 카드 하단 액션 / 안내
   Widget? _buildOrderCardActions(OrderListModel order) {
     final isPrescription = order.isPrescriptionOrder;
-    final specs = <({String label, VoidCallback? onTap})>[];
 
-    if (_isPaymentStage(order) || _isPreparingStage(order)) {
-      specs.add((label: '배송지변경', onTap: () => _changeDeliveryAddress(order.odId)));
+    if (_isCancelledStage(order)) {
+      return _buildActionRow([
+        (
+          label: '재주문하기',
+          onTap: () => _reorder(order),
+          style: _CardActionStyle.outlinePink,
+        ),
+      ]);
+    }
+
+    if (_isConsultationDoneStage(order) || _isPreparingStage(order)) {
+      return _buildPreparingLockedBanner(context);
+    }
+
+    if (_isCompletedStage(order)) {
+      return _buildActionRow([
+        (
+          label: '1:1 문의',
+          onTap: () => _openInquiry(),
+          style: _CardActionStyle.outlinePink,
+        ),
+        (
+          label: '배송조회',
+          onTap: () => _trackDelivery(order.odId),
+          style: _CardActionStyle.outlinePink,
+        ),
+        (
+          label: '리뷰쓰기',
+          onTap: () => _writeReview(order.odId),
+          style: _CardActionStyle.primary,
+        ),
+      ]);
+    }
+
+    if (_isDeliveringStage(order)) {
+      return _buildActionRow([
+        (
+          label: '수령확인',
+          onTap: () => _confirmPurchase(order.odId),
+          style: _CardActionStyle.outlinePink,
+        ),
+        (
+          label: '배송조회',
+          onTap: () => _trackDelivery(order.odId),
+          style: _CardActionStyle.primary,
+        ),
+      ]);
+    }
+
+    // 결제대기중 / 결제완료
+    if (_isPaymentWaitingStage(order) || _isPaidStage(order)) {
+      final specs = <({String label, VoidCallback? onTap, _CardActionStyle style})>[
+        (
+          label: '주문취소',
+          onTap: () => _cancelOrder(order.odId),
+          style: _CardActionStyle.outlineGray,
+        ),
+      ];
       if (isPrescription) {
         specs.add((
           label: '예약시간변경',
           onTap: () => _changeReservationTimeFromList(order.odId),
+          style: _CardActionStyle.outlinePink,
         ));
       }
-      specs.add((label: '주문취소', onTap: () => _cancelOrder(order.odId)));
-    } else if (_isDeliveringStage(order)) {
-      specs.add((label: '배송조회', onTap: () => _trackDelivery(order.odId)));
-      specs.add((label: '수령확인', onTap: () => _confirmPurchase(order.odId)));
-    } else if (_isCompletedStage(order)) {
-      specs.add((label: '리뷰쓰기', onTap: () => _writeReview(order.odId)));
+      specs.add((
+        label: '배송지변경',
+        onTap: () => _changeDeliveryAddress(order.odId),
+        style: _CardActionStyle.primary,
+      ));
+      return _buildActionRow(specs);
     }
 
-    if (specs.isEmpty) return null;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final count = specs.length;
-        final gap = healthDp(context, 10);
-        final designW = healthDp(context, 87);
-        final btnH = healthDp(context, 34);
-        final totalGaps = count > 1 ? (count - 1) * gap : 0.0;
-        final maxW = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
-        final needed = count * designW + totalGaps;
-        final btnW = needed <= maxW
-            ? designW
-            : ((maxW - totalGaps) / count).clamp(0.0, designW);
+    return null;
+  }
 
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            for (var i = 0; i < specs.length; i++) ...[
-              if (i > 0) SizedBox(width: gap),
-              _cardActionButton(
-                label: specs[i].label,
-                index: i,
-                onTap: specs[i].onTap,
-                width: btnW,
-                height: btnH,
-              ),
-            ],
-          ],
-        );
-      },
+  Widget _buildPreparingLockedBanner(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: const Color(0x19FF5A8D),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        ),
+      ),
+      child: Text(
+        '상담완료 후 배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: _kPink,
+          fontSize: healthSp(context, 12),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+          height: 1.50,
+        ),
+      ),
     );
   }
 
-  ({Color background, Color foreground, Color? border}) _cardActionColors(int index) {
-    if (index == 0) {
-      return (background: _kPink, foreground: Colors.white, border: null);
+  Widget _buildActionRow(
+    List<({String label, VoidCallback? onTap, _CardActionStyle style})> specs,
+  ) {
+    if (specs.isEmpty) return const SizedBox.shrink();
+    final gap = healthDp(context, 10);
+    return Row(
+      children: [
+        for (var i = 0; i < specs.length; i++) ...[
+          if (i > 0) SizedBox(width: gap),
+          Expanded(
+            child: _cardActionButton(
+              label: specs[i].label,
+              style: specs[i].style,
+              onTap: specs[i].onTap,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  ({Color background, Color foreground, Color? border}) _colorsForStyle(
+    _CardActionStyle style,
+  ) {
+    switch (style) {
+      case _CardActionStyle.primary:
+        return (background: _kPink, foreground: Colors.white, border: null);
+      case _CardActionStyle.outlinePink:
+        return (background: Colors.white, foreground: _kPink, border: _kPink);
+      case _CardActionStyle.outlineGray:
+        return (
+          background: Colors.white,
+          foreground: _kMuted,
+          border: const Color(0xFFD2D2D2),
+        );
     }
-    if (index == 1) {
-      return (background: Colors.white, foreground: _kPink, border: _kPink);
-    }
-    return (background: _kBorder, foreground: _kMuted, border: null);
   }
 
   TextStyle _cardActionTextStyle({required Color color, bool enabled = true}) {
@@ -680,66 +965,56 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     );
   }
 
-  SizedBox _cardActionSizedBox({
-    required Widget child,
-    required double width,
-    required double height,
-  }) {
-    return SizedBox(width: width, height: height, child: child);
-  }
-
   Widget _cardActionButton({
     required String label,
-    required int index,
+    required _CardActionStyle style,
     VoidCallback? onTap,
-    required double width,
-    required double height,
   }) {
     final enabled = onTap != null;
-    final colors = _cardActionColors(index);
+    final colors = _colorsForStyle(style);
     final bg = enabled
         ? colors.background
         : colors.background.withValues(
             alpha: colors.background == Colors.white ? 1 : 0.45,
           );
-    final fg = enabled ? colors.foreground : colors.foreground.withValues(alpha: 0.45);
+    final fg = enabled
+        ? colors.foreground
+        : colors.foreground.withValues(alpha: 0.45);
     final borderColor = colors.border == null
         ? null
         : (enabled ? colors.border! : colors.border!.withValues(alpha: 0.35));
+    final radius = BorderRadius.circular(healthDp(context, 50));
 
-    return _cardActionSizedBox(
-      width: width,
-      height: height,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(healthDp(context, 4)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(healthDp(context, 4)),
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(healthDp(context, 4)),
-              border: borderColor == null
-                  ? null
-                  : Border.all(
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
+          alignment: Alignment.center,
+          decoration: ShapeDecoration(
+            color: bg,
+            shape: RoundedRectangleBorder(
+              side: borderColor == null
+                  ? BorderSide.none
+                  : BorderSide(
                       width: healthDp(context, 1),
                       color: borderColor,
                     ),
+              borderRadius: radius,
             ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  style: _cardActionTextStyle(color: fg, enabled: true),
-                ),
-              ),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              style: _cardActionTextStyle(color: fg, enabled: true),
             ),
           ),
         ),
@@ -776,23 +1051,51 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   String _getOrderStatusText(OrderListModel order) {
+    if (_isCancelledStage(order)) return '주문취소';
     if (_isCompletedStage(order)) return '배송완료';
     if (_isDeliveringStage(order)) return '배송중';
-    if (_isPreparingStage(order)) return '결제완료';
-    if (_isPaymentStage(order)) return '결제대기중';
-    return order.displayStatus;
+    if (_isConsultationDoneStage(order)) return '상담완료';
+    if (_isPreparingStage(order)) return '배송준비중';
+    if (_isPaidStage(order)) return '결제완료';
+    if (_isPaymentWaitingStage(order)) return '결제대기중';
+    final status = order.displayStatus.trim();
+    return status.isEmpty ? '주문' : status;
   }
 
-  bool _isPaymentStage(OrderListModel order) {
-    return order.displayStatus == '결제완료' ||
-        order.displayStatus == '결제대기중' ||
-        order.odStatus == '주문';
+  bool _isPaymentWaitingStage(OrderListModel order) {
+    return order.displayStatus == '결제대기중' || order.odStatus == '주문';
+  }
+
+  bool _isPaidStage(OrderListModel order) {
+    if (_isPreparingStage(order) ||
+        _isConsultationDoneStage(order) ||
+        _isDeliveringStage(order) ||
+        _isCompletedStage(order) ||
+        _isCancelledStage(order)) {
+      return false;
+    }
+    if (order.isPrescriptionOrder &&
+        (order.odStatus == '입금' || order.odStatus == '준비')) {
+      return true;
+    }
+    return order.displayStatus == '결제완료' || order.odStatus == '입금';
   }
 
   bool _isPreparingStage(OrderListModel order) {
-    return order.displayStatus == '배송준비중' ||
-        order.odStatus == '입금' ||
-        order.odStatus == '준비';
+    if (order.isPrescriptionOrder) return false;
+    return order.displayStatus == '배송준비중' || order.odStatus == '준비';
+  }
+
+  bool _isConsultationDoneStage(OrderListModel order) {
+    if (!order.isPrescriptionOrder) return false;
+    if (_isDeliveringStage(order) ||
+        _isCompletedStage(order) ||
+        _isCancelledStage(order)) {
+      return false;
+    }
+    if (order.isConsultationDone) return true;
+    final display = order.displayStatus;
+    return display == '상담완료' || display.contains('상담');
   }
 
   bool _isDeliveringStage(OrderListModel order) {
@@ -803,6 +1106,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     return order.displayStatus == '배송완료' || order.odStatus == '완료';
   }
 
+  bool _isCancelledStage(OrderListModel order) {
+    return order.displayStatus.contains('취소') ||
+        order.odStatus.contains('취소') ||
+        order.displayStatus == '주문 취소' ||
+        order.displayStatus == '주문취소';
+  }
+
   /// 주문 상세 화면으로 이동
   void _navigateToOrderDetail(String orderNumber) {
     Navigator.pushNamed(
@@ -810,6 +1120,31 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       '/order-detail',
       arguments: {'orderNumber': orderNumber},
     );
+  }
+
+  Future<void> _openInquiry() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const QaCategoryScreen()),
+    );
+  }
+
+  Future<void> _reorder(OrderListModel order) async {
+    String itId = '';
+    if (order.items.isNotEmpty) {
+      itId = order.items.first.itId.trim();
+    }
+    if (itId.isEmpty) {
+      if (!mounted) return;
+      AppToastOverlay.show(context, '재주문할 상품 정보를 찾을 수 없습니다.');
+      return;
+    }
+    if (!mounted) return;
+    if (order.isPrescriptionOrder) {
+      Navigator.pushNamed(context, '/product/$itId');
+    } else {
+      Navigator.pushNamed(context, '/product-general/$itId');
+    }
   }
 
   /// 주문 취소
@@ -971,7 +1306,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         ? ImageUrlHelper.normalizeThumbnailUrl(imageUrl, order.items.isNotEmpty ? order.items[0].itId : null)
         : null;
     
-    final thumb = healthDp(context, 80);
+    final thumb = healthDp(context, 72);
     return Container(
       width: thumb,
       height: thumb,
