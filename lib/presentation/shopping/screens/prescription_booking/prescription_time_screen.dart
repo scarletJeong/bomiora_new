@@ -15,6 +15,7 @@ import '../../../user/healthprofile/health_profile_payload.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/content_popup.dart';
 import '../../screens/payment_screen.dart';
 import '../../widgets/prescription_booking_progress_bar.dart';
@@ -60,7 +61,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _contactSectionKey = GlobalKey();
-
+  
   @override
   void initState() {
     super.initState();
@@ -114,8 +115,9 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         _nameController.text = user?.name ?? '';
       }
       if (_phoneController.text.isEmpty) {
+        final digits = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '');
         _phoneController.text =
-            (user?.phone ?? '').replaceAll(RegExp(r'\D'), '');
+            digits.length > 11 ? digits.substring(0, 11) : digits;
       }
     });
   }
@@ -213,13 +215,21 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   
   void _nextStep() {
     if (_selectedDate == null || _selectedTime == null) return;
-    if (!_canProceed) return;
+    if (_nameController.text.trim().isEmpty) return;
+    if (!_agreedRefundPolicy || _isSubmitting) return;
+
+    final phoneDigits =
+        _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (phoneDigits.length != 11) {
+      AppToastOverlay.show(context, '연락처 11자리를 확인해 주세요.');
+      return;
+    }
     _submitBooking();
   }
 
   bool get _hasValidContact {
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
+    final phone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
     return name.isNotEmpty && phone.isNotEmpty;
   }
 
@@ -757,10 +767,10 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
 · 교환·환불 문의는 고객센터 또는 마이페이지 주문내역을 통해 접수해 주세요.
 · 상담 예약 후 취소·변경은 안내드린 절차에 따라 처리됩니다.
 · 자세한 기준은 관련 법령 및 서비스 이용약관을 따릅니다.''',
-      titleFontSize: 18,
-      subtitleFontSize: 14,
-      bodyFontSize: 12,
-      confirmFontSize: 14,
+      titleFontSize: 16,
+      subtitleFontSize: 12,
+      bodyFontSize: 10,
+      confirmFontSize: 12,
     );
     if (confirmed && mounted) {
       setState(() => _agreedRefundPolicy = true);
@@ -1261,17 +1271,17 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
               children: [
                 SizedBox(
                   width: healthDp(context, 72),
-                  height: healthDp(context, 34),
+                  height: healthDp(context, 40),
                   child: FilledButton.tonal(
                     onPressed: () => Navigator.pop(context),
                     style: FilledButton.styleFrom(
                       minimumSize: Size(
                         healthDp(context, 72),
-                        healthDp(context, 34),
+                        healthDp(context, 40),
                       ),
                       maximumSize: Size(
                         healthDp(context, 72),
-                        healthDp(context, 34),
+                        healthDp(context, 40),
                       ),
                       padding: EdgeInsets.zero,
                       backgroundColor: const Color(0x26D2D2D2),
@@ -1294,17 +1304,17 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                 SizedBox(width: healthDp(context, 10)),
                 Expanded(
                   child: SizedBox(
-                    height: healthDp(context, 34),
+                    height: healthDp(context, 40),
                     child: ElevatedButton(
                       onPressed: _canProceed ? _nextStep : null,
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(
                           double.infinity,
-                          healthDp(context, 34),
+                          healthDp(context, 40),
                         ),
                         maximumSize: Size(
                           double.infinity,
-                          healthDp(context, 34),
+                          healthDp(context, 40),
                         ),
                         padding: EdgeInsets.zero,
                         backgroundColor: const Color(0xFFFF5A8D),
