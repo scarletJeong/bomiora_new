@@ -12,6 +12,7 @@ import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
+import '../../../shopping/widgets/prescription_booking_progress_bar.dart';
 
 /// 처방 예약 플로우에서 문진표 확인 시 전달
 class HealthProfilePrescriptionBookingArgs {
@@ -62,11 +63,28 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   UserModel? _currentUser;
   HealthProfileModel? _healthProfile;
   bool _isLoading = true;
+  double _scrollProgress = 0;
+
+  bool get _isPrescriptionBooking => widget.prescriptionBooking != null;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (!_isPrescriptionBooking) return false;
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification is! ScrollUpdateNotification &&
+        notification is! ScrollEndNotification) {
+      return false;
+    }
+    final next =
+        prescriptionBookingScrollProgress(notification.metrics);
+    if ((next - _scrollProgress).abs() < 0.001) return false;
+    setState(() => _scrollProgress = next);
+    return false;
   }
 
   Future<void> _loadData() async {
@@ -107,10 +125,19 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           centerTitle: widget.appBarCenterTitle,
           titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
+          bottom: _isPrescriptionBooking
+              ? PrescriptionBookingProgressBar.asAppBarBottom(
+                  currentStep: PrescriptionBookingSteps.questionnaire,
+                  stepProgress: _scrollProgress,
+                )
+              : null,
         ),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: _kPink))
-            : _buildContent(),
+            : NotificationListener<ScrollNotification>(
+                onNotification: _handleScrollNotification,
+                child: _buildContent(),
+              ),
       ),
     );
   }
@@ -673,55 +700,63 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     if (booking != null) {
       return Row(
         children: [
+          SizedBox(
+            width: healthDp(context, 110),
+            height: healthDp(context, 40),
+            child: OutlinedButton(
+              onPressed: _navigateToEditForm,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _kMuted,
+                side: BorderSide(
+                  width: healthDp(context, 0.5),
+                  color: const Color(0xFFD2D2D2),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 6),
+                  vertical: healthDp(context, 10),
+                ),
+              ),
+              child: Text(
+                '문진표 전체 수정',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: healthSp(context, 11),
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: healthDp(context, 10)),
           Expanded(
+            flex: 3,
             child: SizedBox(
-              height: healthDp(context, 45),
-              child: OutlinedButton(
-                onPressed: _navigateToEditForm,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _kMuted,
-                  side:
-                      BorderSide(width: healthDp(context, 0.5), color: const Color(0xFFD2D2D2)),
+              height: healthDp(context, 40),
+              child: FilledButton(
+                onPressed: () => _goToPrescriptionTime(booking),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _kPink,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
                   padding: EdgeInsets.all(healthDp(context, 10)),
                 ),
                 child: Text(
-                  '문진표 전체 수정',
-                  textAlign: TextAlign.center,
+                  '다음',
                   style: TextStyle(
-                    color: _kMuted,
+                    color: Colors.white,
                     fontSize: healthSp(context, 16),
                     fontFamily: _kFont,
                     fontWeight: FontWeight.w500,
                   ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: healthDp(context, 10)),
-          SizedBox(
-            width: healthDp(context, 155.5),
-            height: healthDp(context, 45),
-            child: FilledButton(
-              onPressed: () => _goToPrescriptionTime(booking),
-              style: FilledButton.styleFrom(
-                backgroundColor: _kPink,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                ),
-                padding: EdgeInsets.all(healthDp(context, 10)),
-              ),
-              child: Text(
-                '완료',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: healthSp(context, 16),
-                  fontFamily: _kFont,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -732,7 +767,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
     return SizedBox(
       width: double.infinity,
-      height: healthDp(context, 45),
+      height: healthDp(context, 40),
       child: OutlinedButton(
         onPressed: _navigateToEditForm,
         style: OutlinedButton.styleFrom(
