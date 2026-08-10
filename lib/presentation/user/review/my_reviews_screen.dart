@@ -351,10 +351,10 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
             color: _kInk,
             fontSize: healthSp(context, 14),
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: healthDp(context, 10)),
+        SizedBox(height: healthDp(context, 2)),
         Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(
@@ -673,7 +673,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                     color: _kInk,
                     fontSize: healthSp(context, 16),
                     fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -987,7 +987,7 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
                                 SliverPadding(
                                   padding: EdgeInsets.fromLTRB(
                                     healthDp(context, 27),
-                                    healthDp(context, 20),
+                                    healthDp(context, 0),
                                     healthDp(context, 27),
                                     0,
                                   ),

@@ -7,6 +7,7 @@ import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
 import '../../../data/services/delivery_service.dart';
+import '../../../data/services/review_service.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
@@ -14,9 +15,11 @@ import '../../customer_service/screens/qa_category_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../shopping/screens/prescription_booking/prescription_profile_screen.dart';
+import '../../shopping/utils/cart_navigation.dart';
 import '../review/review_write_general_screen.dart';
 import '../review/review_write_screen.dart';
 import 'widgets/delivery_address_change_popup.dart';
+import 'widgets/delivery_select_list.dart';
 import 'widgets/detail/delivery_detail_address_section.dart';
 import 'widgets/detail/delivery_detail_deposit_card.dart';
 import 'widgets/detail/delivery_detail_general_products_section.dart';
@@ -46,6 +49,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   OrderDetailModel? _orderDetail;
   bool _isLoading = true;
   String _deliveryMemo = '';
+  List<String> _reviewedItIds = const [];
 
   static const _deliveryMemoPresets = <String>[
     '부재시 경비실에 맡겨 주세요',
@@ -79,9 +83,20 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
       if (result['success'] == true) {
         final order = result['order'] as OrderDetailModel;
+        List<String> reviewed = const [];
+        if (_isCompletedStage(order)) {
+          final check = await ReviewService.checkReviewExists(
+            mbId: user.id,
+            odId: order.odId,
+          );
+          reviewed =
+              (check['reviewedItIds'] as List<String>?) ?? const <String>[];
+        }
+        if (!mounted) return;
         setState(() {
           _orderDetail = order;
           _deliveryMemo = (order.deliveryMessage ?? '').trim();
+          _reviewedItIds = reviewed;
           _isLoading = false;
         });
       } else if (mounted) {
@@ -90,6 +105,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  bool _canWriteReview(OrderDetailModel order) {
+    return pendingReviewProducts(order, _reviewedItIds).isNotEmpty;
   }
 
   @override
@@ -302,6 +321,34 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               // 일반상품 등
               else if (!completed) ...[
                 gap,
+                if (!isRx && preparing) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      vertical: healthDp(context, 10),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x19FF5A8D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
+                      ),
+                    ),
+                    child: Text(
+                      '배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        height: 1.50,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 10)),
+                ],
                 _buildProductsSection(order),
                 gap,
                 DeliveryDetailAddressSection(
@@ -434,7 +481,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     }
 
     if (_isCompletedStage(order)) {
-      return [
+      final actions = <({
+        String label,
+        VoidCallback? onTap,
+        DeliveryDetailProductActionStyle style
+      })>[
         (
           label: '1:1 문의',
           onTap: _openInquiry,
@@ -445,12 +496,21 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           onTap: _trackDelivery,
           style: DeliveryDetailProductActionStyle.outlinePink,
         ),
-        (
+      ];
+      if (_canWriteReview(order)) {
+        actions.add((
           label: '리뷰쓰기',
           onTap: _writeReviewFromDetail,
           style: DeliveryDetailProductActionStyle.primary,
-        ),
-      ];
+        ));
+      } else {
+        actions.add((
+          label: '다시 담기',
+          onTap: _reAddPrescriptionToCart,
+          style: DeliveryDetailProductActionStyle.primary,
+        ));
+      }
+      return actions;
     }
 
     if (_isDeliveringStage(order)) {
@@ -650,15 +710,53 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   Future<void> _writeReviewFromDetail() async {
     if (_orderDetail == null) return;
-    final isPrescription = _orderDetail!.isPrescriptionOrder;
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => isPrescription
-            ? ReviewWriteScreen(orderDetail: _orderDetail!)
-            : ReviewWriteGeneralScreen(orderDetail: _orderDetail!),
-      ),
+    final user = await AuthService.getUser();
+    if (user == null) return;
+
+    final check = await ReviewService.checkReviewExists(
+      mbId: user.id,
+      odId: _orderDetail!.odId,
     );
+    final reviewed =
+        (check['reviewedItIds'] as List<String>?) ?? const <String>[];
+    final pending = pendingReviewProducts(_orderDetail!, reviewed);
+
+    if (!mounted) return;
+    setState(() => _reviewedItIds = reviewed);
+
+    if (pending.isEmpty) {
+      AppToastOverlay.show(context, '작성할 리뷰가 없습니다.');
+      return;
+    }
+
+    final isPrescription = _orderDetail!.isPrescriptionOrder;
+    final bool? result;
+    if (pending.length > 1) {
+      result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DeliverySelectList(
+            orderDetail: _orderDetail!,
+            pendingProducts: pending,
+          ),
+        ),
+      );
+    } else {
+      result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => isPrescription
+              ? ReviewWriteScreen(
+                  orderDetail: _orderDetail!,
+                  selectedProducts: pending,
+                )
+              : ReviewWriteGeneralScreen(
+                  orderDetail: _orderDetail!,
+                  selectedProducts: pending,
+                ),
+        ),
+      );
+    }
     if (result == true && mounted) _loadOrderDetail();
   }
 
@@ -760,7 +858,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final result = await _addOrderProductsToCart(selectForCheckout: false);
     if (result == null || !mounted) return;
     AppToastOverlay.show(context, '장바구니에 담았습니다.');
-    Navigator.pushNamed(context, '/cart');
+    await CartNavigation.openCart(
+      context,
+      prescriptionTab: _orderDetail?.isPrescriptionOrder ?? false,
+    );
   }
 
   Future<void> _rebookPrescription() async {

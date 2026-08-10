@@ -10,11 +10,14 @@ import '../review/review_write_general_screen.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/cart_service.dart';
+import '../../../data/services/review_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
+import '../../shopping/utils/cart_navigation.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'widgets/delivery_address_change_popup.dart';
+import 'widgets/delivery_select_list.dart';
 import 'widgets/order_flow_dialogs.dart';
 import 'widgets/order_item_subject_groups.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -48,6 +51,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 주문상품 추가상품 펼침 키: `{odId}:{parentCtId}`
   final Set<String> _expandedSupplyKeys = {};
+
+  /// 배송완료 주문의 이미 작성된 리뷰 itId `{ odId: [itId...] }`
+  Map<String, List<String>> _reviewedItIdsByOd = {};
 
   @override
   void initState() {
@@ -112,6 +118,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
         // 목록 응답에 배송비가 없거나 0인 경우, 상세 API 기준 배송비로 보정
         _syncDeliveryFeesFromDetail(userId);
+        _syncReviewedItIds(userId, allOrders);
       }
     } catch (e) {
     } finally {
@@ -121,6 +128,51 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         });
       }
     }
+  }
+
+  Future<void> _syncReviewedItIds(
+    String userId,
+    List<OrderListModel> orders,
+  ) async {
+    final completedOdIds = orders
+        .where(_isCompletedStage)
+        .map((e) => e.odId)
+        .where((e) => e.trim().isNotEmpty)
+        .toList();
+    if (completedOdIds.isEmpty) {
+      if (mounted) setState(() => _reviewedItIdsByOd = {});
+      return;
+    }
+    final map = await ReviewService.getReviewedItIdsByOrders(
+      mbId: userId,
+      odIds: completedOdIds,
+    );
+    if (!mounted) return;
+    setState(() => _reviewedItIdsByOd = map);
+  }
+
+  bool _listItemIsReviewable(OrderItem item) {
+    if (item.itId.trim().isEmpty) return false;
+    final parent = (item.parent ?? '').trim();
+    if (parent.isNotEmpty) return false;
+    final kind = (item.ctKind ?? '').toLowerCase().trim();
+    if (kind.startsWith('supply_add|')) return false;
+    return true;
+  }
+
+  /// 아직 쓸 리뷰가 남아 있으면 true
+  bool _canWriteReview(OrderListModel order) {
+    final reviewed =
+        (_reviewedItIdsByOd[order.odId] ?? const <String>[]).toSet();
+    final products = order.items.where(_listItemIsReviewable).toList();
+    if (products.isEmpty) {
+      // 목록에 상품 상세가 없으면 작성 건수와 장바구니 수로 추정
+      if (order.odCartCount > 0 && reviewed.length >= order.odCartCount) {
+        return false;
+      }
+      return true;
+    }
+    return products.any((p) => !reviewed.contains(p.itId.trim()));
   }
 
   Future<void> _syncDeliveryFeesFromDetail(String userId) async {
@@ -836,7 +888,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
 
     if (_isCompletedStage(order)) {
-      return _buildActionRow([
+      final actions = <({String label, VoidCallback? onTap, _CardActionStyle style})>[
         (
           label: '1:1 문의',
           onTap: () => _openInquiry(),
@@ -847,12 +899,21 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           onTap: () => _trackDelivery(order.odId),
           style: _CardActionStyle.outlinePink,
         ),
-        (
+      ];
+      if (_canWriteReview(order)) {
+        actions.add((
           label: '리뷰쓰기',
           onTap: () => _writeReview(order.odId),
           style: _CardActionStyle.primary,
-        ),
-      ]);
+        ));
+      } else {
+        actions.add((
+          label: '다시 담기',
+          onTap: () => _reorder(order),
+          style: _CardActionStyle.primary,
+        ));
+      }
+      return _buildActionRow(actions);
     }
 
     if (_isDeliveringStage(order)) {
@@ -1224,7 +1285,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     if (!mounted) return;
     AppToastOverlay.show(context, '장바구니에 담았습니다.');
-    Navigator.pushNamed(context, '/cart');
+    await CartNavigation.openCart(
+      context,
+      prescriptionTab: order.isPrescriptionOrder,
+    );
   }
 
   /// 주문 취소
@@ -1317,41 +1381,75 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   /// 리뷰 쓰기
   Future<void> _writeReview(String odId) async {
     try {
-      // 로그인 확인
       final user = await AuthService.getUser();
       if (user == null) {
         return;
       }
       final userId = user.id;
-      
-      // 주문 상세 정보 조회
+
       final result = await OrderService.getOrderDetail(
         odId: odId,
         mbId: userId,
       );
-      
+
       if (result['success'] != true) {
         return;
       }
-      
+
       final orderDetail = result['order'] as OrderDetailModel;
-      
-      // 리뷰 작성 화면으로 이동
-      if (mounted) {
-        final isPrescription = orderDetail.isPrescriptionOrder;
-        final reviewWritten = await Navigator.push(
+      final check = await ReviewService.checkReviewExists(
+        mbId: userId,
+        odId: odId,
+      );
+      final reviewed =
+          (check['reviewedItIds'] as List<String>?) ?? const <String>[];
+      final pending = pendingReviewProducts(orderDetail, reviewed);
+
+      if (pending.isEmpty) {
+        if (mounted) {
+          AppToastOverlay.show(context, '작성할 리뷰가 없습니다.');
+          setState(() {
+            _reviewedItIdsByOd = {
+              ..._reviewedItIdsByOd,
+              odId: reviewed,
+            };
+          });
+        }
+        return;
+      }
+
+      if (!mounted) return;
+      final isPrescription = orderDetail.isPrescriptionOrder;
+      final bool? reviewWritten;
+      if (pending.length > 1) {
+        reviewWritten = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (context) => isPrescription
-                ? ReviewWriteScreen(orderDetail: orderDetail)
-                : ReviewWriteGeneralScreen(orderDetail: orderDetail),
+            builder: (_) => DeliverySelectList(
+              orderDetail: orderDetail,
+              pendingProducts: pending,
+            ),
           ),
         );
-        
-        // 리뷰 작성 완료 시 주문 목록 새로고침
-        if (reviewWritten == true) {
-          _loadOrders();
-        }
+      } else {
+        reviewWritten = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => isPrescription
+                ? ReviewWriteScreen(
+                    orderDetail: orderDetail,
+                    selectedProducts: pending,
+                  )
+                : ReviewWriteGeneralScreen(
+                    orderDetail: orderDetail,
+                    selectedProducts: pending,
+                  ),
+          ),
+        );
+      }
+
+      if (reviewWritten == true) {
+        await _loadOrders();
       }
     } catch (e) {}
   }

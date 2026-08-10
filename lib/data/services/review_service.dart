@@ -43,11 +43,21 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+        ReviewModel? review;
+        try {
+          if (data['review'] != null) {
+            review = ReviewModel.fromJson(
+              Map<String, dynamic>.from(data['review'] as Map),
+            );
+          }
+        } catch (_) {
+          review = null;
+        }
+
         return {
           'success': data['success'] ?? true,
           'message': data['message'] ?? '리뷰가 성공적으로 작성되었습니다.',
-          'review': data['review'] != null ? ReviewModel.fromJson(data['review']) : null,
+          'review': review,
         };
       } else {
         final errorData = json.decode(response.body);
@@ -540,7 +550,7 @@ class ReviewService {
     }
   }
   
-  /// 주문에 대한 리뷰 작성 여부 확인
+  /// 주문에 대한 리뷰 작성 여부 확인 (+ 작성 완료 itId 목록)
   /// 
   /// [mbId] 회원 ID
   /// [odId] 주문 ID (String - 큰 숫자 정밀도 손실 방지)
@@ -557,10 +567,19 @@ class ReviewService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final rawIds = data['reviewedItIds'];
+        final reviewedItIds = <String>[];
+        if (rawIds is List) {
+          for (final id in rawIds) {
+            final s = id?.toString().trim() ?? '';
+            if (s.isNotEmpty) reviewedItIds.add(s);
+          }
+        }
         
         return {
           'success': true,
-          'exists': data['exists'] ?? false,
+          'exists': data['exists'] ?? reviewedItIds.isNotEmpty,
+          'reviewedItIds': reviewedItIds,
         };
       } else {
         final errorData = json.decode(response.body);
@@ -568,6 +587,7 @@ class ReviewService {
           'success': false,
           'message': errorData['message'] ?? '확인에 실패했습니다.',
           'exists': false,
+          'reviewedItIds': <String>[],
         };
       }
     } catch (e) {
@@ -575,7 +595,46 @@ class ReviewService {
         'success': false,
         'message': '확인 중 오류가 발생했습니다: $e',
         'exists': false,
+        'reviewedItIds': <String>[],
       };
+    }
+  }
+
+  /// 여러 주문의 리뷰 작성 완료 itId 맵 `{ odId: [itId, ...] }`
+  static Future<Map<String, List<String>>> getReviewedItIdsByOrders({
+    required String mbId,
+    required List<String> odIds,
+  }) async {
+    final unique = odIds
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+    if (unique.isEmpty) return {};
+    try {
+      final qs =
+          'mbId=${Uri.encodeQueryComponent(mbId)}&odIds=${Uri.encodeQueryComponent(unique.join(','))}';
+      final response = await ApiClient.get('/api/user/reviews/reviewed-by-orders?$qs');
+      if (response.statusCode != 200) return {};
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      if (data['success'] != true) return {};
+      final byOrder = data['byOrder'];
+      if (byOrder is! Map) return {};
+      final out = <String, List<String>>{};
+      byOrder.forEach((key, value) {
+        final odId = key.toString();
+        final list = <String>[];
+        if (value is List) {
+          for (final id in value) {
+            final s = id?.toString().trim() ?? '';
+            if (s.isNotEmpty) list.add(s);
+          }
+        }
+        out[odId] = list;
+      });
+      return out;
+    } catch (_) {
+      return {};
     }
   }
 }

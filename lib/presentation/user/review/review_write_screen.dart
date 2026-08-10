@@ -29,22 +29,38 @@ class _ReviewDraftImage {
       serverPath != null && serverPath!.trim().isNotEmpty;
 }
 
+class _PrescriptionReviewDraft {
+  double score1 = 0;
+  double score2 = 0;
+  double score3 = 0;
+  double score4 = 0;
+  int weightLossKg = 1;
+  String positive = '';
+  String negative = '';
+  String more = '';
+  List<_ReviewDraftImage> images = [];
+}
+
 /// 리뷰 작성 화면
 class ReviewWriteScreen extends StatefulWidget {
   final OrderDetailModel? orderDetail;
   final ReviewModel? initialReview;
+  /// 선택 화면에서 넘어온 작성 대상 상품 (없으면 주문 본품 전체 중 첫 상품)
+  final List<OrderItem>? selectedProducts;
 
   const ReviewWriteScreen({
     super.key,
     this.orderDetail,
     this.initialReview,
+    this.selectedProducts,
   });
 
   const ReviewWriteScreen.edit({
     super.key,
     required ReviewModel review,
   })  : orderDetail = null,
-        initialReview = review;
+        initialReview = review,
+        selectedProducts = null;
 
   @override
   State<ReviewWriteScreen> createState() => _ReviewWriteScreenState();
@@ -75,6 +91,35 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   final List<_ReviewDraftImage> _draftImages = [];
   bool _isLoading = false;
   bool get _isEditMode => widget.initialReview != null;
+
+  int _productIndex = 0;
+  final Map<int, _PrescriptionReviewDraft> _drafts = {};
+
+  List<OrderItem> get _targetProducts {
+    final selected = widget.selectedProducts;
+    if (selected != null && selected.isNotEmpty) return selected;
+    final od = widget.orderDetail;
+    if (od == null || od.products.isEmpty) return const [];
+    return od.products
+        .where((p) {
+          if (p.itId.trim().isEmpty) return false;
+          final parent = (p.parent ?? '').trim();
+          if (parent.isNotEmpty) return false;
+          final kind = (p.ctKind ?? '').toLowerCase().trim();
+          if (kind.startsWith('supply_add|')) return false;
+          return true;
+        })
+        .toList();
+  }
+
+  bool get _isMulti => !_isEditMode && _targetProducts.length > 1;
+
+  OrderItem? get _currentProduct {
+    final list = _targetProducts;
+    if (list.isEmpty) return null;
+    final i = _productIndex.clamp(0, list.length - 1);
+    return list[i];
+  }
 
   @override
   void initState() {
@@ -341,9 +386,13 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (!_isEditMode)
-                                _buildProductSection()
-                              else
+                              if (!_isEditMode) ...[
+                                if (_isMulti) ...[
+                                  _buildProductTabs(),
+                                  SizedBox(height: healthDp(context, 20)),
+                                ],
+                                _buildProductSection(),
+                              ] else
                                 _buildReviewProductSectionForEdit(),
                               SizedBox(height: healthDp(context, 20)),
                               _buildWeightSection(),
@@ -393,11 +442,146 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     );
   }
 
+  Widget _buildProductTabs() {
+    final list = _targetProducts;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < list.length; i++) ...[
+            if (i > 0) SizedBox(width: healthDp(context, 8)),
+            GestureDetector(
+              onTap: () => _goToProductIndex(i),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: healthDp(context, 12),
+                  vertical: healthDp(context, 4),
+                ),
+                decoration: ShapeDecoration(
+                  color: i == _productIndex ? _kPink : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      width: 1,
+                      color: i == _productIndex ? _kPink : const Color(0xFFD2D2D2),
+                    ),
+                    borderRadius: BorderRadius.circular(healthDp(context, 999)),
+                  ),
+                ),
+                child: Text(
+                  '${i + 1}번 상품',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: i == _productIndex ? Colors.white : _kMuted,
+                    fontSize: healthSp(context, 11),
+                    fontFamily: _kFont,
+                    fontWeight: FontWeight.w400,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _saveCurrentDraft() {
+    _drafts[_productIndex] = _PrescriptionReviewDraft()
+      ..score1 = _score1
+      ..score2 = _score2
+      ..score3 = _score3
+      ..score4 = _score4
+      ..weightLossKg = _weightLossKg
+      ..positive = _positiveController.text
+      ..negative = _negativeController.text
+      ..more = _moreController.text
+      ..images = List<_ReviewDraftImage>.from(_draftImages);
+  }
+
+  void _loadDraft(int index) {
+    final d = _drafts[index];
+    if (d == null) {
+      _score1 = 0;
+      _score2 = 0;
+      _score3 = 0;
+      _score4 = 0;
+      _weightLossKg = 1;
+      _positiveController.clear();
+      _negativeController.clear();
+      _moreController.clear();
+      _draftImages.clear();
+      return;
+    }
+    _score1 = d.score1;
+    _score2 = d.score2;
+    _score3 = d.score3;
+    _score4 = d.score4;
+    _weightLossKg = d.weightLossKg;
+    _positiveController.text = d.positive;
+    _negativeController.text = d.negative;
+    _moreController.text = d.more;
+    _draftImages
+      ..clear()
+      ..addAll(d.images);
+  }
+
+  void _goToProductIndex(int index) {
+    if (index == _productIndex) return;
+    _saveCurrentDraft();
+    setState(() {
+      _productIndex = index;
+      _loadDraft(index);
+    });
+  }
+
+  bool _validateCurrentForm({bool showToast = true}) {
+    if (_score1 < 0.1 ||
+        _score2 < 0.1 ||
+        _score3 < 0.1 ||
+        _score4 < 0.1) {
+      if (showToast) AppToastOverlay.show(context, '필수 별점을 작성해주세요.');
+      return false;
+    }
+    if (_positiveController.text.trim().length < 20 ||
+        _negativeController.text.trim().length < 20) {
+      if (showToast) {
+        AppToastOverlay.show(context, '필수 리뷰 내용을 작성해주세요. (최소 20자)');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// 필수 별점·필수 본문(각 20자) 충족 시 다음/등록 활성화
+  bool get _canProceedCurrent =>
+      _score1 >= 0.1 &&
+      _score2 >= 0.1 &&
+      _score3 >= 0.1 &&
+      _score4 >= 0.1 &&
+      _positiveController.text.trim().length >= 20 &&
+      _negativeController.text.trim().length >= 20;
+
+  Future<void> _onNextProduct() async {
+    if (!_validateCurrentForm()) return;
+    _saveCurrentDraft();
+    setState(() {
+      _productIndex += 1;
+      _loadDraft(_productIndex);
+    });
+  }
+
+  void _onPrevProduct() {
+    _saveCurrentDraft();
+    setState(() {
+      _productIndex -= 1;
+      _loadDraft(_productIndex);
+    });
+  }
+
   Widget _buildProductSection() {
-    final od = widget.orderDetail;
-    if (od == null) return const SizedBox.shrink();
-    final firstItem = od.products.isNotEmpty ? od.products.first : null;
-    if (firstItem == null) return const SizedBox.shrink();
+    final item = _currentProduct;
+    if (item == null) return const SizedBox.shrink();
 
     return Container(
       child: Column(
@@ -420,14 +604,14 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
             ),
             child: Row(
               children: [
-                _productThumbWidget(item: firstItem),
+                _productThumbWidget(item: item),
                 SizedBox(width: healthDp(context, 20)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        firstItem.itName,
+                        item.itName,
                         style: TextStyle(
                           fontFamily: _kFont,
                           fontSize: healthSp(context, 14),
@@ -437,7 +621,7 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                       ),
                       SizedBox(height: healthDp(context, 10)),
                       Text(
-                        '수량: ${firstItem.ctQty}${firstItem.ctOption != null && firstItem.ctOption!.isNotEmpty ? ' / ${firstItem.ctOption}' : ''}',
+                        '수량: ${item.ctQty}${item.ctOption != null && item.ctOption!.isNotEmpty ? ' / ${item.ctOption}' : ''}',
                         style: TextStyle(
                           fontFamily: _kFont,
                           color: const Color(0xFF898383),
@@ -769,6 +953,8 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
     required TextEditingController controller,
     required String hint,
   }) {
+    final len = controller.text.length;
+    final meetsMin = len >= 20;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -796,7 +982,6 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               Positioned.fill(
                 child: TextFormField(
                 controller: controller,
-                maxLength: 3000,
                 maxLines: null,
                 expands: true,
                 style: TextStyle(
@@ -835,15 +1020,36 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               Positioned(
                 right: 0,
                 bottom: 0,
-                child: Text(
-                  '${controller.text.length}/3,000자',
-                  style: TextStyle(
-                    fontFamily: _kFont,
-                    color: _kMuted,
-                    fontSize: healthSp(context, 10),
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -0.6,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$len자',
+                      style: TextStyle(
+                        fontFamily: _kFont,
+                        color: _kMuted,
+                        fontSize: healthSp(context, 10),
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                    SizedBox(width: healthDp(context, 6)),
+                    Container(
+                      width: healthDp(context, 16),
+                      height: healthDp(context, 16),
+                      decoration: BoxDecoration(
+                        color: meetsMin
+                            ? const Color(0xFF22C55E)
+                            : const Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        meetsMin ? Icons.check : Icons.close,
+                        size: healthDp(context, 11),
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -962,6 +1168,13 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
   }
 
   Widget _buildBottomButtons() {
+    final isLast = !_isMulti || _productIndex >= _targetProducts.length - 1;
+    final isFirst = !_isMulti || _productIndex <= 0;
+    final leftLabel = _isMulti ? (isFirst ? '취소' : '이전') : '취소';
+    final rightLabel = _isEditMode
+        ? '수정'
+        : (_isMulti ? (isLast ? '등록' : '다음') : '등록');
+
     return SafeArea(
       top: false,
       child: Container(
@@ -997,9 +1210,17 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                   ),
                 ),
                 child: TextButton(
-                  onPressed: _isLoading ? null : () => Navigator.pop(context),
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          if (_isMulti && !isFirst) {
+                            _onPrevProduct();
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        },
                   child: Text(
-                    '취소',
+                    leftLabel,
                     style: TextStyle(
                       fontFamily: _kFont,
                       color: _kMuted,
@@ -1015,13 +1236,23 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
               child: Container(
                 height: healthDp(context, 40),
                 decoration: ShapeDecoration(
-                  color: _kPink,
+                  color: _canProceedCurrent
+                      ? _kPink
+                      : const Color(0xFFE9E9E9),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(healthDp(context, 10)),
                   ),
                 ),
                 child: TextButton(
-                  onPressed: _isLoading ? null : _submitReview,
+                  onPressed: (_isLoading || !_canProceedCurrent)
+                      ? null
+                      : () {
+                          if (_isMulti && !isLast) {
+                            _onNextProduct();
+                          } else {
+                            _submitReview();
+                          }
+                        },
                   child: _isLoading
                       ? SizedBox(
                           width: healthDp(context, 18),
@@ -1032,10 +1263,12 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
                           ),
                         )
                       : Text(
-                          _isEditMode ? '수정' : '등록',
+                          rightLabel,
                           style: TextStyle(
                             fontFamily: _kFont,
-                            color: Colors.white,
+                            color: _canProceedCurrent
+                                ? Colors.white
+                                : _kMuted,
                             fontSize: healthSp(context, 16),
                             fontWeight: FontWeight.w500,
                           ),
@@ -1051,98 +1284,180 @@ class _ReviewWriteScreenState extends State<ReviewWriteScreen> {
 
   /// 리뷰 제출
   Future<void> _submitReview() async {
-    if (!_formKey.currentState!.validate()) {
-      AppToastOverlay.show(context, '필수 항목을 작성해주세요.');
-      return;
-    }
-
-    if (_score1 < 0.1 ||
-        _score2 < 0.1 ||
-        _score3 < 0.1 ||
-        _score4 < 0.1) {
-      AppToastOverlay.show(context, '필수 별점을 작성해주세요.');
-      return;
-    }
-
-    if (_positiveController.text.trim().length < 20 ||
-        _negativeController.text.trim().length < 20) {
-      AppToastOverlay.show(context, '필수 리뷰 내용을 작성해주세요. (최소 20자)');
-      return;
+    if (_isMulti) {
+      if (!_validateCurrentForm()) return;
+      _saveCurrentDraft();
+      for (var i = 0; i < _targetProducts.length; i++) {
+        if (i == _productIndex) continue;
+        final d = _drafts[i];
+        if (d == null ||
+            d.score1 < 0.1 ||
+            d.score2 < 0.1 ||
+            d.score3 < 0.1 ||
+            d.score4 < 0.1 ||
+            d.positive.trim().length < 20 ||
+            d.negative.trim().length < 20) {
+          AppToastOverlay.show(context, '${i + 1}번 상품 리뷰를 완료해 주세요.');
+          _goToProductIndex(i);
+          return;
+        }
+      }
+    } else {
+      if (!_formKey.currentState!.validate()) {
+        AppToastOverlay.show(context, '필수 항목을 작성해주세요.');
+        return;
+      }
+      if (!_validateCurrentForm()) return;
     }
 
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
-      // 현재 로그인된 사용자 정보 가져오기
       final user = await AuthService.getUser();
       if (user == null) {
         return;
       }
-      
-      final currentOrderFirstItem = widget.orderDetail != null && widget.orderDetail!.products.isNotEmpty
-          ? widget.orderDetail!.products.first
-          : null;
-      final editTarget = widget.initialReview;
-      final itId = editTarget?.itId ?? currentOrderFirstItem?.itId;
-      if (itId == null || itId.isEmpty) {
+
+      if (_isEditMode) {
+        final editTarget = widget.initialReview;
+        final itId = editTarget?.itId ?? _currentProduct?.itId;
+        if (itId == null || itId.isEmpty) {
+          return;
+        }
+        final imagePaths = await _resolveImagePathsForSubmit();
+        if (imagePaths.length != _draftImages.length) {
+          return;
+        }
+        final review = ReviewModel(
+          isId: editTarget?.isId,
+          mbId: user.id,
+          odId: editTarget?.odId ?? widget.orderDetail?.odId,
+          itId: itId,
+          isName: user.name,
+          isScore1: _snapTenthRating(_score1),
+          isScore2: _snapTenthRating(_score2),
+          isScore3: _snapTenthRating(_score3),
+          isScore4: _snapTenthRating(_score4),
+          isRvkind: editTarget?.isRvkind ?? 'prescription',
+          isRecommend: editTarget?.isRecommend ?? 'y',
+          isPositiveReviewText: _positiveController.text,
+          isNegativeReviewText: _negativeController.text.isNotEmpty
+              ? _negativeController.text
+              : null,
+          isMoreReviewText: _moreController.text.trim(),
+          images: imagePaths,
+          isPayMthod: 'solo',
+          isOutageNum: _weightLossKg,
+        );
+        final result = editTarget?.isId != null
+            ? await ReviewService.updateReview(editTarget!.isId!, review)
+            : await ReviewService.createReview(review);
+        if (!mounted) return;
+        final message = (result['message'] as String?)?.trim();
+        if (result['success'] == true) {
+          AppToastOverlay.show(
+            context,
+            (message != null && message.isNotEmpty)
+                ? message
+                : '리뷰가 수정되었습니다.',
+          );
+          Navigator.pop(context, true);
+        } else {
+          AppToastOverlay.show(
+            context,
+            (message != null && message.isNotEmpty)
+                ? message
+                : '리뷰 수정에 실패했습니다.',
+          );
+        }
         return;
       }
 
-      final imagePaths = await _resolveImagePathsForSubmit();
-      if (imagePaths.length != _draftImages.length) {
-        return;
-      }
+      for (var i = 0; i < _targetProducts.length; i++) {
+        late final double s1, s2, s3, s4;
+        late final int weight;
+        late final String positive, negative, more;
+        late final List<_ReviewDraftImage> imgs;
+        if (i == _productIndex) {
+          s1 = _score1;
+          s2 = _score2;
+          s3 = _score3;
+          s4 = _score4;
+          weight = _weightLossKg;
+          positive = _positiveController.text;
+          negative = _negativeController.text;
+          more = _moreController.text;
+          imgs = List<_ReviewDraftImage>.from(_draftImages);
+        } else {
+          final d = _drafts[i]!;
+          s1 = d.score1;
+          s2 = d.score2;
+          s3 = d.score3;
+          s4 = d.score4;
+          weight = d.weightLossKg;
+          positive = d.positive;
+          negative = d.negative;
+          more = d.more;
+          imgs = d.images;
+        }
 
-      // 작성/수정 공용 리뷰 모델 생성
-      // total_is_score 는 백엔드에서 효과~편리함 평균으로 저장 (클라에서 보내지 않음)
-      final review = ReviewModel(
-        isId: editTarget?.isId,
-        mbId: user.id,
-        odId: editTarget?.odId ?? widget.orderDetail?.odId,
-        itId: itId,
-        isName: user.name,
-        isScore1: _snapTenthRating(_score1),
-        isScore2: _snapTenthRating(_score2),
-        isScore3: _snapTenthRating(_score3),
-        isScore4: _snapTenthRating(_score4),
-        isRvkind: editTarget?.isRvkind ?? 'prescription',
-        isRecommend: editTarget?.isRecommend ?? 'y',
-        isPositiveReviewText: _positiveController.text,
-        isNegativeReviewText: _negativeController.text.isNotEmpty 
-            ? _negativeController.text 
-            : null,
-        // 선택 항목 — 빈 문자열로 보내야 수정 시 DB 값을 지울 수 있음
-        isMoreReviewText: _moreController.text.trim(),
-        images: imagePaths,
-        isPayMthod: 'solo', // 내돈내산
-        isOutageNum: _weightLossKg,
-      );
-      
-      // API 호출
-      final result = _isEditMode && editTarget?.isId != null
-          ? await ReviewService.updateReview(editTarget!.isId!, review)
-          : await ReviewService.createReview(review);
+        final paths = <String>[];
+        for (final draft in imgs) {
+          if (draft.isServer) {
+            paths.add(draft.serverPath!.trim());
+          } else if (draft.file != null) {
+            final uploaded =
+                await ReviewService.uploadReviewImage(draft.file!);
+            if (uploaded == null || uploaded.isEmpty) {
+              if (mounted) {
+                AppToastOverlay.show(
+                    context, '${i + 1}번 상품 이미지 업로드에 실패했습니다.');
+              }
+              return;
+            }
+            paths.add(uploaded);
+          }
+        }
+
+        final item = _targetProducts[i];
+        final review = ReviewModel(
+          mbId: user.id,
+          odId: widget.orderDetail?.odId,
+          itId: item.itId,
+          isName: user.name,
+          isScore1: _snapTenthRating(s1),
+          isScore2: _snapTenthRating(s2),
+          isScore3: _snapTenthRating(s3),
+          isScore4: _snapTenthRating(s4),
+          isRvkind: 'prescription',
+          isRecommend: 'y',
+          isPositiveReviewText: positive,
+          isNegativeReviewText: negative.isNotEmpty ? negative : null,
+          isMoreReviewText: more.trim(),
+          images: paths,
+          isPayMthod: 'solo',
+          isOutageNum: weight,
+        );
+        final result = await ReviewService.createReview(review);
+        if (result['success'] != true) {
+          if (mounted) {
+            final message = (result['message'] as String?)?.trim();
+            AppToastOverlay.show(
+              context,
+              (message != null && message.isNotEmpty)
+                  ? message
+                  : '${i + 1}번 상품 리뷰 작성에 실패했습니다.',
+            );
+          }
+          return;
+        }
+      }
 
       if (!mounted) return;
-      final message = (result['message'] as String?)?.trim();
-      if (result['success'] == true) {
-        AppToastOverlay.show(
-          context,
-          (message != null && message.isNotEmpty)
-              ? message
-              : (_isEditMode ? '리뷰가 수정되었습니다.' : '리뷰가 작성되었습니다.'),
-        );
-        Navigator.pop(context, true);
-      } else {
-        AppToastOverlay.show(
-          context,
-          (message != null && message.isNotEmpty)
-              ? message
-              : (_isEditMode ? '리뷰 수정에 실패했습니다.' : '리뷰 작성에 실패했습니다.'),
-        );
-      }
+      AppToastOverlay.show(context, '리뷰가 작성되었습니다.');
+      Navigator.pop(context, true);
     } catch (_) {
       if (mounted) {
         AppToastOverlay.show(
