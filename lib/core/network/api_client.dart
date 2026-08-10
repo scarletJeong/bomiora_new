@@ -48,13 +48,34 @@ class ApiClient {
     }
   }
 
+  /// API 요청 시간·응답 크기 계측 로그 켜기 (릴리즈에서 debugPrint는 자동 no-op)
+  static const bool _logTimings = true;
+
+  static void _logTiming(
+    String method,
+    String endpoint,
+    int statusCode,
+    int elapsedMs,
+    int bytes,
+  ) {
+    if (!_logTimings) return;
+    final kb = (bytes / 1024).toStringAsFixed(1);
+    debugPrint('[API] $method $endpoint '
+        '-> $statusCode ${elapsedMs}ms ${kb}KB');
+  }
+
   // GET 요청
   static Future<http.Response> get(String endpoint,
       {Map<String, String>? additionalHeaders}) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      // gzip 압축 응답 허용 (백엔드 compression 적용 시 전송량 감소)
+      'Accept-Encoding': 'gzip',
       'User-Agent': 'Flutter-App/1.0',
+      // Express etag 304(빈 body)로 파싱 실패하는 것 방지
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
     };
 
     // 추가 헤더가 있으면 병합
@@ -62,10 +83,20 @@ class ApiClient {
       headers.addAll(additionalHeaders);
     }
 
-    return await http.get(
+    final sw = Stopwatch()..start();
+    final response = await http.get(
       Uri.parse('$baseUrl$endpoint'),
       headers: headers,
     );
+    sw.stop();
+    _logTiming(
+      'GET',
+      endpoint,
+      response.statusCode,
+      sw.elapsedMilliseconds,
+      response.bodyBytes.length,
+    );
+    return response;
   }
 
   // POST 요청
@@ -92,6 +123,7 @@ class ApiClient {
     final body = json.encode(data);
 
     try {
+      final sw = Stopwatch()..start();
       final response = await http
           .post(
         Uri.parse(url),
@@ -103,6 +135,14 @@ class ApiClient {
         onTimeout: () {
           throw TimeoutException('요청 시간이 초과되었습니다', const Duration(seconds: 30));
         },
+      );
+      sw.stop();
+      _logTiming(
+        'POST',
+        endpoint,
+        response.statusCode,
+        sw.elapsedMilliseconds,
+        response.bodyBytes.length,
       );
       return response;
     } on TimeoutException catch (e) {
