@@ -37,6 +37,8 @@ class _GuidebookSectionState extends State<GuidebookSection> {
   Widget build(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
     final m = HomeBigCardLayout.fromWidth(w);
+    final titleH = m.titleFs * 1.25;
+    final listH = m.imageH + m.columnGap + titleH;
 
     return Container(
       width: double.infinity,
@@ -49,7 +51,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
             padding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
             child: HomeSectionTitleRow(
               line1: '건강',
-              line2: '가이드북',
+              line2: '컨텐츠',
               trailing: BtnMore(
                 onTap: () => Navigator.pushNamed(context, '/content'),
               ),
@@ -57,7 +59,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
           ),
           SizedBox(height: healthDp(context, 12)),
           SizedBox(
-            height: m.listItemHeight,
+            height: listH,
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _future,
               builder: (context, snapshot) {
@@ -98,6 +100,7 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                       final it = items[index];
                       return _GuidebookCard(
                         m: m,
+                        titleH: titleH,
                         item: it,
                         onTap: () {
                           Navigator.push(
@@ -121,14 +124,14 @@ class _GuidebookSectionState extends State<GuidebookSection> {
 }
 
 class _GuidebookCard extends StatelessWidget {
-  static const String _fallbackDescription = '건강 콘텐츠를 확인해보세요.';
-
   final HomeBigCardLayout m;
+  final double titleH;
   final Map<String, dynamic> item;
   final VoidCallback? onTap;
 
   const _GuidebookCard({
     required this.m,
+    required this.titleH,
     required this.item,
     this.onTap,
   });
@@ -138,16 +141,12 @@ class _GuidebookCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = _t(item['title']?.toString());
-    final bodyHtml = _t(item['content_html']?.toString());
-    final bodyPlain = ContentService.normalizeHtmlToText(bodyHtml);
-    final description =
-        bodyPlain.isNotEmpty ? bodyPlain : _fallbackDescription;
     final thumbRaw = item['thumbnail_url']?.toString();
     final thumb = ContentService.resolveThumbnailUrl(thumbRaw, fallback: '');
 
     return SizedBox(
       width: m.cardW,
-      height: m.listItemHeight,
+      height: m.imageH + m.columnGap + titleH,
       child: InkWell(
         onTap: onTap,
         child: Column(
@@ -173,42 +172,18 @@ class _GuidebookCard extends StatelessWidget {
             SizedBox(height: m.columnGap),
             SizedBox(
               width: m.cardW,
-              height: m.textPanelHeight,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title.isEmpty ? '(제목 없음)' : title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFF231F20),
-                      fontSize: m.titleFs,
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                      height: 1.25,
-                    ),
-                  ),
-                  SizedBox(height: m.titleDescGap),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: Text(
-                        description,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: const Color(0xFF231F20),
-                          fontSize: m.descFs,
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: m.descLetterSpacing,
-                          height: 1.35,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              height: titleH,
+              child: Text(
+                title.isEmpty ? '(제목 없음)' : title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: const Color(0xFF231F20),
+                  fontSize: m.titleFs,
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                  height: 1.25,
+                ),
               ),
             ),
           ],

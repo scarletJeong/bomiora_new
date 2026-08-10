@@ -44,7 +44,6 @@ import 'presentation/community/announcement/screens/announcement_detail_screen.d
 import 'presentation/community/event/screens/event_list_screen.dart';
 import 'presentation/community/event/screens/event_detail_screen.dart';
 import 'presentation/community/faq/screens/faq_list_screen.dart';
-import 'presentation/content/dashboard/screens/content_dashboard_screen.dart';
 import 'presentation/content/dashboard/screens/content_list_screen.dart';
 import 'presentation/content/dashboard/screens/content_detail_screen.dart';
 import 'presentation/home/search/search_list_screen.dart';
@@ -216,7 +215,7 @@ class _BomioraAppState extends State<BomioraApp> {
         '/announcement': (context) => const AnnouncementListScreen(),
         '/event': (context) => const EventListScreen(),
         '/faq': (context) => const FaqListScreen(),
-        '/content': (context) => const ContentDashboardScreen(),
+        '/content': (context) => const ContentListScreen(),
         '/content/list': (context) => const ContentListScreen(),
         '/content/detail': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;

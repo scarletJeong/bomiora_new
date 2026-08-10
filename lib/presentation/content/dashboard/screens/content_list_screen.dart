@@ -490,6 +490,8 @@ class _ContentListScreenState extends State<ContentListScreen> {
             padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
             child: Text(
               title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: _textDark,
                 fontSize: healthSp(context, 14),
