@@ -49,8 +49,29 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
   @override
   void initState() {
     super.initState();
+    _nameController.addListener(_onFormChanged);
+    _phoneController.addListener(_onFormChanged);
+    _address1Controller.addListener(_onFormChanged);
+    _address2Controller.addListener(_onFormChanged);
+    _subjectController.addListener(_onFormChanged);
     _loadData();
     _resolveDefaultRequirement();
+  }
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _canSave {
+    if (_nameController.text.trim().isEmpty) return false;
+    if (_phoneController.text.trim().isEmpty) return false;
+    if (_address1Controller.text.trim().isEmpty) return false;
+    if (_address2Controller.text.trim().isEmpty) return false;
+    if (_subjectPreset == _SubjectPreset.custom &&
+        _subjectController.text.trim().isEmpty) {
+      return false;
+    }
+    return true;
   }
 
   Future<void> _resolveDefaultRequirement() async {
@@ -96,6 +117,11 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_onFormChanged);
+    _phoneController.removeListener(_onFormChanged);
+    _address1Controller.removeListener(_onFormChanged);
+    _address2Controller.removeListener(_onFormChanged);
+    _subjectController.removeListener(_onFormChanged);
     _subjectController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
@@ -179,7 +205,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     }
   }
 
-  // 배송지 주소 읽기 전용 박스
+  // 배송지 주소 읽기 전용 박스 (회색·수정 불가)
   Widget _buildReadonlyBox({
     required String text,
     required String hintText,
@@ -194,7 +220,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       ),
       alignment: Alignment.centerLeft,
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF8F8F8),
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
@@ -417,6 +443,10 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       if (result['success'] == true) {
         final isNew = widget.address == null;
         final defaultChanged = defaultFlag == 1 && !_wasDefault && !isNew;
+        AppToastOverlay.show(
+          context,
+          isNew ? '배송지를 추가했습니다.' : '배송지를 수정했습니다.',
+        );
         Navigator.of(context).pop(<String, dynamic>{
           'ok': true,
           'registered': isNew,
@@ -460,31 +490,22 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               SizedBox(height: healthDp(context, 5)),
               Row(
                 children: [
-                  Expanded(
-                    child: _SubjectChip(
-                      label: '집',
-                      selected: _subjectPreset == _SubjectPreset.home,
-                      onTap: () =>
-                          _selectSubjectPreset(_SubjectPreset.home),
-                    ),
+                  _SubjectChip(
+                    label: '집',
+                    selected: _subjectPreset == _SubjectPreset.home,
+                    onTap: () => _selectSubjectPreset(_SubjectPreset.home),
                   ),
                   SizedBox(width: healthDp(context, 8)),
-                  Expanded(
-                    child: _SubjectChip(
-                      label: '회사',
-                      selected: _subjectPreset == _SubjectPreset.office,
-                      onTap: () =>
-                          _selectSubjectPreset(_SubjectPreset.office),
-                    ),
+                  _SubjectChip(
+                    label: '회사',
+                    selected: _subjectPreset == _SubjectPreset.office,
+                    onTap: () => _selectSubjectPreset(_SubjectPreset.office),
                   ),
                   SizedBox(width: healthDp(context, 8)),
-                  Expanded(
-                    child: _SubjectChip(
-                      label: '직접입력',
-                      selected: _subjectPreset == _SubjectPreset.custom,
-                      onTap: () =>
-                          _selectSubjectPreset(_SubjectPreset.custom),
-                    ),
+                  _SubjectChip(
+                    label: '직접입력',
+                    selected: _subjectPreset == _SubjectPreset.custom,
+                    onTap: () => _selectSubjectPreset(_SubjectPreset.custom),
                   ),
                 ],
               ),
@@ -496,7 +517,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                 ),
               ],
               SizedBox(height: healthDp(context, 10)),
-              const _FieldLabel('받으시는 분'),
+              const _FieldLabel('받으시는 분', isRequired: true),
               SizedBox(height: healthDp(context, 5)),
               _BoxField(
                 controller: _nameController,
@@ -506,7 +527,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                     : null,
               ),
               SizedBox(height: healthDp(context, 10)),
-              const _FieldLabel('연락처'),
+              const _FieldLabel('연락처', isRequired: true),
               SizedBox(height: healthDp(context, 5)),
               _BoxField(
                 controller: _phoneController,
@@ -524,7 +545,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                 },
               ),
               SizedBox(height: healthDp(context, 10)),
-              const _FieldLabel('배송지 주소'),
+              const _FieldLabel('배송지 주소', isRequired: true),
               SizedBox(height: healthDp(context, 5)),
               if (!_showDetailAddress)
                 Row(
@@ -616,7 +637,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                 width: double.infinity,
                 height: healthDp(context, 40),
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveAddress,
+                  onPressed: (_isLoading || !_canSave) ? null : _saveAddress,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF5A8D),
                     disabledBackgroundColor: const Color(0x7FD2D2D2),
@@ -676,12 +697,13 @@ class _SubjectChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      borderRadius: BorderRadius.circular(healthDp(context, 15)),
       child: Container(
-        height: healthDp(context, 40),
-        alignment: Alignment.center,
+        height: healthDp(context, 45),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
+        clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
-          color: selected ? const Color(0xFFFF5A8D) : Colors.white,
+          color: selected ? const Color(0x0CFF5A8D) : Colors.white,
           shape: RoundedRectangleBorder(
             side: BorderSide(
               width: healthDp(context, 1),
@@ -689,17 +711,26 @@ class _SubjectChip extends StatelessWidget {
                   ? const Color(0xFFFF5A8D)
                   : const Color(0xFFD2D2D2),
             ),
-            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            borderRadius: BorderRadius.circular(healthDp(context, 15)),
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF1A1A1E),
-            fontSize: healthSp(context, 12),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w500,
-          ),
+        // alignment를 넣으면 max width로 늘어나 한 줄에 칩 1개씩 떨어짐
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: selected
+                    ? const Color(0xFF1A1A1E)
+                    : const Color(0xFF898383),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -707,20 +738,36 @@ class _SubjectChip extends StatelessWidget {
 }
 
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
+  const _FieldLabel(this.text, {this.isRequired = false});
 
   final String text;
+  final bool isRequired;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: const Color(0xFF898686),
-        fontSize: healthSp(context, 14),
-        fontWeight: FontWeight.w500,
-        height: 1.57,
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            color: const Color(0xFF898686),
+            fontSize: healthSp(context, 14),
+            fontWeight: FontWeight.w500,
+            height: 1.57,
+          ),
+        ),
+        if (isRequired)
+          Text(
+            ' *',
+            style: TextStyle(
+              color: const Color(0xFFFF5A8D),
+              fontSize: healthSp(context, 14),
+              fontWeight: FontWeight.w500,
+              height: 1.57,
+            ),
+          ),
+      ],
     );
   }
 }

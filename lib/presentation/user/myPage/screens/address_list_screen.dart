@@ -42,16 +42,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   void _handleFormResult(dynamic result) {
     if (!_isFormSuccess(result)) return;
     _loadAddresses();
-    if (!mounted) return;
-    if (result is Map) {
-      if (result['registered'] == true) {
-        AppToastOverlay.show(context, '배송지가 등록되었어요.');
-        return;
-      }
-      if (result['defaultChanged'] == true) {
-        AppToastOverlay.show(context, '기본 배송지가 변경되었어요.');
-      }
-    }
   }
 
   Future<void> _loadCurrentUser() async {
