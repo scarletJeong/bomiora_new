@@ -48,7 +48,6 @@ class DeliveryStatusFilterBar extends StatelessWidget {
 
   static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kMuted = Color(0xFF898686);
-  static const Color _kInk = Color(0xFF1A1A1E);
   static const Color _kTabBorder = Color(0xFFD2D2D2);
 
   @override
@@ -104,7 +103,7 @@ class DeliveryStatusFilterBar extends StatelessWidget {
                     children: [
                       for (var i = 0; i < statusEntries.length; i++) ...[
                         if (i > 0) SizedBox(width: tabGap),
-                        _statusBadge(
+                        _statusChip(
                           context,
                           statusEntries[i].key,
                           statusEntries[i].value,
@@ -143,10 +142,10 @@ class DeliveryStatusFilterBar extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: selected ? _kInk : _kMuted,
+                color: selected ? _kPink : _kMuted,
                 fontSize: healthSp(context, 14),
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 height: 1,
               ),
             ),
@@ -162,35 +161,56 @@ class DeliveryStatusFilterBar extends StatelessWidget {
     );
   }
 
-  Widget _statusBadge(BuildContext context, String key, String label) {
+  /// content_list_screen 탭 칩과 동일 스타일
+  Widget _statusChip(BuildContext context, String key, String label) {
     final selected = selectedKey == key;
+
+    if (selected) {
+      return GestureDetector(
+        onTap: () => onSelected(key),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: healthDp(context, 10),
+            vertical: healthDp(context, 2),
+          ),
+          decoration: ShapeDecoration(
+            color: _kPink,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(healthDp(context, 20)),
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: healthSp(context, 14),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
 
     return GestureDetector(
       onTap: () => onSelected(key),
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: healthDp(context, 12),
-          vertical: healthDp(context, 7),
-        ),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0x14FF5A8D) : Colors.white,
-          borderRadius: BorderRadius.circular(healthDp(context, 999)),
-          border: Border.all(
-            width: healthDp(context, 1),
-            color: selected ? _kPink : _kTabBorder,
-          ),
-        ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: healthDp(context, 3)),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           maxLines: 1,
           softWrap: false,
           style: TextStyle(
-            color: selected ? _kPink : _kMuted,
+            color: _kMuted,
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            height: 1,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
