@@ -10,12 +10,20 @@ class ContentPopup extends StatelessWidget {
     this.subtitle,
     required this.body,
     this.confirmLabel = '확인',
+    this.titleFontSize = 20,
+    this.subtitleFontSize = 16,
+    this.bodyFontSize = 14,
+    this.confirmFontSize = 16,
   });
 
   final String title;
   final String? subtitle;
   final String body;
   final String confirmLabel;
+  final double titleFontSize;
+  final double subtitleFontSize;
+  final double bodyFontSize;
+  final double confirmFontSize;
 
   static const Color _kInk = Color(0xFF1A1A1E);
   static const Color _kPink = Color(0xFFFF5A8D);
@@ -28,6 +36,10 @@ class ContentPopup extends StatelessWidget {
     String? subtitle,
     required String body,
     String confirmLabel = '확인',
+    double titleFontSize = 20,
+    double subtitleFontSize = 16,
+    double bodyFontSize = 14,
+    double confirmFontSize = 16,
   }) async {
     final result = await showDialog<bool>(
       context: context,
@@ -37,6 +49,10 @@ class ContentPopup extends StatelessWidget {
         subtitle: subtitle,
         body: body,
         confirmLabel: confirmLabel,
+        titleFontSize: titleFontSize,
+        subtitleFontSize: subtitleFontSize,
+        bodyFontSize: bodyFontSize,
+        confirmFontSize: confirmFontSize,
       ),
     );
     return result == true;
@@ -78,7 +94,7 @@ class ContentPopup extends StatelessWidget {
                     title,
                     style: TextStyle(
                       color: _kInk,
-                      fontSize: healthSp(context, 20),
+                      fontSize: healthSp(context, titleFontSize),
                       fontFamily: _kFontFamily,
                       fontWeight: FontWeight.w500,
                     ),
@@ -122,7 +138,7 @@ class ContentPopup extends StatelessWidget {
                           subtitle!,
                           style: TextStyle(
                             color: _kInk,
-                            fontSize: healthSp(context, 16),
+                            fontSize: healthSp(context, subtitleFontSize),
                             fontFamily: _kFontFamily,
                             fontWeight: FontWeight.w500,
                             height: 1.5,
@@ -134,7 +150,7 @@ class ContentPopup extends StatelessWidget {
                         body,
                         style: TextStyle(
                           color: _kInk,
-                          fontSize: healthSp(context, 14),
+                          fontSize: healthSp(context, bodyFontSize),
                           fontFamily: _kFontFamily,
                           fontWeight: FontWeight.w300,
                           height: 1.6,
@@ -163,7 +179,7 @@ class ContentPopup extends StatelessWidget {
                   confirmLabel,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: healthSp(context, 16),
+                    fontSize: healthSp(context, confirmFontSize),
                     fontFamily: _kFontFamily,
                     fontWeight: FontWeight.w500,
                   ),
