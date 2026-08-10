@@ -854,46 +854,23 @@ class _CartScreenState extends State<CartScreen> {
     return null;
   }
 
-  String _reservationTimeLabel(CartItem item) {
-    final parts = <String>[];
-    final date = item.reservationDate;
-    if (date != null) {
-      final mm = date.month.toString().padLeft(2, '0');
-      final dd = date.day.toString().padLeft(2, '0');
-      parts.add('${date.year}.$mm.$dd');
-    }
-    final time = item.reservationTime?.trim() ?? '';
-    if (time.isNotEmpty) {
-      parts.add(time);
-    }
-    if (parts.isEmpty) {
-      return '전화진료 예약시간 :';
-    }
-    return '전화진료 예약시간 : ${parts.join(' ')}';
-  }
-
-  Widget _buildReservationNotice(CartItem item) {
+  Widget _buildReservationNotice() {
     return SizedBox(
       width: double.infinity,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _reservationTimeLabel(item),
-            style: TextStyle(
-              color: const Color(0xFF1A1A1E),
-              fontSize: healthSp(context, 9.6),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '전화진료 예약시간 : ',
+              style: TextStyle(
+                color: const Color(0xFF1A1A1E),
+                fontSize: healthSp(context, 9.6),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          SizedBox(height: healthDp(context, 2)),
-          SizedBox(
-            width: healthDp(context, 168),
-            child: Text(
-              '결제를 완료하셔야 예약이 확정됩니다.',
+            TextSpan(
+              text: '결제를 완료하셔야 예약이 확정됩니다.',
               style: TextStyle(
                 color: const Color(0xFFFF5A8D),
                 fontSize: healthSp(context, 9.5),
@@ -901,8 +878,8 @@ class _CartScreenState extends State<CartScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1037,7 +1014,7 @@ class _CartScreenState extends State<CartScreen> {
                           optionRow,
                         ],
                         SizedBox(height: healthDp(context, 6)),
-                        _buildReservationNotice(item),
+                        _buildReservationNotice(),
                       ] else ...[
                         if (optionRow != null) ...[
                           SizedBox(height: healthDp(context, 5)),
