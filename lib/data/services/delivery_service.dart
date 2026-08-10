@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/delivery/delivery_model.dart';
 import '../../core/network/api_client.dart';
@@ -102,21 +101,7 @@ class OrderService {
         }
 
         final raw = Map<String, dynamic>.from(data);
-        debugPrint(
-          '[OrderDetail][raw] keys=${raw.keys.toList()}',
-        );
-        debugPrint(
-          '[OrderDetail][raw] od_deposit_name=${raw['od_deposit_name']} '
-          'odDepositName=${raw['odDepositName']} '
-          'od_bank_account=${raw['od_bank_account'] ?? raw['odBankAccount']} '
-          'paymentMethodDetail=${raw['paymentMethodDetail']}',
-        );
-
         final order = OrderDetailModel.fromJson(raw);
-        debugPrint(
-          '[OrderDetail][parsed] odDepositName=${order.odDepositName} '
-          'odBankAccount=${order.odBankAccount}',
-        );
         return {
           'success': true,
           'order': order,
@@ -198,13 +183,15 @@ class OrderService {
         final data = _decodeBody(response);
         return {
           'success': true,
-          'message': data['message'] ?? '구매가 확정되었습니다.',
+          'message': data['message'] ?? '수령 확인되었습니다.',
         };
       } else {
         final errorData = _decodeBody(response);
         return {
           'success': false,
-          'message': errorData['error'] ?? '구매 확정에 실패했습니다.',
+          'message': errorData['message'] ??
+              errorData['error'] ??
+              '수령확인에 실패했습니다.',
         };
       }
     } catch (e) {

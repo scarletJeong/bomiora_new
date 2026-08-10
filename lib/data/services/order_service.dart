@@ -137,12 +137,12 @@ class OrderService {
     }
   }
 
-  /// 구매 확정
-  /// 
-  /// [odId] 주문 ID
+  /// 구매 확정 (수령확인)
+  ///
+  /// [odId] 주문 ID (String — 큰 숫자 정밀도 손실 방지)
   /// [mbId] 회원 ID
   static Future<Map<String, dynamic>> confirmPurchase({
-    required int odId,
+    required String odId,
     required String mbId,
   }) async {
     try {
@@ -155,13 +155,15 @@ class OrderService {
         final data = json.decode(response.body);
         return {
           'success': true,
-          'message': data['message'] ?? '구매가 확정되었습니다.',
+          'message': data['message'] ?? '수령 확인되었습니다.',
         };
       } else {
         final errorData = json.decode(response.body);
         return {
           'success': false,
-          'message': errorData['error'] ?? '구매 확정에 실패했습니다.',
+          'message': errorData['message'] ??
+              errorData['error'] ??
+              '수령확인에 실패했습니다.',
         };
       }
     } catch (e) {

@@ -9,6 +9,7 @@ import '../review/review_write_screen.dart';
 import '../review/review_write_general_screen.dart';
 import '../../../data/services/delivery_service.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/cart_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../../core/utils/image_url_helper.dart';
@@ -827,7 +828,11 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     }
 
     if (_isConsultationDoneStage(order) || _isPreparingStage(order)) {
-      return _buildPreparingLockedBanner(context);
+      // 비대면 상담완료: '상담완료 후' 접두 / 일반 배송준비중: 접두 없음
+      return _buildPreparingLockedBanner(
+        context,
+        withConsultPrefix: _isConsultationDoneStage(order),
+      );
     }
 
     if (_isCompletedStage(order)) {
@@ -892,7 +897,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     return null;
   }
 
-  Widget _buildPreparingLockedBanner(BuildContext context) {
+  Widget _buildPreparingLockedBanner(
+    BuildContext context, {
+    required bool withConsultPrefix,
+  }) {
+    final message = withConsultPrefix
+        ? '상담완료 후 배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.'
+        : '배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.';
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
@@ -904,7 +915,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         ),
       ),
       child: Text(
-        '상담완료 후 배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.',
+        message,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: _kPink,
@@ -1113,13 +1124,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         order.displayStatus == '주문취소';
   }
 
-  /// 주문 상세 화면으로 이동
-  void _navigateToOrderDetail(String orderNumber) {
-    Navigator.pushNamed(
+  /// 주문 상세 화면으로 이동 (복귀 시 목록 갱신 — 수령확인/취소 반영)
+  Future<void> _navigateToOrderDetail(String orderNumber) async {
+    await Navigator.pushNamed(
       context,
       '/order-detail',
       arguments: {'orderNumber': orderNumber},
     );
+    if (mounted) await _loadOrders();
   }
 
   Future<void> _openInquiry() async {
@@ -1130,21 +1142,89 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   Future<void> _reorder(OrderListModel order) async {
-    String itId = '';
-    if (order.items.isNotEmpty) {
-      itId = order.items.first.itId.trim();
+    final user = await AuthService.getUser();
+    if (user == null) {
+      if (!mounted) return;
+      AppToastOverlay.show(context, '로그인이 필요합니다.');
+      return;
     }
-    if (itId.isEmpty) {
+
+    // 상세에서 옵션·수량 포함 상품 목록을 가져와 동일 구성으로 담기
+    List<OrderItem> products = List<OrderItem>.from(order.items);
+    try {
+      final detailResult = await OrderService.getOrderDetail(
+        odId: order.odId,
+        mbId: user.id,
+      );
+      if (detailResult['success'] == true) {
+        final detail = detailResult['order'] as OrderDetailModel;
+        if (detail.products.isNotEmpty) {
+          products = detail.products;
+        }
+      }
+    } catch (_) {}
+
+    if (products.isEmpty) {
       if (!mounted) return;
       AppToastOverlay.show(context, '재주문할 상품 정보를 찾을 수 없습니다.');
       return;
     }
-    if (!mounted) return;
-    if (order.isPrescriptionOrder) {
-      Navigator.pushNamed(context, '/product/$itId');
-    } else {
-      Navigator.pushNamed(context, '/product-general/$itId');
+
+    final defaultKind =
+        order.isPrescriptionOrder ? 'prescription' : 'general';
+    String? sharedOdId;
+
+    for (final product in products) {
+      if (product.itId.trim().isEmpty) continue;
+
+      final qty = product.ctQty > 0 ? product.ctQty : 1;
+      var kind =
+          (product.ctKind ?? product.itKind ?? defaultKind).trim();
+      if (kind.toLowerCase().startsWith('supply_add|')) {
+        kind = defaultKind;
+      }
+      if (kind.isEmpty) kind = defaultKind;
+
+      final price = product.ctPrice > 0
+          ? product.ctPrice
+          : (product.totalPrice > 0 ? product.totalPrice : 0);
+      final optionText = (product.ctOption ?? '').trim();
+      final optionId = (product.ioId ?? '').trim();
+      final parentItId = (product.parent ?? '').trim();
+
+      final result = await CartService.addToCart(
+        productId: product.itId,
+        quantity: qty,
+        price: price,
+        optionId: optionId.isEmpty ? null : optionId,
+        optionText: optionText.isEmpty ? null : optionText,
+        optionPrice: product.ioPrice,
+        ioType: product.ioType,
+        odId: sharedOdId,
+        ctKind: kind,
+        parentItId: parentItId.isEmpty ? null : parentItId,
+        ctStatus: '쇼핑',
+      );
+
+      if (result['success'] != true) {
+        if (!mounted) return;
+        AppToastOverlay.show(
+          context,
+          result['message']?.toString() ?? '장바구니 담기에 실패했습니다.',
+        );
+        return;
+      }
+
+      final data = result['data'];
+      if (data is Map) {
+        final map = Map<String, dynamic>.from(data);
+        sharedOdId ??= (map['od_id'] ?? map['odId'])?.toString();
+      }
     }
+
+    if (!mounted) return;
+    AppToastOverlay.show(context, '장바구니에 담았습니다.');
+    Navigator.pushNamed(context, '/cart');
   }
 
   /// 주문 취소
@@ -1221,7 +1301,16 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (!mounted) return;
 
     if (result['success'] == true) {
-      _loadOrders();
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '수령 확인되었습니다.',
+      );
+      await _loadOrders();
+    } else {
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '수령확인에 실패했습니다.',
+      );
     }
   }
 

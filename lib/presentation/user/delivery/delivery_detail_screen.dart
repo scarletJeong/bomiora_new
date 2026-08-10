@@ -79,12 +79,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
       if (result['success'] == true) {
         final order = result['order'] as OrderDetailModel;
-        debugPrint(
-          '[DeliveryDetailScreen] odId=${order.odId} '
-          'odDepositName=${order.odDepositName} '
-          'odBankAccount=${order.odBankAccount} '
-          'paymentMethod=${order.paymentMethod}',
-        );
         setState(() {
           _orderDetail = order;
           _deliveryMemo = (order.deliveryMessage ?? '').trim();
@@ -163,8 +157,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final showDepositCard = awaiting &&
         (order.paymentMethod.contains('가상') ||
             (order.odBankAccount ?? '').trim().isNotEmpty);
-    final showSeparatedReservation =
-        isRx && (delivering || completed) && !cancelled;
 
     final gap = SizedBox(height: healthDp(context, 20));
 
@@ -192,7 +184,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               DeliveryDetailPaymentSection(
                 order: order,
                 cancelled: true,
-                initiallyExpanded: true,
               ),
               gap,
               _buildProductsSection(order),
@@ -220,13 +211,40 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 gap,
                 DeliveryDetailDepositCard(order: order),
               ],
-              // 결제대기~상담완료: 예약+상품 합쳐진 카드 (예약변경은 결제대기만 숨김)
-              // 배송중/배송완료: 상품 분리 + 결제 아래 예약내역
+              // 결제대기~상담완료: 예약+상품 합쳐진 카드
               if (isRx &&
                   !delivering &&
                   !completed &&
                   (awaiting || paid || preparing || consultDone)) ...[
                 gap,
+                if (consultDone) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      vertical: healthDp(context, 10),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x19FF5A8D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 10)),
+                      ),
+                    ),
+                    child: Text(
+                      '상담완료 후 배송준비중인 상태로\n배송지 변경 또는 취소가 어렵습니다.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: const Color(0xFFFF5A8D),
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                        height: 1.50,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: healthDp(context, 10)),
+                ],
                 DeliveryDetailReservationProductsCard(
                   order: order,
                   showChangeButton: !awaiting && !consultDone,
@@ -234,11 +252,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   asConsultDone: consultDone,
                   actions: _productActions(order),
                 ),
-              ] else if (!completed) ...[
-                gap,
-                _buildProductsSection(order),
-              ],
-              if (!completed) ...[
                 gap,
                 DeliveryDetailAddressSection(
                   order: order,
@@ -249,26 +262,66 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                       : null,
                   memoEditable: canChangeAddress,
                   showChangeButton: canChangeAddress,
-                  // 일반상품 결제대기중에도 핑크 아웃라인 유지
-                  changeButtonPink: !isRx || !awaiting,
+                  changeButtonPink: !awaiting,
                   onChangeTap: _changeDeliveryAddress,
-                  showSameDayShipNote: isRx && (paid || preparing),
+                  showSameDayShipNote: paid || preparing,
                 ),
                 gap,
                 DeliveryDetailPaymentSection(
                   order: order,
                   initiallyExpanded: awaiting,
                 ),
-                if (showSeparatedReservation) ...[
-                  gap,
-                  DeliveryDetailReservationSection(
-                    order: order,
-                    asHistory: true,
-                    showConsultDoneBadge: true,
-                    titleAlign: TextAlign.left,
-                    iconColor: DeliveryDetailSectionStyle.muted,
-                  ),
-                ],
+              ]
+              // 비대면 배송중·배송완료: 주문상품 > 결제 > 주소 > 진료예약내역
+              else if (isRx && (delivering || completed)) ...[
+                gap,
+                _buildProductsSection(order),
+                gap,
+                DeliveryDetailPaymentSection(
+                  order: order,
+                  compact: completed,
+                  initiallyExpanded: false,
+                ),
+                gap,
+                DeliveryDetailAddressSection(
+                  order: order,
+                  deliveryMemo: _deliveryMemo,
+                  memoPresets: _deliveryMemoPresets,
+                  memoEditable: false,
+                  showChangeButton: false,
+                ),
+                gap,
+                DeliveryDetailReservationSection(
+                  order: order,
+                  asHistory: true,
+                  showConsultDoneBadge: true,
+                  titleAlign: TextAlign.left,
+                  iconColor: DeliveryDetailSectionStyle.muted,
+                ),
+              ]
+              // 일반상품 등
+              else if (!completed) ...[
+                gap,
+                _buildProductsSection(order),
+                gap,
+                DeliveryDetailAddressSection(
+                  order: order,
+                  deliveryMemo: _deliveryMemo,
+                  memoPresets: _deliveryMemoPresets,
+                  onMemoChanged: canChangeAddress
+                      ? (v) => setState(() => _deliveryMemo = v)
+                      : null,
+                  memoEditable: canChangeAddress,
+                  showChangeButton: canChangeAddress,
+                  changeButtonPink: true,
+                  onChangeTap: _changeDeliveryAddress,
+                  showSameDayShipNote: false,
+                ),
+                gap,
+                DeliveryDetailPaymentSection(
+                  order: order,
+                  initiallyExpanded: awaiting,
+                ),
               ] else ...[
                 gap,
                 _buildProductsSection(order),
@@ -277,16 +330,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   order: order,
                   compact: true,
                 ),
-                if (showSeparatedReservation) ...[
-                  gap,
-                  DeliveryDetailReservationSection(
-                    order: order,
-                    asHistory: true,
-                    showConsultDoneBadge: true,
-                    titleAlign: TextAlign.left,
-                    iconColor: DeliveryDetailSectionStyle.muted,
-                  ),
-                ],
                 gap,
                 DeliveryDetailAddressSection(
                   order: order,
@@ -546,7 +589,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       mbId: user.id,
       orderDetail: _orderDetail,
     );
-    if (ok && mounted) _loadOrderDetail();
+    if (ok && mounted) {
+      // 목록 복귀 시 리로드되도록 결과 전달 + 상세도 갱신
+      Navigator.pop(context, true);
+    }
   }
 
   Future<void> _confirmPurchase() async {
@@ -562,7 +608,19 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       mbId: user.id,
     );
     if (!mounted) return;
-    if (result['success'] == true) _loadOrderDetail();
+    if (result['success'] == true) {
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '수령 확인되었습니다.',
+      );
+      // 목록 복귀 시 리로드되도록 결과 전달
+      Navigator.pop(context, true);
+    } else {
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '수령확인에 실패했습니다.',
+      );
+    }
   }
 
   Future<void> _changeDeliveryAddress() async {
