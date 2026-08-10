@@ -179,7 +179,7 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                                 padding: EdgeInsets.only(
                                   left: healthDp(context, 27),
                                   right: healthDp(context, 27),
-                                  top: healthDp(context, 20),
+                                  top: healthDp(context, 0),
                                   bottom: healthDp(context, 16),
                                 ),
                                 children: [
