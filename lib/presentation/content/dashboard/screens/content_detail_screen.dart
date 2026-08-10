@@ -76,6 +76,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       final u = await AuthService.getUser();
       if (u != null) {
         mbId = u.id;
+        // 상세 API와 겹치지 않게 프로필만 선행 (실패해도 상세는 진행)
         final hp = await HealthProfileService.getHealthProfile(u.id);
         pfNo = hp?.pfNo ?? 0;
         if (pfNo < 0) pfNo = 0;

@@ -18,6 +18,9 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// null이면 기본 아이콘 크기.
   final double? leadingIconSize;
 
+  /// AppBar 하단 영역 (예: 예약 프로그레스 바).
+  final PreferredSizeWidget? bottom;
+
   const HealthAppBar({
     super.key,
     required this.title,
@@ -26,13 +29,17 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onBack,
     this.titleFontSize,
     this.leadingIconSize,
+    this.bottom,
   });
 
   @override
   Size get preferredSize {
     final views = WidgetsBinding.instance.platformDispatcher.views;
+    final bottomH = bottom?.preferredSize.height ?? 0;
     if (views.isEmpty) {
-      return Size.fromHeight(healthAppBarTotalHeightForWidth(375));
+      return Size.fromHeight(
+        healthAppBarTotalHeightForWidth(375) + bottomH,
+      );
     }
     final view = views.first;
     final physicalW = view.physicalSize.width;
@@ -41,10 +48,14 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
         dpr <= 0 ||
         !physicalW.isFinite ||
         !dpr.isFinite) {
-      return Size.fromHeight(healthAppBarTotalHeightForWidth(375));
+      return Size.fromHeight(
+        healthAppBarTotalHeightForWidth(375) + bottomH,
+      );
     }
     final logicalWidth = physicalW / dpr;
-    return Size.fromHeight(healthAppBarTotalHeightForWidth(logicalWidth));
+    return Size.fromHeight(
+      healthAppBarTotalHeightForWidth(logicalWidth) + bottomH,
+    );
   }
 
   @override
@@ -121,6 +132,7 @@ class HealthAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      bottom: bottom,
     );
   }
 }

@@ -12,7 +12,6 @@ import '../../../data/services/recent_view_service.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/screens/cart_integration_screen.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
-import '../../../data/repositories/content/content_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
 import '../../settings/settings_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -43,15 +42,12 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
   UserModel? _user;
   bool _isTelemedicineExpanded = false;
   bool _isHealthcareStoreExpanded = false;
-  bool _isContentExpanded = false;
   List<Map<String, dynamic>> _recentProducts = [];
   bool _isLoadingRecent = false;
   List<ProductCategoryItem> _generalCategories =
       List<ProductCategoryItem>.from(productGeneralCategoryListFallback);
   List<ProductCategoryItem> _prescriptionCategories =
       List<ProductCategoryItem>.from(productPrescriptionCategoryListFallback);
-  List<String> _contentCategories =
-      List<String>.from(contentCategoryListFallback);
 
   @override
   void initState() {
@@ -59,7 +55,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
     RecentViewService.revision.addListener(_onRecentViewChanged);
     _refreshUser().then((_) => _loadRecentProducts());
     _loadShopCategories();
-    _loadContentCategories();
   }
 
   @override
@@ -70,12 +65,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
 
   void _onRecentViewChanged() {
     _loadRecentProducts();
-  }
-
-  Future<void> _loadContentCategories() async {
-    final categories = await ContentCategoryCatalog.categories();
-    if (!mounted) return;
-    setState(() => _contentCategories = categories);
   }
 
   Future<void> _loadShopCategories() async {
@@ -328,16 +317,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 onTap: () => _popAndPushNamed(context, '/bomiora-introduce'),
               ),
               SizedBox(height: healthDp(context, 10)),
-              _SectionRow(
-                title: '건강 대시보드',
-                titleStyle: _mainMenuTitleStyle(context),
-                titlePadding: _mainMenuTitlePadding(context),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onHealthDashboardTap();
-                },
-              ),
-              SizedBox(height: healthDp(context, 10)),
               Theme(
                 data: theme.copyWith(dividerColor: Colors.transparent),
                 child: Column(
@@ -478,70 +457,25 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                         ),
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 10)),
-                    Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _popAndPushNamed(context, '/content'),
-                                child: Padding(
-                                  padding: _mainMenuTitlePadding(context),
-                                  child: Text(
-                                    '건강 콘텐츠',
-                                    style: _mainMenuTitleStyle(context),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _isContentExpanded = !_isContentExpanded;
-                                });
-                              },
-                              icon: Icon(
-                                _isContentExpanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                color: _inkTitle,
-                                size: healthDp(context, 24),
-                              ),
-                            ),
-                          ],
-                        ),
-                        AnimatedCrossFade(
-                          firstChild: Padding(
-                            padding: EdgeInsets.only(bottom: healthDp(context, 8)),
-                            child: _ExpansionSubmenuWithRail(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: _contentCategories
-                                    .map(
-                                      (category) => _SubLink(
-                                        label: category,
-                                        onTap: () => _popAndPushNamed(
-                                          context,
-                                          '/content/list',
-                                          arguments: {'category': category},
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                            ),
-                          ),
-                          secondChild: const SizedBox.shrink(),
-                          crossFadeState: _isContentExpanded
-                              ? CrossFadeState.showFirst
-                              : CrossFadeState.showSecond,
-                          duration: const Duration(milliseconds: 180),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
+              ),
+              SizedBox(height: healthDp(context, 10)),
+              _SectionRow(
+                title: '건강 대시보드',
+                titleStyle: _mainMenuTitleStyle(context),
+                titlePadding: _mainMenuTitlePadding(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onHealthDashboardTap();
+                },
+              ),
+              SizedBox(height: healthDp(context, 10)),
+              _SectionRow(
+                title: '건강 콘텐츠',
+                titleStyle: _mainMenuTitleStyle(context),
+                titlePadding: _mainMenuTitlePadding(context),
+                onTap: () => _popAndPushNamed(context, '/content'),
               ),
               SizedBox(height: healthDp(context, 20)),
               Divider(
