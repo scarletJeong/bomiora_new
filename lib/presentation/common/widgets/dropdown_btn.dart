@@ -11,7 +11,8 @@ class DropdownBtn extends StatefulWidget {
   final String value;
   final ValueChanged<String> onChanged;
   final double buttonHeight;
-  final double panelMaxHeight;
+  /// [scrollWhenItemCountExceeds] 미사용 시 패널 최대 높이(px)
+  final double? panelMaxHeight;
   final String emptyText;
   final bool enabled;
   /// 375 기준 글자 크기 ([healthSp]로 스케일)
@@ -27,6 +28,53 @@ class DropdownBtn extends StatefulWidget {
   final Color? valueTextColor;
   /// 테두리 색 — null이면 `#D2D2D2`
   final Color? borderColor;
+
+  /// 아이템 수가 이 값을 **초과**하면 스크롤 모드.
+  /// 예: 6 → 7개 이상일 때 [maxVisibleItemsWhenScrolling]개만 노출
+  final int? scrollWhenItemCountExceeds;
+
+  /// 스크롤 모드일 때 보이는 아이템 수 (예: 5.5, 4.5)
+  final double? maxVisibleItemsWhenScrolling;
+
+  /// 아이템 1개당 예상 높이 (패딩 + 텍스트 + divider)
+  static double estimateItemExtent({
+    required BuildContext context,
+    required double itemFontSizeBase,
+    required EdgeInsetsGeometry itemPadding,
+  }) {
+    final pad = itemPadding.resolve(TextDirection.ltr);
+    final textH = healthSp(context, itemFontSizeBase) * 1.2;
+    final dividerW = healthDp(context, 0.5);
+    return pad.vertical + textH + dividerW;
+  }
+
+  /// 패널 maxHeight 계산
+  static double resolvePanelMaxHeight({
+    required BuildContext context,
+    required int itemCount,
+    required double itemFontSizeBase,
+    required EdgeInsetsGeometry itemPadding,
+    double? panelMaxHeight,
+    int? scrollWhenItemCountExceeds,
+    double? maxVisibleItemsWhenScrolling,
+  }) {
+    final extent = estimateItemExtent(
+      context: context,
+      itemFontSizeBase: itemFontSizeBase,
+      itemPadding: itemPadding,
+    );
+
+    if (scrollWhenItemCountExceeds != null &&
+        maxVisibleItemsWhenScrolling != null &&
+        itemCount > 0) {
+      if (itemCount > scrollWhenItemCountExceeds) {
+        return extent * maxVisibleItemsWhenScrolling;
+      }
+      return extent * itemCount;
+    }
+
+    return panelMaxHeight ?? healthDp(context, 260);
+  }
 
   /// 앵커 위젯 기준으로 드롭다운 메뉴 표시
   static void showMenu({
@@ -48,6 +96,8 @@ class DropdownBtn extends StatefulWidget {
     bool blurBackdrop = false,
     double blurSigma = 4,
     double backdropOpacity = 0.72,
+    int? scrollWhenItemCountExceeds,
+    double? maxVisibleItemsWhenScrolling,
   }) {
     closeMenu();
 
@@ -70,7 +120,26 @@ class DropdownBtn extends StatefulWidget {
     final size = box.size;
     final offset = box.localToGlobal(Offset.zero);
     final panelWidth = menuWidth ?? size.width;
-    final maxPanelH = panelMaxHeight ?? healthDp(context, 260);
+    var maxPanelH = resolvePanelMaxHeight(
+      context: context,
+      itemCount: items.length,
+      itemFontSizeBase: itemFontSizeBase,
+      itemPadding: resolvedItemPadding,
+      panelMaxHeight: panelMaxHeight,
+      scrollWhenItemCountExceeds: scrollWhenItemCountExceeds,
+      maxVisibleItemsWhenScrolling: maxVisibleItemsWhenScrolling,
+    );
+
+    // 항상 아래로 열림. 화면 하단을 넘지 않도록 높이만 클램프.
+    final media = MediaQuery.of(context);
+    final screenH = media.size.height;
+    final safeBottom = media.padding.bottom;
+    final spaceBelow =
+        screenH - safeBottom - (offset.dy + size.height + menuGap);
+    if (spaceBelow > 0 && maxPanelH > spaceBelow) {
+      maxPanelH = spaceBelow;
+    }
+    final menuTop = offset.dy + size.height + menuGap;
 
     void close() {
       closeMenu();
@@ -105,7 +174,7 @@ class DropdownBtn extends StatefulWidget {
             ),
             Positioned(
               left: offset.dx,
-              top: offset.dy + size.height + menuGap,
+              top: menuTop,
               width: panelWidth,
               child: Material(
                 color: Colors.white,
@@ -185,6 +254,50 @@ class DropdownBtn extends StatefulWidget {
     overlay.insert(_sharedOverlayEntry!);
   }
 
+  /// 아래로 열 공간이 부족하면 조상 [Scrollable]을 스크롤해 여유를 만든다.
+  static Future<void> ensureSpaceBelowForMenu({
+    required BuildContext context,
+    GlobalKey? anchorKey,
+    BuildContext? anchorContext,
+    required double neededHeight,
+    double? gap,
+  }) async {
+    final ctx = anchorContext ?? anchorKey?.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final menuGap = gap ?? healthDp(context, 6);
+    final media = MediaQuery.of(context);
+    final screenH = media.size.height;
+    final safeBottom = media.padding.bottom;
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final spaceBelow =
+        screenH - safeBottom - (offset.dy + size.height + menuGap);
+    if (spaceBelow >= neededHeight) return;
+
+    final scrollable = Scrollable.maybeOf(ctx);
+    if (scrollable == null) return;
+    final position = scrollable.position;
+    if (!position.hasContentDimensions) return;
+
+    final deficit = neededHeight - spaceBelow + healthDp(context, 12);
+    final target = (position.pixels + deficit).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((target - position.pixels).abs() < 1) return;
+
+    await position.animateTo(
+      target,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+    // 레이아웃 반영 대기
+    await Future<void>.delayed(Duration.zero);
+  }
+
   static void closeMenu() {
     final entry = _sharedOverlayEntry;
     if (entry == null) return;
@@ -202,7 +315,7 @@ class DropdownBtn extends StatefulWidget {
     required this.value,
     required this.onChanged,
     this.buttonHeight = 36,
-    this.panelMaxHeight = 260,
+    this.panelMaxHeight,
     this.emptyText = '선택',
     this.enabled = true,
     this.itemFontSizeBase = 14,
@@ -213,6 +326,8 @@ class DropdownBtn extends StatefulWidget {
     this.emptyTextColor,
     this.valueTextColor,
     this.borderColor,
+    this.scrollWhenItemCountExceeds,
+    this.maxVisibleItemsWhenScrolling,
   });
 
   @override
@@ -237,7 +352,7 @@ class _DropdownBtnState extends State<DropdownBtn> {
     if (mounted) setState(() {});
   }
 
-  void _toggle() {
+  Future<void> _toggle() async {
     if (!widget.enabled || widget.items.isEmpty) return;
     if (_open) {
       _closeAndRebuild();
@@ -250,6 +365,23 @@ class _DropdownBtnState extends State<DropdownBtn> {
           horizontal: healthDp(context, 8),
         );
 
+    final neededHeight = DropdownBtn.resolvePanelMaxHeight(
+      context: context,
+      itemCount: widget.items.length,
+      itemFontSizeBase: widget.itemFontSizeBase,
+      itemPadding: itemPadding,
+      panelMaxHeight: widget.panelMaxHeight,
+      scrollWhenItemCountExceeds: widget.scrollWhenItemCountExceeds,
+      maxVisibleItemsWhenScrolling: widget.maxVisibleItemsWhenScrolling,
+    );
+
+    await DropdownBtn.ensureSpaceBelowForMenu(
+      context: context,
+      anchorKey: _anchorKey,
+      neededHeight: neededHeight,
+    );
+    if (!mounted) return;
+
     DropdownBtn.showMenu(
       context: context,
       anchorKey: _anchorKey,
@@ -260,12 +392,14 @@ class _DropdownBtnState extends State<DropdownBtn> {
       leadingBuilder: widget.leadingBuilder,
       itemLeadingGapBase: widget.itemLeadingGapBase,
       itemPadding: itemPadding,
+      scrollWhenItemCountExceeds: widget.scrollWhenItemCountExceeds,
+      maxVisibleItemsWhenScrolling: widget.maxVisibleItemsWhenScrolling,
       onSelected: (item) {
         widget.onChanged(item);
         if (mounted) setState(() {});
       },
     );
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
