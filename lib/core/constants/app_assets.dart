@@ -43,8 +43,11 @@ abstract final class AppAssets {
   // 설정 아이콘
   static const String settingsIcon = '${_img}mypage_settings_icon.svg';
 
-  // 공통 토스트 오버레이
+  // 공통 토스트 오버레이 체크 아이콘
   static const String commonToastOverlay = '${_img}commonToastOverlay.svg';
+
+  // 안내 아이콘
+  static const String guideIcon = '${_img}guide_icon.svg';
   
   /* 1. 홈 */
   // 리뷰카드 오버레이 (PNG) assets/img/review_card_overlay`
