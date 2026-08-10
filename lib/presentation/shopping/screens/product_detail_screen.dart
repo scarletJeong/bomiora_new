@@ -75,6 +75,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   // 옵션 관련 상태
   List<ProductOption> _productOptions = [];
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
+  List<SupplyCartLine> _supplyLines = [];
 
   /// 장바구니 추천 바텀시트와 동일한 API 목록 (`추가 상품 구매하기`)
   List<Product> _recommendedProducts = [];
@@ -1499,6 +1500,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       product: _product!,
       options: _productOptions,
       selectedOptions: _selectedOptions,
+      supplyLines: _supplyLines,
       userPoint: _product!.isInfluencerProduct ? null : _userPoint,
       isFavorite: _isFavorite,
       onToggleFavorite: _toggleFavorite,
@@ -1507,6 +1509,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onOptionsChanged: (newOptions) {
         _safeSetState(() {
           _selectedOptions = newOptions;
+        });
+      },
+      onSupplyLinesChanged: (lines) {
+        _safeSetState(() {
+          _supplyLines = lines;
         });
       },
       onAddToCart: () async {
@@ -1529,6 +1536,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         final result = await CartService.addOptionsToCart(
           product: _product!,
           selectedOptions: _selectedOptions,
+          supplyLines: _supplyLines,
         );
 
         if (!mounted) return;
@@ -1536,6 +1544,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         if (result['success'] == true) {
           _safeSetState(() {
             _selectedOptions.clear();
+            _supplyLines.clear();
           });
           await _loadRecommendedProducts();
           if (!mounted) return;
@@ -1704,6 +1713,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final result = await CartService.addOptionsToCart(
       product: _product!,
       selectedOptions: _selectedOptions,
+      supplyLines: _supplyLines,
     );
 
     if (!mounted) return null;
@@ -1712,6 +1722,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       final cartIds = CartService.cartIdsFromAddOptionsResult(result);
       setState(() {
         _selectedOptions.clear();
+        _supplyLines.clear();
       });
       if (navigateToCart && mounted) {
         await CartNavigation.openCart(context, prescriptionTab: true);

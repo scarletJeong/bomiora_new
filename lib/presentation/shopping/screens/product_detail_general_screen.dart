@@ -78,6 +78,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   // 옵션 관련 상태
   List<ProductOption> _productOptions = [];
   Map<ProductOption, int> _selectedOptions = {}; // 옵션과 수량을 함께 관리
+  List<SupplyCartLine> _supplyLines = [];
   List<Product> _recommendedProducts = [];
 
   void _safeSetState(VoidCallback fn) {
@@ -1477,6 +1478,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       product: _product!,
       options: _productOptions,
       selectedOptions: _selectedOptions,
+      supplyLines: _supplyLines,
       userPoint: _product!.isInfluencerProduct ? null : _userPoint,
       isFavorite: _isFavorite,
       productKindOverride: 'general',
@@ -1486,6 +1488,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       onOptionsChanged: (newOptions) {
         _safeSetState(() {
           _selectedOptions = newOptions;
+        });
+      },
+      onSupplyLinesChanged: (lines) {
+        _safeSetState(() {
+          _supplyLines = lines;
         });
       },
       onAddToCart: () async {
@@ -1508,6 +1515,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         final result = await CartService.addOptionsToCart(
           product: _product!,
           selectedOptions: _selectedOptions,
+          supplyLines: _supplyLines,
           mergeIfExists: true,
         );
 
@@ -1516,6 +1524,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         if (result['success'] == true) {
           _safeSetState(() {
             _selectedOptions.clear();
+            _supplyLines.clear();
           });
           await _loadRecommendedProducts();
           if (!mounted) return;
@@ -1538,10 +1547,14 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         }
 
         final options = Map<ProductOption, int>.from(_selectedOptions);
+        final supply = List<SupplyCartLine>.from(_supplyLines);
         Navigator.of(context).pop();
         if (!mounted) return;
 
-        await _buySelectedGeneralProductNow(selectedOptions: options);
+        await _buySelectedGeneralProductNow(
+          selectedOptions: options,
+          supplyLines: supply,
+        );
       },
     );
   }
@@ -1680,6 +1693,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
   Future<void> _buySelectedGeneralProductNow({
     Map<ProductOption, int>? selectedOptions,
+    List<SupplyCartLine>? supplyLines,
     int? quantity,
   }) async {
     if (_product == null) return;
@@ -1695,6 +1709,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       result = await CartService.addOptionsToCart(
         product: _product!,
         selectedOptions: selectedOptions!,
+        supplyLines: supplyLines ?? _supplyLines,
         mergeIfExists: false,
       );
     } else {
@@ -1713,6 +1728,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
 
     _safeSetState(() {
       _selectedOptions.clear();
+      _supplyLines.clear();
     });
 
     final payItems = await _resolveGeneralBuyNowPayItems(
