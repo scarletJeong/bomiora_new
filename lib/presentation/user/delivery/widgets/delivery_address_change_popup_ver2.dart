@@ -829,60 +829,84 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     );
   }
 
-  Widget _addressSearchButtonSlot(
-    BuildContext context, {
-    required bool interactive,
-  }) {
+  Widget _readOnlyBox(BuildContext context, String text, {String? hint}) {
+    final display = text.trim();
     final radius = healthDp(context, 10);
-    final fieldH = healthDp(context, 45);
-    final button = Container(
-      height: fieldH,
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
+    return Container(
+      width: double.infinity,
+      height: healthDp(context, 45),
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
-        color: _kPink,
+        color: _kFieldFill,
         shape: RoundedRectangleBorder(
+          side: const BorderSide(color: _kBorder),
           borderRadius: BorderRadius.circular(radius),
         ),
       ),
-      alignment: Alignment.center,
+      alignment: Alignment.centerLeft,
       child: Text(
-        '주소 검색',
+        display.isEmpty ? (hint ?? '') : display,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: Colors.white,
+          color: display.isEmpty ? _kMuted : _kInk,
           fontSize: healthSp(context, 12),
           fontFamily: _kFont,
-          fontWeight: FontWeight.w500,
+          fontWeight: display.isEmpty ? FontWeight.w300 : FontWeight.w500,
         ),
       ),
     );
+  }
 
-    if (!interactive) {
-      return Opacity(
-        opacity: 0,
-        child: IgnorePointer(child: button),
-      );
-    }
+  double _addressSearchButtonWidth(BuildContext context) {
+    final style = TextStyle(
+      fontSize: healthSp(context, 12),
+      fontFamily: _kFont,
+      fontWeight: FontWeight.w500,
+    );
+    final painter = TextPainter(
+      text: TextSpan(text: '주소 검색', style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    return painter.width + healthDp(context, 14) * 2;
+  }
 
+  Widget _addressSearchButton(BuildContext context) {
+    final radius = healthDp(context, 10);
+    final fieldH = healthDp(context, 45);
+    final btnW = _addressSearchButtonWidth(context);
     return InkWell(
       onTap: _openAddressSearch,
       borderRadius: BorderRadius.circular(radius),
-      child: button,
-    );
-  }
-
-  Widget _alignedFieldRow(BuildContext context, Widget field) {
-    return Row(
-      children: [
-        Expanded(child: field),
-        SizedBox(width: healthDp(context, 8)),
-        _addressSearchButtonSlot(context, interactive: false),
-      ],
+      child: Container(
+        width: btnW,
+        height: fieldH,
+        clipBehavior: Clip.antiAlias,
+        decoration: ShapeDecoration(
+          color: _kPink,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '주소 검색',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: healthSp(context, 12),
+            fontFamily: _kFont,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _addressSearchRow(BuildContext context) {
-    final addressText = _addr1Controller.text.trim();
+    // 검색 후 이 칸에 우편번호 표시 (총 3칸: 우편번호+검색 / 주소1 / 상세)
+    final zipText = _zipController.text.trim();
     final borderColor = _pulseBorderColor('address');
     final radius = healthDp(context, 10);
     final fieldH = healthDp(context, 45);
@@ -907,22 +931,22 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
               ),
               alignment: Alignment.centerLeft,
               child: Text(
-                addressText.isEmpty ? '주소를 검색해 주세요' : addressText,
+                zipText.isEmpty ? '주소를 검색해 주세요' : zipText,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: addressText.isEmpty ? _kMuted : _kInk,
+                  color: zipText.isEmpty ? _kMuted : _kInk,
                   fontSize: healthSp(context, 12),
                   fontFamily: _kFont,
                   fontWeight:
-                      addressText.isEmpty ? FontWeight.w300 : FontWeight.w500,
+                      zipText.isEmpty ? FontWeight.w300 : FontWeight.w500,
                 ),
               ),
             ),
           ),
         ),
         SizedBox(width: healthDp(context, 8)),
-        _addressSearchButtonSlot(context, interactive: true),
+        _addressSearchButton(context),
       ],
     );
   }
@@ -1102,44 +1126,35 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                             ),
                             if (_subjectPreset == _SubjectPreset.custom) ...[
                               SizedBox(height: healthDp(context, 8)),
-                              _alignedFieldRow(
-                                context,
-                                _field(
-                                  context: context,
-                                  controller: _subjectController,
-                                  hint: '배송지명을 입력해 주세요.',
-                                  pulseKey: 'subject',
-                                ),
+                              _field(
+                                context: context,
+                                controller: _subjectController,
+                                hint: '배송지명을 입력해 주세요.',
+                                pulseKey: 'subject',
                               ),
                             ],
                             SizedBox(height: healthDp(context, 16)),
                             _requiredLabel(context, '받으시는 분'),
                             SizedBox(height: healthDp(context, 8)),
-                            _alignedFieldRow(
-                              context,
-                              _field(
-                                context: context,
-                                controller: _nameController,
-                                hint: '수령인의 이름을 입력해 주세요.',
-                                pulseKey: 'name',
-                              ),
+                            _field(
+                              context: context,
+                              controller: _nameController,
+                              hint: '수령인의 이름을 입력해 주세요.',
+                              pulseKey: 'name',
                             ),
                             SizedBox(height: healthDp(context, 16)),
                             _requiredLabel(context, '연락처'),
                             SizedBox(height: healthDp(context, 8)),
-                            _alignedFieldRow(
-                              context,
-                              _field(
-                                context: context,
-                                controller: _phoneController,
-                                hint: "'-' 없이 기입해 주세요.",
-                                pulseKey: 'phone',
-                                keyboardType: TextInputType.phone,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(11),
-                                ],
-                              ),
+                            _field(
+                              context: context,
+                              controller: _phoneController,
+                              hint: "'-' 없이 기입해 주세요.",
+                              pulseKey: 'phone',
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(11),
+                              ],
                             ),
                             SizedBox(height: healthDp(context, 16)),
                             _requiredLabel(context, '배송지 주소'),
@@ -1147,14 +1162,17 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                             _addressSearchRow(context),
                             if (hasAddress) ...[
                               SizedBox(height: healthDp(context, 8)),
-                              _alignedFieldRow(
+                              _readOnlyBox(
                                 context,
-                                _field(
-                                  context: context,
-                                  controller: _addr2Controller,
-                                  hint: '상세 주소를 입력해 주세요.',
-                                  pulseKey: 'addr2',
-                                ),
+                                _addr1Controller.text,
+                                hint: '기본 주소',
+                              ),
+                              SizedBox(height: healthDp(context, 8)),
+                              _field(
+                                context: context,
+                                controller: _addr2Controller,
+                                hint: '상세 주소를 입력해 주세요.',
+                                pulseKey: 'addr2',
                               ),
                             ],
                             SizedBox(height: healthDp(context, 16)),

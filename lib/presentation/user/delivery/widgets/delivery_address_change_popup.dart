@@ -863,62 +863,55 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     );
   }
 
-  /// 주소검색 버튼과 동일 폭의 자리 — 다른 입력칸 폭을 맞출 때 사용.
-  Widget _addressSearchButtonSlot(
-    BuildContext context, {
-    required bool interactive,
-  }) {
+  /// '주소 검색' 버튼 고정 폭 (입력칸 정렬용)
+  double _addressSearchButtonWidth(BuildContext context) {
+    final style = TextStyle(
+      fontSize: healthSp(context, 12),
+      fontFamily: _kFont,
+      fontWeight: FontWeight.w500,
+    );
+    final painter = TextPainter(
+      text: TextSpan(text: '주소 검색', style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    return painter.width + healthDp(context, 14) * 2;
+  }
+
+  Widget _addressSearchButton(BuildContext context) {
     final radius = healthDp(context, 10);
     final fieldH = _fieldHeight(context);
-    final button = Container(
-      height: fieldH,
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
-      clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        color: _kPink,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        '주소 검색',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: healthSp(context, 12),
-          fontFamily: _kFont,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-
-    if (!interactive) {
-      return Opacity(
-        opacity: 0,
-        child: IgnorePointer(child: button),
-      );
-    }
-
+    final btnW = _addressSearchButtonWidth(context);
     return InkWell(
       onTap: _openAddressSearch,
       borderRadius: BorderRadius.circular(radius),
-      child: button,
-    );
-  }
-
-  /// 주소검색 행과 동일한 입력칸 폭 (버튼 자리만큼 비움).
-  Widget _alignedFieldRow(BuildContext context, Widget field) {
-    return Row(
-      children: [
-        Expanded(child: field),
-        SizedBox(width: healthDp(context, 8)),
-        _addressSearchButtonSlot(context, interactive: false),
-      ],
+      child: Container(
+        width: btnW,
+        height: fieldH,
+        clipBehavior: Clip.antiAlias,
+        decoration: ShapeDecoration(
+          color: _kPink,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '주소 검색',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: healthSp(context, 12),
+            fontFamily: _kFont,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _addressSearchRow(BuildContext context) {
-    final addressText = _addr1Controller.text.trim();
+    // 검색 후 이 칸에 우편번호 표시 (총 3칸: 우편번호+검색 / 주소1 / 상세)
+    final zipText = _zipController.text.trim();
     final borderColor = _pulseBorderColor('address');
     final radius = healthDp(context, 10);
     final fieldH = _fieldHeight(context);
@@ -942,15 +935,15 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
               ),
               alignment: Alignment.centerLeft,
               child: Text(
-                addressText.isEmpty ? '주소를 검색해 주세요' : addressText,
+                zipText.isEmpty ? '주소를 검색해 주세요' : zipText,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: addressText.isEmpty ? _kMuted : _kInk,
+                  color: zipText.isEmpty ? _kMuted : _kInk,
                   fontSize: healthSp(context, 12),
                   fontFamily: _kFont,
                   fontWeight:
-                      addressText.isEmpty ? FontWeight.w300 : FontWeight.w500,
+                      zipText.isEmpty ? FontWeight.w300 : FontWeight.w500,
                   height: 1.2,
                 ),
               ),
@@ -958,7 +951,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
           ),
         ),
         SizedBox(width: healthDp(context, 8)),
-        _addressSearchButtonSlot(context, interactive: true),
+        _addressSearchButton(context),
       ],
     );
   }
@@ -1116,44 +1109,35 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                     ),
                     if (_subjectPreset == _SubjectPreset.custom) ...[
                       SizedBox(height: healthDp(context, 8)),
-                      _alignedFieldRow(
-                        context,
-                        _field(
-                          context: context,
-                          controller: _subjectController,
-                          hint: '배송지명을 입력해 주세요.',
-                          pulseKey: 'subject',
-                        ),
+                      _field(
+                        context: context,
+                        controller: _subjectController,
+                        hint: '배송지명을 입력해 주세요.',
+                        pulseKey: 'subject',
                       ),
                     ],
                     SizedBox(height: healthDp(context, 16)),
                     _requiredLabel(context, '받으시는 분'),
                     SizedBox(height: healthDp(context, 8)),
-                    _alignedFieldRow(
-                      context,
-                      _field(
-                        context: context,
-                        controller: _nameController,
-                        hint: '수령인의 이름을 입력해 주세요.',
-                        pulseKey: 'name',
-                      ),
+                    _field(
+                      context: context,
+                      controller: _nameController,
+                      hint: '수령인의 이름을 입력해 주세요.',
+                      pulseKey: 'name',
                     ),
                     SizedBox(height: healthDp(context, 16)),
                     _requiredLabel(context, '연락처'),
                     SizedBox(height: healthDp(context, 8)),
-                    _alignedFieldRow(
-                      context,
-                      _field(
-                        context: context,
-                        controller: _phoneController,
-                        hint: "'-' 없이 기입해 주세요.",
-                        pulseKey: 'phone',
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(11),
-                        ],
-                      ),
+                    _field(
+                      context: context,
+                      controller: _phoneController,
+                      hint: "'-' 없이 기입해 주세요.",
+                      pulseKey: 'phone',
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11),
+                      ],
                     ),
                     SizedBox(height: healthDp(context, 16)),
                     _requiredLabel(context, '배송지 주소'),
@@ -1161,32 +1145,17 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                     _addressSearchRow(context),
                     if (hasAddress) ...[
                       SizedBox(height: healthDp(context, 8)),
-                      _alignedFieldRow(
+                      _readOnlyBox(
                         context,
-                        _readOnlyBox(
-                          context,
-                          _zipController.text,
-                          hint: '우편번호',
-                        ),
+                        _addr1Controller.text,
+                        hint: '기본 주소',
                       ),
                       SizedBox(height: healthDp(context, 8)),
-                      _alignedFieldRow(
-                        context,
-                        _readOnlyBox(
-                          context,
-                          _addr1Controller.text,
-                          hint: '기본 주소',
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 8)),
-                      _alignedFieldRow(
-                        context,
-                        _field(
-                          context: context,
-                          controller: _addr2Controller,
-                          hint: '상세 주소를 입력해 주세요.',
-                          pulseKey: 'addr2',
-                        ),
+                      _field(
+                        context: context,
+                        controller: _addr2Controller,
+                        hint: '상세 주소를 입력해 주세요.',
+                        pulseKey: 'addr2',
                       ),
                     ],
                     SizedBox(height: healthDp(context, 16)),
