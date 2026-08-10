@@ -1,18 +1,24 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/utils/image_url_helper.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/delivery_service.dart' as delivery;
+import '../../common/widgets/dropdown_btn.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../user/delivery/widgets/delivery_address_change_popup_ver2.dart';
+import '../../user/delivery/widgets/order_flow_dialogs.dart';
+import '../../user/delivery/widgets/reservation_time_change_popup.dart';
 import '../data/payment_complete_preview_data.dart';
+import '../widgets/payment_product_card.dart';
+import '../widgets/prescription_booking_progress_bar.dart';
 
 class PaymentCompleteScreen extends StatefulWidget {
   const PaymentCompleteScreen({
@@ -30,15 +36,21 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   static const Color _pink = Color(0xFFFF5A8D);
   static const Color _ink = Color(0xFF1A1A1E);
   static const Color _muted = Color(0xFF898686);
-  static const Color _cardBorder = Color(0xFFE1E3E4);
-  static const Color _innerBorder = Color(0xFFEDEEEF);
-  static const Color _productBorder = Color(0x7FD2D2D2);
+  static const Color _cardBorder = Color(0x7FD2D2D2);
   static const String _font = 'Gmarket Sans TTF';
+  static const _deliveryMemoPresets = <String>[
+    '문 앞에 놓아주세요',
+    '경비실에 맡겨주세요',
+    '직접 받겠습니다',
+    '배송 전 연락바랍니다',
+    '부재 시 연락주세요',
+  ];
 
   bool _loading = true;
   String? _error;
   OrderDetailModel? _order;
-  bool _paymentBreakdownExpanded = false;
+  String _deliveryMemo = '';
+  bool _paymentBreakdownExpanded = true;
   bool _handlingBlockedBack = false;
 
   @override
@@ -49,8 +61,10 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
 
   Future<void> _loadOrder() async {
     if (PaymentCompletePreviewData.shouldUsePreview(widget.orderId)) {
+      final preview = PaymentCompletePreviewData.previewOrder;
       setState(() {
-        _order = PaymentCompletePreviewData.previewOrder;
+        _order = preview;
+        _deliveryMemo = (preview.deliveryMessage ?? '').trim();
         _loading = false;
         _error = null;
       });
@@ -85,8 +99,10 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
         return;
       }
 
+      final order = result['order'] as OrderDetailModel;
       setState(() {
-        _order = result['order'] as OrderDetailModel;
+        _order = order;
+        _deliveryMemo = (order.deliveryMessage ?? '').trim();
         _loading = false;
       });
     } catch (e) {
@@ -98,6 +114,8 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   }
 
   String _fmtPrice(int value) => '${PriceFormatter.format(value)} 원';
+
+  String _fmtPriceWon(int value) => '${PriceFormatter.format(value)}원';
 
   String _formatPhone(String raw) {
     final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
@@ -118,14 +136,23 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     return parts.join('\n');
   }
 
-  String _paymentMethodLabel(OrderDetailModel order) {
-    final detail = (order.paymentMethodDetail ?? '').trim();
-    if (detail.isEmpty) return order.paymentMethod;
-    return '${order.paymentMethod} $detail';
-  }
-
   bool _isVirtualAccountOrder(OrderDetailModel order) {
     return order.paymentMethod.contains('가상');
+  }
+
+  bool _isCashPayment(OrderDetailModel order) {
+    return order.paymentMethod.contains('가상') ||
+        order.paymentMethod.contains('계좌이체');
+  }
+
+  bool _isAwaitingDeposit(OrderDetailModel order) {
+    if (!_isVirtualAccountOrder(order)) return false;
+    final status = '${order.displayStatus} ${order.odStatus}'.toLowerCase();
+    return status.contains('입금대기') ||
+        status.contains('결제대기') ||
+        status.contains('pending') ||
+        order.odStatus == '주문' ||
+        order.displayStatus.contains('입금대기');
   }
 
   String _formatDepositDeadline(String? raw) {
@@ -138,12 +165,14 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     if (digits.length >= 12) {
       final h = digits.substring(8, 10);
       final mi = digits.substring(10, 12);
-      return '$y.$mo.$d $h:$mi까지';
+      return '$y.$mo.$d $h:$mi까지 입금';
     }
-    return '$y.$mo.$d까지';
+    return '$y.$mo.$d까지 입금';
   }
 
   ({
+    String bankName,
+    String accountNo,
     String bankLine,
     String? holder,
     String deadline,
@@ -166,10 +195,14 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     ].join(' ');
 
     return (
+      bankName: bankName.isEmpty ? '-' : bankName,
+      accountNo: accountNo,
       bankLine: bankLine.isEmpty ? raw : bankLine,
       holder: holder,
       deadline: _formatDepositDeadline(deadlineRaw),
-      copyText: bankLine.isEmpty ? raw : bankLine,
+      copyText: accountNo.isNotEmpty
+          ? accountNo
+          : (bankLine.isEmpty ? raw : bankLine),
     );
   }
 
@@ -185,6 +218,16 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   int _pointDiscountAmount(OrderDetailModel order) {
     if (order.pointDiscount > 0) return order.pointDiscount;
     return order.discountAmount;
+  }
+
+  int _couponDiscountAmount(OrderDetailModel order) {
+    if (order.couponDiscount > 0) return order.couponDiscount;
+    final leftover = order.discountAmount - order.pointDiscount;
+    return leftover > 0 ? leftover : 0;
+  }
+
+  int _expectedPoint(OrderDetailModel order) {
+    return (order.totalPrice * 0.01).floor();
   }
 
   bool _looksLikeReservationSegment(String part) {
@@ -221,6 +264,77 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       reservationText:
           reservationParts.isEmpty ? null : reservationParts.join(' / '),
     );
+  }
+
+  String _formatReservationDateCompact(String? raw) {
+    final d = DateDisplayFormatter.tryParseYmdFlexible(raw);
+    if (d == null) return '-';
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final mm = d.month.toString().padLeft(2, '0');
+    final dd = d.day.toString().padLeft(2, '0');
+    return '$mm월$dd일(${weekdays[d.weekday - 1]})';
+  }
+
+  String _formatReservationTimeRange(OrderDetailModel order) {
+    final st = order.reservationTime?.trim();
+    final et = order.reservationEndTime?.trim();
+    if (st != null && st.isNotEmpty && et != null && et.isNotEmpty) {
+      return '$st - $et';
+    }
+    if (st != null && st.isNotEmpty) return st;
+    if (et != null && et.isNotEmpty) return et;
+
+    for (final item in order.products) {
+      final parsed = _splitOptionAndReservation((item.ctOption ?? '').trim());
+      if (parsed.reservationText != null) {
+        final text = parsed.reservationText!;
+        final match = RegExp(
+          r'(\d{1,2}:\d{2})\s*[~\-–]\s*(\d{1,2}:\d{2})',
+        ).firstMatch(text);
+        if (match != null) {
+          return '${match.group(1)} - ${match.group(2)}';
+        }
+        return text;
+      }
+    }
+    return '-';
+  }
+
+  bool _hasReservationInfo(OrderDetailModel order) {
+    if (!order.isPrescriptionOrder) return false;
+    if ((order.reservationDate ?? '').trim().isNotEmpty) return true;
+    return order.products.any((item) {
+      final parsed = _splitOptionAndReservation((item.ctOption ?? '').trim());
+      return parsed.reservationText != null;
+    });
+  }
+
+  String _reservationDateLabel(OrderDetailModel order) {
+    if ((order.reservationDate ?? '').trim().isNotEmpty) {
+      return _formatReservationDateCompact(order.reservationDate);
+    }
+    for (final item in order.products) {
+      final parsed = _splitOptionAndReservation((item.ctOption ?? '').trim());
+      final text = parsed.reservationText;
+      if (text == null) continue;
+      final match = RegExp(
+        r'(\d{4})\.(\d{2})\.(\d{2})\((.)\)',
+      ).firstMatch(text);
+      if (match != null) {
+        return '${match.group(2)}월${match.group(3)}일(${match.group(4)})';
+      }
+    }
+    return '-';
+  }
+
+  String _paymentDateLabel(OrderDetailModel order) {
+    final raw = order.orderDate.trim();
+    if (raw.isEmpty) return '-';
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length >= 8) {
+      return '${digits.substring(0, 4)}.${digits.substring(4, 6)}.${digits.substring(6, 8)}';
+    }
+    return raw.split(' ').first;
   }
 
   void _openOrderDetail(OrderDetailModel order) {
@@ -301,23 +415,77 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     }
   }
 
-  BoxDecoration _sectionCardDecoration(BuildContext context) {
+  Future<void> _cancelOrder(OrderDetailModel order) async {
+    final user = await AuthService.getUser();
+    if (user == null || !mounted) return;
+    final ok = await OrderFlowDialogs.runOrderCancelFlow(
+      context,
+      odId: order.odId,
+      mbId: user.id,
+      orderDetail: order,
+    );
+    if (ok && mounted) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/order',
+        (route) => route.isFirst,
+      );
+    }
+  }
+
+  Future<void> _changeReservationTime(OrderDetailModel order) async {
+    final date = order.reservationDate?.trim();
+    final time = order.reservationTime?.trim();
+    if (date == null || date.isEmpty || time == null || time.isEmpty) {
+      return;
+    }
+
+    final changeResult = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '예약시간 변경',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (context, _, __) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+            ReservationTimeChangePopup(
+              orderId: order.odId,
+              currentDate: date,
+              currentTime: time,
+            ),
+          ],
+        );
+      },
+    );
+
+    if (changeResult == true && mounted) {
+      await _loadOrder();
+    }
+  }
+
+  BoxDecoration _sectionCardDecoration(
+    BuildContext context, {
+    double radius = 15,
+  }) {
     return BoxDecoration(
       color: Colors.white,
-      border: Border.all(color: _cardBorder, width: healthDp(context, 1)),
-      borderRadius: BorderRadius.circular(healthDp(context, 12)),
-      boxShadow: [
-        BoxShadow(
-          color: const Color(0x0A000000),
-          blurRadius: healthDp(context, 12),
-          offset: Offset(0, healthDp(context, 2)),
-        ),
-      ],
+      border: Border.all(color: _cardBorder, width: 1),
+      borderRadius: BorderRadius.circular(healthDp(context, radius)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isRx = _order?.isPrescriptionOrder == true;
+    final awaiting = _order != null && _isAwaitingDeposit(_order!);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -329,9 +497,19 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
         child: Scaffold(
           backgroundColor: Colors.white,
           appBar: HealthAppBar(
-            title: '주문 완료',
+            title: isRx
+                ? (awaiting
+                    ? '진료예약 중 _ 04 예약 대기중'
+                    : '진료예약 중 _ 04 예약완료')
+                : '주문 완료',
             centerTitle: false,
             onBack: _handleBlockedBack,
+            bottom: isRx
+                ? PrescriptionBookingProgressBar.asAppBarBottom(
+                    currentStep: PrescriptionBookingSteps.complete,
+                    stepProgress: awaiting ? 0.5 : 1,
+                  )
+                : null,
           ),
           body: _loading
               ? const Center(child: CircularProgressIndicator(color: _pink))
@@ -371,6 +549,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   }
 
   Widget _buildContent(BuildContext context, OrderDetailModel order) {
+    final awaiting = _isAwaitingDeposit(order);
     final hPad = healthDp(context, 27);
 
     return SingleChildScrollView(
@@ -386,15 +565,19 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildOrderHeader(context, order),
-                SizedBox(height: healthDp(context, 20)),
-                _buildDeliveryCard(context, order),
-                SizedBox(height: healthDp(context, 20)),
-                _isVirtualAccountOrder(order)
-                    ? _buildVirtualAccountPaymentCard(context, order)
-                    : _buildPaidPaymentCard(context, order),
-                SizedBox(height: healthDp(context, 20)),
-                _buildOrderProductsCard(context, order),
+                if (awaiting) ...[
+                  _buildPendingDepositCard(context, order),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildOrderProductsCard(context, order),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildDeliveryCard(context, order),
+                ] else ...[
+                  _buildOrderProductsCard(context, order),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildDeliveryCard(context, order),
+                  SizedBox(height: healthDp(context, 20)),
+                  _buildPaidPaymentCard(context, order),
+                ],
                 SizedBox(height: healthDp(context, 20)),
                 _buildBottomActions(context, order),
               ],
@@ -405,119 +588,176 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     );
   }
 
-  Widget _buildOrderHeader(BuildContext context, OrderDetailModel order) {
-    if (_isVirtualAccountOrder(order)) {
-      return _buildVirtualAccountHeader(context);
-    }
-    return _buildSuccessHeader(context);
-  }
+  Widget _buildPendingDepositCard(
+    BuildContext context,
+    OrderDetailModel order,
+  ) {
+    final bank = _parseVirtualBankAccount(order);
+    final holder = (bank.holder ?? '').trim();
 
-  Widget _buildSuccessHeader(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: healthDp(context, 40),
-          height: healthDp(context, 40),
-          decoration: BoxDecoration(
-            color: _pink,
-            borderRadius: BorderRadius.circular(healthDp(context, 9999)),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0x19000000),
-                blurRadius: healthDp(context, 4),
-                offset: Offset(0, healthDp(context, 2)),
-                spreadRadius: healthDp(context, -2),
-              ),
-              BoxShadow(
-                color: const Color(0x19000000),
-                blurRadius: healthDp(context, 6),
-                offset: Offset(0, healthDp(context, 4)),
-                spreadRadius: healthDp(context, -1),
-              ),
-            ],
-          ),
-          child: Icon(
-            Icons.check,
-            color: Colors.white,
-            size: healthDp(context, 28),
-          ),
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 14),
+        vertical: healthDp(context, 20),
+      ),
+      decoration: ShapeDecoration(
+        color: const Color(0x0CFF5A8D),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 15)),
         ),
-        Padding(
-          padding: EdgeInsets.only(top: healthDp(context, 10)),
-          child: Text(
-            '주문이 완료되었습니다!',
-            textAlign: TextAlign.center,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            '입금을 기다리고 있어요',
             style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 18),
+              color: const Color(0xFF1A1A1A),
+              fontSize: healthSp(context, 14),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVirtualAccountHeader(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: healthDp(context, 0)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: healthDp(context, 50),
-            height: healthDp(context, 50),
-            decoration: BoxDecoration(
-              color: _pink,
-              borderRadius: BorderRadius.circular(healthDp(context, 9999)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0x19000000),
-                  blurRadius: healthDp(context, 4),
-                  offset: Offset(0, healthDp(context, 2)),
-                  spreadRadius: healthDp(context, -2),
-                ),
-                BoxShadow(
-                  color: const Color(0x19000000),
-                  blurRadius: healthDp(context, 6),
-                  offset: Offset(0, healthDp(context, 4)),
-                  spreadRadius: healthDp(context, -1),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.schedule,
-              color: Colors.white,
-              size: healthDp(context, 28),
-            ),
-          ),
-          SizedBox(height: healthDp(context, 5)),
-          Padding(
-            padding: EdgeInsets.only(top: healthDp(context, 8)),
-            child: Text(
-              '입금을 기다리고 있어요!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _ink,
-                fontSize: healthSp(context, 18),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          SizedBox(height: healthDp(context, 5)),
+          SizedBox(height: healthDp(context, 4)),
           Text(
-            '입금 기한 내에 입금이 완료되어야 주문이 정상적으로 접수됩니다.',
-            textAlign: TextAlign.center,
+            '기한 내 입금 시 주문이 완료됩니다',
             style: TextStyle(
-              color: _muted,
+              color: _pink,
               fontSize: healthSp(context, 12),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
-              letterSpacing: healthDp(context, -0.6),
             ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(healthDp(context, 14)),
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(healthDp(context, 15)),
+              ),
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        bank.bankName,
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: healthSp(context, 12),
+                          fontFamily: _font,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _copyToClipboard(bank.copyText),
+                      borderRadius:
+                          BorderRadius.circular(healthDp(context, 50)),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 12),
+                          vertical: healthDp(context, 4),
+                        ),
+                        decoration: ShapeDecoration(
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            side: const BorderSide(
+                              width: 1,
+                              color: Color(0xFFFF5C8D),
+                            ),
+                            borderRadius:
+                                BorderRadius.circular(healthDp(context, 50)),
+                          ),
+                        ),
+                        child: Text(
+                          '복사',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFFFF5C8D),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: healthDp(context, 10)),
+                Text(
+                  bank.accountNo.isEmpty ? bank.bankLine : bank.accountNo,
+                  style: TextStyle(
+                    color: const Color(0xFF1F2937),
+                    fontSize: healthSp(context, 16),
+                    fontFamily: _font,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: healthDp(context, 10)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        holder.isEmpty ? '예금주 : -' : '예금주 : $holder',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: healthSp(context, 12),
+                          fontFamily: _font,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: -1.08,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _fmtPriceWon(order.totalPrice),
+                      style: TextStyle(
+                        color: _pink,
+                        fontSize: healthSp(context, 16),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.access_time,
+                size: healthDp(context, 14),
+                color: _pink,
+              ),
+              SizedBox(width: healthDp(context, 5)),
+              Text(
+                bank.deadline,
+                style: TextStyle(
+                  color: _pink,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _font,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -525,10 +765,26 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
   }
 
   Widget _buildDeliveryCard(BuildContext context, OrderDetailModel order) {
+    final name = order.recipientName.isNotEmpty
+        ? order.recipientName
+        : order.ordererName;
+    final memo = _deliveryMemo.trim();
+    final memoItems = [
+      ..._deliveryMemoPresets,
+      if (memo.isNotEmpty && !_deliveryMemoPresets.contains(memo)) memo,
+    ];
+    final awaiting = _isAwaitingDeposit(order);
+    // 일반상품 결제대기중에도 배송지 변경 노출 (핑크 아웃라인)
+    final showAddressChange =
+        !awaiting || !order.isPrescriptionOrder;
+
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 20)),
-      decoration: _sectionCardDecoration(context),
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 14),
+        vertical: healthDp(context, 20),
+      ),
+      decoration: _sectionCardDecoration(context, radius: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -537,53 +793,53 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
             children: [
               Expanded(
                 child: Text(
-                  '배송지 정보',
+                  name.isEmpty ? '배송지' : name,
                   style: TextStyle(
-                    color: _ink,
+                    color: const Color(0xFF333333),
                     fontSize: healthSp(context, 16),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
+                    height: 1.75,
                   ),
                 ),
               ),
-              InkWell(
-                onTap: _openDeliveryAddressChange,
-                borderRadius: BorderRadius.circular(healthDp(context, 20)),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 4),
-                    vertical: healthDp(context, 4),
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: _pink, width: healthDp(context, 0.5)),
-                    borderRadius: BorderRadius.circular(healthDp(context, 20)),
-                  ),
-                  child: Text(
-                    '배송지 변경',
-                    style: TextStyle(
-                      color: _pink,
-                      fontSize: healthSp(context, 10),
-                      fontFamily: _font,
-                      fontWeight: FontWeight.w300,
+              if (showAddressChange)
+                InkWell(
+                  onTap: _openDeliveryAddressChange,
+                  borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+                  child: Container(
+                    height: healthDp(context, 30),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 12),
+                      vertical: healthDp(context, 4),
+                    ),
+                    alignment: Alignment.center,
+                    decoration: ShapeDecoration(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(
+                          width: 1,
+                          color: _pink,
+                        ),
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 9999)),
+                      ),
+                    ),
+                    child: Text(
+                      '배송지 변경',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _pink,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
-          SizedBox(height: healthDp(context, 20)),
-          Text(
-            order.recipientName.isNotEmpty
-                ? order.recipientName
-                : order.ordererName,
-            style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 14),
-              fontFamily: _font,
-              fontWeight: FontWeight.w300,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 5)),
           Text(
             _formatPhone(
               order.recipientPhone.isNotEmpty
@@ -592,43 +848,227 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
             ),
             style: TextStyle(
               color: _ink,
-              fontSize: healthSp(context, 14),
+              fontSize: healthSp(context, 12),
               fontFamily: _font,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 4)),
           Text(
             _fullAddress(order),
             style: TextStyle(
               color: _ink,
-              fontSize: healthSp(context, 14),
+              fontSize: healthSp(context, 12),
               fontFamily: _font,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          if ((order.deliveryMessage ?? '').trim().isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.only(top: healthDp(context, 12)),
-              padding: EdgeInsets.only(top: healthDp(context, 12)),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: _innerBorder,
-                    width: healthDp(context, 1),
+          SizedBox(height: healthDp(context, 10)),
+          Text(
+            '배송 요청 사항',
+            style: TextStyle(
+              color: _muted,
+              fontSize: healthSp(context, 12),
+              fontFamily: _font,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 5)),
+          DropdownBtn(
+            buttonHeight: healthDp(context, 45),
+            items: memoItems,
+            value: memo,
+            emptyText: '배송메모를 선택해주세요',
+            emptyTextColor: _muted,
+            valueTextColor: _ink,
+            borderColor: const Color(0xFFD2D2D2),
+            itemFontSizeBase: 12,
+            itemTextAlign: TextAlign.left,
+            onChanged: (value) {
+              setState(() => _deliveryMemo = value);
+            },
+          ),
+          SizedBox(height: healthDp(context, 5)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '※ 영업일 기준 오후 2시 이전 처방완료 시 당일 발송',
+              style: TextStyle(
+                color: _muted,
+                fontSize: healthSp(context, 10),
+                fontFamily: _font,
+                fontWeight: FontWeight.w300,
+                letterSpacing: -0.40,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaidPaymentCard(BuildContext context, OrderDetailModel order) {
+    final bank = _parseVirtualBankAccount(order);
+    final showDeposit = _isCashPayment(order) && bank.bankLine.trim().isNotEmpty;
+    final holder = (bank.holder ?? '').trim();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 14),
+        vertical: healthDp(context, 20),
+      ),
+      decoration: _sectionCardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                _paymentBreakdownExpanded = !_paymentBreakdownExpanded;
+              });
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '총 결제비용',
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: healthSp(context, 16),
+                            fontFamily: _font,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -1.44,
+                          ),
+                        ),
+                        SizedBox(width: healthDp(context, 4)),
+                        AnimatedRotation(
+                          turns: _paymentBreakdownExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 180),
+                          child: Icon(
+                            Icons.keyboard_arrow_down,
+                            size: healthDp(context, 16),
+                            color: _ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      _fmtPriceWon(order.totalPrice),
+                      style: TextStyle(
+                        color: _pink,
+                        fontSize: healthSp(context, 20),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: healthDp(context, 2)),
+                if (_expectedPoint(order) > 0)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '예상 적립 포인트 ${PriceFormatter.format(_expectedPoint(order))} 점',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: healthSp(context, 8),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: -0.32,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          _paidInfoRow(
+            context,
+            label: '결제방식',
+            value: order.paymentMethod.isEmpty ? '-' : order.paymentMethod,
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          _paidInfoRow(
+            context,
+            label: '결제일시',
+            value: _paymentDateLabel(order),
+            valueStyle: TextStyle(
+              color: const Color(0xFF374151),
+              fontSize: healthSp(context, 14),
+              fontFamily: _font,
+              fontWeight: FontWeight.w500,
+              height: 1.43,
+            ),
+          ),
+          if (showDeposit) ...[
+            SizedBox(height: healthDp(context, 10)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+                  child: Text(
+                    '입금정보',
+                    style: TextStyle(
+                      color: _muted,
+                      fontSize: healthSp(context, 12),
+                      fontFamily: _font,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -1.08,
+                    ),
                   ),
                 ),
-              ),
-              child: Text(
-                order.deliveryMessage!.trim(),
-                style: TextStyle(
-                  color: _ink,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: _font,
-                  fontWeight: FontWeight.w300,
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      bank.bankLine,
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: healthSp(context, 10),
+                        fontFamily: _font,
+                        fontWeight: FontWeight.w300,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (holder.isNotEmpty)
+                      Text(
+                        '(예금주 : $holder)',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: healthSp(context, 10),
+                          fontFamily: _font,
+                          fontWeight: FontWeight.w300,
+                          height: 1.2,
+                        ),
+                      ),
+                  ],
                 ),
-              ),
+              ],
+            ),
+          ],
+          if (_paymentBreakdownExpanded) ...[
+            SizedBox(height: healthDp(context, 10)),
+            Container(
+              width: double.infinity,
+              height: 1,
+              color: const Color(0xFFE8E8E8),
+            ),
+            SizedBox(height: healthDp(context, 10)),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
+              child: _buildPaymentBreakdownDetails(context, order),
             ),
           ],
         ],
@@ -636,329 +1076,43 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     );
   }
 
-  Widget _buildPaidPaymentCard(BuildContext context, OrderDetailModel order) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 20)),
-      decoration: _sectionCardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _paidInfoRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    TextStyle? valueStyle,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            '결제 정보',
+            label,
             style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 16),
+              color: _muted,
+              fontSize: healthSp(context, 12),
               fontFamily: _font,
               fontWeight: FontWeight.w500,
+              letterSpacing: -1.08,
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
-          _buildPaymentMethodRow(context, order),
-          SizedBox(height: healthDp(context, 16)),
-          _buildTotalPaymentBreakdown(context, order),
-        ],
-      ),
-    );
-  }
-
-  // 기싱계좌 - 결제 정보
-  Widget _buildVirtualAccountPaymentCard(
-    BuildContext context,
-    OrderDetailModel order,
-  ) {
-    final bank = _parseVirtualBankAccount(order);
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(healthDp(context, 20)),
-      decoration: _sectionCardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '결제 정보',
-            style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 16),
-              fontFamily: _font,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: healthDp(context, 10)),
-          _buildPaymentMethodRow(context, order),
-          SizedBox(height: healthDp(context, 16)),
-          Padding(
-            padding: EdgeInsets.only(
-              right: healthDp(context, 16),
-              bottom: healthDp(context, 16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      '입금 계좌 정보',
-                      style: TextStyle(
-                        color: _ink,
-                        fontSize: healthSp(context, 14),
-                        fontFamily: _font,
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                    if (bank.copyText.trim().isNotEmpty)
-                      InkWell(
-                        onTap: () => _copyToClipboard(bank.copyText),
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 4)),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: healthDp(context, 6),
-                            vertical: healthDp(context, 2),
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: _pink,
-                              width: healthDp(context, 0.5),
-                            ),
-                            borderRadius:
-                                BorderRadius.circular(healthDp(context, 4)),
-                          ),
-                          child: Text(
-                            '복사',
-                            style: TextStyle(
-                              color: _pink,
-                              fontSize: healthSp(context, 12),
-                              fontFamily: _font,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: healthDp(context, 10)),
-                Text(
-                  bank.bankLine,
-                  style: TextStyle(
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: valueStyle ??
+                  TextStyle(
                     color: _ink,
-                    fontSize: healthSp(context, 16),
+                    fontSize: healthSp(context, 14),
                     fontFamily: _font,
                     fontWeight: FontWeight.w500,
                   ),
-                ),
-                if ((bank.holder ?? '').trim().isNotEmpty) ...[
-                  SizedBox(height: healthDp(context, 4)),
-                  Text(
-                    '(예금주: ${bank.holder})',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: healthSp(context, 14),
-                      fontFamily: _font,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                Container(
-                  width: double.infinity,
-                  margin: EdgeInsets.only(top: healthDp(context, 12)),
-                  padding: EdgeInsets.only(top: healthDp(context, 12)),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: _innerBorder,
-                        width: healthDp(context, 1),
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _paymentBreakdownExpanded =
-                                !_paymentBreakdownExpanded;
-                          });
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '입금 금액',
-                              style: TextStyle(
-                                color: _ink,
-                                fontSize: healthSp(context, 14),
-                                fontFamily: _font,
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${PriceFormatter.format(order.totalPrice)}원',
-                                  style: TextStyle(
-                                    color: _pink,
-                                    fontSize: healthSp(context, 16),
-                                    fontFamily: _font,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                                SizedBox(width: healthDp(context, 5)),
-                                AnimatedRotation(
-                                  turns:
-                                      _paymentBreakdownExpanded ? 0.5 : 0,
-                                  duration:
-                                      const Duration(milliseconds: 200),
-                                  child: Icon(
-                                    Icons.keyboard_arrow_down,
-                                    color: _ink,
-                                    size: healthDp(context, 20),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_paymentBreakdownExpanded) ...[
-                        SizedBox(height: healthDp(context, 12)),
-                        _buildPaymentBreakdownDetails(context, order),
-                      ],
-                      SizedBox(height: healthDp(context, 16)),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '입금 기한',
-                            style: TextStyle(
-                              color: _ink,
-                              fontSize: healthSp(context, 14),
-                              fontFamily: _font,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                          Text(
-                            bank.deadline,
-                            style: TextStyle(
-                              color: _pink,
-                              fontSize: healthSp(context, 14),
-                              fontFamily: _font,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPaymentMethodRow(BuildContext context, OrderDetailModel order) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          '결제 수단',
-          style: TextStyle(
-            color: _ink,
-            fontSize: healthSp(context, 14),
-            fontFamily: _font,
-            fontWeight: FontWeight.w300,
-          ),
-        ),
-        Flexible(
-          child: Text(
-            _paymentMethodLabel(order),
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: _ink,
-              fontSize: healthSp(context, 14),
-              fontFamily: _font,
-              fontWeight: FontWeight.w300,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTotalPaymentBreakdown(
-    BuildContext context,
-    OrderDetailModel order,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          onTap: () {
-            setState(() {
-              _paymentBreakdownExpanded = !_paymentBreakdownExpanded;
-            });
-          },
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: healthDp(context, 10)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '총 결제 금액',
-                  style: TextStyle(
-                    color: _ink,
-                    fontSize: healthSp(context, 16),
-                    fontFamily: _font,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                    letterSpacing: healthSp(context, -0.2),
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _fmtPrice(order.totalPrice),
-                      style: TextStyle(
-                        color: _pink,
-                        fontSize: healthSp(context, 16),
-                        fontFamily: _font,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: healthSp(context, -0.2),
-                      ),
-                    ),
-                    SizedBox(width: healthDp(context, 5)),
-                    AnimatedRotation(
-                      turns: _paymentBreakdownExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        color: _ink,
-                        size: healthDp(context, 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_paymentBreakdownExpanded) ...[
-          Divider(height: healthDp(context, 1), color: _innerBorder),
-          Padding(
-            padding: EdgeInsets.all(healthDp(context, 10)),
-            child: _buildPaymentBreakdownDetails(context, order),
-          ),
-        ],
-      ],
     );
   }
 
@@ -966,41 +1120,74 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     BuildContext context,
     OrderDetailModel order,
   ) {
-    final pointDiscount = _pointDiscountAmount(order);
+    final coupon = _couponDiscountAmount(order);
+    final point = _pointDiscountAmount(order);
+    final rows = <Widget>[];
 
-    return Column(
-      children: [
+    void addRow({
+      required String label,
+      required String value,
+      required Color labelColor,
+      required Color valueColor,
+    }) {
+      if (rows.isNotEmpty) {
+        rows.add(SizedBox(height: healthDp(context, 10)));
+      }
+      rows.add(
         _paymentBreakdownRow(
           context,
-          label: '주문 금액',
-          value: _fmtPrice(order.productPrice),
-          valueColor: _ink,
+          label: label,
+          value: value,
+          labelColor: labelColor,
+          valueColor: valueColor,
         ),
-        SizedBox(height: healthDp(context, 12)),
-        _paymentBreakdownRow(
-          context,
-          label: '포인트 할인',
-          value: pointDiscount > 0
-              ? '- ${_fmtPrice(pointDiscount)}'
-              : _fmtPrice(0),
-          valueColor: pointDiscount > 0 ? _pink : _ink,
-        ),
-        SizedBox(height: healthDp(context, 12)),
-        _paymentBreakdownRow(
-          context,
-          label: '배송비',
-          value: _fmtPrice(order.deliveryFee),
-          valueColor: _ink,
-        ),
-      ],
-    );
+      );
+    }
+
+    if (order.productPrice > 0) {
+      addRow(
+        label: '구매금액',
+        value: _fmtPrice(order.productPrice),
+        labelColor: _muted,
+        valueColor: _ink,
+      );
+    }
+    if (coupon > 0) {
+      addRow(
+        label: '쿠폰할인',
+        value: '-${PriceFormatter.format(coupon)} 원',
+        labelColor: _pink,
+        valueColor: _pink,
+      );
+    }
+    if (point > 0) {
+      addRow(
+        label: '포인트할인',
+        value: '-${PriceFormatter.format(point)} 원',
+        labelColor: _pink,
+        valueColor: _pink,
+      );
+    }
+    if (order.deliveryFee > 0) {
+      addRow(
+        label: '배송비',
+        value: _fmtPrice(order.deliveryFee),
+        labelColor: _muted,
+        valueColor: _ink,
+      );
+    }
+
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Column(children: rows);
   }
 
   Widget _paymentBreakdownRow(
     BuildContext context, {
     required String label,
     required String value,
+    required Color labelColor,
     required Color valueColor,
+    double valueSize = 14,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1008,216 +1195,240 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
         Text(
           label,
           style: TextStyle(
-            color: _ink,
+            color: labelColor,
             fontSize: healthSp(context, 12),
             fontFamily: _font,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w500,
           ),
         ),
         Text(
           value,
           style: TextStyle(
             color: valueColor,
-            fontSize: healthSp(context, 12),
+            fontSize: healthSp(context, valueSize),
             fontFamily: _font,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildOrderProductsCard(BuildContext context, OrderDetailModel order) {
+  Widget _buildOrderProductsCard(
+    BuildContext context,
+    OrderDetailModel order,
+  ) {
+    final showReservation = _hasReservationInfo(order);
+    final awaiting = _isAwaitingDeposit(order);
+
+    // 일반상품: 하나의 카드 안에 업체별 섹션
+    if (!order.isPrescriptionOrder) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PaymentGeneralProductCard(
+            cartItems: cartItemsFromOrderItems(
+              order.products,
+              odId: order.odId,
+            ),
+            title: '결제 예정 목록',
+            showFooterNote: true,
+          ),
+          SizedBox(height: healthDp(context, 10)),
+          _buildOrderCancelButton(context, order),
+        ],
+      );
+    }
+
     return Container(
       width: double.infinity,
-      clipBehavior: Clip.antiAlias,
+      padding: EdgeInsets.symmetric(
+        horizontal: healthDp(context, 14),
+        vertical: healthDp(context, 20),
+      ),
       decoration: _sectionCardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(healthDp(context, 20)),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: _innerBorder,
-                  width: healthDp(context, 1),
-                ),
-              ),
+          if (showReservation) ...[
+            _buildReservationBlock(context, order),
+            SizedBox(height: healthDp(context, awaiting ? 10 : 20)),
+            Container(
+              width: double.infinity,
+              height: 1,
+              color: const Color(0xFFE8E8E8),
             ),
-            child: Text(
-              '주문 상품 (${order.products.length})',
-              style: TextStyle(
-                color: _ink,
-                fontSize: healthSp(context, 16),
-                fontFamily: _font,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(healthDp(context, 10)),
-            child: Column(
-              children: [
-                for (var i = 0; i < order.products.length; i++) ...[
-                  if (i > 0) SizedBox(height: healthDp(context, 10)),
-                  _productCard(context, order.products[i]),
-                ],
-              ],
+            SizedBox(height: healthDp(context, 20)),
+          ],
+          Text(
+            '결제 예정 목록 (${order.products.length})',
+            style: TextStyle(
+              color: _ink,
+              fontSize: healthSp(context, 16),
+              fontFamily: _font,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -1.44,
             ),
           ),
+          SizedBox(height: healthDp(context, 10)),
+          PaymentProductCard(
+            cartItems: cartItemsFromOrderItems(
+              order.products,
+              odId: order.odId,
+            ),
+            showHeader: false,
+            showReservationBanner: false,
+            showSameReservationHint: false,
+          ),
+          SizedBox(height: healthDp(context, 20)),
+          _buildOrderCancelButton(context, order),
         ],
       ),
     );
   }
 
-  // 주문 카드드
-  Widget _productCard(BuildContext context, OrderItem item) {
-    final imageUrl =
-        ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId);
-    final thumb = healthDp(context, 72);
-    final parsed = _splitOptionAndReservation((item.ctOption ?? '').trim());
-    final optionParts = parsed.optionParts;
-    final reservationText = parsed.reservationText;
-
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: _productBorder, width: healthDp(context, 1)),
-          borderRadius: BorderRadius.circular(healthDp(context, 10)),
+  Widget _buildOrderCancelButton(
+    BuildContext context,
+    OrderDetailModel order,
+  ) {
+    return InkWell(
+      onTap: () => _cancelOrder(order),
+      borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+      child: Container(
+        width: double.infinity,
+        height: healthDp(context, 34),
+        alignment: Alignment.center,
+        decoration: ShapeDecoration(
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(width: 1, color: Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+          ),
+        ),
+        child: Text(
+          '주문취소',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _muted,
+            fontSize: healthSp(context, 12),
+            fontFamily: _font,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              healthDp(context, 10),
-              healthDp(context, 20),
-              healthDp(context, 10),
-              reservationText != null ? healthDp(context, 5) : healthDp(context, 20),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: thumb,
-                  height: thumb,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F3F3),
-                    borderRadius: BorderRadius.circular(healthDp(context, 4)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: imageUrl == null
-                      ? Icon(
-                          Icons.image,
-                          color: _muted,
-                          size: healthDp(context, 28),
-                        )
-                      : Image.network(
-                          imageUrl,
-                          width: thumb,
-                          height: thumb,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.image,
-                            color: _muted,
-                            size: healthDp(context, 28),
-                          ),
-                        ),
-                ),
-                SizedBox(width: healthDp(context, 20)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.itName,
-                        style: TextStyle(
-                          color: _ink,
-                          fontSize: healthSp(context, 14),
-                          fontFamily: _font,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: healthDp(context, 5)),
-                      Wrap(
-                        spacing: healthDp(context, 5),
-                        runSpacing: healthDp(context, 4),
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            '수량: ${item.ctQty}',
-                            style: TextStyle(
-                              color: _muted,
-                              fontSize: healthSp(context, 10),
-                              fontFamily: _font,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          for (final part in optionParts) ...[
-                            _metaDivider(context),
-                            Text(
-                              part,
-                              style: TextStyle(
-                                color: _muted,
-                                fontSize: healthSp(context, 10),
-                                fontFamily: _font,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      SizedBox(height: healthDp(context, 5)),
-                      Text(
-                        '${PriceFormatter.format(item.totalPrice)}원',
-                        style: TextStyle(
-                          color: _ink,
-                          fontSize: healthSp(context, 11),
-                          fontFamily: _font,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    );
+  }
+
+  Widget _buildReservationBlock(
+    BuildContext context,
+    OrderDetailModel order,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '보미오라 한의원',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _muted,
+            fontSize: healthSp(context, 12),
+            fontFamily: _font,
+            fontWeight: FontWeight.w500,
           ),
-          if (reservationText != null) ...[
-            Container(
-              width: double.infinity,
-              height: healthDp(context, 0.5),
-              color: const Color(0xFFD2D2D2),
+        ),
+        SizedBox(height: healthDp(context, 2)),
+        Text(
+          '진료 예약 일정',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _ink,
+            fontSize: healthSp(context, 16),
+            fontFamily: _font,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -1.44,
+          ),
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        Container(
+          width: double.infinity,
+          height: 1,
+          color: const Color(0xFFE8E8E8),
+        ),
+        SizedBox(height: healthDp(context, 10)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _reservationMeta(
+              context,
+              icon: Icons.calendar_today_outlined,
+              label: _reservationDateLabel(order),
             ),
-            Padding(
-              padding: EdgeInsets.all(healthDp(context, 10)),
+            _reservationMeta(
+              context,
+              icon: Icons.access_time,
+              label: _formatReservationTimeRange(order),
+            ),
+            _reservationMeta(
+              context,
+              icon: Icons.person_outline,
+              label: '정대진 한의사',
+            ),
+          ],
+        ),
+        if (!_isAwaitingDeposit(order)) ...[
+          SizedBox(height: healthDp(context, 10)),
+          InkWell(
+            onTap: () => _changeReservationTime(order),
+            borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+            child: Container(
+              width: double.infinity,
+              height: healthDp(context, 30),
+              alignment: Alignment.center,
+              decoration: ShapeDecoration(
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(width: 1, color: _pink),
+                  borderRadius: BorderRadius.circular(healthDp(context, 9999)),
+                ),
+              ),
               child: Text(
-                reservationText,
+                '예약 시간 변경',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _pink,
-                  fontSize: healthSp(context, 13),
+                  fontSize: healthSp(context, 12),
                   fontFamily: _font,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 
-  Widget _metaDivider(BuildContext context) {
-    return Container(
-      width: healthDp(context, 0.5),
-      height: healthDp(context, 10),
-      color: _muted,
+  Widget _reservationMeta(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, size: healthDp(context, 24), color: _pink),
+          SizedBox(height: healthDp(context, 4)),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF333333),
+              fontSize: healthSp(context, 12),
+              fontFamily: _font,
+              fontWeight: FontWeight.w500,
+              height: 1.38,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
