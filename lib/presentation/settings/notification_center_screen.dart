@@ -120,6 +120,24 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           Navigator.pushNamed(context, '/qna');
         }
         break;
+      case 'point':
+        Navigator.pushNamed(context, '/point');
+        break;
+      case 'coupon':
+        Navigator.pushNamed(context, '/coupon');
+        break;
+      case 'order':
+      case 'delivery':
+        if (linkId.isNotEmpty) {
+          Navigator.pushNamed(
+            context,
+            '/order-detail',
+            arguments: {'orderNumber': linkId, 'odId': linkId},
+          );
+        } else {
+          Navigator.pushNamed(context, '/order');
+        }
+        break;
       case 'login':
         Navigator.pushNamed(context, '/my_page');
         break;

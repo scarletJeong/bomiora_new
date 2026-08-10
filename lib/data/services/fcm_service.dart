@@ -234,9 +234,21 @@ class FCMService {
   }
 
   void _scheduleNavigation(Map<String, dynamic> data) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _handleNotificationNavigation(data);
-    });
+    // cold start 시 navigator 미준비 대비 — 여러 프레임 재시도
+    var attempts = 0;
+    void tryNav() {
+      attempts += 1;
+      if (appNavigatorKey.currentState != null) {
+        _handleNotificationNavigation(data);
+        return;
+      }
+      if (attempts >= 30) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future<void>.delayed(const Duration(milliseconds: 100), tryNav);
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => tryNav());
   }
 
   void _handleNotificationNavigation(Map<String, dynamic> data) {
@@ -244,7 +256,10 @@ class FCMService {
     if (nav == null) return;
 
     final type = data['type']?.toString() ?? '';
-    final id = data['id']?.toString() ?? data['wr_id']?.toString() ?? '';
+    final id = data['id']?.toString() ??
+        data['wr_id']?.toString() ??
+        data['cp_id']?.toString() ??
+        '';
     final orderNumber =
         data['order_number']?.toString() ?? data['od_id']?.toString() ?? id;
 
@@ -289,7 +304,10 @@ class FCMService {
       case 'contact':
       case 'inquiry':
       case 'qna':
-        final contactWrId = int.tryParse(id);
+        // wr_id 우선 (문의 상세), 없으면 id
+        final contactRaw =
+            data['wr_id']?.toString() ?? data['id']?.toString() ?? '';
+        final contactWrId = int.tryParse(contactRaw);
         if (contactWrId != null && contactWrId > 0) {
           nav.pushNamed(
             '/qna-detail',

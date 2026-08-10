@@ -35,6 +35,8 @@ class NotificationInboxService {
         return '배송시작';
       case 'point':
         return '포인트 적립';
+      case 'coupon':
+        return '쿠폰';
       case 'announcement':
       case 'notice':
         return '공지사항';
@@ -70,7 +72,10 @@ class NotificationInboxService {
       createdAt: DateTime.now(),
       isRead: false,
       type: type,
-      linkId: data['id']?.toString() ?? data['wr_id']?.toString(),
+      linkId: data['wr_id']?.toString() ??
+          data['id']?.toString() ??
+          data['cp_id']?.toString() ??
+          data['od_id']?.toString(),
     );
 
     await _upsertLocal(mbId, item);
