@@ -88,18 +88,18 @@ class _DeliveryDetailPaymentSectionState
     final label = (widget.order.cancelReasonLabel ?? '').trim();
     if (label.isNotEmpty) return label;
     final type = (widget.order.cancelType ?? '').trim();
-    if (type == '고객직접') return '고객요청';
+    if (type == '고객직접') return '고객 요청';
     if (type == '시스템자동') return '입금기한만료';
-    if (type == '관리자') return '고객요청(관리자)';
+    if (type == '관리자') return '고객 요청(관리자)';
     if (type == '기타') return '기타';
     final reason = (widget.order.cancelReason ?? '').trim();
     if (reason.contains('입금기한') || reason.contains('입금 기한')) {
       return '입금기한만료';
     }
     if (reason.contains('본인 직접') || reason.contains('고객직접')) {
-      return '고객요청';
+      return '고객 요청';
     }
-    if (reason.contains('관리자')) return '고객요청(관리자)';
+    if (reason.contains('관리자')) return '고객 요청(관리자)';
     return '기타';
   }
 
@@ -396,7 +396,7 @@ class _DeliveryDetailPaymentSectionState
                           color: DeliveryDetailSectionStyle.ink,
                           fontSize: healthSp(context, 14),
                           fontFamily: DeliveryDetailSectionStyle.font,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w300,
                         ),
                       ),
                     ],

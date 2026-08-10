@@ -115,49 +115,20 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
     required String subject,
     required List<OrderItem> items,
   }) {
-    final showBundleBadge = items.length >= 2;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (subject.isNotEmpty)
-          Row(
-            children: [
-              Flexible(
-                child: Text(
-                  subject,
-                  style: TextStyle(
-                    color: DeliveryDetailSectionStyle.muted,
-                    fontSize: healthSp(context, 12),
-                    fontFamily: DeliveryDetailSectionStyle.font,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (showBundleBadge) ...[
-                SizedBox(width: healthDp(context, 5)),
-                Container(
-                  padding: EdgeInsets.all(healthDp(context, 5)),
-                  decoration: ShapeDecoration(
-                    color: const Color(0x0CFF5A8D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 50)),
-                    ),
-                  ),
-                  child: Text(
-                    '묶음배송',
-                    style: TextStyle(
-                      color: DeliveryDetailSectionStyle.pink,
-                      fontSize: healthSp(context, 10),
-                      fontFamily: DeliveryDetailSectionStyle.font,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+          Text(
+            subject,
+            style: TextStyle(
+              color: DeliveryDetailSectionStyle.muted,
+              fontSize: healthSp(context, 12),
+              fontFamily: DeliveryDetailSectionStyle.font,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         if (subject.isNotEmpty) SizedBox(height: healthDp(context, 10)),
         for (var i = 0; i < items.length; i++) ...[

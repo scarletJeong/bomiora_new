@@ -36,19 +36,21 @@ class DeliveryDetailProductsSection extends StatelessWidget {
           '주문상품 ( ${order.products.length} )',
           style: TextStyle(
             color: DeliveryDetailSectionStyle.ink,
-            fontSize: healthSp(context, 16),
+            fontSize: healthSp(context, asCard ? 16 : 12),
             fontFamily: DeliveryDetailSectionStyle.font,
             fontWeight: FontWeight.w500,
-            letterSpacing: -1.44,
+            letterSpacing: asCard ? -1.44 : -1.08,
           ),
         ),
         SizedBox(height: healthDp(context, 10)),
-        Container(
-          width: double.infinity,
-          height: 0.5,
-          color: const Color(0x7FD2D2D2),
-        ),
-        SizedBox(height: healthDp(context, 10)),
+        if (asCard) ...[
+          Container(
+            width: double.infinity,
+            height: 0.5,
+            color: const Color(0x7FD2D2D2),
+          ),
+          SizedBox(height: healthDp(context, 10)),
+        ],
         ...order.products.asMap().entries.map((entry) {
           final index = entry.key;
           final product = entry.value;
@@ -62,12 +64,6 @@ class DeliveryDetailProductsSection extends StatelessWidget {
           );
         }),
         if (actions.isNotEmpty) ...[
-          SizedBox(height: healthDp(context, 10)),
-          Container(
-            width: double.infinity,
-            height: 1,
-            color: const Color(0xFFE8E8E8),
-          ),
           SizedBox(height: healthDp(context, 10)),
           _actionRow(context),
         ],
