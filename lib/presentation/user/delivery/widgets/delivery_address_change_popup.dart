@@ -65,6 +65,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   final _pageController = PageController();
   final _formScrollController = ScrollController();
   final _addr2FieldKey = GlobalKey();
+  final _subjectFocusNode = FocusNode();
+  final _nameFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
   final _addr2FocusNode = FocusNode();
   final _subjectController = TextEditingController();
   final _nameController = TextEditingController();
@@ -105,12 +108,12 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
   void _onAddr2FocusChanged() {
     if (_addr2FocusNode.hasFocus) {
-      _scrollToAddr2Field();
+      _scrollToAddr2Field(alignment: 0.08);
     }
   }
 
-  /// 상세주소 입력칸이 보이도록 폼을 아래로 스크롤
-  Future<void> _scrollToAddr2Field({double alignment = 0.15}) async {
+  /// 상세주소 입력칸이 키패드 위에 보이도록 폼을 스크롤
+  Future<void> _scrollToAddr2Field({double alignment = 0.08}) async {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     if (!mounted) return;
     final target = _addr2FieldKey.currentContext;
@@ -132,6 +135,29 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     );
   }
 
+  /// 주소검색 종료 후: 상세주소 노출 → 스크롤 → 키패드 오픈
+  Future<void> _focusDetailAddressAfterSearch() async {
+    // setState로 상세주소 칸이 그려질 때까지 대기
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    await _scrollToAddr2Field(alignment: 0.05);
+    if (!mounted) return;
+
+    _addr2FocusNode.requestFocus();
+
+    // 키패드가 올라온 뒤 한 번 더 올려 상세주소가 키패드 위에 오도록
+    await Future<void>.delayed(const Duration(milliseconds: 380));
+    if (!mounted || !_addr2FocusNode.hasFocus) return;
+    await _scrollToAddr2Field(alignment: 0.05);
+  }
+
+  void _moveFocus(FocusNode next) {
+    FocusScope.of(context).requestFocus(next);
+  }
+
   @override
   void dispose() {
     _nameController.removeListener(_onFormChanged);
@@ -142,6 +168,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     _addr2FocusNode.removeListener(_onAddr2FocusChanged);
     _pageController.dispose();
     _formScrollController.dispose();
+    _subjectFocusNode.dispose();
+    _nameFocusNode.dispose();
+    _phoneFocusNode.dispose();
     _addr2FocusNode.dispose();
     _subjectController.dispose();
     _nameController.dispose();
@@ -548,9 +577,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   }
 
   Future<void> _openAddressSearch() async {
-    // 검색 버튼 탭 시 주소 영역(상세주소) 쪽으로 먼저 스크롤
-    await _scrollToAddr2Field(alignment: 0.35);
-    if (!mounted) return;
+    // 검색 중에는 기존 키패드 숨김
+    FocusScope.of(context).unfocus();
 
     final selected = await showDaumPostcodeSearchDialog(context);
     if (!mounted || selected == null) return;
@@ -569,12 +597,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       }
     });
 
-    // 검색 완료 후 상세주소 칸이 보이도록 스크롤 + 포커스
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await _scrollToAddr2Field(alignment: 0.2);
-      if (!mounted) return;
-      _addr2FocusNode.requestFocus();
+    // 다이얼로그 완전히 닫힌 뒤 상세주소 포커스 + 키패드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusDetailAddressAfterSearch();
     });
   }
 
@@ -885,6 +910,8 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     Color fillColor = Colors.white,
     FocusNode? focusNode,
     Key? key,
+    TextInputAction textInputAction = TextInputAction.next,
+    VoidCallback? onSubmitted,
   }) {
     final borderColor = _pulseBorderColor(pulseKey);
     final radius = healthDp(context, 10);
@@ -909,10 +936,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         focusNode: focusNode,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
+        textInputAction: textInputAction,
         cursorColor: _kPink,
         // 키패드에 가리지 않도록 여유 스크롤 패딩
         scrollPadding: EdgeInsets.only(
-          bottom: keyboardInset + healthDp(context, 120),
+          bottom: keyboardInset + healthDp(context, 180),
         ),
         style: TextStyle(
           color: _kInk,
@@ -923,9 +951,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         ),
         onTap: () {
           if (pulseKey == 'addr2') {
-            _scrollToAddr2Field();
+            _scrollToAddr2Field(alignment: 0.05);
           }
         },
+        onEditingComplete: onSubmitted,
+        onSubmitted: (_) => onSubmitted?.call(),
         onChanged: (_) {
           if (_pulseFields.contains(pulseKey)) {
             setState(() => _pulseFields = {..._pulseFields}..remove(pulseKey));
@@ -1261,6 +1291,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                         controller: _subjectController,
                         hint: '배송지명을 입력해 주세요.',
                         pulseKey: 'subject',
+                        focusNode: _subjectFocusNode,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: () => _moveFocus(_nameFocusNode),
                       ),
                     ],
                     SizedBox(height: healthDp(context, 16)),
@@ -1271,6 +1304,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                       controller: _nameController,
                       hint: '수령인의 이름을 입력해 주세요.',
                       pulseKey: 'name',
+                      focusNode: _nameFocusNode,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: () => _moveFocus(_phoneFocusNode),
                     ),
                     SizedBox(height: healthDp(context, 16)),
                     _requiredLabel(context, '연락처'),
@@ -1280,11 +1316,25 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                       controller: _phoneController,
                       hint: "'-' 없이 기입해 주세요.",
                       pulseKey: 'phone',
+                      focusNode: _phoneFocusNode,
                       keyboardType: TextInputType.phone,
+                      textInputAction: hasAddress
+                          ? TextInputAction.next
+                          : TextInputAction.done,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(11),
                       ],
+                      onSubmitted: () {
+                        if (hasAddress) {
+                          _moveFocus(_addr2FocusNode);
+                          _scrollToAddr2Field(alignment: 0.05);
+                        } else {
+                          // 주소 미선택이면 검색으로 유도
+                          _phoneFocusNode.unfocus();
+                          _openAddressSearch();
+                        }
+                      },
                     ),
                     SizedBox(height: healthDp(context, 16)),
                     _requiredLabel(context, '배송지 주소'),
@@ -1305,12 +1355,14 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                         pulseKey: 'addr2',
                         key: _addr2FieldKey,
                         focusNode: _addr2FocusNode,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: () => _addr2FocusNode.unfocus(),
                       ),
                     ],
                     SizedBox(height: healthDp(context, 16)),
                     _defaultCheckbox(context),
                     // 키패드 올라왔을 때 상세주소가 위로 스크롤될 여유
-                    SizedBox(height: healthDp(context, 80)),
+                    SizedBox(height: healthDp(context, 160)),
                   ],
                 ),
               );
