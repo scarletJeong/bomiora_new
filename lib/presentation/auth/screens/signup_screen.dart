@@ -355,7 +355,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _handleBack() {
     if (_step == _SignupStep.complete) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil('/enter-home', (route) => false);
       return;
     }
     if (_step == _SignupStep.agreement) {
@@ -368,7 +369,8 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _goHome() {
-    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    Navigator.of(context)
+          .pushNamedAndRemoveUntil('/enter-home', (route) => false);
   }
 
   void _goHealthDashboard() {
@@ -382,7 +384,8 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _goShoppingMall() {
-    Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    Navigator.of(context)
+          .pushNamedAndRemoveUntil('/enter-home', (route) => false);
   }
 
   @override

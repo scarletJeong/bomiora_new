@@ -349,12 +349,13 @@ class _LoginScreenState extends State<LoginScreen> {
           try {
             // context를 다시 가져와서 사용
             final navigator = Navigator.of(context);
-            navigator.pushReplacementNamed(_returnTo ?? '/home');
+            navigator.pushReplacementNamed(_returnTo ?? '/enter-home');
           } catch (e) {
             // 실패 시 홈으로 이동 시도
             if (mounted) {
               try {
-                Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
+                Navigator.of(context)
+                    .pushReplacementNamed(_returnTo ?? '/enter-home');
               } catch (_) {}
             }
           }
@@ -700,7 +701,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacementNamed(_returnTo ?? '/home');
+    Navigator.of(context).pushReplacementNamed(_returnTo ?? '/enter-home');
   }
 
   Future<void> _openSocialSignup({

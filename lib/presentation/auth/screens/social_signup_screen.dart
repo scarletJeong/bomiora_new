@@ -129,7 +129,8 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil('/enter-home', (route) => false);
       return;
     }
 
