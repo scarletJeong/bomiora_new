@@ -85,7 +85,8 @@ class FCMService {
       } else {
         await unsubscribeFromTopic('orders');
       }
-      if (settings.marketingAgree && settings.appPushAgree) {
+      // 마케팅 토픽은 마케팅 수신 동의만으로 구독. 야간(app_push)은 발송 시각 제어용.
+      if (settings.marketingAgree) {
         await subscribeToTopic('marketing');
       } else {
         await unsubscribeFromTopic('marketing');
@@ -202,10 +203,17 @@ class FCMService {
       presentSound: true,
     );
 
+    final localTitle =
+        notification?.title ?? data['title']?.toString() ?? '알림';
+    var localBody = notification?.body ?? data['body']?.toString() ?? '';
+    if (localBody.trim().isEmpty || localBody.trim() == localTitle.trim()) {
+      localBody = '';
+    }
+
     await _localNotifications.show(
       message.hashCode,
-      notification?.title ?? data['title']?.toString() ?? '알림',
-      notification?.body ?? data['body']?.toString() ?? '',
+      localTitle,
+      localBody,
       NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: jsonEncode(data),
     );
@@ -266,6 +274,7 @@ class FCMService {
     switch (type) {
       case 'order':
       case 'delivery':
+      case 'review':
         if (orderNumber.isNotEmpty) {
           nav.pushNamed(
             '/order-detail',

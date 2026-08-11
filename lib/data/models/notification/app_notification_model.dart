@@ -73,7 +73,10 @@ class AppNotificationItem {
       isRead: isRead,
       type: type,
       linkId: json['link_id']?.toString() ??
+          json['od_id']?.toString() ??
+          json['order_number']?.toString() ??
           json['wr_id']?.toString() ??
+          json['cp_id']?.toString() ??
           json['id']?.toString(),
     );
   }
@@ -90,8 +93,12 @@ class AppNotificationItem {
         return '결제완료';
       case 'delivery':
         return '배송시작';
+      case 'review':
+        return '리뷰';
       case 'point':
         return '포인트 적립';
+      case 'coupon':
+        return '쿠폰';
       case 'announcement':
       case 'notice':
         return '공지사항';
