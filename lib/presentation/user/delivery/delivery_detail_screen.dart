@@ -36,9 +36,13 @@ import 'widgets/reservation_time_change_popup.dart';
 class DeliveryDetailScreen extends StatefulWidget {
   final String orderNumber;
 
+  /// 목록에서 넘기면 상세 API 전에 즉시 화면을 그릴 수 있음
+  final OrderDetailModel? initialOrder;
+
   const DeliveryDetailScreen({
     super.key,
     required this.orderNumber,
+    this.initialOrder,
   });
 
   @override
@@ -63,11 +67,20 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   @override
   void initState() {
     super.initState();
+    final preview = widget.initialOrder;
+    if (preview != null) {
+      _orderDetail = preview;
+      _deliveryMemo = (preview.deliveryMessage ?? '').trim();
+      _isLoading = false;
+    }
     _loadOrderDetail();
   }
 
   Future<void> _loadOrderDetail() async {
-    setState(() => _isLoading = true);
+    final hasPreview = _orderDetail != null;
+    if (!hasPreview) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       final user = await AuthService.getUser();
@@ -83,28 +96,36 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
       if (result['success'] == true) {
         final order = result['order'] as OrderDetailModel;
-        List<String> reviewed = const [];
-        if (_isCompletedStage(order)) {
-          final check = await ReviewService.checkReviewExists(
-            mbId: user.id,
-            odId: order.odId,
-          );
-          reviewed =
-              (check['reviewedItIds'] as List<String>?) ?? const <String>[];
-        }
         if (!mounted) return;
         setState(() {
           _orderDetail = order;
           _deliveryMemo = (order.deliveryMessage ?? '').trim();
-          _reviewedItIds = reviewed;
           _isLoading = false;
         });
+        // 리뷰 여부는 화면 표시 후 백그라운드에서
+        if (_isCompletedStage(order)) {
+          _loadReviewedItIds(user.id, order.odId);
+        }
       } else if (mounted) {
         setState(() => _isLoading = false);
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadReviewedItIds(String mbId, String odId) async {
+    try {
+      final check = await ReviewService.checkReviewExists(
+        mbId: mbId,
+        odId: odId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _reviewedItIds =
+            (check['reviewedItIds'] as List<String>?) ?? const <String>[];
+      });
+    } catch (_) {}
   }
 
   bool _canWriteReview(OrderDetailModel order) {
@@ -700,7 +721,13 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 child: Container(color: Colors.black.withValues(alpha: 0.35)),
               ),
             ),
-            DeliveryAddressChangePopup(orderId: _orderDetail!.odId),
+            DeliveryAddressChangePopup(
+              orderId: _orderDetail!.odId,
+              recipientName: _orderDetail!.recipientName,
+              recipientPhone: _orderDetail!.recipientPhone,
+              recipientAddress: _orderDetail!.recipientAddress,
+              recipientAddressDetail: _orderDetail!.recipientAddressDetail,
+            ),
           ],
         );
       },

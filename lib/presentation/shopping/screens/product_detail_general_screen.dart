@@ -337,7 +337,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     }
   }
 
-  /// 제품 옵션 조회
+  /// 상품 옵션 조회
   Future<void> _loadProductOptions() async {
     if (widget.productId.isEmpty) return;
 
@@ -347,9 +347,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       _safeSetState(() {
         _productOptions = options;
       });
-    } catch (e) {
-      // 옵션 로드 실패 시 무시
-    }
+    } catch (_) {}
   }
 
   /// 찜하기 토글

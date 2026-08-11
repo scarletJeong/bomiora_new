@@ -6,6 +6,9 @@ import '../../models/product/product_model.dart';
 import '../../services/auth_service.dart';
 
 class ProductRepository {
+  static const Duration _listCacheTtl = Duration(seconds: 30);
+  static final Map<String, _ProductListCacheEntry> _listCache = {};
+
   static List<Product> _parseProductList(dynamic data) {
     if (data is Map && data['success'] == true && data['data'] != null) {
       final raw = data['data'];
@@ -39,6 +42,12 @@ class ProductRepository {
     int page = 1,
     int pageSize = 20,
   }) async {
+    final cacheKey = '$categoryId|${productKind ?? ''}|$page|$pageSize';
+    final hit = _listCache[cacheKey];
+    if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
+      return hit.products;
+    }
+
     try {      
       // 먼저 Spring Boot API를 시도
       String endpoint = ApiEndpoints.productListByCategory(categoryId, productKind: productKind);
@@ -58,14 +67,19 @@ class ProductRepository {
       if (response.statusCode == 200) {
         try {
           final data = json.decode(response.body);
-          return _parseProductList(data);
+          final products = _parseProductList(data);
+          _listCache[cacheKey] = _ProductListCacheEntry(
+            products: products,
+            expiresAt: DateTime.now().add(_listCacheTtl),
+          );
+          return products;
         } catch (e) {
         }
       }
       
-      return [];
+      return hit?.products ?? [];
     } catch (e) {
-      return [];
+      return hit?.products ?? [];
     }
   }
 
@@ -168,6 +182,12 @@ class ProductRepository {
 
   /// 신상품 — API 정렬(`it_order, it_id desc`) 그대로, [limit]개
   static Future<List<Product>> getNewProducts({int limit = 4}) async {
+    final cacheKey = 'new|$limit';
+    final hit = _listCache[cacheKey];
+    if (hit != null && DateTime.now().isBefore(hit.expiresAt)) {
+      return hit.products;
+    }
+
     try {
       final response = await ApiClient.get(
         '${ApiEndpoints.newProducts}?limit=$limit',
@@ -178,14 +198,18 @@ class ProductRepository {
         var list = _parseProductList(data);
 
         if (limit > 0 && list.length > limit) {
-          return list.take(limit).toList();
+          list = list.take(limit).toList();
         }
+        _listCache[cacheKey] = _ProductListCacheEntry(
+          products: list,
+          expiresAt: DateTime.now().add(_listCacheTtl),
+        );
         return list;
       }
 
-      return [];
+      return hit?.products ?? [];
     } catch (e) {
-      return [];
+      return hit?.products ?? [];
     }
   }
 
@@ -275,4 +299,14 @@ class ProductRepository {
       return [];
     }
   }
+}
+
+class _ProductListCacheEntry {
+  final List<Product> products;
+  final DateTime expiresAt;
+
+  const _ProductListCacheEntry({
+    required this.products,
+    required this.expiresAt,
+  });
 }

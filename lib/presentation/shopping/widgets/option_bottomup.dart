@@ -78,6 +78,10 @@ Future<void> showProductOptionBottomup({
     }
   }
 
+  final resolvedKind = productKindOverride ??
+      product.productKind ??
+      product.additionalInfo?['it_kind']?.toString();
+
   final contentW = MobileLayoutWrapper.contentWidthOf(context);
 
   await showModalBottomSheet<void>(
@@ -113,9 +117,7 @@ Future<void> showProductOptionBottomup({
               product: product,
               supplyLines: supplyLines,
               onSupplyLinesChanged: onSupplyLinesChanged,
-              productKind: productKindOverride ??
-                  product.productKind ??
-                  product.additionalInfo?['it_kind']?.toString(),
+              productKind: resolvedKind,
               onOptionsChanged: onOptionsChanged,
               onAddToCart: onAddToCart,
               onAddToPrescriptionCart: onAddToPrescriptionCart,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import 'app_network_image.dart';
 
 /// 상품 목록/그리드용 HTML·엔티티 제거 (카드 타이틀·요약)
 String stripProductCatalogHtml(String? raw) {
@@ -167,10 +168,11 @@ class ProductCatalogCard extends StatelessWidget {
               child: ColoredBox(
                 color: const Color(0xFFF3F3F3),
                 child: product.displayImageUrl.isNotEmpty
-                    ? Image.network(
-                        product.displayImageUrl,
+                    ? AppNetworkImage(
+                        url: product.displayImageUrl,
                         width: double.infinity,
                         height: imageH,
+                        decodeHeightLogical: imageH,
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
                         errorBuilder: (_, __, ___) => _placeholder(context),

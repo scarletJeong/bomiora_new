@@ -1,29 +1,37 @@
 import '../../../core/utils/node_value_parser.dart';
 
 class ProductOption {
-  final String id; // io_id
+  /// 그누보드/PHP `chr(30)` — io_id 축 값 구분자
+  static const String axisDelimiter = '\u001e';
+
+  final String id; // io_id (chr(30) 포함 원문 유지 — 장바구니/주문 전송용)
   final String productId; // it_id
-  final String step; // 상위 옵션 (마지막 숫자 앞까지, io_id에서 추출)
-  final int? months; // 개월수 (숫자 부분만, io_id에서 추출)
-  final String subOption; // 하위 옵션 전체 텍스트 (마지막 숫자부터 끝까지)
-  final int price; // 옵션 가격
-  final int stock; // 재고
-  final String? type; // 옵션 타입 (문자열 하위호환)
+  /// io_id를 chr(30)으로 나눈 축 값들. 예: ["초코", "1주 플랜"]
+  final List<String> optionParts;
+  final String step; // 상위 옵션 (parts[0] 또는 N개월 앞)
+  final int? months; // 개월수 (`N개월`이 있을 때만)
+  final String subOption; // 하위 옵션 (parts[1..] 또는 N개월부터)
+  final int price;
+  final int stock;
+  final String? type;
   /// 0=선택옵션, 1=추가옵션(레거시), 2=종속1, 3=종속2
   final int ioType;
 
-  // 하위 호환성을 위한 getter
-  String get optionName => step; // 단계와 동일
-  int? get days => months; // 개월수와 동일 (하위 호환)
+  String get optionName => step;
+  int? get days => months;
   bool get isMain => ioType == 0;
   bool get isDep1 => ioType == 2;
   bool get isDep2 => ioType == 3;
   bool get isLegacySupply => ioType == 1;
   bool get isDependent => ioType == 2 || ioType == 3;
 
+  /// chr(30)으로 저장된 다축 옵션인지
+  bool get hasAxisDelimiter => id.contains(axisDelimiter);
+
   ProductOption({
     required this.id,
     required this.productId,
+    required this.optionParts,
     required this.step,
     this.months,
     required this.subOption,
@@ -32,19 +40,17 @@ class ProductOption {
     this.type,
     this.ioType = 0,
   });
-  
+
   factory ProductOption.fromJson(Map<String, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(json);
     final rawIoId =
         NodeValueParser.asString(normalized['id']) ??
         NodeValueParser.asString(normalized['io_id']) ??
         '';
-    final ioId = _sanitizeText(rawIoId);
-    
-    // io_id에서 상위 옵션, 하위 옵션, 개월수 추출 (항상 직접 파싱)
-    final step = _extractStep(ioId);
-    final subOption = _extractSubOption(ioId);
-    final months = _extractMonths(ioId);
+    // chr(30)은 반드시 유지. 다른 C0 제어문자만 제거.
+    final ioId = _preserveIoId(rawIoId);
+
+    final parsed = _parseIoId(ioId);
     final parsedIoType = _parseInt(
       normalized['io_type'] ??
           normalized['ioType'] ??
@@ -58,9 +64,10 @@ class ProductOption {
           NodeValueParser.asString(normalized['productId']) ??
           NodeValueParser.asString(normalized['it_id']) ??
           '',
-      step: step, // 상위 옵션
-      months: months, // 숫자만
-      subOption: subOption, // 하위 옵션 전체 텍스트
+      optionParts: parsed.parts,
+      step: parsed.step,
+      months: parsed.months,
+      subOption: parsed.subOption,
       price: _parseInt(
         normalized['price'] ??
             normalized['io_price'] ??
@@ -76,62 +83,93 @@ class ProductOption {
       ioType: parsedIoType.clamp(0, 3),
     );
   }
-  
-  /// `N개월` 경계를 우선 사용.
-  /// 예: "[01단계]_디톡스_Detox2개월(-10%)" → 개월=2 (할인율 10이 아님)
+
   static final RegExp _monthsBoundary = RegExp(r'(\d+)개월');
 
-  /// io_id에서 상위 옵션 추출 (`N개월` 앞까지)
-  /// 예: "[01단계]소프트_Soft1개월" -> "[01단계]소프트_Soft"
-  ///     "[01단계]_디톡스_Detox2개월(-10%)" -> "[01단계]_디톡스_Detox"
-  static String _extractStep(String ioId) {
-    if (ioId.isEmpty) return '';
-    final monthsMatch = _monthsBoundary.firstMatch(ioId);
-    if (monthsMatch != null) {
-      return _sanitizeText(ioId.substring(0, monthsMatch.start));
+  /// PHP `explode(chr(30), $opt_id)` 와 동일
+  static List<String> splitOptionValues(String ioId) {
+    if (ioId.isEmpty) return const [];
+    if (!ioId.contains(axisDelimiter)) {
+      final one = _sanitizePart(ioId);
+      return one.isEmpty ? const [] : [one];
     }
-    // fallback: 마지막 숫자 앞까지
-    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
-    if (lastNumberMatch != null) {
-      return _sanitizeText(ioId.substring(0, lastNumberMatch.start));
-    }
-    return _sanitizeText(ioId);
+    return ioId
+        .split(axisDelimiter)
+        .map(_sanitizePart)
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
-  /// io_id에서 하위 옵션 전체 텍스트 추출 (`N개월`부터 끝까지)
-  /// 예: "[01단계]소프트_Soft1개월" -> "1개월"
-  ///     "[01단계]_디톡스_Detox2개월(-10%)" -> "2개월(-10%)"
-  static String _extractSubOption(String ioId) {
-    if (ioId.isEmpty) return '';
+  static ({
+    List<String> parts,
+    String step,
+    String subOption,
+    int? months,
+  }) _parseIoId(String ioId) {
+    if (ioId.isEmpty) {
+      return (parts: const [], step: '', subOption: '', months: null);
+    }
+
+    // 1) chr(30) 축 분리 (일반·비대면 공통 다축 옵션)
+    if (ioId.contains(axisDelimiter)) {
+      final parts = splitOptionValues(ioId);
+      final step = parts.isNotEmpty ? parts.first : '';
+      final subOption =
+          parts.length > 1 ? parts.skip(1).join(' > ') : '';
+      int? months;
+      for (final p in parts) {
+        final m = _monthsBoundary.firstMatch(p);
+        if (m != null) {
+          months = int.tryParse(m.group(1)!);
+          break;
+        }
+      }
+      return (
+        parts: parts,
+        step: step,
+        subOption: subOption,
+        months: months,
+      );
+    }
+
+    // 2) 비대면 레거시: `N개월` 경계
     final monthsMatch = _monthsBoundary.firstMatch(ioId);
     if (monthsMatch != null) {
-      return _sanitizeText(ioId.substring(monthsMatch.start));
+      final step = _sanitizePart(ioId.substring(0, monthsMatch.start));
+      final subOption = _sanitizePart(ioId.substring(monthsMatch.start));
+      final months = int.tryParse(monthsMatch.group(1)!);
+      final parts = <String>[
+        if (step.isNotEmpty) step,
+        if (subOption.isNotEmpty) subOption,
+      ];
+      return (
+        parts: parts,
+        step: step,
+        subOption: subOption,
+        months: months,
+      );
     }
-    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
-    if (lastNumberMatch != null) {
-      return _sanitizeText(ioId.substring(lastNumberMatch.start));
-    }
-    return '';
+
+    // 3) 단일 옵션
+    final step = _sanitizePart(ioId);
+    return (
+      parts: step.isEmpty ? const <String>[] : [step],
+      step: step,
+      subOption: '',
+      months: null,
+    );
   }
 
-  /// io_id에서 개월수 추출 (`N개월`의 N)
-  /// 예: "[01단계]소프트_Soft1개월" -> 1
-  ///     "[01단계]_디톡스_Detox2개월(-10%)" -> 2  (할인율 10 아님)
-  static int? _extractMonths(String ioId) {
-    if (ioId.isEmpty) return null;
-    final monthsMatch = _monthsBoundary.firstMatch(ioId);
-    if (monthsMatch != null) {
-      return int.tryParse(monthsMatch.group(1)!);
-    }
-    final lastNumberMatch = RegExp(r'\d+[^0-9]*$').firstMatch(ioId);
-    if (lastNumberMatch != null) {
-      final numberStr =
-          lastNumberMatch.group(0)!.replaceAll(RegExp(r'[^0-9]'), '');
-      return int.tryParse(numberStr);
-    }
-    return null;
+  /// io_id 원문 보존: chr(30)=\x1E 유지, 그 외 제어문자만 제거
+  static String _preserveIoId(String value) {
+    return value.replaceAll(RegExp(r'[\x00-\x1D\x1F\x7F]'), '');
   }
-  
+
+  /// 축 값 표시용 (제어문자 제거)
+  static String _sanitizePart(String value) {
+    return value.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
+  }
+
   static int _parseInt(dynamic value) {
     if (value is int) return value;
     if (value is String) {
@@ -140,19 +178,24 @@ class ProductOption {
     return 0;
   }
 
-  static String _sanitizeText(String value) {
-    return value.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
-  }
-  
-  /// 표시용 옵션 텍스트 생성 (상위옵션 / 하위옵션)
+  /// 화면 표시: PHP `.opt-cell` 과 같이 `초코 > 1주 플랜`
   String get displayText {
-    if (subOption.isNotEmpty) {
-      return '$step / $subOption';
+    if (optionParts.length >= 2) {
+      return optionParts.join(' > ');
     }
-    return step;
+    if (subOption.isNotEmpty) {
+      return '$step > $subOption';
+    }
+    if (step.isNotEmpty) return step;
+    return _sanitizePart(id.replaceAll(axisDelimiter, ' > '));
   }
-  
-  /// 가격 포맷팅
+
+  /// 2번째 축 값 (드롭다운 하위 항목)
+  String get axisValue2 {
+    if (optionParts.length >= 2) return optionParts[1];
+    return subOption;
+  }
+
   String get formattedPrice {
     return '${price.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -160,4 +203,3 @@ class ProductOption {
     )}원';
   }
 }
-

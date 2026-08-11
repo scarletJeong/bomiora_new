@@ -506,14 +506,20 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
                                     ),
                                   ),
                                   SizedBox(height: healthDp(ctx, 10)),
-                                  Text(
-                                    timeText,
-                                    style: TextStyle(
-                                      color: const Color(0xFFFF5A8D),
-                                      fontSize: healthSp(ctx, 14),
-                                      fontFamily: 'Gmarket Sans TTF',
-                                      fontWeight: FontWeight.w700,
-                                      height: 1,
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      timeText,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: const Color(0xFFFF5A8D),
+                                        fontSize: healthSp(ctx, 14),
+                                        fontFamily: 'Gmarket Sans TTF',
+                                        fontWeight: FontWeight.w700,
+                                        height: 1,
+                                      ),
                                     ),
                                   ),
                                 ],

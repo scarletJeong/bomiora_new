@@ -16,6 +16,7 @@ import '../../../utils/delivery_tracker.dart';
 import '../../shopping/utils/cart_navigation.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
+import '../../common/widgets/app_network_image.dart';
 import 'widgets/delivery_address_change_popup.dart';
 import 'widgets/delivery_select_list.dart';
 import 'widgets/order_flow_dialogs.dart';
@@ -116,8 +117,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           _applyFilter();
         });
 
-        // 목록 응답에 배송비가 없거나 0인 경우, 상세 API 기준 배송비로 보정
-        _syncDeliveryFeesFromDetail(userId);
+        // 목록 응답에 deliveryFee 포함 — 단건 상세 N+1 불필요
         _syncReviewedItIds(userId, allOrders);
       }
     } catch (e) {
@@ -175,59 +175,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     return products.any((p) => !reviewed.contains(p.itId.trim()));
   }
 
-  Future<void> _syncDeliveryFeesFromDetail(String userId) async {
-    if (_allOrders.isEmpty) return;
-
-    bool changed = false;
-    final updated = <OrderListModel>[];
-
-    for (final order in _allOrders) {
-      if (order.deliveryFee > 0) {
-        updated.add(order);
-        continue;
-      }
-
-      try {
-        final detailResult = await OrderService.getOrderDetail(
-          odId: order.odId,
-          mbId: userId,
-        );
-
-        if (detailResult['success'] == true && detailResult['order'] is OrderDetailModel) {
-          final detail = detailResult['order'] as OrderDetailModel;
-          if (detail.deliveryFee > 0) {
-            changed = true;
-            updated.add(
-              OrderListModel(
-                odId: order.odId,
-                orderDate: order.orderDate,
-                orderDateTime: order.orderDateTime,
-                displayStatus: order.displayStatus,
-                odStatus: order.odStatus,
-                totalPrice: order.totalPrice,
-                deliveryFee: detail.deliveryFee,
-                odCartCount: order.odCartCount,
-                isPrescriptionOrder: order.isPrescriptionOrder,
-                items: order.items,
-                firstProductName: order.firstProductName,
-                firstProductOption: order.firstProductOption,
-                firstProductQty: order.firstProductQty,
-                firstProductPrice: order.firstProductPrice,
-              ),
-            );
-            continue;
-          }
-        }
-      } catch (_) {}
-
-      updated.add(order);
-    }
-
-    if (!changed || !mounted) return;
-    setState(() {
-      _allOrders = updated;
-      _applyFilter();
-    });
+  Future<void> _syncDeliveryFeesFromDetail(String userId) {
+    // 목록 API에 deliveryFee가 포함되므로 단건 상세 N+1 호출 불필요
+    return Future.value();
   }
   
   /// 필터 적용
@@ -449,7 +399,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 ),
               ),
               InkWell(
-                onTap: () => _navigateToOrderDetail(order.odId),
+                onTap: () => _navigateToOrderDetail(order),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -542,7 +492,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
     return [
       _buildOrderProductLineInk(
-        order.odId,
+        order,
         image: _buildProductImage(order),
         title: order.firstProductName ?? '상품명 없음',
         qtyLine: qtyLine,
@@ -572,7 +522,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildOrderProductLineInk(
-              order.odId,
+              order,
               image: _buildProductImageFromItem(parent),
               title: orderItemDisplayTitle(parent),
               qtyLine: orderItemQtyOptionLine(parent),
@@ -600,7 +550,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 for (var ci = 0; ci < children.length; ci++) ...[
                   if (ci > 0) SizedBox(height: healthDp(context, 8)),
                   _buildOrderProductLineInk(
-                    order.odId,
+                    order,
                     image: _buildProductImageFromItem(children[ci]),
                     title: orderItemDisplayTitle(children[ci]),
                     qtyLine: orderItemQtyOptionLine(children[ci]),
@@ -725,7 +675,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
             for (var i = 0; i < items.length; i++) ...[
               if (i > 0) SizedBox(height: healthDp(context, 10)),
               _buildOrderProductLineInk(
-                order.odId,
+                order,
                 image: _buildProductImageFromItem(items[i]),
                 title: orderItemDisplayTitle(items[i]),
                 qtyLine: orderItemQtyOptionLine(items[i]),
@@ -741,7 +691,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   /// 상품 행 — 주문번호와 동일하게 카드 좌측(패딩 20)에 맞춤
   Widget _buildOrderProductLineInk(
-    String odId, {
+    OrderListModel order, {
     required Widget image,
     required String title,
     required String qtyLine,
@@ -749,7 +699,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     String? moreHint,
   }) {
     return InkWell(
-      onTap: () => _navigateToOrderDetail(odId),
+      onTap: () => _navigateToOrderDetail(order),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -830,10 +780,12 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       child: normalizedUrl != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(healthDp(context, 4)),
-              child: Image.network(
-                normalizedUrl,
+              child: AppNetworkImage(
+                url: normalizedUrl,
                 width: thumb,
                 height: thumb,
+                decodeWidthLogical: thumb,
+                decodeHeightLogical: thumb,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Icon(
@@ -949,7 +901,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       }
       specs.add((
         label: '배송지변경',
-        onTap: () => _changeDeliveryAddress(order.odId),
+        onTap: () => _changeDeliveryAddress(order),
         style: _CardActionStyle.primary,
       ));
       return _buildActionRow(specs);
@@ -1186,11 +1138,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   /// 주문 상세 화면으로 이동 (복귀 시 목록 갱신 — 수령확인/취소 반영)
-  Future<void> _navigateToOrderDetail(String orderNumber) async {
+  Future<void> _navigateToOrderDetail(OrderListModel order) async {
     await Navigator.pushNamed(
       context,
       '/order-detail',
-      arguments: {'orderNumber': orderNumber},
+      arguments: {
+        'orderNumber': order.odId,
+        'initialOrder': OrderDetailModel.fromListPreview(order),
+      },
     );
     if (mounted) await _loadOrders();
   }
@@ -1454,7 +1409,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     } catch (e) {}
   }
 
-  Future<void> _changeDeliveryAddress(String odId) async {
+  Future<void> _changeDeliveryAddress(OrderListModel order) async {
     final result = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -1470,7 +1425,13 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 child: Container(color: Colors.black.withValues(alpha: 0.35)),
               ),
             ),
-            DeliveryAddressChangePopup(orderId: odId),
+            DeliveryAddressChangePopup(
+              orderId: order.odId,
+              recipientName: order.recipientName,
+              recipientPhone: order.recipientPhone,
+              recipientAddress: order.recipientAddress,
+              recipientAddressDetail: order.recipientAddressDetail,
+            ),
           ],
         );
       },
@@ -1504,10 +1465,12 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       child: normalizedUrl != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(healthDp(context, 4)),
-              child: Image.network(
-                normalizedUrl,
+              child: AppNetworkImage(
+                url: normalizedUrl,
                 width: thumb,
                 height: thumb,
+                decodeWidthLogical: thumb,
+                decodeHeightLogical: thumb,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Icon(

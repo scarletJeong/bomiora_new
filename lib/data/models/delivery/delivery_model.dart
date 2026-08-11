@@ -163,6 +163,10 @@ class OrderListModel {
   final String? firstProductOption;
   final int? firstProductQty;
   final int? firstProductPrice;
+  final String recipientName;
+  final String recipientPhone;
+  final String recipientAddress;
+  final String recipientAddressDetail;
 
   OrderListModel({
     required this.odId,
@@ -180,6 +184,10 @@ class OrderListModel {
     this.firstProductOption,
     this.firstProductQty,
     this.firstProductPrice,
+    this.recipientName = '',
+    this.recipientPhone = '',
+    this.recipientAddress = '',
+    this.recipientAddressDetail = '',
   });
 
   factory OrderListModel.fromJson(Map<dynamic, dynamic> json) {
@@ -255,6 +263,14 @@ class OrderListModel {
       firstProductOption: NodeValueParser.asString(normalized['firstProductOption']),
       firstProductQty: NodeValueParser.asInt(normalized['firstProductQty']),
       firstProductPrice: NodeValueParser.asInt(normalized['firstProductPrice']),
+      recipientName:
+          NodeValueParser.asString(normalized['recipientName']) ?? '',
+      recipientPhone:
+          NodeValueParser.asString(normalized['recipientPhone']) ?? '',
+      recipientAddress:
+          NodeValueParser.asString(normalized['recipientAddress']) ?? '',
+      recipientAddressDetail:
+          NodeValueParser.asString(normalized['recipientAddressDetail']) ?? '',
     );
   }
 
@@ -275,6 +291,10 @@ class OrderListModel {
       'firstProductOption': firstProductOption,
       'firstProductQty': firstProductQty,
       'firstProductPrice': firstProductPrice,
+      'recipientName': recipientName,
+      'recipientPhone': recipientPhone,
+      'recipientAddress': recipientAddress,
+      'recipientAddressDetail': recipientAddressDetail,
     };
   }
 }
@@ -371,6 +391,33 @@ class OrderDetailModel {
     this.reservationTime,
     this.reservationEndTime,
   });
+
+  /// 목록 카드 정보로 상세 화면을 즉시 그릴 때 사용 (이후 상세 API로 덮어씀)
+  factory OrderDetailModel.fromListPreview(OrderListModel order) {
+    return OrderDetailModel(
+      odId: order.odId,
+      orderDate: order.orderDateTime.isNotEmpty
+          ? order.orderDateTime
+          : order.orderDate,
+      displayStatus: order.displayStatus,
+      odStatus: order.odStatus,
+      recipientName: order.recipientName,
+      recipientPhone: order.recipientPhone,
+      recipientAddress: order.recipientAddress,
+      recipientAddressDetail: order.recipientAddressDetail,
+      products: List<OrderItem>.from(order.items),
+      productPrice: 0,
+      deliveryFee: order.deliveryFee,
+      discountAmount: 0,
+      totalPrice: order.totalPrice,
+      isPrescriptionOrder: order.isPrescriptionOrder,
+      isConsultationDone: order.isConsultationDone,
+      paymentMethod: '',
+      ordererName: '',
+      ordererPhone: '',
+      ordererEmail: '',
+    );
+  }
 
   factory OrderDetailModel.fromJson(Map<dynamic, dynamic> json) {
     final normalized = NodeValueParser.normalizeMap(Map<String, dynamic>.from(json));
