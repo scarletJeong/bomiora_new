@@ -99,9 +99,8 @@ class _ProgressSegment extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: AnimatedFractionallySizedBox(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
+            // 스크롤 연동 시 Animated* 는 매 프레임 애니를 다시 시작해 끊겨 보임
+            child: FractionallySizedBox(
               widthFactor: fill.clamp(0.0, 1.0),
               heightFactor: 1,
               alignment: Alignment.centerLeft,
@@ -127,13 +126,14 @@ double prescriptionBookingScrollProgress(ScrollMetrics metrics) {
 }
 
 /// 날짜/시간 화면 마일스톤 진행률
-/// (날짜 → 시간 → 의료법 체크 → 확인 팝업).
+/// (날짜 → 시간 → 의료법 체크 → 확인 팝업 열림=2단계 완료).
 double prescriptionDateTimeMilestoneProgress({
   required bool hasDate,
   required bool hasTime,
   required bool agreedPolicy,
   required bool confirmDialogOpen,
 }) {
+  // 확인 팝업이 뜬 시점부터 2단계 꽉 채움 (확인 후에도 유지)
   if (confirmDialogOpen) return 1;
   if (agreedPolicy) return 3 / 4;
   if (hasTime) return 2 / 4;
