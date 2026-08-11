@@ -10,10 +10,17 @@ import '../../shopping/widgets/product_banner_slider.dart'
     show kSharedBannerHeightBase;
 
 class BannerSlider extends StatefulWidget {
-  const BannerSlider({super.key, this.bannersFuture});
+  const BannerSlider({
+    super.key,
+    this.bannersFuture,
+    this.onPrimaryImageSettled,
+  });
 
   /// 홈에서 우선 프리패치한 Future를 넘기면 중복 요청을 피함
   final Future<List<BannerModel>>? bannersFuture;
+
+  /// 첫 배너 이미지 로드 완료(또는 배너 없음) 시 1회
+  final VoidCallback? onPrimaryImageSettled;
 
   @override
   State<BannerSlider> createState() => _BannerSliderState();
@@ -23,6 +30,7 @@ class _BannerSliderState extends State<BannerSlider> {
   int _currentIndex = 0;
   late PageController _pageController;
   late Future<List<BannerModel>> _bannersFuture;
+  bool _primarySettledNotified = false;
 
   @override
   void initState() {
@@ -30,6 +38,12 @@ class _BannerSliderState extends State<BannerSlider> {
     _pageController = PageController();
     _bannersFuture =
         widget.bannersFuture ?? BannerService.fetchMobileBanners();
+  }
+
+  void _notifyPrimarySettled() {
+    if (_primarySettledNotified) return;
+    _primarySettledNotified = true;
+    widget.onPrimaryImageSettled?.call();
   }
 
   @override
@@ -75,6 +89,9 @@ class _BannerSliderState extends State<BannerSlider> {
           );
         }
         if (banners.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _notifyPrimarySettled();
+          });
           return const SizedBox.shrink();
         }
 
@@ -132,6 +149,7 @@ class _BannerSliderState extends State<BannerSlider> {
                       width: double.infinity,
                       height: bannerH,
                       decodeHeightLogical: bannerH,
+                      onSettled: index == 0 ? _notifyPrimarySettled : null,
                       errorBuilder: (_, __, ___) => ColoredBox(
                         color: Colors.grey[200]!,
                         child: const Center(

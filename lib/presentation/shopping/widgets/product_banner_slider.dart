@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
 import '../../../data/services/banner_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 홈·상품 목록 공통 배너 높이 (375 기준).
@@ -148,11 +149,12 @@ class _ProductBannerSliderState extends State<ProductBannerSlider> {
                     final banner = banners[index];
                     final imageUrl =
                         ImageUrlHelper.resolveSiteAssetUrl(banner.imageUrl);
-                    return Image.network(
-                      imageUrl,
+                    return AppNetworkImage(
+                      url: imageUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: bannerH,
+                      decodeHeightLogical: bannerH,
                       errorBuilder: (_, __, ___) => ColoredBox(
                         color: Colors.grey[200]!,
                         child: const Center(

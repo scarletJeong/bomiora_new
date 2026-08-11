@@ -10,10 +10,17 @@ import 'home_section_widgets.dart';
 /// 홈 New Product — API 정렬 기준 최대 4개.
 /// 카드 UI는 CategorySection(건강을 채우는 시간)과 동일 치수.
 class ProductSection extends StatefulWidget {
-  const ProductSection({super.key, this.productsFuture});
+  const ProductSection({
+    super.key,
+    this.productsFuture,
+    this.onImagesSettled,
+  });
 
   /// 홈에서 우선 프리패치한 Future를 넘기면 중복 요청을 피함
   final Future<List<Product>>? productsFuture;
+
+  /// 신상품 카드 이미지가 모두 로드되었거나 섹션이 비었을 때 1회
+  final VoidCallback? onImagesSettled;
 
   static const int _kLimit = 4;
 
@@ -24,6 +31,9 @@ class ProductSection extends StatefulWidget {
 class _ProductSectionState extends State<ProductSection> {
   List<Product> _products = const [];
   bool _loading = true;
+  bool _imagesSettledNotified = false;
+  int _pendingImages = 0;
+  int _settledImages = 0;
 
   @override
   void initState() {
@@ -31,20 +41,47 @@ class _ProductSectionState extends State<ProductSection> {
     _load();
   }
 
+  void _notifyImagesSettled() {
+    if (_imagesSettledNotified) return;
+    _imagesSettledNotified = true;
+    widget.onImagesSettled?.call();
+  }
+
+  void _onOneImageSettled() {
+    _settledImages += 1;
+    if (_settledImages >= _pendingImages) {
+      _notifyImagesSettled();
+    }
+  }
+
   Future<void> _load() async {
     try {
       final products = await (widget.productsFuture ??
           ProductRepository.getNewProducts(limit: ProductSection._kLimit));
       if (!mounted) return;
+      final withImage = products
+          .where((p) => p.displayImageUrl.trim().isNotEmpty)
+          .toList();
       setState(() {
         _products = products;
         _loading = false;
+        _pendingImages = products.length >= 2 ? withImage.length : 0;
+        _settledImages = 0;
       });
+      if (_pendingImages == 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _notifyImagesSettled();
+        });
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _products = const [];
         _loading = false;
+        _pendingImages = 0;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _notifyImagesSettled();
       });
     }
   }
@@ -91,6 +128,10 @@ class _ProductSectionState extends State<ProductSection> {
                 : WebDragScrollConfiguration(
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
+                      // 신상품 최대 4장을 모두 빌드해 이미지 settle 콜백이 누락되지 않게 함
+                      cacheExtent: (_products.length *
+                              (m.cardW + m.cardSpacing))
+                          .clamp(400.0, 4000.0),
                       padding: EdgeInsets.symmetric(
                         horizontal: healthDp(context, 24),
                       ),
@@ -103,6 +144,9 @@ class _ProductSectionState extends State<ProductSection> {
                           product: product,
                           layout: m,
                           onTap: () => _openProduct(product),
+                          onImageSettled: product.displayImageUrl.trim().isEmpty
+                              ? null
+                              : _onOneImageSettled,
                         );
                       },
                     ),
@@ -176,11 +220,13 @@ class _NewProductCard extends StatelessWidget {
     required this.product,
     required this.layout,
     required this.onTap,
+    this.onImageSettled,
   });
 
   final Product product;
   final _NewProductCardLayout layout;
   final VoidCallback onTap;
+  final VoidCallback? onImageSettled;
 
   String _sanitizeDescription(String? raw) {
     final source = (raw ?? '').trim();
@@ -220,14 +266,15 @@ class _NewProductCard extends StatelessWidget {
               child: SizedBox(
                 width: m.imageW,
                 height: m.imageH,
-                child: (product.imageUrl?.isNotEmpty ?? false)
+                child: product.displayImageUrl.trim().isNotEmpty
                     ? AppNetworkImage(
-                        url: product.imageUrl!,
+                        url: product.displayImageUrl,
                         width: m.imageW,
                         height: m.imageH,
                         decodeWidthLogical: m.imageW,
                         decodeHeightLogical: m.imageH,
                         fit: BoxFit.cover,
+                        onSettled: onImageSettled,
                         errorBuilder: (_, __, ___) => const ColoredBox(
                           color: Color(0xFFFFE9EA),
                         ),

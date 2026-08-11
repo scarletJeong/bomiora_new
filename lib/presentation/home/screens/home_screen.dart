@@ -22,9 +22,19 @@ import '../widgets/event_section.dart';
 class HomeScreen extends StatefulWidget {
   final int initialIndex;
 
+  /// 스플래시에서 미리 받은 Future — 중복 API 호출 방지
+  final Future<List<BannerModel>>? bannersFuture;
+  final Future<List<Product>>? newProductsFuture;
+
+  /// 배너 첫 장 + 신상품 이미지가 모두 준비되면 1회 호출
+  final VoidCallback? onAboveFoldImagesReady;
+
   const HomeScreen({
     super.key,
     this.initialIndex = 0,
+    this.bannersFuture,
+    this.newProductsFuture,
+    this.onAboveFoldImagesReady,
   });
 
   @override
@@ -35,23 +45,46 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// 배너·신상품만 먼저 요청. 완료(또는 짧은 타임아웃) 후 하단 섹션 마운트.
   late final Future<List<BannerModel>> _bannersFuture;
   late final Future<List<Product>> _newProductsFuture;
   bool _loadBelowFold = false;
+
+  bool _bannerReady = false;
+  bool _productsReady = false;
+  bool _aboveFoldNotified = false;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-    _bannersFuture = BannerService.fetchMobileBanners();
-    _newProductsFuture = ProductRepository.getNewProducts(limit: 4);
+    _bannersFuture =
+        widget.bannersFuture ?? BannerService.fetchMobileBanners();
+    _newProductsFuture =
+        widget.newProductsFuture ?? ProductRepository.getNewProducts(limit: 4);
     _scheduleBelowFoldLoad();
+  }
+
+  void _markBannerReady() {
+    if (_bannerReady) return;
+    _bannerReady = true;
+    _tryNotifyAboveFold();
+  }
+
+  void _markProductsReady() {
+    if (_productsReady) return;
+    _productsReady = true;
+    _tryNotifyAboveFold();
+  }
+
+  void _tryNotifyAboveFold() {
+    if (_aboveFoldNotified) return;
+    if (!_bannerReady || !_productsReady) return;
+    _aboveFoldNotified = true;
+    widget.onAboveFoldImagesReady?.call();
   }
 
   Future<void> _scheduleBelowFoldLoad() async {
     // 우선 API가 빨리 끝나면 바로, 아니면 최대 ~400ms 후 하단 로드 시작
-    // → DB/네트워크 경합을 줄여 배너·신상품 first paint를 앞당김
     await Future.any<void>([
       Future.wait<void>([_bannersFuture, _newProductsFuture]).then((_) {}),
       Future<void>.delayed(const Duration(milliseconds: 400)),
@@ -97,11 +130,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          BannerSlider(bannersFuture: _bannersFuture),
+          BannerSlider(
+            bannersFuture: _bannersFuture,
+            onPrimaryImageSettled: _markBannerReady,
+          ),
           SizedBox(height: sectionGap),
 
           // 신상품 (it_kind 무관 · 최신 4개)
-          ProductSection(productsFuture: _newProductsFuture),
+          ProductSection(
+            productsFuture: _newProductsFuture,
+            onImagesSettled: _markProductsReady,
+          ),
           SizedBox(height: sectionGap),
 
           if (_loadBelowFold) ...[
