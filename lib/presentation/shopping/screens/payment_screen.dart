@@ -591,10 +591,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
             'addr3': '',
             'memo': _memoController.text.trim(),
           },
+          // 앱: SmartPay(모바일 거래등록). 웹: PC payplus_web.
+          'user_agent': defaultTargetPlatform == TargetPlatform.iOS
+              ? 'iPhone'
+              : 'Android',
+          'is_mobile': !kIsWeb,
         },
-        additionalHeaders: kIsWeb
-            ? null
-            : <String, String>{'User-Agent': _kcpMobileUserAgent()},
+        additionalHeaders: <String, String>{
+          'User-Agent': _kcpMobileUserAgent(),
+        },
       );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -646,19 +651,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final success = resultMap['success'] == true;
       final message = (resultMap['message'] ?? '').toString();
       final errorCode = (resultMap['error_code'] ?? '').toString().trim();
-      final orderId = (resultMap['order_id'] ?? '').toString();
+      var orderId = (resultMap['order_id'] ?? '').toString().trim();
 
       if (success) {
+        // 가상계좌 등에서 order_id 누락 시 결과 API로 한 번 더 보정
+        if (orderId.isEmpty && token.isNotEmpty) {
+          try {
+            final retry =
+                await ApiClient.get(ApiEndpoints.kcpPayResult(token));
+            if (retry.statusCode == 200) {
+              final retryData =
+                  jsonDecode(retry.body) as Map<String, dynamic>;
+              orderId = (retryData['order_id'] ?? '').toString().trim();
+            }
+          } catch (_) {}
+        }
+
+        if (!mounted) return;
         if (orderId.isNotEmpty) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
+          Navigator.of(context).pushNamedAndRemoveUntil(
             '/payment-complete',
             (route) => route.isFirst,
             arguments: {'orderId': orderId},
           );
         } else {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
+          // 성공인데 주문번호가 없으면 주문내역으로 (메인으로 떨어지지 않게)
+          Navigator.of(context).pushNamedAndRemoveUntil(
             '/order',
             (route) => route.isFirst,
           );

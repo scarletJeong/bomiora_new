@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart'
@@ -8,7 +9,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
-import '../../common/widgets/app_bar.dart';
 
 class KcpPayWebViewScreen extends StatefulWidget {
   const KcpPayWebViewScreen({
@@ -28,11 +28,112 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
   static const String _iosSafariUa =
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
   static const String _androidChromeUa =
-      'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36';
+      'Mozilla/5.0 (Linux; Android 14; Mobile; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36';
+
+  /// payplus / Chromium 이 PC로 분기하지 않도록 UA·userAgentData·touch 강제
+  static String get _forceMobileUaScript {
+    final ua = defaultTargetPlatform == TargetPlatform.iOS
+        ? _iosSafariUa
+        : _androidChromeUa;
+    final platform =
+        defaultTargetPlatform == TargetPlatform.iOS ? 'iPhone' : 'Android';
+    return '''
+(function () {
+  var MOBILE_UA = ${jsonEncode(ua)};
+  var PLATFORM = ${jsonEncode(platform)};
+  function spoof(obj, prop, value) {
+    try {
+      Object.defineProperty(obj, prop, {
+        configurable: true,
+        get: function () { return value; }
+      });
+    } catch (e) {}
+  }
+  try {
+    spoof(Navigator.prototype, 'userAgent', MOBILE_UA);
+    spoof(Navigator.prototype, 'appVersion', MOBILE_UA);
+    spoof(Navigator.prototype, 'platform', PLATFORM === 'iPhone' ? 'iPhone' : 'Linux armv8l');
+    spoof(Navigator.prototype, 'vendor', 'Google Inc.');
+    spoof(Navigator.prototype, 'maxTouchPoints', 5);
+    spoof(Navigator.prototype, 'userAgentData', {
+      mobile: true,
+      platform: PLATFORM,
+      brands: [
+        { brand: 'Chromium', version: '123' },
+        { brand: 'Google Chrome', version: '123' }
+      ],
+      getHighEntropyValues: function () {
+        return Promise.resolve({
+          mobile: true,
+          platform: PLATFORM,
+          model: 'Pixel 7',
+          uaFullVersion: '123.0.0.0'
+        });
+      }
+    });
+  } catch (e) {}
+  try {
+    var mm = window.matchMedia;
+    window.matchMedia = function (q) {
+      try {
+        if (String(q).indexOf('pointer: fine') >= 0) {
+          return { matches: false, media: q, addListener: function(){}, removeListener: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onchange: null, dispatchEvent: function(){ return false; } };
+        }
+        if (String(q).indexOf('pointer: coarse') >= 0 || String(q).indexOf('hover: none') >= 0) {
+          return { matches: true, media: q, addListener: function(){}, removeListener: function(){}, addEventListener: function(){}, removeEventListener: function(){}, onchange: null, dispatchEvent: function(){ return false; } };
+        }
+      } catch (e2) {}
+      return mm ? mm.call(window, q) : { matches: false, media: q };
+    };
+  } catch (e3) {}
+})();
+''';
+  }
+
+  /// PC 결제 레이어가 뜨면 화면 폭에 맞게 확대
+  static const String _fitPaymentLayerScript = r'''
+(function () {
+  function fit() {
+    try {
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'viewport';
+        document.head.appendChild(meta);
+      }
+      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+      document.documentElement.style.width = '100%';
+      document.body.style.width = '100%';
+      document.body.style.margin = '0';
+      document.body.style.padding = '0';
+      document.body.style.overflowX = 'hidden';
+
+      var nodes = document.querySelectorAll(
+        'iframe, [id*="kcp"], [class*="kcp"], [id*="pay"], [class*="pay"], [id*="layer"], [class*="layer"]'
+      );
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (!el || !el.style) continue;
+        el.style.maxWidth = '100vw';
+        el.style.width = '100%';
+        if (el.tagName === 'IFRAME') {
+          el.style.minHeight = '80vh';
+          el.setAttribute('width', '100%');
+        }
+      }
+    } catch (e) {}
+  }
+  fit();
+  setInterval(fit, 700);
+})();
+''';
 
   Timer? _pollingTimer;
   bool _completed = false;
   bool _isLoading = true;
+
+  String get _launchUrl =>
+      '${ApiClient.baseUrl}/api/kcp-pay/launch/${Uri.encodeComponent(widget.token)}';
 
   void _returnUserCancelled() {
     if (_completed || !mounted) return;
@@ -110,59 +211,146 @@ class _KcpPayWebViewScreenState extends State<KcpPayWebViewScreen> {
     }
   }
 
+  Future<void> _injectHelpers(InAppWebViewController controller) async {
+    try {
+      await controller.evaluateJavascript(source: _forceMobileUaScript);
+      await controller.evaluateJavascript(source: _fitPaymentLayerScript);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ua = _mobileUserAgent();
     return WillPopScope(
       onWillPop: () async {
         _returnUserCancelled();
         return false;
       },
       child: Scaffold(
-        appBar: HealthAppBar(
-          title: 'KCP 결제',
-          onBack: _returnUserCancelled,
-        ),
-        body: Stack(
-          children: [
+        body: SafeArea(
+          // 상태바(시간·배터리)와 KCP 닫기(X) 겹침 방지
+          bottom: false,
+          child: Stack(
+            children: [
             InAppWebView(
-            initialData: InAppWebViewInitialData(
-              data: widget.html,
-              baseUrl: WebUri('https://pay.kcp.co.kr'),
-              historyUrl: WebUri('https://pay.kcp.co.kr'),
+              // initialData 대신 launch URL — HTTP User-Agent 가 payplus 요청에 실림
+              initialUrlRequest: URLRequest(
+                url: WebUri(_launchUrl),
+                headers: {'User-Agent': ua},
+              ),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                domStorageEnabled: true,
+                databaseEnabled: true,
+                cacheEnabled: false,
+                clearCache: true,
+                userAgent: ua,
+                preferredContentMode: UserPreferredContentMode.MOBILE,
+                javaScriptCanOpenWindowsAutomatically: true,
+                supportMultipleWindows: true,
+                thirdPartyCookiesEnabled: true,
+                sharedCookiesEnabled: true,
+                useHybridComposition: true,
+                useWideViewPort: true,
+                loadWithOverviewMode: true,
+                builtInZoomControls: false,
+                displayZoomControls: false,
+                supportZoom: false,
+                allowsInlineMediaPlayback: true,
+                mediaPlaybackRequiresUserGesture: false,
+                mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+              ),
+              initialUserScripts: UnmodifiableListView<UserScript>([
+                UserScript(
+                  source: _forceMobileUaScript,
+                  injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                  forMainFrameOnly: false,
+                ),
+                UserScript(
+                  source: _fitPaymentLayerScript,
+                  injectionTime: UserScriptInjectionTime.AT_DOCUMENT_END,
+                  forMainFrameOnly: false,
+                ),
+              ]),
+              onWebViewCreated: (controller) async {
+                try {
+                  await controller.setSettings(
+                    settings: InAppWebViewSettings(
+                      userAgent: ua,
+                      preferredContentMode: UserPreferredContentMode.MOBILE,
+                    ),
+                  );
+                } catch (_) {}
+              },
+              onCreateWindow: (controller, createWindowAction) async {
+                await showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (dialogContext) {
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: const Text('결제 인증'),
+                        leading: IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(dialogContext),
+                        ),
+                      ),
+                      body: InAppWebView(
+                        windowId: createWindowAction.windowId,
+                        initialSettings: InAppWebViewSettings(
+                          javaScriptEnabled: true,
+                          userAgent: ua,
+                          preferredContentMode:
+                              UserPreferredContentMode.MOBILE,
+                          javaScriptCanOpenWindowsAutomatically: true,
+                          supportMultipleWindows: true,
+                          thirdPartyCookiesEnabled: true,
+                          sharedCookiesEnabled: true,
+                          useHybridComposition: true,
+                          useWideViewPort: true,
+                          loadWithOverviewMode: true,
+                        ),
+                        initialUserScripts: UnmodifiableListView<UserScript>([
+                          UserScript(
+                            source: _forceMobileUaScript,
+                            injectionTime:
+                                UserScriptInjectionTime.AT_DOCUMENT_START,
+                            forMainFrameOnly: false,
+                          ),
+                        ]),
+                        onCloseWindow: (c) {
+                          if (Navigator.of(dialogContext).canPop()) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                );
+                return true;
+              },
+              onLoadStop: (controller, url) async {
+                if (!mounted) return;
+                setState(() => _isLoading = false);
+                await _injectHelpers(controller);
+                final text = url?.toString() ?? '';
+                if (text.contains('/api/kcp-pay/callback')) {
+                  await _pollResult();
+                }
+              },
+              onLoadStart: (controller, url) async {
+                final text = url?.toString() ?? '';
+                if (text.contains('/api/kcp-pay/callback')) {
+                  _pollResult();
+                }
+              },
             ),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              domStorageEnabled: true,
-              databaseEnabled: true,
-              cacheEnabled: false,
-              userAgent: _mobileUserAgent(),
-              javaScriptCanOpenWindowsAutomatically: true,
-              supportMultipleWindows: true,
-              thirdPartyCookiesEnabled: true,
-              sharedCookiesEnabled: true,
-              useHybridComposition: true,
-              allowsInlineMediaPlayback: true,
-              mediaPlaybackRequiresUserGesture: false,
-              mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-            ),
-            onLoadStop: (controller, url) {
-              if (!mounted) return;
-              setState(() {
-                _isLoading = false;
-              });
-            },
-            onLoadStart: (controller, url) async {
-              final text = url?.toString() ?? '';
-              if (text.contains('/api/kcp-pay/callback')) {
-                _pollResult();
-              }
-            },
-          ),
             if (_isLoading)
               const Center(
                 child: CircularProgressIndicator(),
               ),
           ],
+          ),
         ),
       ),
     );

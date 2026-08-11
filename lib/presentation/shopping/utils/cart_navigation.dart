@@ -9,36 +9,56 @@ class CartNavigation {
   CartNavigation._();
 
   /// [prescriptionTab] true: 비대면 탭(또는 처방 전용 장바구니), false: 일반상품 탭(또는 일반 장바구니)
+  /// [clearStack] true: 루트(홈)만 남기고 장바구니로 교체 (결제 완료 뒤로가기 등)
   static Future<void> openCart(
     BuildContext context, {
     bool prescriptionTab = false,
+    bool clearStack = false,
   }) async {
     final useIntegrated =
         await PrescriptionPurchaseHistoryService.shouldUseIntegratedCart();
     if (!context.mounted) return;
 
+    bool keepFirst(Route<dynamic> route) => route.isFirst;
+
     if (useIntegrated) {
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => CartIntegrationScreen(
-            initialTabIndex: prescriptionTab ? 0 : 1,
-          ),
+      final route = MaterialPageRoute<void>(
+        builder: (_) => CartIntegrationScreen(
+          initialTabIndex: prescriptionTab ? 0 : 1,
         ),
       );
+      if (clearStack) {
+        await Navigator.pushAndRemoveUntil<void>(context, route, keepFirst);
+      } else {
+        await Navigator.push<void>(context, route);
+      }
       return;
     }
 
     if (prescriptionTab) {
-      await Navigator.pushNamed(context, '/cart');
+      if (clearStack) {
+        await Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/cart',
+          keepFirst,
+        );
+      } else {
+        await Navigator.pushNamed(context, '/cart');
+      }
       return;
     }
 
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => const cart_general.CartScreen(),
-      ),
+    final generalRoute = MaterialPageRoute<void>(
+      builder: (_) => const cart_general.CartScreen(),
     );
+    if (clearStack) {
+      await Navigator.pushAndRemoveUntil<void>(
+        context,
+        generalRoute,
+        keepFirst,
+      );
+    } else {
+      await Navigator.push<void>(context, generalRoute);
+    }
   }
 }

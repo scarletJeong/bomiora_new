@@ -17,6 +17,7 @@ import '../../user/delivery/widgets/delivery_address_change_popup_ver2.dart';
 import '../../user/delivery/widgets/order_flow_dialogs.dart';
 import '../../user/delivery/widgets/reservation_time_change_popup.dart';
 import '../data/payment_complete_preview_data.dart';
+import '../utils/cart_navigation.dart';
 import '../widgets/payment_product_card.dart';
 import '../widgets/prescription_booking_progress_bar.dart';
 
@@ -359,49 +360,17 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     if (_handlingBlockedBack || !mounted) return;
     _handlingBlockedBack = true;
 
-    unawaited(
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.black.withValues(alpha: 0.45),
-        builder: (dialogContext) {
-          return Center(
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: healthDp(context, 40)),
-              padding: EdgeInsets.symmetric(
-                horizontal: healthDp(context, 24),
-                vertical: healthDp(context, 20),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(healthDp(context, 12)),
-              ),
-              child: Text(
-                '잘못된 페이지 이동입니다',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _ink,
-                  fontSize: healthSp(context, 16),
-                  fontFamily: _font,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-
-    await Future<void>.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-
-    Navigator.of(context).pop();
-    Navigator.pushNamedAndRemoveUntil(
+    // 비대면 배송완료 이력 있으면 통합 장바구니, 없으면 이번 주문 유형별 장바구니
+    final isRx = _order?.isPrescriptionOrder == true;
+    await CartNavigation.openCart(
       context,
-      '/cart',
-      (route) => route.isFirst,
+      prescriptionTab: isRx,
+      clearStack: true,
     );
-    _handlingBlockedBack = false;
+
+    if (mounted) {
+      _handlingBlockedBack = false;
+    }
   }
 
   Future<void> _openDeliveryAddressChange() async {

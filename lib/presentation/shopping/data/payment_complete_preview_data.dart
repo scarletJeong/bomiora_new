@@ -48,7 +48,8 @@ class PaymentCompletePreviewData {
   PaymentCompletePreviewData._();
 
   static const bool enabled = true;
-  static const bool forcePreview = true;
+  /// UI 확인 시에만 true. 실결제 데이터 확인 시에는 반드시 false.
+  static const bool forcePreview = false;
   static const String previewOrderId = 'preview';
 
   /// UI 확인 모드
