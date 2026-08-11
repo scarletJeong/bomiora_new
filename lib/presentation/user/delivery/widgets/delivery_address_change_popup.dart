@@ -32,9 +32,19 @@ enum _PopupPage { list, form }
 class DeliveryAddressChangePopup extends StatefulWidget {
   final String orderId;
 
+  /// 이미 알고 있는 주문 수령지 (목록/상세에서 넘기면 주문상세 API 생략)
+  final String? recipientName;
+  final String? recipientPhone;
+  final String? recipientAddress;
+  final String? recipientAddressDetail;
+
   const DeliveryAddressChangePopup({
     super.key,
     required this.orderId,
+    this.recipientName,
+    this.recipientPhone,
+    this.recipientAddress,
+    this.recipientAddressDetail,
   });
 
   @override
@@ -53,6 +63,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   Map<String, dynamic>? _editingAddress;
 
   final _pageController = PageController();
+  final _formScrollController = ScrollController();
+  final _addr2FieldKey = GlobalKey();
+  final _addr2FocusNode = FocusNode();
   final _subjectController = TextEditingController();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -82,11 +95,41 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     _addr1Controller.addListener(_onFormChanged);
     _addr2Controller.addListener(_onFormChanged);
     _subjectController.addListener(_onFormChanged);
+    _addr2FocusNode.addListener(_onAddr2FocusChanged);
     _loadData();
   }
 
   void _onFormChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _onAddr2FocusChanged() {
+    if (_addr2FocusNode.hasFocus) {
+      _scrollToAddr2Field();
+    }
+  }
+
+  /// 상세주소 입력칸이 보이도록 폼을 아래로 스크롤
+  Future<void> _scrollToAddr2Field({double alignment = 0.15}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    if (!mounted) return;
+    final target = _addr2FieldKey.currentContext;
+    if (target == null) {
+      if (_formScrollController.hasClients) {
+        await _formScrollController.animateTo(
+          _formScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+    await Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: alignment,
+    );
   }
 
   @override
@@ -96,7 +139,10 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     _addr1Controller.removeListener(_onFormChanged);
     _addr2Controller.removeListener(_onFormChanged);
     _subjectController.removeListener(_onFormChanged);
+    _addr2FocusNode.removeListener(_onAddr2FocusChanged);
     _pageController.dispose();
+    _formScrollController.dispose();
+    _addr2FocusNode.dispose();
     _subjectController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
@@ -126,7 +172,18 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         footer;
   }
 
-  Future<void> _loadData() async {
+  int? _asAddressId(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse('$value');
+  }
+
+  bool _hasAddressId(int? id) =>
+      id != null && _addresses.any((a) => _asAddressId(a['adId']) == id);
+
+  static String _normText(String value) =>
+      value.replaceAll(RegExp(r'\s+'), '').trim();
+
+  Future<void> _loadData({int? preferSelectId, bool matchOrder = true}) async {
     final user = await AuthService.getUser();
     if (user == null) {
       if (!mounted) return;
@@ -138,31 +195,110 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     if (!mounted) return;
 
     _addresses = addresses;
-    if (_addresses.isNotEmpty) {
-      final hasSelected =
-          _addresses.any((a) => a['adId'] == _selectedAddressId);
-      if (!hasSelected) {
-        final matchedId = await _matchOrderAddressId(user.id);
-        if (matchedId != null &&
-            _addresses.any((a) => a['adId'] == matchedId)) {
-          _selectedAddressId = matchedId;
-        } else {
-          final defaultAddress = _addresses.firstWhere(
-            (a) => a['adDefault'] == 1,
-            orElse: () => _addresses.first,
-          );
-          _selectedAddressId = defaultAddress['adId'] as int?;
-        }
-      }
+
+    if (preferSelectId != null && _hasAddressId(preferSelectId)) {
+      _selectedAddressId = preferSelectId;
     } else {
-      _selectedAddressId = null;
+      _selectedAddressId = _pickInitialAddressId();
     }
-    if (!mounted) return;
     setState(() => _isLoading = false);
+
+    // 신규/수정 직후 강제 선택이 있으면 주문 매칭으로 덮지 않음
+    if (!matchOrder || preferSelectId != null) return;
+
+    // 주문 수령지 매칭은 UI 표시 후 백그라운드에서 보정
+    final matchedId = await _matchOrderAddressId(user.id);
+    if (!mounted || matchedId == null) return;
+    if (_hasAddressId(matchedId) && _selectedAddressId != matchedId) {
+      setState(() => _selectedAddressId = matchedId);
+    }
+  }
+
+  int? _pickInitialAddressId() {
+    if (_addresses.isEmpty) return null;
+    if (_hasAddressId(_selectedAddressId)) return _selectedAddressId;
+
+    // 주문에 적용된(또는 화면에 표시 중인) 수령지 우선 — 기본배송지로 떨어지지 않게
+    final fromSnapshot = _matchAddressIdFromSnapshot(
+      name: widget.recipientName ?? '',
+      phone: widget.recipientPhone ?? '',
+      addr1: widget.recipientAddress ?? '',
+      addr2: widget.recipientAddressDetail ?? '',
+    );
+    if (fromSnapshot != null) return fromSnapshot;
+
+    final hasOrderHint = (widget.recipientName ?? '').trim().isNotEmpty ||
+        (widget.recipientPhone ?? '').trim().isNotEmpty ||
+        (widget.recipientAddress ?? '').trim().isNotEmpty;
+    // 수령지 힌트가 있는데 아직 못 찾으면 기본배송지 강제 선택하지 않음
+    // (비동기 주문상세 매칭 결과를 기다림)
+    if (hasOrderHint) return null;
+
+    final defaultAddress = _addresses.firstWhere(
+      (a) => a['adDefault'] == 1,
+      orElse: () => _addresses.first,
+    );
+    return _asAddressId(defaultAddress['adId']);
+  }
+
+  int? _matchAddressIdFromSnapshot({
+    required String name,
+    required String phone,
+    required String addr1,
+    required String addr2,
+  }) {
+    final oName = name.trim();
+    final oPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final oAddr1 = _normText(addr1);
+    final oAddr2 = _normText(addr2);
+    if (oName.isEmpty && oPhone.isEmpty && oAddr1.isEmpty) return null;
+
+    int? softMatch;
+    int? namePhoneMatch;
+    for (final a in _addresses) {
+      final aName = (a['adName'] ?? '').toString().trim();
+      final aPhone = (a['adHp'] ?? a['adTel'] ?? '')
+          .toString()
+          .replaceAll(RegExp(r'[^0-9]'), '');
+      final a1 = _normText((a['adAddr1'] ?? '').toString());
+      final a2 = _normText((a['adAddr2'] ?? '').toString());
+      final id = _asAddressId(a['adId']);
+      if (id == null) continue;
+
+      final nameOk = oName.isEmpty || oName == aName;
+      final phoneOk = oPhone.isEmpty || oPhone == aPhone;
+      if (!nameOk || !phoneOk) continue;
+
+      if (oAddr1 == a1 && oAddr2 == a2) return id;
+      if (oAddr1 == a1) {
+        softMatch ??= id;
+        continue;
+      }
+      // 주문 주소가 기본+상세가 합쳐진 경우 / 공백·표기 차이
+      final combined = '$a1$a2';
+      if (oAddr1.isNotEmpty &&
+          (oAddr1 == combined ||
+              oAddr1.contains(a1) ||
+              a1.contains(oAddr1) ||
+              combined.contains(oAddr1))) {
+        softMatch ??= id;
+        continue;
+      }
+      namePhoneMatch ??= id;
+    }
+    return softMatch ?? namePhoneMatch;
   }
 
   /// 주문에 현재 적용된 배송지와 동일한 주소 카드 id를 찾습니다.
   Future<int?> _matchOrderAddressId(String mbId) async {
+    final fromSnapshot = _matchAddressIdFromSnapshot(
+      name: widget.recipientName ?? '',
+      phone: widget.recipientPhone ?? '',
+      addr1: widget.recipientAddress ?? '',
+      addr2: widget.recipientAddressDetail ?? '',
+    );
+    if (fromSnapshot != null) return fromSnapshot;
+
     final orderId = widget.orderId.trim();
     if (orderId.isEmpty) return null;
 
@@ -175,35 +311,12 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       final order = result['order'];
       if (order is! OrderDetailModel) return null;
 
-      final oName = order.recipientName.trim();
-      final oPhone =
-          order.recipientPhone.replaceAll(RegExp(r'[^0-9]'), '');
-      final oAddr1 = order.recipientAddress.trim();
-      final oAddr2 = order.recipientAddressDetail.trim();
-
-      int? softMatch;
-      for (final a in _addresses) {
-        final aName = (a['adName'] ?? '').toString().trim();
-        final aPhone = (a['adHp'] ?? a['adTel'] ?? '')
-            .toString()
-            .replaceAll(RegExp(r'[^0-9]'), '');
-        final a1 = (a['adAddr1'] ?? '').toString().trim();
-        final a2 = (a['adAddr2'] ?? '').toString().trim();
-
-        if (oName == aName &&
-            oPhone == aPhone &&
-            oAddr1 == a1 &&
-            oAddr2 == a2) {
-          return a['adId'] as int?;
-        }
-        if (softMatch == null &&
-            oName == aName &&
-            oPhone == aPhone &&
-            oAddr1 == a1) {
-          softMatch = a['adId'] as int?;
-        }
-      }
-      return softMatch;
+      return _matchAddressIdFromSnapshot(
+        name: order.recipientName,
+        phone: order.recipientPhone,
+        addr1: order.recipientAddress,
+        addr2: order.recipientAddressDetail,
+      );
     } catch (_) {
       return null;
     }
@@ -303,6 +416,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     }
   }
 
+  /// 이름·연락처·상세주소(+기본주소) 필수. 하나라도 비면 저장/수정 불가.
   bool get _isFormComplete {
     if (_nameController.text.trim().isEmpty) return false;
     if (_phoneController.text.trim().isEmpty) return false;
@@ -317,15 +431,13 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
   Future<void> _submitForm() async {
     if (_isSubmitting) return;
-
-    final nameEmpty = _nameController.text.trim().isEmpty;
-    final phoneEmpty = _phoneController.text.trim().isEmpty;
-    final addressEmpty = _addr1Controller.text.trim().isEmpty;
-    final addr2Empty = _addr2Controller.text.trim().isEmpty;
-    final subjectEmpty = _subjectPreset == _SubjectPreset.custom &&
-        _subjectController.text.trim().isEmpty;
-
-    if (nameEmpty || phoneEmpty || addressEmpty || addr2Empty || subjectEmpty) {
+    if (!_isFormComplete) {
+      final nameEmpty = _nameController.text.trim().isEmpty;
+      final phoneEmpty = _phoneController.text.trim().isEmpty;
+      final addressEmpty = _addr1Controller.text.trim().isEmpty;
+      final addr2Empty = _addr2Controller.text.trim().isEmpty;
+      final subjectEmpty = _subjectPreset == _SubjectPreset.custom &&
+          _subjectController.text.trim().isEmpty;
       await _triggerPulse({
         if (nameEmpty) 'name',
         if (phoneEmpty) 'phone',
@@ -363,11 +475,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         'adMemo': '',
       };
 
+      final editingId = _asAddressId(_editingAddress?['adId']);
       final result = wasEdit
-          ? await AddressService.updateAddress(
-              _editingAddress!['adId'] as int,
-              payload,
-            )
+          ? await AddressService.updateAddress(editingId!, payload)
           : await AddressService.addAddress(payload);
 
       if (!mounted) return;
@@ -375,7 +485,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
       int? addressId;
       if (wasEdit) {
-        addressId = _editingAddress!['adId'] as int?;
+        addressId = editingId;
       } else {
         final raw = result['data'];
         if (raw is Map) {
@@ -384,11 +494,15 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       }
 
       setState(() => _isLoading = true);
-      await _loadData();
-      if (addressId != null) {
-        _selectedAddressId = addressId;
-      } else if (_addresses.isNotEmpty && !wasEdit) {
-        _selectedAddressId = _addresses.last['adId'] as int?;
+      // 신규/수정한 배송지를 목록에서 선택 상태로 유지
+      await _loadData(preferSelectId: addressId, matchOrder: false);
+      if (!mounted) return;
+      if (!_hasAddressId(_selectedAddressId) &&
+          !wasEdit &&
+          _addresses.isNotEmpty) {
+        setState(() {
+          _selectedAddressId = _asAddressId(_addresses.last['adId']);
+        });
       }
       if (!mounted) return;
       await _goToList();
@@ -434,6 +548,10 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   }
 
   Future<void> _openAddressSearch() async {
+    // 검색 버튼 탭 시 주소 영역(상세주소) 쪽으로 먼저 스크롤
+    await _scrollToAddr2Field(alignment: 0.35);
+    if (!mounted) return;
+
     final selected = await showDaumPostcodeSearchDialog(context);
     if (!mounted || selected == null) return;
 
@@ -449,6 +567,14 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       if (_pulseFields.contains('address')) {
         _pulseFields = {..._pulseFields}..remove('address');
       }
+    });
+
+    // 검색 완료 후 상세주소 칸이 보이도록 스크롤 + 포커스
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _scrollToAddr2Field(alignment: 0.2);
+      if (!mounted) return;
+      _addr2FocusNode.requestFocus();
     });
   }
 
@@ -545,8 +671,9 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   }
 
   Widget _buildAddressCard(BuildContext context, Map<String, dynamic> a) {
-    final adId = a['adId'] as int?;
-    final selected = _selectedAddressId != null && _selectedAddressId == adId;
+    final adId = _asAddressId(a['adId']);
+    final selected =
+        _selectedAddressId != null && _selectedAddressId == adId;
     final subject = (a['adSubject'] ?? '').toString().trim();
     final name = (a['adName'] ?? '').toString().trim();
     final title = subject.isNotEmpty ? '$name($subject)' : name;
@@ -756,11 +883,15 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     Color fillColor = Colors.white,
+    FocusNode? focusNode,
+    Key? key,
   }) {
     final borderColor = _pulseBorderColor(pulseKey);
     final radius = healthDp(context, 10);
     final fieldH = _fieldHeight(context);
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
+      key: key,
       width: double.infinity,
       height: fieldH,
       padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
@@ -775,9 +906,14 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       ),
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         cursorColor: _kPink,
+        // 키패드에 가리지 않도록 여유 스크롤 패딩
+        scrollPadding: EdgeInsets.only(
+          bottom: keyboardInset + healthDp(context, 120),
+        ),
         style: TextStyle(
           color: _kInk,
           fontSize: healthSp(context, 12),
@@ -785,6 +921,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
           fontWeight: FontWeight.w500,
           height: 1.2,
         ),
+        onTap: () {
+          if (pulseKey == 'addr2') {
+            _scrollToAddr2Field();
+          }
+        },
         onChanged: (_) {
           if (_pulseFields.contains(pulseKey)) {
             setState(() => _pulseFields = {..._pulseFields}..remove(pulseKey));
@@ -1047,6 +1188,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   Widget _buildFormPage(BuildContext context) {
     final pad20 = healthDp(context, 20);
     final hasAddress = _addr1Controller.text.trim().isNotEmpty;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1069,11 +1211,16 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
             animation: _pulseCtrl,
             builder: (context, _) {
               return SingleChildScrollView(
+                controller: _formScrollController,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(
                   pad20,
                   healthDp(context, 16),
                   pad20,
-                  healthDp(context, 12),
+                  healthDp(context, 12) +
+                      keyboardInset +
+                      healthDp(context, 24),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1156,10 +1303,14 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                         controller: _addr2Controller,
                         hint: '상세 주소를 입력해 주세요.',
                         pulseKey: 'addr2',
+                        key: _addr2FieldKey,
+                        focusNode: _addr2FocusNode,
                       ),
                     ],
                     SizedBox(height: healthDp(context, 16)),
                     _defaultCheckbox(context),
+                    // 키패드 올라왔을 때 상세주소가 위로 스크롤될 여유
+                    SizedBox(height: healthDp(context, 80)),
                   ],
                 ),
               );
@@ -1235,43 +1386,55 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   @override
   Widget build(BuildContext context) {
     final popupWidth = healthDp(context, 361);
-    final popupHeight = _fixedPopupHeight(context);
+    final baseHeight = _fixedPopupHeight(context);
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    // 키패드 높이만큼 팝업을 줄여 상단이 잘리지 않게 하고, 내부 스크롤로 상세주소 노출
+    final popupHeight = keyboardInset > 0
+        ? (baseHeight - keyboardInset * 0.55)
+            .clamp(healthDp(context, 300), baseHeight)
+        : baseHeight;
     final popupRadius = healthDp(context, 20);
 
     return Material(
       type: MaterialType.transparency,
-      child: Center(
-        child: Container(
-          width: popupWidth,
-          height: popupHeight,
-          clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(popupRadius),
-            ),
-            shadows: const [
-              BoxShadow(
-                color: Color(0x19000000),
-                blurRadius: 8.14,
-                offset: Offset.zero,
+      child: AnimatedPadding(
+        // 키패드가 올라오면 팝업 전체를 위로 밀어 상세주소가 보이게
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: keyboardInset * 0.45),
+        child: Center(
+          child: Container(
+            width: popupWidth,
+            height: popupHeight,
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(popupRadius),
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildListPage(context),
-                    _buildFormPage(context),
-                  ],
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 8.14,
+                  offset: Offset.zero,
                 ),
-              ),
-              _buildFooter(context),
-            ],
+              ],
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildListPage(context),
+                      _buildFormPage(context),
+                    ],
+                  ),
+                ),
+                _buildFooter(context),
+              ],
+            ),
           ),
         ),
       ),

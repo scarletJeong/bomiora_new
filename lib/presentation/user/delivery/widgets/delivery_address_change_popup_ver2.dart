@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../common/widgets/daum_postcode_search_dialog.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
+import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/services/address_service.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/delivery_service.dart' as order_service;
@@ -61,7 +62,7 @@ class _DeliveryAddressChangePopupState
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({int? preferSelectId}) async {
     final user = await AuthService.getUser();
     if (user == null) {
       if (!mounted) return;
@@ -73,23 +74,29 @@ class _DeliveryAddressChangePopupState
     if (!mounted) return;
 
     _addresses = addresses;
-    if (_addresses.isNotEmpty) {
-      final hasSelected =
-          _addresses.any((a) => a['adId'] == _selectedAddressId);
-      if (!hasSelected) {
-        final matchedId = _matchInitiallySelectedAddressId();
-        if (matchedId != null) {
-          _selectedAddressId = matchedId;
-        } else {
-          final defaultAddress = _addresses.firstWhere(
-            (a) => a['adDefault'] == 1,
-            orElse: () => _addresses.first,
-          );
-          _selectedAddressId = defaultAddress['adId'] as int?;
-        }
-      }
-    } else {
+    if (_addresses.isEmpty) {
       _selectedAddressId = null;
+    } else if (preferSelectId != null &&
+        _addresses.any((a) => _asAddressId(a['adId']) == preferSelectId)) {
+      // 신규/수정한 배송지를 선택
+      _selectedAddressId = preferSelectId;
+    } else if (_addresses.any((a) => _asAddressId(a['adId']) == _selectedAddressId)) {
+      // 기존 선택 유지
+    } else {
+      final matchedId = _matchInitiallySelectedAddressId();
+      if (matchedId != null) {
+        _selectedAddressId = matchedId;
+      } else if (widget.initiallySelectedAddress != null &&
+          widget.initiallySelectedAddress!.isNotEmpty) {
+        // 현재 선택 힌트가 있는데 매칭 실패 시 기본배송지로 떨어지지 않음
+        _selectedAddressId = null;
+      } else {
+        final defaultAddress = _addresses.firstWhere(
+          (a) => a['adDefault'] == 1,
+          orElse: () => _addresses.first,
+        );
+        _selectedAddressId = _asAddressId(defaultAddress['adId']);
+      }
     }
     setState(() => _isLoading = false);
   }
@@ -102,23 +109,33 @@ class _DeliveryAddressChangePopupState
   String _addrField(Map<String, dynamic> m, String key) =>
       (m[key] ?? '').toString().trim();
 
+  String _zipOf(Map<String, dynamic> m) {
+    final z1 = _addrField(m, 'adZip1');
+    if (z1.isNotEmpty) return z1.replaceAll(RegExp(r'\D'), '');
+    final z = _addrField(m, 'adZip').replaceAll(RegExp(r'\D'), '');
+    return z;
+  }
+
+  static String _normText(String value) =>
+      value.replaceAll(RegExp(r'\s+'), '').trim();
+
   /// 결제 화면에서 넘긴 현재 선택 배송지와 목록 항목을 매칭합니다.
   int? _matchInitiallySelectedAddressId() {
     final initial = widget.initiallySelectedAddress;
     if (initial == null || initial.isEmpty) return null;
 
-    final initialId = _asAddressId(initial['adId']);
+    final initialId = _asAddressId(initial['adId'] ?? initial['ad_id']);
     if (initialId != null &&
-        _addresses.any((a) => a['adId'] == initialId)) {
+        _addresses.any((a) => _asAddressId(a['adId']) == initialId)) {
       return initialId;
     }
 
-    final zip = _addrField(initial, 'adZip');
+    final zip = _zipOf(initial);
     final name = _addrField(initial, 'adName');
-    final hp =
-        _addrField(initial, 'adHp').replaceAll(RegExp(r'\D'), '');
-    final addr1 = _addrField(initial, 'adAddr1');
-    final addr2 = _addrField(initial, 'adAddr2');
+    final hp = _addrField(initial, 'adHp')
+        .replaceAll(RegExp(r'\D'), '');
+    final addr1 = _normText(_addrField(initial, 'adAddr1'));
+    final addr2 = _normText(_addrField(initial, 'adAddr2'));
     if (zip.isEmpty &&
         name.isEmpty &&
         hp.isEmpty &&
@@ -127,23 +144,35 @@ class _DeliveryAddressChangePopupState
       return null;
     }
 
+    int? softMatch;
     for (final a in _addresses) {
-      final aZip = _addrField(a, 'adZip');
+      final aZip = _zipOf(a);
       final aName = _addrField(a, 'adName');
       final aHp = _addrField(a, 'adHp').replaceAll(RegExp(r'\D'), '');
-      final aAddr1 = _addrField(a, 'adAddr1');
-      final aAddr2 = _addrField(a, 'adAddr2');
+      final aAddr1 = _normText(_addrField(a, 'adAddr1'));
+      final aAddr2 = _normText(_addrField(a, 'adAddr2'));
+      final id = _asAddressId(a['adId']);
+      if (id == null) continue;
+
       final zipOk = zip.isEmpty || aZip == zip;
       final nameOk = name.isEmpty || aName == name;
       final hpOk = hp.isEmpty || aHp == hp;
-      final addr1Ok = addr1.isEmpty || aAddr1 == addr1;
-      final addr2Ok = addr2.isEmpty || aAddr2 == addr2;
-      if (zipOk && nameOk && hpOk && addr1Ok && addr2Ok) {
-        final id = _asAddressId(a['adId']);
-        if (id != null) return id;
+      if (!zipOk || !nameOk || !hpOk) continue;
+
+      if (addr1 == aAddr1 && addr2 == aAddr2) return id;
+      if (addr1 == aAddr1) {
+        softMatch ??= id;
+        continue;
+      }
+      final combined = '$aAddr1$aAddr2';
+      if (addr1.isNotEmpty &&
+          (addr1 == combined ||
+              addr1.contains(aAddr1) ||
+              aAddr1.contains(addr1))) {
+        softMatch ??= id;
       }
     }
-    return null;
+    return softMatch;
   }
 
   Future<void> _submit() async {
@@ -180,14 +209,28 @@ class _DeliveryAddressChangePopupState
   }
 
   Future<void> _openAddressForm({Map<String, dynamic>? existing}) async {
-    final result = await showDialog<bool>(
+    final result = await showDialog<int>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => _AddressFormDialog(existing: existing),
     );
-    if (result == true && mounted) {
-      setState(() => _isLoading = true);
-      await _loadData();
+    // 취소 시 null. 저장 성공 시 adId(또는 0=목록 마지막 선택)
+    if (!mounted || result == null) return;
+    setState(() => _isLoading = true);
+    if (result > 0) {
+      await _loadData(preferSelectId: result);
+      return;
+    }
+    await _loadData();
+    if (!mounted || _addresses.isEmpty) return;
+    int? newest;
+    for (final a in _addresses) {
+      final id = _asAddressId(a['adId']);
+      if (id == null) continue;
+      if (newest == null || id > newest) newest = id;
+    }
+    if (newest != null) {
+      setState(() => _selectedAddressId = newest);
     }
   }
 
@@ -282,8 +325,9 @@ class _DeliveryAddressChangePopupState
   }
 
   Widget _buildAddressCard(BuildContext context, Map<String, dynamic> a) {
-    final adId = a['adId'] as int?;
-    final selected = _selectedAddressId != null && _selectedAddressId == adId;
+    final adId = _asAddressId(a['adId']);
+    final selected =
+        _selectedAddressId != null && _selectedAddressId == adId;
     final subject = (a['adSubject'] ?? '').toString().trim();
     final name = (a['adName'] ?? '').toString().trim();
     final title = subject.isNotEmpty ? '$name($subject)' : name;
@@ -602,7 +646,16 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
   @override
   void initState() {
     super.initState();
+    _nameController.addListener(_onFormChanged);
+    _phoneController.addListener(_onFormChanged);
+    _addr1Controller.addListener(_onFormChanged);
+    _addr2Controller.addListener(_onFormChanged);
+    _subjectController.addListener(_onFormChanged);
     _loadExisting();
+  }
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
   }
 
   void _loadExisting() {
@@ -634,6 +687,11 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
 
   @override
   void dispose() {
+    _nameController.removeListener(_onFormChanged);
+    _phoneController.removeListener(_onFormChanged);
+    _addr1Controller.removeListener(_onFormChanged);
+    _addr2Controller.removeListener(_onFormChanged);
+    _subjectController.removeListener(_onFormChanged);
     _subjectController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
@@ -678,18 +736,32 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     if (mounted) setState(() => _pulseFields = {});
   }
 
+  bool get _isFormComplete {
+    if (_nameController.text.trim().isEmpty) return false;
+    if (_phoneController.text.trim().isEmpty) return false;
+    if (_addr1Controller.text.trim().isEmpty) return false;
+    if (_addr2Controller.text.trim().isEmpty) return false;
+    if (_subjectPreset == _SubjectPreset.custom &&
+        _subjectController.text.trim().isEmpty) {
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _save() async {
     if (_saving) return;
 
     final nameEmpty = _nameController.text.trim().isEmpty;
     final phoneEmpty = _phoneController.text.trim().isEmpty;
     final addressEmpty = _addr1Controller.text.trim().isEmpty;
+    final addr2Empty = _addr2Controller.text.trim().isEmpty;
 
-    if (nameEmpty || phoneEmpty || addressEmpty) {
+    if (!_isFormComplete) {
       await _triggerPulse({
         if (nameEmpty) 'name',
         if (phoneEmpty) 'phone',
         if (addressEmpty) 'address',
+        if (addr2Empty) 'addr2',
       });
       return;
     }
@@ -720,20 +792,31 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
         'adMemo': '',
       };
 
+      final editingId = _asAddressId(widget.existing?['adId']);
       final result = _isEdit
-          ? await AddressService.updateAddress(
-              widget.existing!['adId'] as int,
-              payload,
-            )
+          ? await AddressService.updateAddress(editingId!, payload)
           : await AddressService.addAddress(payload);
 
       if (!mounted) return;
-      if (result['success'] == true) {
-        Navigator.pop(context, true);
+      if (result['success'] != true) return;
+
+      int? addressId = editingId;
+      if (!_isEdit) {
+        final raw = result['data'];
+        if (raw is Map) {
+          addressId = NodeValueParser.asInt(raw['adId'] ?? raw['ad_id']);
+        }
       }
+      // 저장된 배송지 id를 넘겨 목록에서 바로 선택되게 함 (0=id 미반환 시 폴백)
+      Navigator.pop(context, addressId ?? 0);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  int? _asAddressId(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse('$value');
   }
 
   Color _pulseBorderColor(String key) {
@@ -1193,7 +1276,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                         child: InkWell(
                           onTap: _saving
                               ? null
-                              : () => Navigator.pop(context, false),
+                              : () => Navigator.pop(context),
                           child: Center(
                             child: Text(
                               '취소',
@@ -1210,9 +1293,11 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                     ),
                     Expanded(
                       child: Material(
-                        color: _kPink,
+                        color: _isFormComplete
+                            ? _kPink
+                            : _kPink.withValues(alpha: 0.45),
                         child: InkWell(
-                          onTap: _saving ? null : _save,
+                          onTap: (_saving || !_isFormComplete) ? null : _save,
                           child: Center(
                             child: _saving
                                 ? SizedBox(
