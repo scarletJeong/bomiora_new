@@ -10,21 +10,19 @@ class DeliveryProductType {
 }
 
 /// 주문 목록 상단 — 상품유형 + 배송/주문 상태 필터
-class DeliveryStatusFilterBar extends StatelessWidget {
+class DeliveryStatusFilterBar extends StatefulWidget {
   const DeliveryStatusFilterBar({
     super.key,
     required this.selectedProductType,
     required this.onProductTypeSelected,
     required this.selectedKey,
     required this.onSelected,
-    required this.statusEntries,
   });
 
   final String selectedProductType;
   final ValueChanged<String> onProductTypeSelected;
   final String selectedKey;
   final ValueChanged<String> onSelected;
-  final List<MapEntry<String, String>> statusEntries;
 
   static const List<MapEntry<String, String>> prescriptionStatusEntries = [
     MapEntry('all', '전체'),
@@ -46,14 +44,61 @@ class DeliveryStatusFilterBar extends StatelessWidget {
     MapEntry('cancelled', '주문취소'),
   ];
 
+  @override
+  State<DeliveryStatusFilterBar> createState() =>
+      _DeliveryStatusFilterBarState();
+}
+
+class _DeliveryStatusFilterBarState extends State<DeliveryStatusFilterBar> {
   static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kMuted = Color(0xFF898686);
   static const Color _kTabBorder = Color(0xFFD2D2D2);
 
+  late String _productType;
+  late String _statusKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _productType = widget.selectedProductType;
+    _statusKey = widget.selectedKey;
+  }
+
+  @override
+  void didUpdateWidget(covariant DeliveryStatusFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 부모 prop이 바뀔 때만 동기화 (낙관적 로컬 선택을 덮어쓰지 않음)
+    if (widget.selectedProductType != oldWidget.selectedProductType) {
+      _productType = widget.selectedProductType;
+    }
+    if (widget.selectedKey != oldWidget.selectedKey) {
+      _statusKey = widget.selectedKey;
+    }
+  }
+
+  void _selectProductType(String key) {
+    if (_productType == key) return;
+    setState(() {
+      _productType = key;
+      _statusKey = 'all';
+    });
+    widget.onProductTypeSelected(key);
+  }
+
+  void _selectStatus(String key) {
+    if (_statusKey == key) return;
+    setState(() => _statusKey = key);
+    widget.onSelected(key);
+  }
+
   @override
   Widget build(BuildContext context) {
     final padH = healthDp(context, 27);
-    final tabGap = healthDp(context, 8);
+    final tabGap = healthDp(context, 12);
+    // 로컬 유형 기준 — 탭 전환 직후 부모 리빌드 전에도 칩 목록이 바로 바뀜
+    final entries = _productType == DeliveryProductType.general
+        ? DeliveryStatusFilterBar.generalStatusEntries
+        : DeliveryStatusFilterBar.prescriptionStatusEntries;
 
     return ColoredBox(
       color: Colors.white,
@@ -89,9 +134,9 @@ class DeliveryStatusFilterBar extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(
               padH,
-              healthDp(context, 12),
+              healthDp(context, 16),
               padH,
-              healthDp(context, 12),
+              healthDp(context, 16),
             ),
             child: WebDragScrollConfiguration(
               child: ClipRect(
@@ -101,12 +146,12 @@ class DeliveryStatusFilterBar extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      for (var i = 0; i < statusEntries.length; i++) ...[
+                      for (var i = 0; i < entries.length; i++) ...[
                         if (i > 0) SizedBox(width: tabGap),
                         _statusChip(
                           context,
-                          statusEntries[i].key,
-                          statusEntries[i].value,
+                          entries[i].key,
+                          entries[i].value,
                         ),
                       ],
                     ],
@@ -125,12 +170,12 @@ class DeliveryStatusFilterBar extends StatelessWidget {
     required String key,
     required String label,
   }) {
-    final selected = selectedProductType == key;
+    final selected = _productType == key;
     final textLineGap = healthDp(context, 10);
     final underlineH = healthDp(context, 2);
 
     return GestureDetector(
-      onTap: () => onProductTypeSelected(key),
+      onTap: () => _selectProductType(key),
       behavior: HitTestBehavior.opaque,
       child: Container(
         width: double.infinity,
@@ -161,56 +206,36 @@ class DeliveryStatusFilterBar extends StatelessWidget {
     );
   }
 
-  /// content_list_screen 탭 칩과 동일 스타일
+  /// 선택 시에도 글자 크기 고정 (12)
   Widget _statusChip(BuildContext context, String key, String label) {
-    final selected = selectedKey == key;
-
-    if (selected) {
-      return GestureDetector(
-        onTap: () => onSelected(key),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: healthDp(context, 10),
-            vertical: healthDp(context, 2),
-          ),
-          decoration: ShapeDecoration(
-            color: _kPink,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(healthDp(context, 20)),
-            ),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            softWrap: false,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: healthSp(context, 14),
-              fontFamily: 'Gmarket Sans TTF',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-    }
+    final selected = _statusKey == key;
+    final padH = healthDp(context, 10);
+    final padV = healthDp(context, 2);
 
     return GestureDetector(
-      onTap: () => onSelected(key),
+      onTap: () => _selectStatus(key),
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: healthDp(context, 3)),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+        decoration: selected
+            ? ShapeDecoration(
+                color: _kPink,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 20)),
+                ),
+              )
+            : null,
         child: Text(
           label,
           textAlign: TextAlign.center,
           maxLines: 1,
           softWrap: false,
           style: TextStyle(
-            color: _kMuted,
+            color: selected ? Colors.white : _kMuted,
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
+            height: 1.2,
           ),
         ),
       ),

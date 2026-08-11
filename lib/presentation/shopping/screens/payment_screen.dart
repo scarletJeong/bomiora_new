@@ -83,7 +83,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _submitting = false;
   bool _syncingPoint = false;
   bool _useEscrow = false;
-  double _scrollProgress = 0;
+  final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
   String? _lastWebKcpLaunchUrl;
   Object? _lastWebKcpPopup;
 
@@ -109,14 +109,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _handleBookingScrollNotification(ScrollNotification notification) {
     if (!widget.showPrescriptionBookingProgress) return false;
+    if (notification.depth != 0) return false;
     if (notification.metrics.axis != Axis.vertical) return false;
     if (notification is! ScrollUpdateNotification &&
         notification is! ScrollEndNotification) {
       return false;
     }
     final next = prescriptionBookingScrollProgress(notification.metrics);
-    if ((next - _scrollProgress).abs() < 0.001) return false;
-    setState(() => _scrollProgress = next);
+    if ((next - _scrollProgress.value).abs() < 0.01) return false;
+    _scrollProgress.value = next;
     return false;
   }
 
@@ -131,6 +132,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _addressController.dispose();
     _detailAddressController.dispose();
     _memoController.dispose();
+    _scrollProgress.dispose();
     super.dispose();
   }
 
@@ -358,7 +360,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  void _applyAddressMode() {
+  /// [preserveDeliveryMemo]: 배송지 변경 시 주소북 adMemo가 비어 있으면
+  /// 결제 화면에서 고른 배송요청사항(드롭다운)을 유지한다.
+  void _applyAddressMode({bool preserveDeliveryMemo = false}) {
     final ad = _defaultAddress;
     _addressNameController.text = _safe(ad?['adSubject']);
     _receiverController.text = _safe(ad?['adName']);
@@ -370,7 +374,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _safe(ad?['adAddr3']),
     ].where((e) => e.isNotEmpty).join(' ');
     _detailAddressController.clear();
-    _memoController.text = _safe(ad?['adMemo']);
+    final addressMemo = _safe(ad?['adMemo']);
+    if (addressMemo.isNotEmpty || !preserveDeliveryMemo) {
+      _memoController.text = addressMemo;
+    }
   }
 
   Future<void> _openDeliveryAddressChangePopup() async {
@@ -385,10 +392,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (result is Map<String, dynamic>) {
       setState(() {
         _defaultAddress = result;
-        _applyAddressMode();
+        _applyAddressMode(preserveDeliveryMemo: true);
       });
     }
   }
+
+  /// 배송요청사항 드롭다운 선택값 → 주문 `od_memo`
+  String get _deliveryRequestMemo => _memoController.text.trim();
 
   String _safe(dynamic value) => (value ?? '').toString().trim();
 
@@ -534,7 +544,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       'adAddr2': _detailAddressController.text.trim(),
       'adAddr3': '',
       'adJibeon': '',
-      'adMemo': _memoController.text.trim(),
+      'adMemo': _deliveryRequestMemo,
     });
   }
 
@@ -581,6 +591,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             'tel': user.phone ?? _phoneController.text.trim(),
             'hp': user.phone ?? _phoneController.text.trim(),
           },
+          // 배송요청사항 → bomiora_shop_order.od_memo
+          'od_memo': _deliveryRequestMemo,
           'receiver': {
             'name': _receiverController.text.trim(),
             'tel': _phoneController.text.trim(),
@@ -589,7 +601,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             'addr1': _addressController.text.trim(),
             'addr2': _detailAddressController.text.trim(),
             'addr3': '',
-            'memo': _memoController.text.trim(),
+            'memo': _deliveryRequestMemo,
           },
           // 앱: SmartPay(모바일 거래등록). 웹: PC payplus_web.
           'user_agent': defaultTargetPlatform == TargetPlatform.iOS
@@ -942,9 +954,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
               : '주문/결제',
           centerTitle: false,
           bottom: widget.showPrescriptionBookingProgress
-              ? PrescriptionBookingProgressBar.asAppBarBottom(
-                  currentStep: PrescriptionBookingSteps.payment,
-                  stepProgress: _scrollProgress,
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(
+                    PrescriptionBookingProgressBar.preferredHeight,
+                  ),
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _scrollProgress,
+                    builder: (context, progress, _) {
+                      return PrescriptionBookingProgressBar(
+                        currentStep: PrescriptionBookingSteps.payment,
+                        stepProgress: progress,
+                      );
+                    },
+                  ),
                 )
               : null,
         ),

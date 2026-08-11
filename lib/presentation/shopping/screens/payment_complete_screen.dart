@@ -9,6 +9,7 @@ import '../../../core/utils/price_formatter.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/delivery_service.dart' as delivery;
+import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/dropdown_btn.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -114,6 +115,41 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     }
   }
 
+  Future<void> _onDeliveryMemoChanged(String value) async {
+    final next = value.trim();
+    final prev = _deliveryMemo;
+    if (next == prev || _order == null) return;
+    if (PaymentCompletePreviewData.shouldUsePreview(widget.orderId)) {
+      setState(() => _deliveryMemo = next);
+      return;
+    }
+
+    setState(() => _deliveryMemo = next);
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.trim().isEmpty) {
+      if (mounted) setState(() => _deliveryMemo = prev);
+      return;
+    }
+
+    final result = await delivery.OrderService.updateDeliveryMemo(
+      odId: _order!.odId,
+      mbId: user.id,
+      memo: next,
+    );
+
+    if (!mounted) return;
+    if (result['success'] == true) {
+      AppToastOverlay.show(context, '배송요청사항이 변경되었습니다.');
+    } else {
+      setState(() => _deliveryMemo = prev);
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '배송요청사항 변경에 실패했습니다.',
+      );
+    }
+  }
+
   String _fmtPrice(int value) => '${PriceFormatter.format(value)} 원';
 
   String _fmtPriceWon(int value) => '${PriceFormatter.format(value)}원';
@@ -171,6 +207,8 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     return '$y.$mo.$d까지 입금';
   }
 
+  static const String _kVirtualAccountHolder = '(주)보미오라';
+
   ({
     String bankName,
     String accountNo,
@@ -189,7 +227,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     final bankName = parts.isNotEmpty ? parts[0] : '';
     final accountNo = parts.length >= 2 ? parts[1] : '';
     final deadlineRaw = parts.length >= 3 ? parts[2] : '';
-    final holder = parts.length >= 4 ? parts[3] : null;
+    // 가상계좌 예금주는 항상 (주)보미오라 (비대면/일반 공통)
     final bankLine = [
       if (bankName.isNotEmpty) bankName,
       if (accountNo.isNotEmpty) accountNo,
@@ -199,7 +237,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
       bankName: bankName.isEmpty ? '-' : bankName,
       accountNo: accountNo,
       bankLine: bankLine.isEmpty ? raw : bankLine,
-      holder: holder,
+      holder: _kVirtualAccountHolder,
       deadline: _formatDepositDeadline(deadlineRaw),
       copyText: accountNo.isNotEmpty
           ? accountNo
@@ -346,13 +384,23 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
     );
   }
 
+  /// 비대면 주문 여부 (플래그 + 라인상품 kind)
+  bool _isPrescriptionPurchase(OrderDetailModel order) {
+    if (order.isPrescriptionOrder) return true;
+    return order.products.any(
+      (p) => orderItemProductKind(p) == 'prescription',
+    );
+  }
+
   void _continueShopping(OrderDetailModel order) {
-    final route =
-        order.isPrescriptionOrder ? '/bomiora-introduce' : '/healthcare-store';
+    // 비대면 → /product/, 일반 → /product-general/
+    final route = _isPrescriptionPurchase(order)
+        ? '/product/'
+        : '/product-general/';
     Navigator.pushNamedAndRemoveUntil(
       context,
       route,
-      (route) => route.isFirst,
+      (r) => r.isFirst,
     );
   }
 
@@ -853,9 +901,7 @@ class _PaymentCompleteScreenState extends State<PaymentCompleteScreen> {
             borderColor: const Color(0xFFD2D2D2),
             itemFontSizeBase: 12,
             itemTextAlign: TextAlign.left,
-            onChanged: (value) {
-              setState(() => _deliveryMemo = value);
-            },
+            onChanged: _onDeliveryMemoChanged,
           ),
           SizedBox(height: healthDp(context, 5)),
           Align(

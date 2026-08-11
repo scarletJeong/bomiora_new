@@ -293,5 +293,59 @@ class OrderService {
       };
     }
   }
+
+  /// 배송요청사항(od_memo) 변경
+  static Future<Map<String, dynamic>> updateDeliveryMemo({
+    required String odId,
+    required String mbId,
+    required String memo,
+  }) async {
+    try {
+      final payload = {
+        'mbId': mbId,
+        'od_memo': memo,
+        'memo': memo,
+      };
+
+      http.Response response =
+          await ApiClient.put('/api/orders/$odId/memo', payload);
+      if (response.statusCode == 404) {
+        response =
+            await ApiClient.put('/api/orders/$odId/delivery-memo', payload);
+      }
+      if (response.statusCode == 404) {
+        response =
+            await ApiClient.put('/api/user/orders/$odId/memo', payload);
+      }
+      if (response.statusCode == 404) {
+        response = await ApiClient.put(
+          '/api/user/orders/$odId/delivery-memo',
+          payload,
+        );
+      }
+
+      if (response.statusCode == 200) {
+        final data = _decodeBody(response);
+        return {
+          'success': true,
+          'message': data['message'] ?? '배송요청사항이 변경되었습니다.',
+          'od_memo': data['od_memo'] ?? memo,
+        };
+      }
+
+      final errorData = _decodeBody(response);
+      return {
+        'success': false,
+        'message': errorData['error'] ??
+            errorData['message'] ??
+            '배송요청사항 변경에 실패했습니다.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '네트워크 오류가 발생했습니다.',
+      };
+    }
+  }
 }
 

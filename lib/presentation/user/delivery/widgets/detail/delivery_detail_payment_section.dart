@@ -78,7 +78,14 @@ class _DeliveryDetailPaymentSectionState
     return raw;
   }
 
+  static const String _kVirtualAccountHolder = '(주)보미오라';
+
   String _depositHolder(String? bankHolder) {
+    final method = (widget.order.paymentMethod ?? '').trim();
+    // 가상계좌 예금주는 항상 (주)보미오라 (비대면/일반 공통)
+    if (method.contains('가상') || method.contains('무통장')) {
+      return _kVirtualAccountHolder;
+    }
     final depositName = (widget.order.odDepositName ?? '').trim();
     if (depositName.isNotEmpty) return depositName;
     return (bankHolder ?? '').trim();

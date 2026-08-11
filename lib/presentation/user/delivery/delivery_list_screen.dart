@@ -237,30 +237,34 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   void _selectProductType(String productType) {
     if (_selectedProductType == productType) return;
-    setState(() {
-      _selectedProductType = productType;
-      _selectedStatus = 'all';
-      _applyFilter();
+    // 필터 UI는 바에서 먼저 반영되고, 목록 리빌드는 다음 프레임에 수행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _selectedProductType == productType) return;
+      setState(() {
+        _selectedProductType = productType;
+        _selectedStatus = 'all';
+        _applyFilter();
+      });
+      _scrollToTop();
     });
-    _scrollToTop();
   }
 
   /// 상태 필터 선택
   void _selectStatus(String status) {
-    setState(() {
-      _selectedStatus = status;
-      _applyFilter();
+    if (_selectedStatus == status) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _selectedStatus == status) return;
+      setState(() {
+        _selectedStatus = status;
+        _applyFilter();
+      });
+      _scrollToTop();
     });
-    _scrollToTop();
   }
 
   void _scrollToTop() {
     if (!_scrollController.hasClients) return;
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
+    _scrollController.jumpTo(0);
   }
 
   @override
@@ -279,58 +283,63 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   Widget _buildBody() {
-    return RefreshIndicator(
-      onRefresh: _loadOrders,
-      color: _kPink,
-      child: CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: DeliveryStatusFilterBar(
-              selectedProductType: _selectedProductType,
-              onProductTypeSelected: _selectProductType,
-              selectedKey: _selectedStatus,
-              onSelected: _selectStatus,
-              statusEntries: _selectedProductType == DeliveryProductType.general
-                  ? DeliveryStatusFilterBar.generalStatusEntries
-                  : DeliveryStatusFilterBar.prescriptionStatusEntries,
+    // 필터를 스크롤 밖에 두면 세로 스크롤과 탭/칩 제스처가 경쟁하지 않음
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DeliveryStatusFilterBar(
+          selectedProductType: _selectedProductType,
+          onProductTypeSelected: _selectProductType,
+          selectedKey: _selectedStatus,
+          onSelected: _selectStatus,
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadOrders,
+            color: _kPink,
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                if (_isLoading)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: CircularProgressIndicator(color: _kPink),
+                    ),
+                  )
+                else if (_displayedOrders.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _buildEmptyStateContent(),
+                  )
+                else
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      healthDp(context, 27),
+                      healthDp(context, 10),
+                      healthDp(context, 27),
+                      healthDp(context, 10),
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final order = _displayedOrders[index];
+                          return _buildOrderCard(order);
+                        },
+                        childCount: _displayedOrders.length,
+                      ),
+                    ),
+                  ),
+                if (!_isLoading)
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: healthDp(context, 48)),
+                  ),
+              ],
             ),
           ),
-          if (_isLoading)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: CircularProgressIndicator(color: _kPink),
-              ),
-            )
-          else if (_displayedOrders.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _buildEmptyStateContent(),
-            )
-          else
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 27),
-                healthDp(context, 10),
-                healthDp(context, 27),
-                healthDp(context, 10),
-              ),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final order = _displayedOrders[index];
-                    return _buildOrderCard(order);
-                  },
-                  childCount: _displayedOrders.length,
-                ),
-              ),
-            ),
-          if (!_isLoading)
-            SliverToBoxAdapter(child: SizedBox(height: healthDp(context, 48))),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1322,7 +1331,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (result['success'] == true) {
       AppToastOverlay.show(
         context,
-        result['message']?.toString() ?? '수령 확인되었습니다.',
+        '수령 확인되었습니다.',
       );
       await _loadOrders();
     } else {

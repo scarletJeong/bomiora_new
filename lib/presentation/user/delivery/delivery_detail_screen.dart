@@ -297,9 +297,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   order: order,
                   deliveryMemo: _deliveryMemo,
                   memoPresets: _deliveryMemoPresets,
-                  onMemoChanged: canChangeAddress
-                      ? (v) => setState(() => _deliveryMemo = v)
-                      : null,
+                  onMemoChanged:
+                      canChangeAddress ? _onDeliveryMemoChanged : null,
                   memoEditable: canChangeAddress,
                   showChangeButton: canChangeAddress,
                   changeButtonPink: !awaiting,
@@ -376,9 +375,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   order: order,
                   deliveryMemo: _deliveryMemo,
                   memoPresets: _deliveryMemoPresets,
-                  onMemoChanged: canChangeAddress
-                      ? (v) => setState(() => _deliveryMemo = v)
-                      : null,
+                  onMemoChanged:
+                      canChangeAddress ? _onDeliveryMemoChanged : null,
                   memoEditable: canChangeAddress,
                   showChangeButton: canChangeAddress,
                   changeButtonPink: true,
@@ -692,7 +690,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (result['success'] == true) {
       AppToastOverlay.show(
         context,
-        result['message']?.toString() ?? '수령 확인되었습니다.',
+        '수령 확인되었습니다.',
       );
       // 목록 복귀 시 리로드되도록 결과 전달
       Navigator.pop(context, true);
@@ -700,6 +698,37 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       AppToastOverlay.show(
         context,
         result['message']?.toString() ?? '수령확인에 실패했습니다.',
+      );
+    }
+  }
+
+  Future<void> _onDeliveryMemoChanged(String value) async {
+    final next = value.trim();
+    final prev = _deliveryMemo;
+    if (next == prev || _orderDetail == null) return;
+
+    setState(() => _deliveryMemo = next);
+
+    final user = await AuthService.getUser();
+    if (user == null) {
+      if (mounted) setState(() => _deliveryMemo = prev);
+      return;
+    }
+
+    final result = await OrderService.updateDeliveryMemo(
+      odId: _orderDetail!.odId,
+      mbId: user.id,
+      memo: next,
+    );
+
+    if (!mounted) return;
+    if (result['success'] == true) {
+      AppToastOverlay.show(context, '배송요청사항이 변경되었습니다.');
+    } else {
+      setState(() => _deliveryMemo = prev);
+      AppToastOverlay.show(
+        context,
+        result['message']?.toString() ?? '배송요청사항 변경에 실패했습니다.',
       );
     }
   }
