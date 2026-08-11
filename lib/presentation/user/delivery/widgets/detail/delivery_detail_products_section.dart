@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/utils/image_url_helper.dart';
 import '../../../../../core/utils/price_formatter.dart';
+import '../../../../../data/models/cart/cart_item_model.dart';
+import '../../../../../data/models/cart/cart_line_group.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
+import '../../../../shopping/widgets/cart_add_group_card.dart';
+import '../../../../shopping/widgets/payment_product_card.dart';
+import '../order_item_subject_groups.dart';
 import 'delivery_detail_section_style.dart';
 
 enum DeliveryDetailProductActionStyle { primary, outlinePink, outlineGray }
 
-/// 주문상품 섹션
+/// 주문상품 섹션 — 본품 + 추가상품(supply_add)은 [CartAddGroupCard]와 동일 묶음 UI
 class DeliveryDetailProductsSection extends StatelessWidget {
   const DeliveryDetailProductsSection({
     super.key,
@@ -24,16 +29,30 @@ class DeliveryDetailProductsSection extends StatelessWidget {
         VoidCallback? onTap,
         DeliveryDetailProductActionStyle style,
       })> actions;
+
   /// false면 바깥 카드 없이 내용만 렌더 (합쳐진 카드용)
   final bool asCard;
 
   @override
   Widget build(BuildContext context) {
+    final cartItems = cartItemsFromOrderItems(
+      order.products,
+      odId: order.odId,
+    );
+    final displayGroups = CartLineGroup.groupItems(cartItems)
+        .where((g) => !g.parent.isSupplyAdd)
+        .toList(growable: false);
+    final totalCount = displayGroups.fold<int>(
+      0,
+      (sum, g) => sum + g.allItems.length,
+    );
+    final showReservationHint = order.isPrescriptionOrder;
+
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '주문상품 ( ${order.products.length} )',
+          '주문상품 ( $totalCount )',
           style: TextStyle(
             color: DeliveryDetailSectionStyle.ink,
             fontSize: healthSp(context, asCard ? 16 : 12),
@@ -51,18 +70,27 @@ class DeliveryDetailProductsSection extends StatelessWidget {
           ),
           SizedBox(height: healthDp(context, 10)),
         ],
-        ...order.products.asMap().entries.map((entry) {
-          final index = entry.key;
-          final product = entry.value;
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < order.products.length - 1
-                  ? healthDp(context, 10)
-                  : 0,
-            ),
-            child: _productRow(context, product),
-          );
-        }),
+        for (var i = 0; i < displayGroups.length; i++) ...[
+          if (i > 0) SizedBox(height: healthDp(context, 10)),
+          CartAddGroupCard(
+            group: displayGroups[i],
+            selectedItems: const {},
+            supplyInteractive: false,
+            showBundleTotal: false,
+            showSameReservationHint: showReservationHint,
+            onToggleSelect: (_, __) {},
+            buildParentOrMainCard: (item, {required isChild, footer}) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _productRow(context, item),
+                  if (footer != null) footer,
+                ],
+              );
+            },
+          ),
+        ],
         if (actions.isNotEmpty) ...[
           SizedBox(height: healthDp(context, 10)),
           _actionRow(context),
@@ -80,19 +108,50 @@ class DeliveryDetailProductsSection extends StatelessWidget {
     );
   }
 
-  Widget _productRow(BuildContext context, OrderItem product) {
+  OrderItem _asOrderItem(CartItem item) {
+    return OrderItem(
+      ctId: item.ctId,
+      itId: item.itId,
+      itName: item.itName,
+      itKind: item.itKind,
+      itSubject: item.itSubject ?? '',
+      ctOption: item.ctOption,
+      ctQty: item.ctQty,
+      ctPrice: item.ctPrice,
+      ioPrice: item.ioPrice ?? 0,
+      totalPrice: item.lineAmount,
+      ctStatus: item.ctStatus,
+      imageUrl: item.imageUrl,
+      ioId: item.ioId,
+      ctKind: item.ctKind,
+      parent: item.parentItId,
+      ioType: item.ioType,
+    );
+  }
+
+  Widget _productRow(BuildContext context, CartItem item) {
     final thumb = healthDp(context, 72);
-    final normalizedUrl =
-        product.imageUrl != null && product.imageUrl!.isNotEmpty
-            ? ImageUrlHelper.normalizeThumbnailUrl(
-                product.imageUrl,
-                product.itId,
-              )
-            : null;
-    final option = (product.ctOption ?? '').trim();
-    final optionLine = option.isEmpty
-        ? '수량: ${product.ctQty}'
-        : '수량: ${product.ctQty}ㅣ$option';
+    final normalizedUrl = item.imageUrl != null && item.imageUrl!.isNotEmpty
+        ? ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId)
+        : null;
+    final asOrder = _asOrderItem(item);
+    final title = orderItemDisplayTitle(asOrder);
+    final qtyOptionLine = orderItemQtyOptionLine(asOrder);
+
+    final titleStyle = TextStyle(
+      color: DeliveryDetailSectionStyle.ink,
+      fontSize: healthSp(context, 14),
+      fontFamily: DeliveryDetailSectionStyle.font,
+      fontWeight: FontWeight.w500,
+      letterSpacing: -1.26,
+    );
+    final optionStyle = TextStyle(
+      color: DeliveryDetailSectionStyle.mutedLabel,
+      fontSize: healthSp(context, 10),
+      fontFamily: DeliveryDetailSectionStyle.font,
+      fontWeight: FontWeight.w500,
+      letterSpacing: -0.90,
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,34 +187,15 @@ class DeliveryDetailProductsSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                product.itName,
-                style: TextStyle(
-                  color: DeliveryDetailSectionStyle.ink,
-                  fontSize: healthSp(context, 14),
-                  fontFamily: DeliveryDetailSectionStyle.font,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -1.26,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              OrderItemTitleOptionBlock(
+                title: title,
+                qtyOptionLine: qtyOptionLine,
+                titleStyle: titleStyle,
+                optionStyle: optionStyle,
               ),
               SizedBox(height: healthDp(context, 5)),
               Text(
-                optionLine,
-                style: TextStyle(
-                  color: DeliveryDetailSectionStyle.mutedLabel,
-                  fontSize: healthSp(context, 10),
-                  fontFamily: DeliveryDetailSectionStyle.font,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -0.90,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: healthDp(context, 5)),
-              Text(
-                '${PriceFormatter.format(product.totalPrice)}원',
+                '${PriceFormatter.format(item.lineAmount)}원',
                 style: TextStyle(
                   color: DeliveryDetailSectionStyle.ink,
                   fontSize: healthSp(context, 14),
