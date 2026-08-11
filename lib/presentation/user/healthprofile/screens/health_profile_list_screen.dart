@@ -63,7 +63,8 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
   UserModel? _currentUser;
   HealthProfileModel? _healthProfile;
   bool _isLoading = true;
-  double _scrollProgress = 0;
+  /// 스크롤 진행률 — setState 없이 프로그레스바만 갱신(스크롤 끊김 방지)
+  final ValueNotifier<double> _scrollProgress = ValueNotifier(0);
 
   bool get _isPrescriptionBooking => widget.prescriptionBooking != null;
 
@@ -73,17 +74,24 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _scrollProgress.dispose();
+    super.dispose();
+  }
+
   bool _handleScrollNotification(ScrollNotification notification) {
     if (!_isPrescriptionBooking) return false;
+    // 중첩 스크롤 무시
+    if (notification.depth != 0) return false;
     if (notification.metrics.axis != Axis.vertical) return false;
     if (notification is! ScrollUpdateNotification &&
         notification is! ScrollEndNotification) {
       return false;
     }
-    final next =
-        prescriptionBookingScrollProgress(notification.metrics);
-    if ((next - _scrollProgress).abs() < 0.001) return false;
-    setState(() => _scrollProgress = next);
+    final next = prescriptionBookingScrollProgress(notification.metrics);
+    if ((next - _scrollProgress.value).abs() < 0.01) return false;
+    _scrollProgress.value = next;
     return false;
   }
 
@@ -126,9 +134,19 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
           titleFontSize: healthSp(context, 16),
           leadingIconSize: healthDp(context, 24),
           bottom: _isPrescriptionBooking
-              ? PrescriptionBookingProgressBar.asAppBarBottom(
-                  currentStep: PrescriptionBookingSteps.questionnaire,
-                  stepProgress: _scrollProgress,
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(
+                    PrescriptionBookingProgressBar.preferredHeight,
+                  ),
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _scrollProgress,
+                    builder: (context, progress, _) {
+                      return PrescriptionBookingProgressBar(
+                        currentStep: PrescriptionBookingSteps.questionnaire,
+                        stepProgress: progress,
+                      );
+                    },
+                  ),
                 )
               : null,
         ),

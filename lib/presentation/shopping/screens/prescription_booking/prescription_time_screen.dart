@@ -48,15 +48,22 @@ class PrescriptionTimeScreen extends StatefulWidget {
 }
 
 class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
-  DateTime? _selectedDate;
-  String? _selectedTime;
+  /// 선택 UI는 ValueNotifier로만 갱신 → 전체 setState 지연 제거
+  final ValueNotifier<DateTime?> _selectedDate = ValueNotifier(null);
+  final ValueNotifier<String?> _selectedTime = ValueNotifier(null);
+  final ValueNotifier<bool> _agreedRefundPolicy = ValueNotifier(false);
+  final ValueNotifier<bool> _dateTimeStepComplete = ValueNotifier(false);
+  final ValueNotifier<double> _stepProgress = ValueNotifier(0);
+  final ValueNotifier<bool> _canProceedListenable = ValueNotifier(false);
+
   ReservationSettingsModel? _settings;
   bool _isLoading = true;
   bool _isSubmitting = false;
-  bool _agreedRefundPolicy = false;
   UserModel? _currentUser;
   Map<String, dynamic>? _reservationData;
-  bool _confirmDialogOpen = false;
+  late final List<DateTime> _availableDates;
+  List<String> _availableTimes = const [];
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -65,18 +72,54 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _availableDates = List.generate(7, (i) {
+      final d = now.add(Duration(days: i));
+      return DateTime(d.year, d.month, d.day);
+    });
     _nameController.addListener(_onContactChanged);
     _phoneController.addListener(_onContactChanged);
     _loadSettings();
     _loadUser();
   }
 
-  double get _dateTimeStepProgress => prescriptionDateTimeMilestoneProgress(
-        hasDate: _selectedDate != null,
-        hasTime: _selectedTime != null,
-        agreedPolicy: _agreedRefundPolicy,
-        confirmDialogOpen: _confirmDialogOpen,
-      );
+  void _syncProgressAndProceed() {
+    _stepProgress.value = prescriptionDateTimeMilestoneProgress(
+      hasDate: _selectedDate.value != null,
+      hasTime: _selectedTime.value != null,
+      agreedPolicy: _agreedRefundPolicy.value,
+      confirmDialogOpen: _dateTimeStepComplete.value,
+    );
+    _canProceedListenable.value =
+        _selectedDate.value != null &&
+        _selectedTime.value != null &&
+        _hasValidContact &&
+        _agreedRefundPolicy.value &&
+        !_isSubmitting;
+  }
+
+  void _selectDate(DateTime date) {
+    // 슬롯을 먼저 계산한 뒤 date notifier를 올려 즉시 올바른 시간표가 그려지게 함
+    _availableTimes = _generateTimeSlots(date);
+    _selectedTime.value = null;
+    _selectedDate.value = date;
+    _syncProgressAndProceed();
+  }
+
+  void _selectTime(String time) {
+    _selectedTime.value = time;
+    _syncProgressAndProceed();
+    // 선택은 즉시 반영, 스크롤은 다음 프레임에
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scrollToContactSection();
+    });
+  }
+
+  void _toggleAgreed() {
+    _agreedRefundPolicy.value = !_agreedRefundPolicy.value;
+    _syncProgressAndProceed();
+  }
 
   @override
   void dispose() {
@@ -85,25 +128,28 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _scrollController.dispose();
+    _selectedDate.dispose();
+    _selectedTime.dispose();
+    _agreedRefundPolicy.dispose();
+    _dateTimeStepComplete.dispose();
+    _stepProgress.dispose();
+    _canProceedListenable.dispose();
     super.dispose();
   }
 
   void _scrollToContactSection() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final ctx = _contactSectionKey.currentContext;
-      if (ctx == null) return;
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        alignment: 0.05,
-      );
-    });
+    final ctx = _contactSectionKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      alignment: 0.05,
+    );
   }
 
   void _onContactChanged() {
-    if (mounted) setState(() {});
+    _syncProgressAndProceed();
   }
 
   Future<void> _loadUser() async {
@@ -214,9 +260,9 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   }
   
   void _nextStep() {
-    if (_selectedDate == null || _selectedTime == null) return;
+    if (_selectedDate.value == null || _selectedTime.value == null) return;
     if (_nameController.text.trim().isEmpty) return;
-    if (!_agreedRefundPolicy || _isSubmitting) return;
+    if (!_agreedRefundPolicy.value || _isSubmitting) return;
 
     final phoneDigits =
         _phoneController.text.replaceAll(RegExp(r'\D'), '');
@@ -233,12 +279,7 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     return name.isNotEmpty && phone.isNotEmpty;
   }
 
-  bool get _canProceed =>
-      _selectedDate != null &&
-      _selectedTime != null &&
-      _hasValidContact &&
-      _agreedRefundPolicy &&
-      !_isSubmitting;
+  bool get _canProceed => _canProceedListenable.value;
 
   String _formatPhoneForDialog(String? raw) {
     final digits = (raw ?? '').replaceAll(RegExp(r'\D'), '');
@@ -269,11 +310,14 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
   }
 
   Future<void> _submitBooking() async {
-    if (_currentUser == null || _selectedDate == null || _selectedTime == null) {
+    if (_currentUser == null ||
+        _selectedDate.value == null ||
+        _selectedTime.value == null) {
       return;
     }
 
     setState(() => _isSubmitting = true);
+    _syncProgressAndProceed();
 
     try {
       List<Map<String, dynamic>> optionsList = [];
@@ -369,8 +413,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         'answer13Medicine': widget.formData['dietMedicine'] ?? '',
         'answer13Sideeffect': widget.formData['dietSideEffect'] ?? '',
         'pfMemo': '',
-        'reservationDate': _selectedDate!.toIso8601String(),
-        'reservationTime': _selectedTime!,
+        'reservationDate': _selectedDate.value!.toIso8601String(),
+        'reservationTime': _selectedTime.value!,
         'reservationName': _nameController.text.trim(),
         'reservationTel': _phoneController.text.trim(),
         'doctorName': '',
@@ -381,16 +425,20 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     } catch (_) {
       // ignored
     } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        _syncProgressAndProceed();
+      }
     }
   }
 
   Future<void> _showCompletionDialog() async {
     final phoneDisplay = _formatPhoneForDialog(_phoneController.text);
-    final dateText = _formatDateForDialog(_selectedDate!);
-    final timeText = _formatTimeRange(_selectedTime!);
+    final dateText = _formatDateForDialog(_selectedDate.value!);
+    final timeText = _formatTimeRange(_selectedTime.value!);
 
-    setState(() => _confirmDialogOpen = true);
+    _dateTimeStepComplete.value = true;
+    _syncProgressAndProceed();
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -653,8 +701,15 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       },
     );
 
-    if (mounted) setState(() => _confirmDialogOpen = false);
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      // 취소 시에만 2단계 채움 해제
+      if (mounted) {
+        _dateTimeStepComplete.value = false;
+        _syncProgressAndProceed();
+      }
+      return;
+    }
+    // 확인: 프로그레스는 100% 유지한 채 결제로 이동
     await _submitReservationToCart();
   }
 
@@ -709,28 +764,27 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
         return;
       }
 
-      await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
 
       final checkoutItems = widget.checkoutCartItems;
       if (checkoutItems != null && checkoutItems.isNotEmpty) {
+        // 대기 없이 바로 결제 화면으로 이동
+        final payRoute = MaterialPageRoute<bool>(
+          settings: const RouteSettings(name: '/pay'),
+          builder: (context) => PaymentScreen(
+            cartItems: checkoutItems,
+            shippingCost: widget.checkoutShippingCost ?? 0,
+            sourceTitle: '처방상품 장바구니',
+            showPrescriptionBookingProgress: true,
+            reservationDate: _selectedDate.value,
+            reservationTime: _selectedTime.value,
+          ),
+        );
         Navigator.of(context).popUntil(
           (route) => route.settings.name == '/cart' || route.isFirst,
         );
         if (!mounted) return;
-        await Navigator.of(context).push<bool>(
-          MaterialPageRoute(
-            settings: const RouteSettings(name: '/pay'),
-            builder: (context) => PaymentScreen(
-              cartItems: checkoutItems,
-              shippingCost: widget.checkoutShippingCost ?? 0,
-              sourceTitle: '처방상품 장바구니',
-              showPrescriptionBookingProgress: true,
-              reservationDate: _selectedDate,
-              reservationTime: _selectedTime,
-            ),
-          ),
-        );
+        await Navigator.of(context).push(payRoute);
         return;
       }
 
@@ -752,7 +806,10 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
     } catch (_) {
       // ignored
     } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        _syncProgressAndProceed();
+      }
     }
   }
 
@@ -779,7 +836,8 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       confirmFontSize: 12,
     );
     if (confirmed && mounted) {
-      setState(() => _agreedRefundPolicy = true);
+      _agreedRefundPolicy.value = true;
+      _syncProgressAndProceed();
     }
   }
 
@@ -936,63 +994,67 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
               ],
             ),
             SizedBox(height: healthDp(context, 20)),
-            InkWell(
-              onTap: () => setState(() {
-                _agreedRefundPolicy = !_agreedRefundPolicy;
-              }),
-              borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 14),
-                  vertical: healthDp(context, 5),
-                ),
-                decoration: ShapeDecoration(
-                  color: const Color(0x7FF1F1F1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 8)),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: healthDp(context, 20),
-                      height: healthDp(context, 20),
-                      decoration: ShapeDecoration(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                            width: healthDp(context, 1),
-                            color: const Color(0xFFD2D2D2),
+            ValueListenableBuilder<bool>(
+              valueListenable: _agreedRefundPolicy,
+              builder: (context, agreed, _) {
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _toggleAgreed,
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 14),
+                      vertical: healthDp(context, 5),
+                    ),
+                    decoration: ShapeDecoration(
+                      color: const Color(0x7FF1F1F1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 8)),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: healthDp(context, 20),
+                          height: healthDp(context, 20),
+                          decoration: ShapeDecoration(
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                width: healthDp(context, 1),
+                                color: const Color(0xFFD2D2D2),
+                              ),
+                              borderRadius:
+                                  BorderRadius.circular(healthDp(context, 4)),
+                            ),
                           ),
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 4)),
+                          child: agreed
+                              ? Icon(
+                                  Icons.check,
+                                  size: healthDp(context, 14),
+                                  color: const Color(0xFFFF5A8D),
+                                )
+                              : null,
                         ),
-                      ),
-                      child: _agreedRefundPolicy
-                          ? Icon(
-                              Icons.check,
-                              size: healthDp(context, 14),
-                              color: const Color(0xFFFF5A8D),
-                            )
-                          : null,
-                    ),
-                    SizedBox(width: healthDp(context, 5)),
-                    Expanded(
-                      child: Text(
-                        '의료법 및 교환환불 안내사항을 확인하였으며, 이에 동의합니다.',
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
-                          fontSize: healthSp(context, 9.5),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w300,
+                        SizedBox(width: healthDp(context, 5)),
+                        Expanded(
+                          child: Text(
+                            '의료법 및 교환환불 안내사항을 확인하였으며, 이에 동의합니다.',
+                            style: TextStyle(
+                              color: const Color(0xFF1A1A1E),
+                              fontSize: healthSp(context, 9.5),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
             SizedBox(height: healthDp(context, 10)),
             InkWell(
@@ -1024,340 +1086,378 @@ class _PrescriptionTimeScreenState extends State<PrescriptionTimeScreen> {
       );
     }
     
-    // 예약 가능한 날짜 생성 (오늘부터 7일)
-    final availableDates = List.generate(7, (index) {
-      final date = DateTime.now().add(Duration(days: index));
-      return date;
-    });
-    
-    // 선택된 날짜의 예약 가능한 시간
-    final availableTimes =
-        _selectedDate != null ? _generateTimeSlots(_selectedDate!) : <String>[];
-    final hasSelectedDateTime = _selectedDate != null && _selectedTime != null;
-    
     return MobileAppLayoutWrapper(
       appBar: HealthAppBar(
         title: '진료 예약 중 _ 02 날짜/시간',
         centerTitle: false,
-        bottom: PrescriptionBookingProgressBar.asAppBarBottom(
-          currentStep: PrescriptionBookingSteps.dateTime,
-          stepProgress: _dateTimeStepProgress,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(
+            PrescriptionBookingProgressBar.preferredHeight,
+          ),
+          child: ValueListenableBuilder<double>(
+            valueListenable: _stepProgress,
+            builder: (context, progress, _) {
+              return PrescriptionBookingProgressBar(
+                currentStep: PrescriptionBookingSteps.dateTime,
+                stepProgress: progress,
+              );
+            },
+          ),
         ),
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          textTheme: Theme.of(context)
-              .textTheme
-              .apply(fontFamily: 'Gmarket Sans TTF'),
-          primaryTextTheme: Theme.of(context)
-              .primaryTextTheme
-              .apply(fontFamily: 'Gmarket Sans TTF'),
-        ),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
         child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 27),
-                healthDp(context, 20),
-                healthDp(context, 27),
-                healthDp(context, 20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '1. 가능한 날짜를 선택해주세요',
-                    style: TextStyle(
-                      fontSize: healthSp(context, 14),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 12)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: availableDates.take(7).map((date) {
-                      final isSelected = _selectedDate != null &&
-                          _selectedDate!.year == date.year &&
-                          _selectedDate!.month == date.month &&
-                          _selectedDate!.day == date.day;
-                      final isToday = DateUtils.isSameDay(date, DateTime.now());
-                      final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-                      final weekday = weekdays[date.weekday - 1];
-                      return InkWell(
-                        onTap: () => setState(() {
-                          _selectedDate = date;
-                          _selectedTime = null;
-                        }),
-                        borderRadius: BorderRadius.circular(healthDp(context, 18.33)),
-                        child: Container(
-                          width: healthDp(context, 40),
-                          height: healthDp(context, 54.17),
-                          decoration: ShapeDecoration(
-                            color: isSelected
-                                ? const Color(0x0CFF5A8D)
-                                : Colors.white,
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                width: isSelected
-                                    ? healthDp(context, 1)
-                                    : healthDp(context, 0.5),
-                                color: isSelected
-                                    ? const Color(0xFFFF5A8D)
-                                    : const Color(0xFFD2D2D2),
-                              ),
-                              borderRadius: BorderRadius.circular(healthDp(context, 18.33)),
-                            ),
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                          child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (isToday)
-                                Text(
-                                  '오늘',
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? const Color(0xFFFF5A8D)
-                                        : const Color(0xFF1A1A1A),
-                                    fontSize: healthSp(context, 10),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w300,
-                                  ),
-                                ),
-                              if (isToday) SizedBox(height: healthDp(context, 2)),
-                              Text(
-                                '${date.day}',
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? const Color(0xFFFF5A8D)
-                                      : const Color(0xFF1A1A1A),
-                                  fontSize: healthSp(context, 12),
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                                SizedBox(height: healthDp(context, 4)),
-                              Text(
-                                weekday,
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? const Color(0xFFFF5A8D)
-                                      : const Color(0xFF1A1A1A),
-                                  fontSize: healthSp(context, 10),
-                                  fontFamily: 'Gmarket Sans TTF',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  if (_selectedDate != null) ...[
-                  SizedBox(height: healthDp(context, 32)),
-                  Text(
-                    '2. 시간을 선택해주세요',
-                    style: TextStyle(
-                        color: Colors.black,
-                      fontSize: healthSp(context, 14),
-                        fontWeight: FontWeight.w500,
-                      fontFamily: 'Gmarket Sans TTF',
-                    ),
-                  ),
-                  SizedBox(height: healthDp(context, 12)),
-                    if (availableTimes.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(healthDp(context, 16)),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 10)),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '예약 가능한 시간이 없습니다',
-                          style: TextStyle(
-                            fontSize: healthSp(context, 14),
-                            color: Colors.grey,
-                            fontFamily: 'Gmarket Sans TTF',
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        mainAxisExtent: healthDp(context, 42),
-                        crossAxisSpacing: healthDp(context, 10),
-                        mainAxisSpacing: healthDp(context, 10),
-                      ),
-                      itemCount: availableTimes.length,
-                      itemBuilder: (context, index) {
-                        final time = availableTimes[index];
-                        final isSelected = _selectedTime == time;
-                        return InkWell(
-                          onTap: () {
-                            setState(() => _selectedTime = time);
-                            _scrollToContactSection();
-                          },
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 10)),
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: healthDp(context, 5),
-                              vertical: healthDp(context, 10),
-                            ),
-                            decoration: ShapeDecoration(
-                              color: isSelected
-                                  ? const Color(0x0CFF5A8D)
-                                  : Colors.white,
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(
-                                  width: healthDp(context, 1),
-                                  color: isSelected
-                                      ? const Color(0xFFFF5A8D)
-                                      : const Color(0xFFD2D2D2),
-                                ),
-                                  borderRadius: BorderRadius.circular(
-                                    healthDp(context, 10),
-                                  ),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  time,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? const Color(0xFFFF5A8D)
-                                        : const Color(0xFF1A1A1A),
-                                    fontSize: healthSp(context, 12),
-                                    fontFamily: 'Gmarket Sans TTF',
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                  if (hasSelectedDateTime) ...[
-                  SizedBox(height: healthDp(context, 30)),
-                    _buildContactSection(),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.fromLTRB(
-              healthDp(context, 27),
-              0,
-              healthDp(context, 27),
-              healthDp(context, 20),
-            ),
-            color: Colors.white,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: healthDp(context, 72),
-                  height: healthDp(context, 40),
-                  child: FilledButton.tonal(
-                    onPressed: () => Navigator.pop(context),
-                    style: FilledButton.styleFrom(
-                      minimumSize: Size(
-                        healthDp(context, 72),
-                        healthDp(context, 40),
-                      ),
-                      maximumSize: Size(
-                        healthDp(context, 72),
-                        healthDp(context, 40),
-                      ),
-                      padding: EdgeInsets.zero,
-                      backgroundColor: const Color(0x26D2D2D2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 7)),
-                      ),
-                    ),
-                    child: Text(
-                      '이전',
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                padding: EdgeInsets.fromLTRB(
+                  healthDp(context, 27),
+                  healthDp(context, 20),
+                  healthDp(context, 27),
+                  healthDp(context, 20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '1. 가능한 날짜를 선택해주세요',
                       style: TextStyle(
-                        color: const Color(0xFF898686),
                         fontSize: healthSp(context, 14),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ),
+                    SizedBox(height: healthDp(context, 12)),
+                    ValueListenableBuilder<DateTime?>(
+                      valueListenable: _selectedDate,
+                      builder: (context, selectedDate, _) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: _availableDates.map((date) {
+                            final isSelected = selectedDate != null &&
+                                selectedDate.year == date.year &&
+                                selectedDate.month == date.month &&
+                                selectedDate.day == date.day;
+                            final isToday =
+                                DateUtils.isSameDay(date, DateTime.now());
+                            const weekdays = [
+                              '월',
+                              '화',
+                              '수',
+                              '목',
+                              '금',
+                              '토',
+                              '일'
+                            ];
+                            final weekday = weekdays[date.weekday - 1];
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _selectDate(date),
+                              child: Container(
+                                width: healthDp(context, 40),
+                                height: healthDp(context, 54.17),
+                                decoration: ShapeDecoration(
+                                  color: isSelected
+                                      ? const Color(0x0CFF5A8D)
+                                      : Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    side: BorderSide(
+                                      width: isSelected
+                                          ? healthDp(context, 1)
+                                          : healthDp(context, 0.5),
+                                      color: isSelected
+                                          ? const Color(0xFFFF5A8D)
+                                          : const Color(0xFFD2D2D2),
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      healthDp(context, 18.33),
+                                    ),
+                                  ),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (isToday)
+                                        Text(
+                                          '오늘',
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? const Color(0xFFFF5A8D)
+                                                : const Color(0xFF1A1A1A),
+                                            fontSize: healthSp(context, 10),
+                                            fontFamily: 'Gmarket Sans TTF',
+                                            fontWeight: FontWeight.w300,
+                                          ),
+                                        ),
+                                      if (isToday)
+                                        SizedBox(height: healthDp(context, 2)),
+                                      Text(
+                                        '${date.day}',
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? const Color(0xFFFF5A8D)
+                                              : const Color(0xFF1A1A1A),
+                                          fontSize: healthSp(context, 12),
+                                          fontFamily: 'Gmarket Sans TTF',
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      SizedBox(height: healthDp(context, 4)),
+                                      Text(
+                                        weekday,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? const Color(0xFFFF5A8D)
+                                              : const Color(0xFF1A1A1A),
+                                          fontSize: healthSp(context, 10),
+                                          fontFamily: 'Gmarket Sans TTF',
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                    ValueListenableBuilder<DateTime?>(
+                      valueListenable: _selectedDate,
+                      builder: (context, selectedDate, _) {
+                        if (selectedDate == null) {
+                          return const SizedBox.shrink();
+                        }
+                        final times = _availableTimes;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: healthDp(context, 32)),
+                            Text(
+                              '2. 시간을 선택해주세요',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: healthSp(context, 14),
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'Gmarket Sans TTF',
+                              ),
+                            ),
+                            SizedBox(height: healthDp(context, 12)),
+                            if (times.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(healthDp(context, 16)),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(
+                                    healthDp(context, 10),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '예약 가능한 시간이 없습니다',
+                                    style: TextStyle(
+                                      fontSize: healthSp(context, 14),
+                                      color: Colors.grey,
+                                      fontFamily: 'Gmarket Sans TTF',
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ValueListenableBuilder<String?>(
+                                valueListenable: _selectedTime,
+                                builder: (context, selectedTime, _) {
+                                  return GridView.builder(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    gridDelegate:
+                                        SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 4,
+                                      mainAxisExtent: healthDp(context, 42),
+                                      crossAxisSpacing: healthDp(context, 10),
+                                      mainAxisSpacing: healthDp(context, 10),
+                                    ),
+                                    itemCount: times.length,
+                                    itemBuilder: (context, index) {
+                                      final time = times[index];
+                                      final isSelected = selectedTime == time;
+                                      return GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () => _selectTime(time),
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: healthDp(context, 5),
+                                            vertical: healthDp(context, 10),
+                                          ),
+                                          decoration: ShapeDecoration(
+                                            color: isSelected
+                                                ? const Color(0x0CFF5A8D)
+                                                : Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              side: BorderSide(
+                                                width: healthDp(context, 1),
+                                                color: isSelected
+                                                    ? const Color(0xFFFF5A8D)
+                                                    : const Color(0xFFD2D2D2),
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                healthDp(context, 10),
+                                              ),
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            time,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? const Color(0xFFFF5A8D)
+                                                  : const Color(0xFF1A1A1A),
+                                              fontSize: healthSp(context, 12),
+                                              fontFamily: 'Gmarket Sans TTF',
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _selectedDate,
+                        _selectedTime,
+                      ]),
+                      builder: (context, _) {
+                        if (_selectedDate.value == null ||
+                            _selectedTime.value == null) {
+                          return const SizedBox.shrink();
+                        }
+                        return Column(
+                          children: [
+                            SizedBox(height: healthDp(context, 30)),
+                            _buildContactSection(),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                SizedBox(width: healthDp(context, 10)),
-                Expanded(
-                  child: SizedBox(
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                healthDp(context, 27),
+                0,
+                healthDp(context, 27),
+                healthDp(context, 20),
+              ),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: healthDp(context, 72),
                     height: healthDp(context, 40),
-                    child: ElevatedButton(
-                      onPressed: _canProceed ? _nextStep : null,
-                      style: ElevatedButton.styleFrom(
+                    child: FilledButton.tonal(
+                      onPressed: () => Navigator.pop(context),
+                      style: FilledButton.styleFrom(
                         minimumSize: Size(
-                          double.infinity,
+                          healthDp(context, 72),
                           healthDp(context, 40),
                         ),
                         maximumSize: Size(
-                          double.infinity,
+                          healthDp(context, 72),
                           healthDp(context, 40),
                         ),
                         padding: EdgeInsets.zero,
-                        backgroundColor: const Color(0xFFFF5A8D),
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            const Color(0xFFFF5A8D).withValues(alpha: 0.4),
+                        backgroundColor: const Color(0x26D2D2D2),
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(healthDp(context, 7)),
                         ),
-                        elevation: 0,
                       ),
-                      child: _isSubmitting
-                          ? SizedBox(
-                              width: healthDp(context, 18),
-                              height: healthDp(context, 18),
-                              child: CircularProgressIndicator(
-                                strokeWidth: healthDp(context, 2),
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                        '다음',
+                      child: Text(
+                        '이전',
                         style: TextStyle(
-                          color: Colors.white,
-                                fontSize: healthSp(context, 14),
+                          color: const Color(0xFF898686),
+                          fontSize: healthSp(context, 14),
                           fontFamily: 'Gmarket Sans TTF',
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(width: healthDp(context, 10)),
+                  Expanded(
+                    child: SizedBox(
+                      height: healthDp(context, 40),
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: _canProceedListenable,
+                        builder: (context, canProceed, _) {
+                          return ElevatedButton(
+                            onPressed: canProceed ? _nextStep : null,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: Size(
+                                double.infinity,
+                                healthDp(context, 40),
+                              ),
+                              maximumSize: Size(
+                                double.infinity,
+                                healthDp(context, 40),
+                              ),
+                              padding: EdgeInsets.zero,
+                              backgroundColor: const Color(0xFFFF5A8D),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(0xFFFF5A8D)
+                                  .withValues(alpha: 0.4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(healthDp(context, 7)),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _isSubmitting
+                                ? SizedBox(
+                                    width: healthDp(context, 18),
+                                    height: healthDp(context, 18),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: healthDp(context, 2),
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    '다음',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: healthSp(context, 14),
+                                      fontFamily: 'Gmarket Sans TTF',
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
