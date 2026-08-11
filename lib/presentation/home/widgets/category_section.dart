@@ -8,6 +8,7 @@ import '../../../presentation/shopping/utils/get_product.dart'
         ProductCategoryItem,
         productGeneralCategoryChipLabel,
         productPrescriptionCategoryMenuLabel;
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
@@ -639,8 +640,12 @@ class _CategoryProductCard extends StatelessWidget {
                         children: [
                           Positioned.fill(
                             child: (product.imageUrl?.isNotEmpty ?? false)
-                                ? Image.network(
-                                    product.imageUrl!,
+                                ? AppNetworkImage(
+                                    url: product.imageUrl!,
+                                    width: m.imageW,
+                                    height: m.imageH,
+                                    decodeWidthLogical: m.imageW,
+                                    decodeHeightLogical: m.imageH,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) =>
                                         const ColoredBox(
@@ -688,8 +693,12 @@ class _CategoryProductCard extends StatelessWidget {
                         ],
                       )
                     : ((product.imageUrl?.isNotEmpty ?? false)
-                        ? Image.network(
-                            product.imageUrl!,
+                        ? AppNetworkImage(
+                            url: product.imageUrl!,
+                            width: m.imageW,
+                            height: m.imageH,
+                            decodeWidthLogical: m.imageW,
+                            decodeHeightLogical: m.imageH,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const ColoredBox(
                               color: Color(0xFFFFE9EA),

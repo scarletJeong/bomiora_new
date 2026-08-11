@@ -4,12 +4,16 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
 import '../../../data/services/banner_service.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../shopping/widgets/product_banner_slider.dart'
     show kSharedBannerHeightBase;
 
 class BannerSlider extends StatefulWidget {
-  const BannerSlider({super.key});
+  const BannerSlider({super.key, this.bannersFuture});
+
+  /// 홈에서 우선 프리패치한 Future를 넘기면 중복 요청을 피함
+  final Future<List<BannerModel>>? bannersFuture;
 
   @override
   State<BannerSlider> createState() => _BannerSliderState();
@@ -24,7 +28,17 @@ class _BannerSliderState extends State<BannerSlider> {
   void initState() {
     super.initState();
     _pageController = PageController();
-    _bannersFuture = BannerService.fetchMobileBanners();
+    _bannersFuture =
+        widget.bannersFuture ?? BannerService.fetchMobileBanners();
+  }
+
+  @override
+  void didUpdateWidget(covariant BannerSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.bannersFuture != null &&
+        widget.bannersFuture != oldWidget.bannersFuture) {
+      _bannersFuture = widget.bannersFuture!;
+    }
   }
 
   @override
@@ -112,11 +126,12 @@ class _BannerSliderState extends State<BannerSlider> {
                     final banner = banners[index];
                     final imageUrl =
                         ImageUrlHelper.resolveSiteAssetUrl(banner.imageUrl);
-                    return Image.network(
-                      imageUrl,
+                    return AppNetworkImage(
+                      url: imageUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: bannerH,
+                      decodeHeightLogical: bannerH,
                       errorBuilder: (_, __, ___) => ColoredBox(
                         color: Colors.grey[200]!,
                         child: const Center(

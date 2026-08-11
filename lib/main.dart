@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'presentation/home/screens/home_screen.dart';
+import 'presentation/common/screens/splash_screen.dart';
 import 'presentation/auth/screens/login_screen.dart';
 import 'presentation/auth/screens/find_account_main_screen.dart';
 import 'presentation/auth/screens/find_account_not_found_screen.dart';
@@ -12,7 +13,6 @@ import 'core/navigation/app_navigator_key.dart';
 import 'presentation/auth/widgets/kcp_cert.dart';
 import 'presentation/auth/screens/signup_screen.dart';
 import 'presentation/auth/screens/social_signup_screen.dart';
-import 'data/services/auth_service.dart';
 import 'data/services/kakao_auth_service.dart';
 import 'data/services/naver_auth_service.dart';
 import 'data/services/fcm_service_stub.dart'
@@ -33,6 +33,7 @@ import 'presentation/customer_service/screens/qa_detail_screen.dart';
 import 'presentation/user/point/screens/point_screen.dart';
 import 'presentation/user/delivery/delivery_list_screen.dart';
 import 'presentation/user/delivery/delivery_detail_screen.dart';
+import 'data/models/delivery/delivery_model.dart';
 import 'presentation/user/delivery/refund/refund_apply_general_screen.dart';
 import 'presentation/user/delivery/refund/refund_apply_prescription_screen.dart';
 import 'presentation/user/coupon/screens/coupon_screen.dart';
@@ -118,7 +119,7 @@ class _BomioraAppState extends State<BomioraApp> {
       ],
       home: kDevForceLoginScreenFirst
           ? const LoginScreen()
-          : const AuthWrapper(),
+          : const SplashScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/find-account': (context) {
@@ -147,6 +148,8 @@ class _BomioraAppState extends State<BomioraApp> {
           return FindPasswordResetScreen(resetInfo: args);
         },
         '/home': (context) => const MobileLayoutWrapper(initialIndex: 0),
+        // 로그인·가입 직후: 스플래시에서 메인 이미지 준비 후 홈 진입
+        '/enter-home': (context) => const SplashScreen(checkSession: false),
         // (임시) 카테고리 페이지 접근 차단
         
         '/favorite': (context) => const WishListScreen(),
@@ -188,11 +191,19 @@ class _BomioraAppState extends State<BomioraApp> {
         '/order-detail': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           var orderNumber = '';
+          OrderDetailModel? initialOrder;
           if (args is Map) {
             orderNumber =
                 (args['orderNumber'] ?? args['odId'] ?? '').toString();
+            final preview = args['initialOrder'];
+            if (preview is OrderDetailModel) {
+              initialOrder = preview;
+            }
           }
-          return DeliveryDetailScreen(orderNumber: orderNumber);
+          return DeliveryDetailScreen(
+            orderNumber: orderNumber,
+            initialOrder: initialOrder,
+          );
         },
         '/refund': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
@@ -401,56 +412,6 @@ class _BomioraAppState extends State<BomioraApp> {
       },
       debugShowCheckedModeBanner: false,
     );
-  }
-}
-
-class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({super.key});
-
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
-  bool _isLoading = true;
-  bool _isLoggedIn = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkLoginStatus();
-  }
-
-  Future<void> _checkLoginStatus() async {
-    var loggedIn = await AuthService.isLoggedIn();
-    // 탈퇴/차단 시 다른 탭/세션도 다음 진입에서 강제 로그아웃
-    if (loggedIn) {
-      final active = await AuthService.isSessionActive();
-      if (!active) {
-        await AuthService.logout();
-        loggedIn = false;
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = loggedIn;
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    return const MobileLayoutWrapper(initialIndex: 0);
   }
 }
 

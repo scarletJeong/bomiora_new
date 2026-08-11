@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_repository.dart';
+import '../../common/widgets/app_network_image.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'home_section_widgets.dart';
@@ -9,7 +10,10 @@ import 'home_section_widgets.dart';
 /// 홈 New Product — API 정렬 기준 최대 4개.
 /// 카드 UI는 CategorySection(건강을 채우는 시간)과 동일 치수.
 class ProductSection extends StatefulWidget {
-  const ProductSection({super.key});
+  const ProductSection({super.key, this.productsFuture});
+
+  /// 홈에서 우선 프리패치한 Future를 넘기면 중복 요청을 피함
+  final Future<List<Product>>? productsFuture;
 
   static const int _kLimit = 4;
 
@@ -29,9 +33,8 @@ class _ProductSectionState extends State<ProductSection> {
 
   Future<void> _load() async {
     try {
-      final products = await ProductRepository.getNewProducts(
-        limit: ProductSection._kLimit,
-      );
+      final products = await (widget.productsFuture ??
+          ProductRepository.getNewProducts(limit: ProductSection._kLimit));
       if (!mounted) return;
       setState(() {
         _products = products;
@@ -218,8 +221,12 @@ class _NewProductCard extends StatelessWidget {
                 width: m.imageW,
                 height: m.imageH,
                 child: (product.imageUrl?.isNotEmpty ?? false)
-                    ? Image.network(
-                        product.imageUrl!,
+                    ? AppNetworkImage(
+                        url: product.imageUrl!,
+                        width: m.imageW,
+                        height: m.imageH,
+                        decodeWidthLogical: m.imageW,
+                        decodeHeightLogical: m.imageH,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const ColoredBox(
                           color: Color(0xFFFFE9EA),
