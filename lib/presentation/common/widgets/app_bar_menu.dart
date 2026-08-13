@@ -7,10 +7,14 @@ import '../../../core/constants/app_assets.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../settings/notification_center_screen.dart';
+import '../../settings/settings_screen.dart';
 import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/screens/cart_integration_screen.dart';
 import '../../home/search/search_popup.dart';
 import 'cart_dropdown_menu.dart';
+
+/// 홈: 검색·알림·장바구니 / 마이페이지: 설정·장바구니
+enum AppBarMenuActionsStyle { home, myPage }
 
 /// [HealthAppBar]와 동일한 전체 높이(375 기준 52).
 /// 아이콘·로고는 52 높이 안에서 세로 중앙 배치.
@@ -21,11 +25,13 @@ class AppBarMenu extends StatefulWidget implements PreferredSizeWidget {
   final VoidCallback onMenuPressed;
   /// 지정 시 검색 아이콘 탭 동작 (미지정이면 무동작)
   final VoidCallback? onSearchPressed;
+  final AppBarMenuActionsStyle actionsStyle;
 
   const AppBarMenu({
     super.key,
     required this.onMenuPressed,
     this.onSearchPressed,
+    this.actionsStyle = AppBarMenuActionsStyle.home,
   });
 
   @override
@@ -233,8 +239,104 @@ class _AppBarMenuState extends State<AppBarMenu> {
     final logoH = healthDp(context, 20);
     final tapBoxW = math.max(iconSz, healthDp(context, 40));
 
+    final isMyPage = widget.actionsStyle == AppBarMenuActionsStyle.myPage;
+    final actionCount = isMyPage ? 2 : 3;
     final actionStep = math.max(4.0, tapBoxW - actionOverlap);
-    final actionsWidth = tapBoxW + 2 * actionStep;
+    final actionsWidth = tapBoxW + (actionCount - 1) * actionStep;
+
+    final List<Widget> actionChildren;
+    if (isMyPage) {
+      actionChildren = [
+        Positioned(
+          left: 0,
+          top: 0,
+          height: barH,
+          width: tapBoxW,
+          child: _actionSvg(
+            asset: AppAssets.settingsIcon,
+            width: tapBoxW,
+            height: barH,
+            iconSz: iconSz,
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ),
+        Positioned(
+          left: actionStep,
+          top: 0,
+          height: barH,
+          width: tapBoxW,
+          child: _actionSvg(
+            key: _cartIconKey,
+            asset: AppAssets.appbarCartIcon,
+            width: tapBoxW,
+            height: barH,
+            iconSz: iconSz,
+            onPressed: _toggleCartMenu,
+          ),
+        ),
+      ];
+    } else {
+      actionChildren = [
+        Positioned(
+          left: 0,
+          top: 0,
+          height: barH,
+          width: tapBoxW,
+          child: _actionSvg(
+            asset: AppAssets.appbarSearchIcon,
+            width: tapBoxW,
+            height: barH,
+            iconSz: iconSz,
+            onPressed: () {
+              if (widget.onSearchPressed != null) {
+                widget.onSearchPressed!();
+              } else {
+                SearchPopup.show(context);
+              }
+            },
+          ),
+        ),
+        Positioned(
+          left: actionStep,
+          top: 0,
+          height: barH,
+          width: tapBoxW,
+          child: _actionSvg(
+            asset: AppAssets.appbarAlarmIcon,
+            width: tapBoxW,
+            height: barH,
+            iconSz: iconSz,
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => const NotificationCenterScreen(),
+                ),
+              );
+            },
+          ),
+        ),
+        Positioned(
+          left: 2 * actionStep,
+          top: 0,
+          height: barH,
+          width: tapBoxW,
+          child: _actionSvg(
+            key: _cartIconKey,
+            asset: AppAssets.appbarCartIcon,
+            width: tapBoxW,
+            height: barH,
+            iconSz: iconSz,
+            onPressed: _toggleCartMenu,
+          ),
+        ),
+      ];
+    }
 
     return SizedBox(
       height: barH + topInset,
@@ -254,9 +356,9 @@ class _AppBarMenuState extends State<AppBarMenu> {
               child: SizedBox(
                 height: barH,
                 child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -273,61 +375,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
                           width: actionsWidth,
                           child: Stack(
                             clipBehavior: Clip.none,
-                            children: [
-                              Positioned(
-                                left: 0,
-                                top: 0,
-                                height: barH,
-                                width: tapBoxW,
-                                child: _actionSvg(
-                                  asset: AppAssets.appbarSearchIcon,
-                                  width: tapBoxW,
-                                  height: barH,
-                                  iconSz: iconSz,
-                                  onPressed: () {
-                                    if (widget.onSearchPressed != null) {
-                                      widget.onSearchPressed!();
-                                    } else {
-                                      SearchPopup.show(context);
-                                    }
-                                  },
-                                ),
-                              ),
-                              Positioned(
-                                left: actionStep,
-                                top: 0,
-                                height: barH,
-                                width: tapBoxW,
-                                child: _actionSvg(
-                                  asset: AppAssets.appbarAlarmIcon,
-                                  width: tapBoxW,
-                                  height: barH,
-                                  iconSz: iconSz,
-                                  onPressed: () {
-                                    Navigator.of(context).push<void>(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) =>
-                                            const NotificationCenterScreen(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Positioned(
-                                left: 2 * actionStep,
-                                top: 0,
-                                height: barH,
-                                width: tapBoxW,
-                                child: _actionSvg(
-                                  key: _cartIconKey,
-                                  asset: AppAssets.appbarCartIcon,
-                                  width: tapBoxW,
-                                  height: barH,
-                                  iconSz: iconSz,
-                                  onPressed: _toggleCartMenu,
-                                ),
-                              ),
-                            ],
+                            children: actionChildren,
                           ),
                         ),
                       ],

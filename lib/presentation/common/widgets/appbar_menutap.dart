@@ -190,7 +190,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: healthDp(context, 2)),
           child: _DrawerShortcut(
-            icon: d.icon,
+            iconAsset: d.iconAsset,
             label: d.label,
             onTap: d.onTap,
             onCartPrescriptionTap: d.onCartPrescriptionTap,
@@ -207,7 +207,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             cell(_DrawerShortcutData(
-              icon: Icons.home_outlined,
+              iconAsset: AppAssets.menu_home_icon,
               label: '홈',
               onTap: () {
                 Navigator.pop(context);
@@ -215,17 +215,17 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               },
             )),
             cell(_DrawerShortcutData(
-              icon: Icons.assignment_outlined,
+              iconAsset: AppAssets.menu_health_icon,
               label: '문진표',
               onTap: () => _popAndPushNamed(context, '/profile'),
             )),
             cell(_DrawerShortcutData(
-              icon: Icons.local_shipping_outlined,
+              iconAsset: AppAssets.menu_order_icon,
               label: '주문배송',
               onTap: () => _popAndPushNamed(context, '/order'),
             )),
             cell(_DrawerShortcutData(
-              icon: Icons.shopping_cart_outlined,
+              iconAsset: AppAssets.menu_cart_icon,
               label: '장바구니',
               onTap: () {},
               onCartPrescriptionTap: () => _popAndPushNamed(context, '/cart'),
@@ -246,17 +246,17 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             cell(_DrawerShortcutData(
-              icon: Icons.confirmation_number_outlined,
+              iconAsset: AppAssets.menu_coupon_icon,
               label: '쿠폰',
               onTap: () => _popAndPushNamed(context, '/coupon'),
             )),
             cell(_DrawerShortcutData(
-              icon: Icons.stars_outlined,
+              iconAsset: AppAssets.menu_point_icon,
               label: '포인트',
               onTap: () => _popAndPushNamed(context, '/point'),
             )),
             cell(_DrawerShortcutData(
-              icon: Icons.person_outline,
+              iconAsset: AppAssets.menu_mypage_icon,
               label: '마이페이지',
               onTap: () {
                 Navigator.pop(context);
@@ -264,7 +264,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               },
             )),
             cell(_DrawerShortcutData(
-              icon: Icons.headset_mic_outlined,
+              iconAsset: AppAssets.menu_QA_icon,
               label: '1:1 문의',
               onTap: () => _openContactList(context),
             )),
@@ -533,8 +533,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
           Row(
             children: [
               SizedBox(
-                width: healthDp(context, 70),
-                height: healthDp(context, 22),
+                width: healthDp(context, 88),
+                height: healthDp(context, 32),
                 child: FilledButton(
                   onPressed: () {
                     Navigator.pop(context);
@@ -545,23 +545,23 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.zero,
                     minimumSize: Size(
-                      healthDp(context, 70),
-                      healthDp(context, 22),
+                      healthDp(context, 88),
+                      healthDp(context, 32),
                     ),
                     fixedSize: Size(
-                      healthDp(context, 70),
-                      healthDp(context, 22),
+                      healthDp(context, 88),
+                      healthDp(context, 32),
                     ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(healthDp(context, 6)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 8)),
                     ),
                   ),
                   child: Text(
                     '로그인',
                     style: TextStyle(
                       fontFamily: _fontFamily,
-                      fontSize: healthSp(context, 10),
+                      fontSize: healthSp(context, 13),
                       fontWeight: FontWeight.w700,
                       height: 1.2,
                     ),
@@ -570,8 +570,8 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
               ),
               SizedBox(width: healthDp(context, 10)),
               SizedBox(
-                width: healthDp(context, 70),
-                height: healthDp(context, 22),
+                width: healthDp(context, 88),
+                height: healthDp(context, 32),
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(context);
@@ -586,23 +586,23 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     ),
                     padding: EdgeInsets.zero,
                     minimumSize: Size(
-                      healthDp(context, 70),
-                      healthDp(context, 22),
+                      healthDp(context, 88),
+                      healthDp(context, 32),
                     ),
                     fixedSize: Size(
-                      healthDp(context, 70),
-                      healthDp(context, 22),
+                      healthDp(context, 88),
+                      healthDp(context, 32),
                     ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(healthDp(context, 6)),
+                      borderRadius: BorderRadius.circular(healthDp(context, 8)),
                     ),
                   ),
                   child: Text(
                     '회원가입',
                     style: TextStyle(
                       fontFamily: _fontFamily,
-                      fontSize: healthSp(context, 10),
+                      fontSize: healthSp(context, 13),
                       fontWeight: FontWeight.w700,
                       height: 1.2,
                     ),
@@ -723,14 +723,14 @@ class _ExpansionSubmenuWithRail extends StatelessWidget {
 }
 
 class _DrawerShortcutData {
-  final IconData icon;
+  final String iconAsset;
   final String label;
   final VoidCallback onTap;
   final VoidCallback? onCartPrescriptionTap;
   final VoidCallback? onCartShoppingTap;
 
   const _DrawerShortcutData({
-    required this.icon,
+    required this.iconAsset,
     required this.label,
     required this.onTap,
     this.onCartPrescriptionTap,
@@ -744,14 +744,14 @@ class _DrawerShortcut extends StatefulWidget {
   static const Color _muted = Color(0xFF898686);
   static const Color _hoverPink = Color(0xFFFF5A8D);
 
-  final IconData icon;
+  final String iconAsset;
   final String label;
   final VoidCallback onTap;
   final VoidCallback? onCartPrescriptionTap;
   final VoidCallback? onCartShoppingTap;
 
   const _DrawerShortcut({
-    required this.icon,
+    required this.iconAsset,
     required this.label,
     required this.onTap,
     this.onCartPrescriptionTap,
@@ -778,6 +778,12 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
       widget.onCartShoppingTap != null;
   bool get _showCartDropdownButton =>
       _isCartShortcut && !_useIntegratedCart;
+
+  double get _shortcutIconSize {
+    if (_isCartShortcut) return 20;
+    if (widget.label == '쿠폰' || widget.label == '포인트') return 13;
+    return 16;
+  }
 
   @override
   void initState() {
@@ -851,7 +857,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
     if (overlayBox != null) {
       final edge = healthDp(context, 8);
       left = left.clamp(edge, overlayBox.size.width - menuW - edge);
-      final menuH = healthDp(context, 96);
+      final menuH = healthDp(context, 120);
       top = top.clamp(edge, overlayBox.size.height - menuH - edge);
     }
 
@@ -925,13 +931,12 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
         _highlight ? _DrawerShortcut._hoverPink : _DrawerShortcut._muted;
     final labelStyle = TextStyle(
       color: color,
-      fontSize: healthSp(context, 10),
+      fontSize: healthSp(context, 9),
       fontFamily: _DrawerShortcut._fontFamily,
       fontWeight: _highlight ? FontWeight.w700 : FontWeight.w500,
-      height: 1.35,
+      height: 1.2,
     );
 
-    final isPoint = widget.label == '포인트';
     return Material(
       color: Colors.transparent,
       child: MouseRegion(
@@ -977,32 +982,27 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                             ],
                           ),
                           alignment: Alignment.center,
-                          child: isPoint
-                              ? Text(
-                                  'P',
-                                  style: TextStyle(
-                                    color: color,
-                                    fontSize: healthSp(context, 16),
-                                    fontFamily: _DrawerShortcut._fontFamily,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                )
-                              : Icon(
-                                  widget.icon,
-                                  size: healthDp(context, 22),
-                                  color: color,
-                                ),
+                          child: SvgPicture.asset(
+                            widget.iconAsset,
+                            width: healthDp(context, _shortcutIconSize),
+                            height: healthDp(context, _shortcutIconSize),
+                            fit: BoxFit.contain,
+                            colorFilter: ColorFilter.mode(
+                              color,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                         ),
                         if (_showCartDropdownButton)
                           Positioned(
-                            right: -healthDp(context, 4),
+                            right: -healthDp(context, 2),
                             bottom: -healthDp(context, 4),
                             child: GestureDetector(
                               onTap: _toggleCartDropdown,
                               behavior: HitTestBehavior.opaque,
                               child: Container(
-                                width: healthDp(context, 20),
-                                height: healthDp(context, 20),
+                                width: healthDp(context, 16),
+                                height: healthDp(context, 16),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
@@ -1036,8 +1036,9 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                     widget.label,
                     style: labelStyle,
                     textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.visible,
                   ),
                 ],
               ),

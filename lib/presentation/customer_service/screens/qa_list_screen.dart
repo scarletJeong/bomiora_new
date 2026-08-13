@@ -6,6 +6,7 @@ import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../../data/models/qa/qa_inquiry_model.dart';
 import '../../../data/services/qa_service.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -535,7 +536,10 @@ class QaListScreenState extends State<QaListScreen> {
                         .clamp(healthDp(context, 120), double.infinity),
                   ),
                   CenteredEmptyState(
-                    icon: Icons.inbox_outlined,
+                    iconWidget: CenteredEmptyState.assetIcon(
+                      context,
+                      AppAssets.emptyQAIcon,
+                    ),
                     message: _emptyTabMessage,
                   ),
                   SizedBox(height: healthDp(context, 40)),
@@ -677,33 +681,19 @@ class QaListScreenState extends State<QaListScreen> {
 
   Widget _buildLoginMessage() {
     return CenteredEmptyState(
-      icon: Icons.inbox_outlined,
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyQAIcon,
+      ),
       message: '로그인 후 이용 가능합니다.',
-      trailing: [
-        SizedBox(
-          width: healthDp(context, 160),
-          height: healthDp(context, 40),
-          child: ElevatedButton(
-            onPressed: () async {
-              await Navigator.pushNamed(context, '/login');
-              if (!mounted) return;
-              await _loadContacts();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _pink,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-              ),
-            ),
-            child: Text(
-              '로그인하기',
-              style: _qaText(context, size: 14, color: Colors.white),
-            ),
-          ),
-        ),
-      ],
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/login');
+          if (!mounted) return;
+          await _loadContacts();
+        },
+      ),
     );
   }
 }

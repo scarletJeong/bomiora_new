@@ -259,6 +259,12 @@ class _CouponScreenState extends State<CouponScreen> {
             SliverFillRemaining(
               hasScrollBody: false,
               child: CenteredEmptyState(
+                iconWidget: _currentUser == null
+                    ? null
+                    : CenteredEmptyState.assetIcon(
+                        context,
+                        AppAssets.emptyCouponIcon,
+                      ),
                 message: _emptyMessage,
               ),
             )

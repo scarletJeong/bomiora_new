@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/event/event_model.dart';
 import '../../../../data/services/event_service.dart';
+import '../../../common/widgets/centered_empty_state.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -246,15 +248,12 @@ class _EventListScreenState extends State<EventListScreen> {
       );
     }
     if (events.isEmpty) {
-      return Center(
-        child: Text(
-          '이벤트가 없습니다.',
-          style: TextStyle(
-            color: _kMuted,
-            fontFamily: _font,
-            fontSize: healthSp(context, 14),
-          ),
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyEventIcon,
         ),
+        message: '이벤트가 없습니다.',
       );
     }
 

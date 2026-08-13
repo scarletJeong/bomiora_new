@@ -101,6 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBodyBehindAppBar: false,
       appBar: AppBarMenu(
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        actionsStyle: _currentIndex == 1
+            ? AppBarMenuActionsStyle.myPage
+            : AppBarMenuActionsStyle.home,
       ),
       drawer: AppBarMenuTapDrawer(
         onHealthDashboardTap: () {

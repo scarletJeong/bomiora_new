@@ -7,6 +7,7 @@ import '../../common/widgets/confirm_dialog.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/cart/cart_line_group.dart';
 import '../../../data/services/cart_service.dart';
@@ -436,8 +437,11 @@ class _CartScreenState extends State<CartScreen> {
     }
     if (_displayedCartItems.isEmpty) {
       return _wrapWithOptionalHeader(
-        const CenteredEmptyState(
-          icon: Icons.shopping_cart_outlined,
+        CenteredEmptyState(
+          iconWidget: CenteredEmptyState.assetIcon(
+            context,
+            AppAssets.emptyCartGeneralIcon,
+          ),
           message: '장바구니가 비어있습니다.',
         ),
       );

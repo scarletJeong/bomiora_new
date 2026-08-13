@@ -280,7 +280,12 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
 
   // 주소 검색 대화상자 열기
   Future<void> _openAddressSearch() async {
-    final selected = await showDaumPostcodeSearchDialog(context);
+    Map<String, dynamic>? selected;
+    try {
+      selected = await showDaumPostcodeSearchDialog(context);
+    } catch (_) {
+      return;
+    }
     if (!mounted || selected == null) return;
 
     final postalCode = (selected['postalCode'] ?? '').toString().trim();
@@ -518,7 +523,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               ],
               SizedBox(height: healthDp(context, 10)),
               const _FieldLabel('받으시는 분', isRequired: true),
-              SizedBox(height: healthDp(context, 5)),
+              SizedBox(height: healthDp(context, 2)),
               _BoxField(
                 controller: _nameController,
                 hintText: '수령인의 이름을 입력해주세요.',
@@ -528,7 +533,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               ),
               SizedBox(height: healthDp(context, 10)),
               const _FieldLabel('연락처', isRequired: true),
-              SizedBox(height: healthDp(context, 5)),
+              SizedBox(height: healthDp(context, 2)),
               _BoxField(
                 controller: _phoneController,
                 hintText: "'-' 없이 기입해주세요.",
@@ -546,7 +551,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
               ),
               SizedBox(height: healthDp(context, 10)),
               const _FieldLabel('배송지 주소', isRequired: true),
-              SizedBox(height: healthDp(context, 5)),
+              SizedBox(height: healthDp(context, 2)),
               if (!_showDetailAddress)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -575,12 +580,12 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                     _buildAddressSearchButton(fieldHeight),
                   ],
                 ),
-                SizedBox(height: healthDp(context, 5)),
+                SizedBox(height: healthDp(context, 2)),
                 _buildReadonlyBox(
                   text: _address1Controller.text.trim(),
                   hintText: '주소',
                 ),
-                SizedBox(height: healthDp(context, 5)),
+                SizedBox(height: healthDp(context, 2)),
                 _BoxField(
                   controller: _address2Controller,
                   hintText: '상세 주소를 입력해 주세요.',

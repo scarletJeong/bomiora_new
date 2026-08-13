@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/utils/image_url_helper.dart';
 import '../../../../core/utils/node_value_parser.dart';
 import '../../../../data/services/wish_service.dart';
@@ -239,9 +240,20 @@ class _WishListScreenState extends State<WishListScreen> {
   }
 
   Widget _buildLoginMessage() {
-    return const CenteredEmptyState(
-      icon: Icons.favorite_border,
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyWishlistIcon,
+      ),
       message: '로그인 후 이용 가능합니다.',
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/login');
+          if (!mounted) return;
+          await _loadWishList();
+        },
+      ),
     );
   }
 
@@ -284,7 +296,10 @@ class _WishListScreenState extends State<WishListScreen> {
         if (list.isEmpty)
           Expanded(
             child: CenteredEmptyState(
-              icon: Icons.favorite_border,
+              iconWidget: CenteredEmptyState.assetIcon(
+                context,
+                AppAssets.emptyWishlistIcon,
+              ),
               message: _emptyMessageForTab(),
             ),
           )

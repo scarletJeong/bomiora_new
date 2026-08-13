@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/announcement/announcement_model.dart';
 import '../../../data/services/announcement_service.dart';
@@ -48,14 +50,25 @@ class NoticeSection extends StatelessWidget {
                 else if (items.isEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: healthDp(context, 12)),
-                    child: Text(
-                      '등록된 공지사항이 없습니다.',
-                      style: TextStyle(
-                        color: const Color(0x665B3F43),
-                        fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w400,
-                      ),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          AppAssets.emptyNoticeIcon,
+                          width: healthDp(context, 28),
+                          height: healthDp(context, 28),
+                          fit: BoxFit.contain,
+                        ),
+                        SizedBox(width: healthDp(context, 8)),
+                        Text(
+                          '등록된 공지사항이 없습니다.',
+                          style: TextStyle(
+                            color: const Color(0x665B3F43),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 else

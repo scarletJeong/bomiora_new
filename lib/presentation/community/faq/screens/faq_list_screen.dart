@@ -468,8 +468,11 @@ class _FaqListScreenState extends State<FaqListScreen> {
   Widget _buildEmpty() {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: const CenteredEmptyState(
-        icon: Icons.help_outline,
+      child: CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyNoticeIcon,
+        ),
         message: '조건에 맞는 FAQ가 없습니다.',
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/app_assets.dart';
 import '../common/widgets/mobile_layout_wrapper.dart';
 import '../common/widgets/centered_empty_state.dart';
 import '../health/health_common/widgets/health_app_bar.dart';
@@ -125,10 +126,16 @@ class _NotificationSettingsScreenState
                     builder: (context, constraints) {
                       return SizedBox(
                         height: constraints.maxHeight,
-                        child: const CenteredEmptyState(
+                        child: CenteredEmptyState(
                           fillAvailable: true,
-                          icon: Icons.notifications_none_outlined,
+                          iconWidget: CenteredEmptyState.assetIcon(
+                            context,
+                            AppAssets.emptySettingIcon,
+                          ),
                           message: '로그인 후 이용 가능합니다.',
+                          trailing: CenteredEmptyState.loginButtonTrailing(
+                            context,
+                          ),
                         ),
                       );
                     },

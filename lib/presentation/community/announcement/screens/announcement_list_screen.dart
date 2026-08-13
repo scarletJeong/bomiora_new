@@ -394,8 +394,11 @@ class _AnnouncementListScreenState extends State<AnnouncementListScreen> {
   Widget _buildEmpty(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: const CenteredEmptyState(
-        icon: Icons.campaign_outlined,
+      child: CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyNoticeIcon,
+        ),
         message: '공지사항이 없습니다.',
       ),
     );

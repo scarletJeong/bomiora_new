@@ -291,15 +291,17 @@ class _ContentListScreenState extends State<ContentListScreen> {
   Widget _buildEmptyPostsState(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-      child: const CenteredEmptyState(
-        icon: Icons.article_outlined,
+      child: CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyContentIcon,
+        ),
         message: '등록된 게시글이 없습니다.',
       ),
     );
   }
 
   Widget _buildEmptySearchResult(BuildContext context) {
-    final iconSz = healthDp(context, 80);
     return Padding(
       padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
       child: Column(
@@ -307,12 +309,7 @@ class _ContentListScreenState extends State<ContentListScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SvgPicture.asset(
-            AppAssets.searchEmptyIcon,
-            width: iconSz,
-            height: iconSz,
-            fit: BoxFit.contain,
-          ),
+          CenteredEmptyState.assetIcon(context, AppAssets.emptySearchIcon),
           SizedBox(height: healthDp(context, 10)),
           Text(
             '검색 결과가 없습니다.',

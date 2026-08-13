@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/main_home_review_model.dart';
 import '../../../data/services/review_service.dart';
@@ -195,16 +197,29 @@ class _ReviewSectionState extends State<ReviewSection> {
       );
     }
     if (_reviews.isEmpty) {
+      final iconSz = healthDp(context, 40);
       return SizedBox(
-        height: healthDp(context, 80),
+        height: healthDp(context, 100),
         child: Center(
-          child: Text(
-            '등록된 리뷰가 없습니다.',
-            style: TextStyle(
-              color: const Color(0x995B3F43),
-              fontSize: healthSp(context, 13),
-              fontFamily: 'Gmarket Sans TTF',
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(
+                AppAssets.emptyProductReviewIcon,
+                width: iconSz,
+                height: iconSz,
+                fit: BoxFit.contain,
+              ),
+              SizedBox(height: healthDp(context, 8)),
+              Text(
+                '등록된 리뷰가 없습니다.',
+                style: TextStyle(
+                  color: const Color(0x995B3F43),
+                  fontSize: healthSp(context, 13),
+                  fontFamily: 'Gmarket Sans TTF',
+                ),
+              ),
+            ],
           ),
         ),
       );

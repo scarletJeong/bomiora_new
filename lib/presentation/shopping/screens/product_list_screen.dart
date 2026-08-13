@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../../data/models/product/product_model.dart';
@@ -6,6 +7,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
 import '../../common/widgets/app_footer.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/navi_bar.dart';
 import '../../common/widgets/product_card.dart';
 import '../../common/widgets/scroll_reveal_top_overlay.dart';
@@ -290,7 +292,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
           controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(
-              child: ProductBannerSlider(productKind: widget.productKind),
+              child: ProductBannerSlider(
+                productKind: widget.productKind,
+                categoryId: _activeCategoryId,
+                categoryIndex: _baseTabOrder
+                    .indexWhere((tab) => tab.id == _activeCategoryId),
+              ),
             ),
             SliverToBoxAdapter(
               child: SizedBox(height: healthDp(context, 20)),
@@ -314,23 +321,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         padding: EdgeInsets.symmetric(
                           vertical: healthDp(context, 56),
                         ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.shopping_bag_outlined,
-                              size: healthDp(context, 64),
-                              color: Colors.grey[400],
-                            ),
-                            SizedBox(height: healthDp(context, 16)),
-                            Text(
-                              '등록된 상품이 없습니다',
-                              style: TextStyle(
-                                fontSize: healthSp(context, 16),
-                                color: Colors.grey[600],
-                                fontFamily: _gmarket,
-                              ),
-                            ),
-                          ],
+                        child: CenteredEmptyState(
+                          iconWidget: CenteredEmptyState.assetIcon(
+                            context,
+                            AppAssets.emptyCategoryIcon,
+                          ),
+                          message: '등록된 상품이 없습니다',
                         ),
                       ),
                     )

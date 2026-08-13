@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../common/widgets/app_star_rating.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../../data/models/review/review_model.dart';
 import '../widgets/product_review_list_card.dart';
@@ -55,7 +57,18 @@ class GeneralReviewTabPanel extends StatelessWidget {
         else ...[
           GeneralReviewStatsCard(average: average),
           SizedBox(height: healthDp(context, 14)),
-          if (visible.isNotEmpty)
+          if (visible.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
+              child: CenteredEmptyState(
+                iconWidget: CenteredEmptyState.assetIcon(
+                  context,
+                  AppAssets.emptyProductReviewIcon,
+                ),
+                message: '등록된 리뷰가 없습니다.',
+              ),
+            )
+          else
             Padding(
               padding: EdgeInsets.symmetric(horizontal: hPad),
               child: ProductReviewListSection(

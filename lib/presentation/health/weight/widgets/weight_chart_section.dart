@@ -150,7 +150,7 @@ class WeightChartContent extends StatelessWidget {
   Widget build(BuildContext context) => _buildChart(context);
 
   Widget _buildChart(BuildContext context) {
-    final chartBody = _buildChartBody();
+    final chartBody = _buildChartBody(context);
 
     if (!showExpandButton) return chartBody;
 
@@ -181,7 +181,7 @@ class WeightChartContent extends StatelessWidget {
     );
   }
 
-  Widget _buildChartBody() {
+  Widget _buildChartBody(BuildContext context) {
     if (selectedPeriod == '일' && !hasActualDailyData) {
       return HealthDailyNoDataChartCard(
         chartHeight: chartHeight,

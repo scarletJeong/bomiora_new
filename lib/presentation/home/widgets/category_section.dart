@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
@@ -394,15 +396,28 @@ class _CategorySectionState extends State<CategorySection> {
     }
 
     if (products.isEmpty) {
+      final iconSz = healthDp(context, 40);
       return Center(
-        child: Text(
-          '등록된 상품이 없습니다.',
-          style: TextStyle(
-            color: const Color(0x665B3F43),
-            fontSize: healthSp(context, 12),
-            fontFamily: 'Gmarket Sans TTF',
-            fontWeight: FontWeight.w400,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              AppAssets.emptyCategoryIcon,
+              width: iconSz,
+              height: iconSz,
+              fit: BoxFit.contain,
+            ),
+            SizedBox(height: healthDp(context, 8)),
+            Text(
+              '등록된 상품이 없습니다.',
+              style: TextStyle(
+                color: const Color(0x665B3F43),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Gmarket Sans TTF',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
         ),
       );
     }

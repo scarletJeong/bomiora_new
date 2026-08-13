@@ -14,6 +14,7 @@ import '../../../data/services/review_service.dart';
 import '../../../data/models/delivery/delivery_model.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../shopping/utils/cart_navigation.dart';
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../core/utils/price_formatter.dart';
 import '../../common/widgets/app_network_image.dart';
@@ -1060,7 +1061,10 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         ? '주문'
         : _getStatusText(_selectedStatus);
     return CenteredEmptyState(
-      icon: Icons.inbox_outlined,
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyDeliveryIcon,
+      ),
       message: '$statusText 내역이 없습니다',
     );
   }

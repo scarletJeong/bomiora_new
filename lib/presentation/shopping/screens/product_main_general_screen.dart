@@ -9,6 +9,7 @@ import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../../data/repositories/product/product_repository.dart';
 import '../../common/widgets/app_bar_menu.dart';
 import '../../common/widgets/appbar_menutap.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/app_footer.dart';
 import '../../common/widgets/navi_bar.dart';
@@ -321,14 +322,12 @@ class _ProductMainGeneralScreenState extends State<ProductMainGeneralScreen> {
               ? SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: healthDp(context, 24)),
-                    child: Center(
-                      child: Text(
-                        '등록된 상품이 없습니다',
-                        style: TextStyle(
-                          fontSize: healthSp(context, 13),
-                          color: Colors.grey[600],
-                        ),
+                    child: CenteredEmptyState(
+                      iconWidget: CenteredEmptyState.assetIcon(
+                        context,
+                        AppAssets.emptyCategoryIcon,
                       ),
+                      message: '등록된 상품이 없습니다',
                     ),
                   ),
                 )

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/review/review_model.dart';
 import '../../../data/services/review_service.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
@@ -135,15 +137,12 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
                       padding: EdgeInsets.symmetric(
                         vertical: healthDp(context, 40),
                       ),
-                      child: Center(
-                        child: Text(
-                          '등록된 리뷰가 없습니다.',
-                          style: TextStyle(
-                            color: _muted,
-                            fontSize: healthSp(context, 13),
-                            fontFamily: _font,
-                          ),
+                      child: CenteredEmptyState(
+                        iconWidget: CenteredEmptyState.assetIcon(
+                          context,
+                          AppAssets.emptyProductReviewIcon,
                         ),
+                        message: '등록된 리뷰가 없습니다.',
                       ),
                     )
                   else

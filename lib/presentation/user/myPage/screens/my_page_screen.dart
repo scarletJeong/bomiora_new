@@ -189,6 +189,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             ),
                             SizedBox(height: healthDp(context, 20)),
                           ],
+                          // 자주 쓰는 쇼핑 기능 → 구매 후 활동 → 문의 → 환불(비빈도)
                           MyPageLineMenuItem(
                             title: '찜 목록',
                             onTap: () {
@@ -214,18 +215,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ),
                           SizedBox(height: healthDp(context, 20)),
                           MyPageLineMenuItem(
-                            title: '환불 계좌 등록',
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const RefundAccountScreen()),
-                              );
-                            },
-                          ),
-                          SizedBox(height: healthDp(context, 20)),
-                          MyPageLineMenuItem(
                             title: '내 리뷰 활동',
                             onTap: () =>
                                 Navigator.pushNamed(context, '/my_reviews'),
@@ -233,13 +222,25 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           SizedBox(height: healthDp(context, 20)),
                           MyPageLineMenuItem(
                             title: '1:1 문의',
-                            isLast: true,
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) =>
                                         const QaListScreen()),
+                              );
+                            },
+                          ),
+                          SizedBox(height: healthDp(context, 20)),
+                          MyPageLineMenuItem(
+                            title: '환불 계좌 관리',
+                            isLast: true,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const RefundAccountScreen()),
                               );
                             },
                           ),

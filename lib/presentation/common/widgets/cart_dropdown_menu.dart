@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../health/health_common/health_responsive_scale.dart';
 
-/// 장바구니 분기(진료담기 / 구매담기) 드롭다운 폭 — 라벨이 한 줄로 보이도록 여유 있게.
-double cartDropdownWidth(BuildContext context) => healthDp(context, 60);
+/// 장바구니 분기(진료담기 / 구매담기) 드롭다운 폭 — 라벨이 잘리지 않도록 여유 있게.
+double cartDropdownWidth(BuildContext context) => healthDp(context, 108);
 
 class CartDropdownMenuPanel extends StatelessWidget {
   final VoidCallback onPrescriptionTap;
@@ -91,13 +91,16 @@ class _CartDropdownMenuItemState extends State<CartDropdownMenuItem> {
             child: Text(
               widget.label,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               softWrap: false,
+              overflow: TextOverflow.visible,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: _hover ? const Color(0xFFFF5A8D) : Colors.black,
-                fontSize: healthSp(context, 10),
+                color: _hover
+                    ? const Color(0xFFFF5A8D)
+                    : const Color(0xFF898686),
+                fontSize: healthSp(context, 12),
                 fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),

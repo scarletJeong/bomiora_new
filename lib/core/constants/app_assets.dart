@@ -20,6 +20,16 @@ abstract final class AppAssets {
   // 햄버거 메뉴 아이콘
   static const String menuIcon = '${_img}menu_icon.svg';
 
+  // 메뉴 아이콘
+  static const String menu_home_icon = '${_img}menu_home_icon.svg';  // 홈 
+  static const String menu_health_icon = '${_img}menu_health_icon.svg';  // 문진표
+  static const String menu_order_icon = '${_img}menu_order_icon.svg';  // 주문배송
+  static const String menu_cart_icon = '${_img}menu_cart_icon.svg';  // 장바구니
+  static const String menu_coupon_icon = '${_img}menu_coupon_icon.svg';  // 쿠폰
+  static const String menu_point_icon = '${_img}menu_point_icon.svg';  // 포인트
+  static const String menu_mypage_icon = '${_img}menu_mypage_icon.svg';  // 마이페이지
+  static const String menu_QA_icon = '${_img}menu_QA_icon.svg';  // 1:1 문의
+
   // 네비게이션 아이콘
   static const String naviIcon1 = '${_img}navi_icon1.svg'; // 홈
   static const String naviIcon2 = '${_img}navi_icon2.svg'; // 건강대시보드
@@ -31,7 +41,7 @@ abstract final class AppAssets {
   static const String footerIcon1 = '${_img}footer_icon1.svg'; // 로고1
   static const String footerIcon2 = '${_img}footer_icon2.svg'; // 로고2 _글씨
 
-  // 검색 아이콘
+  // 앱바 - 검색 아이콘
   static const String searchIcon = '${_img}search_icon.svg';
 
   // 사진추가하기 회색카드 아이콘
@@ -214,4 +224,32 @@ abstract final class AppAssets {
   // 하트 아이콘 - 콘텐츠 찜
   static const String heartIcon = '${_img}content_heart_icon.svg';
   static const String heartIconFilled = '${_img}content_heart_icon_filled.svg';
+
+  // 빈 화면 아이콘 — '로그인 후 이용 가능합니다' / '~가 없습니다' 문구 위
+  static const String emptyWishlistIcon = '${_img}empty_wishlist_icon.svg'; // 찜목록
+  static const String emptyAddressIcon = '${_img}empty_address_icon.svg'; // 배송지 관리
+  static const String emptyReviewIcon = '${_img}empty_review_icon.svg'; // 내 리뷰
+  static const String emptyQAIcon = '${_img}empty_QAicon.svg'; // 1:1 문의
+  static const String emptyRefundIcon = '${_img}empty_refund_icon.svg'; // 환불계좌
+  static const String emptyHealthIcon = '${_img}empty_health_icon.svg'; // 문진표 관리
+
+  static const String emptyAlarmIcon = '${_img}empty_alarm_icon.svg'; // 알림센터
+  static const String emptySettingIcon = '${_img}empty_setting_icon.svg'; // 설정
+
+  static const String emptyDeliveryIcon = '${_img}empty_delivery_icon.svg'; // 주문내역
+  static const String emptyCouponIcon = '${_img}empty_coupon_icon.svg'; // 쿠폰
+  static const String emptyPointIcon = '${_img}empty_point_icon.svg'; // 포인트
+  static const String emptyCartIcon = '${_img}empty_cart_icon.svg'; // 장바구니(처방제품)
+  static const String emptyCartGeneralIcon = '${_img}empty_cart_general_icon.svg'; // 장바구니(일반 상품)
+
+  static const String emptyHealthDashboardIcon = '${_img}empty_health_dashboard_icon.svg'; // 건강대시보드 기록 없음
+  static const String emptyCategoryIcon = '${_img}empty_category_icon.svg'; // 카테고리 내 상품 없음
+  static const String emptyProductReviewIcon = '${_img}empty_product_review_icon.svg'; // 상품 상세 내 리뷰 없음
+  static const String emptyContentIcon = '${_img}empty_content_icon.svg'; // 콘텐츠/게시글 빈 카드
+  static const String emptySearchIcon = '${_img}empty_search_icon.svg'; // 검색 결과 없음
+  
+  static const String emptyNoticeIcon = '${_img}empty_notice_icon.svg'; // 공지사항 빈 카드
+  static const String emptyEventIcon = '${_img}empty_event_icon.svg'; // 이벤트 빈 카드
+
+
 }

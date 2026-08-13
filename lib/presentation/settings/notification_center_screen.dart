@@ -257,9 +257,12 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     builder: (context, constraints) {
                       return SizedBox(
                         height: constraints.maxHeight,
-                        child: const CenteredEmptyState(
+                        child: CenteredEmptyState(
                           fillAvailable: true,
-                          icon: Icons.notifications_none_outlined,
+                          iconWidget: CenteredEmptyState.assetIcon(
+                            context,
+                            AppAssets.emptyAlarmIcon,
+                          ),
                           message: '로그인 후 알림을 확인할 수 있습니다.',
                         ),
                       );
@@ -324,9 +327,13 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                         constraints: BoxConstraints(
                                           minHeight: constraints.maxHeight,
                                         ),
-                                        child: const CenteredEmptyState(
+                                        child: CenteredEmptyState(
                                           fillAvailable: true,
-                                          icon: Icons.notifications_none_outlined,
+                                          iconWidget:
+                                              CenteredEmptyState.assetIcon(
+                                            context,
+                                            AppAssets.emptyAlarmIcon,
+                                          ),
                                           message: '표시할 알림이 없습니다.',
                                         ),
                                       ),

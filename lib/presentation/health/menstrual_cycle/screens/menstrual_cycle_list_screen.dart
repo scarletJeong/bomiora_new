@@ -9,7 +9,6 @@ import '../../health_common/widgets/health_list_edit_button.dart';
 import '../../../common/widgets/btn_record.dart';
 import '../widgets/menstrual_cycle_date_header.dart';
 import '../widgets/menstrual_phase_recommendation_item.dart';
-import '../../../../core/constants/app_assets.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_model.dart';
 import '../../../../data/models/health/menstrual_cycle/menstrual_cycle_record_selector.dart';
 import '../../../../data/repositories/health/menstrual_cycle/menstrual_cycle_repository.dart';
@@ -199,12 +198,6 @@ class _MenstrualCycleInfoScreenState extends State<MenstrualCycleInfoScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: healthDp(context, 80),
-                    color: Colors.grey[400],
-                  ),
-                  SizedBox(height: healthDp(context, 24)),
                   Text(
                     '생리주기 정보가 없습니다',
                     style: TextStyle(

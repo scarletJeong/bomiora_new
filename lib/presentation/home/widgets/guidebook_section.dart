@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/app_assets.dart';
 import '../../../data/services/content_service.dart';
 import '../../common/widgets/web_dragscroll.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -74,17 +76,30 @@ class _GuidebookSectionState extends State<GuidebookSection> {
                   );
                 }
                 if (items.isEmpty) {
+                  final iconSz = healthDp(context, 40);
                   return Padding(
                     padding: EdgeInsets.symmetric(horizontal: healthDp(context, 24)),
                     child: Center(
-                      child: Text(
-                        '등록된 콘텐츠가 없습니다.',
-                        style: TextStyle(
-                          color: const Color(0x665B3F43),
-                          fontSize: healthSp(context, 12),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SvgPicture.asset(
+                            AppAssets.emptyContentIcon,
+                            width: iconSz,
+                            height: iconSz,
+                            fit: BoxFit.contain,
+                          ),
+                          SizedBox(height: healthDp(context, 8)),
+                          Text(
+                            '등록된 콘텐츠가 없습니다.',
+                            style: TextStyle(
+                              color: const Color(0x665B3F43),
+                              fontSize: healthSp(context, 12),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );

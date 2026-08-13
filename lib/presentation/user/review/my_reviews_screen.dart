@@ -1122,16 +1122,30 @@ class _MyReviewsScreenState extends State<MyReviewsScreen> {
   }
 
   Widget _buildEmpty() {
-    return const CenteredEmptyState(
-      icon: Icons.rate_review_outlined,
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyReviewIcon,
+      ),
       message: '작성한 리뷰가 없습니다',
     );
   }
 
   Widget _buildLoginMessage() {
-    return const CenteredEmptyState(
-      icon: Icons.rate_review_outlined,
+    return CenteredEmptyState(
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyReviewIcon,
+      ),
       message: '로그인 후 이용 가능합니다.',
+      trailing: CenteredEmptyState.loginButtonTrailing(
+        context,
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/login');
+          if (!mounted) return;
+          await _loadReviews(refresh: true);
+        },
+      ),
     );
   }
 }

@@ -11,6 +11,7 @@ import '../../../data/models/event/event_model.dart';
 import '../../../data/models/product/product_model.dart';
 import '../../../data/services/content_service.dart';
 import '../../../data/services/search_service.dart';
+import '../../common/widgets/centered_empty_state.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/product_card.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -545,12 +546,7 @@ class _SearchListScreenState extends State<SearchListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SvgPicture.asset(
-            AppAssets.searchEmptyIcon,
-            width: healthDp(context, 80),
-            height: healthDp(context, 80),
-            fit: BoxFit.contain,
-          ),
+          CenteredEmptyState.assetIcon(context, AppAssets.emptySearchIcon),
           SizedBox(height: healthDp(context, 10)),
           Text(
             '검색 결과가 없습니다.',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/refund_account_service.dart';
 import '../../../common/widgets/dropdown_btn.dart';
@@ -283,9 +284,20 @@ class _RefundAccountScreenState extends State<RefundAccountScreen> {
                           ),
                         ],
                       )
-                : const CenteredEmptyState(
-                    icon: Icons.account_balance_wallet_outlined,
+                : CenteredEmptyState(
+                    iconWidget: CenteredEmptyState.assetIcon(
+                      context,
+                      AppAssets.emptyRefundIcon,
+                    ),
                     message: '로그인 후 이용 가능합니다.',
+                    trailing: CenteredEmptyState.loginButtonTrailing(
+                      context,
+                      onPressed: () async {
+                        await Navigator.pushNamed(context, '/login');
+                        if (!mounted) return;
+                        await _loadUser();
+                      },
+                    ),
                   ),
         ),
       ),

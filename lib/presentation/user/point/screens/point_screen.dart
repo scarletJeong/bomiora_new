@@ -168,7 +168,13 @@ class _PointScreenState extends State<PointScreen> {
             if (_displayedHistory.isEmpty)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: healthDp(context, 40)),
-                child: const CenteredEmptyState(
+                child: CenteredEmptyState(
+                  iconWidget: _currentUser == null
+                      ? null
+                      : CenteredEmptyState.assetIcon(
+                          context,
+                          AppAssets.emptyPointIcon,
+                        ),
                   message: '포인트 내역이 없습니다.',
                 ),
               )
