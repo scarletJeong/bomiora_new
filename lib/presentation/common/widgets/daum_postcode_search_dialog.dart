@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../../core/network/api_client.dart';
@@ -41,12 +42,15 @@ void _popOnlyThisDialog(
 ) {
   void tryPop() {
     if (!dialogContext.mounted) return;
+    final nav = Navigator.of(dialogContext, rootNavigator: true);
     final route = ModalRoute.of(dialogContext);
-    // 이 다이얼로그가 현재 라우트가 아니면(=이미 닫힘/다른 화면) 아무 것도 pop 하지 않음
-    if (route == null || !route.isCurrent) return;
-    if (route.settings.name != _kPostcodeRouteName) return;
-    if (!Navigator.of(dialogContext).canPop()) return;
-    Navigator.of(dialogContext).pop(result);
+    if (route != null &&
+        route.settings.name != null &&
+        route.settings.name != _kPostcodeRouteName) {
+      return;
+    }
+    if (!nav.canPop()) return;
+    nav.pop(result);
   }
 
   // WebView 제스처 직후 lock 회피: 다음 프레임 + 짧은 지연 후 1회
@@ -71,7 +75,27 @@ class _DaumPostcodeDialogShell extends StatelessWidget {
     final availableH =
         screenSize.height - viewPadding.top - viewPadding.bottom - 16;
     final preferredH = contentW * 1.35;
-    final dialogH = preferredH.clamp(420.0, availableH);
+    final fillScreen = screenSize.width <= 375;
+    final dialogW = fillScreen ? screenSize.width : contentW;
+    final dialogH = fillScreen
+        ? screenSize.height
+        : preferredH.clamp(420.0, availableH);
+
+    final dialog = GestureDetector(
+      onTap: () {},
+      behavior: HitTestBehavior.deferToChild,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          size: Size(dialogW, dialogH),
+        ),
+        child: _DaumPostcodeDialog(
+          width: dialogW,
+          height: dialogH,
+          fullScreen: fillScreen,
+          onClose: onFinished,
+        ),
+      ),
+    );
 
     return Material(
       type: MaterialType.transparency,
@@ -81,28 +105,14 @@ class _DaumPostcodeDialogShell extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => onFinished(null),
-                behavior: HitTestBehavior.opaque,
-              ),
-            ),
-            Center(
-              child: GestureDetector(
-                onTap: () {},
-                behavior: HitTestBehavior.deferToChild,
-                child: MediaQuery(
-                  data: MediaQuery.of(context).copyWith(
-                    size: Size(contentW, screenSize.height),
-                  ),
-                  child: _DaumPostcodeDialog(
-                    width: contentW,
-                    height: dialogH,
-                    onClose: onFinished,
-                  ),
+            if (!fillScreen)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => onFinished(null),
+                  behavior: HitTestBehavior.opaque,
                 ),
               ),
-            ),
+            fillScreen ? Positioned.fill(child: dialog) : Center(child: dialog),
           ],
         ),
       ),
@@ -115,10 +125,12 @@ class _DaumPostcodeDialog extends StatefulWidget {
     required this.width,
     required this.height,
     required this.onClose,
+    this.fullScreen = false,
   });
 
   final double width;
   final double height;
+  final bool fullScreen;
   final void Function(Map<String, dynamic>? result) onClose;
 
   @override
@@ -133,13 +145,21 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
   Timer? _pollTimer;
   Map<String, dynamic>? _pendingResult;
 
-  String get _bridgeUrl {
-    final w = widget.width.round();
-    final h = widget.height.round();
+  String _bridgeUrlFor({required double width, required double height}) {
+    final w = width.round().clamp(1, 4000);
+    final h = height.round().clamp(1, 4000);
     return '${ApiClient.baseUrl}/api/address/postcode-bridge'
         '?token=${Uri.encodeQueryComponent(_token)}'
         '&width=$w'
         '&height=$h';
+  }
+
+  void _onClosePressed() {
+    if (_completed) {
+      widget.onClose(_pendingResult);
+      return;
+    }
+    _finishDialog();
   }
 
   @override
@@ -198,22 +218,44 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final radius = healthDp(context, 12);
+    final radius = widget.fullScreen ? 0.0 : healthDp(context, 12);
     final errorFs = healthSp(context, 14);
     final closeSize = healthDp(context, 36);
+    final headerH = healthDp(context, 44);
+    final webH = (widget.height - headerH).clamp(1.0, widget.height);
 
     return Material(
       color: Colors.white,
-      elevation: 8,
+      elevation: widget.fullScreen ? 0 : 8,
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(radius),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
         width: widget.width,
         height: widget.height,
-        child: Stack(
+        child: Column(
           children: [
-            Positioned.fill(
+            SizedBox(
+              height: headerH,
+              width: double.infinity,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _onClosePressed,
+                  child: SizedBox(
+                    width: closeSize + healthDp(context, 16),
+                    height: headerH,
+                    child: Icon(
+                      Icons.close,
+                      size: healthDp(context, 22),
+                      color: const Color(0xFF1A1A1E),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
               child: _closing
                   ? const Center(child: CircularProgressIndicator())
                   : _errorMessage != null
@@ -232,8 +274,14 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
                           ),
                         )
                       : InAppWebView(
-                          initialUrlRequest:
-                              URLRequest(url: WebUri(_bridgeUrl)),
+                          initialUrlRequest: URLRequest(
+                            url: WebUri(
+                              _bridgeUrlFor(
+                                width: widget.width,
+                                height: webH,
+                              ),
+                            ),
+                          ),
                           initialSettings: InAppWebViewSettings(
                             javaScriptEnabled: true,
                             domStorageEnabled: true,
@@ -249,29 +297,33 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
                                 MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
                           ),
                           onWebViewCreated: (controller) {
-                            controller.addJavaScriptHandler(
-                              handlerName: 'postcodeResult',
-                              callback: (args) {
-                                if (_completed) return null;
-                                if (args.isEmpty) return null;
-                                final raw = args.first;
-                                if (raw is Map) {
-                                  _applyPayload(
-                                    Map<String, dynamic>.from(raw),
-                                  );
-                                } else if (raw is String) {
-                                  try {
-                                    final decoded = jsonDecode(raw);
-                                    if (decoded is Map) {
-                                      _applyPayload(
-                                        Map<String, dynamic>.from(decoded),
-                                      );
-                                    }
-                                  } catch (_) {}
-                                }
-                                return null;
-                              },
-                            );
+                            // 웹은 addJavaScriptHandler 미구현 → 콘솔/폴링으로 결과 수신
+                            if (kIsWeb) return;
+                            try {
+                              controller.addJavaScriptHandler(
+                                handlerName: 'postcodeResult',
+                                callback: (args) {
+                                  if (_completed) return null;
+                                  if (args.isEmpty) return null;
+                                  final raw = args.first;
+                                  if (raw is Map) {
+                                    _applyPayload(
+                                      Map<String, dynamic>.from(raw),
+                                    );
+                                  } else if (raw is String) {
+                                    try {
+                                      final decoded = jsonDecode(raw);
+                                      if (decoded is Map) {
+                                        _applyPayload(
+                                          Map<String, dynamic>.from(decoded),
+                                        );
+                                      }
+                                    } catch (_) {}
+                                  }
+                                  return null;
+                                },
+                              );
+                            } catch (_) {}
                           },
                           onConsoleMessage: (_, message) {
                             final text = message.message;
@@ -297,32 +349,6 @@ class _DaumPostcodeDialogState extends State<_DaumPostcodeDialog> {
                           },
                         ),
             ),
-            if (!_closing)
-              Positioned(
-                top: healthDp(context, 8),
-                right: healthDp(context, 8),
-                child: Material(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  shape: const CircleBorder(),
-                  elevation: 1,
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () {
-                      if (_completed) {
-                        // 이미 선택됐는데 안 닫힌 경우 — 이 다이얼로그만 재시도
-                        widget.onClose(_pendingResult);
-                      } else {
-                        _finishDialog();
-                      }
-                    },
-                    child: SizedBox(
-                      width: closeSize,
-                      height: closeSize,
-                      child: Icon(Icons.close, size: healthDp(context, 20)),
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
