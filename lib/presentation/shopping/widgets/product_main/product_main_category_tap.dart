@@ -12,11 +12,13 @@ class ProductMainCategoryTap extends StatefulWidget {
 
   /// `true`이면 동그라미·아이콘을 더 작게(상품 목록 상단 등).
   final bool compact;
+  final bool enableNavigation;
 
   const ProductMainCategoryTap({
     super.key,
     required this.productKind,
     this.compact = false,
+    this.enableNavigation = true,
   });
 
   @override
@@ -111,7 +113,7 @@ class _ProductMainCategoryTapState extends State<ProductMainCategoryTap> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: widget.enableNavigation ? onTap : null,
           borderRadius: BorderRadius.circular(999),
           child: Container(
             width: circleDiameter,

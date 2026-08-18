@@ -748,6 +748,7 @@ class ProductMainTrustSection extends StatelessWidget {
         const ProductMainCategoryTap(
           productKind: 'prescription',
           compact: true,
+          enableNavigation: false,
         ),
         SizedBox(height: healthDp(context, 28)),
         Text(
