@@ -38,7 +38,10 @@ class _ContentListScreenState extends State<ContentListScreen> {
   List<String> _categories = const [];
   List<Map<String, dynamic>> _posts = const [];
   int _totalCount = 0;
+  int _page = 1;
+  static const int _pageSize = 5;
   bool _isLoading = true;
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
@@ -82,13 +85,24 @@ class _ContentListScreenState extends State<ContentListScreen> {
     _requestedCategoryName = null;
   }
 
-  Future<void> _loadPosts() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadPosts({bool reset = true}) async {
+    if (reset) {
+      setState(() {
+        _isLoading = true;
+        _page = 1;
+      });
+    } else {
+      if (_isLoadingMore || _posts.length >= _totalCount) return;
+      setState(() => _isLoadingMore = true);
+    }
+
     final selectedCategory = (_tabIndex > 0 && _tabIndex - 1 < _categories.length)
         ? _categories[_tabIndex - 1]
         : null;
+    final nextPage = reset ? 1 : _page + 1;
     final result = await ContentService.getContentList(
-      size: 50,
+      page: nextPage,
+      size: _pageSize,
       category: selectedCategory,
       query: _searchController.text,
     );
@@ -100,11 +114,25 @@ class _ContentListScreenState extends State<ContentListScreen> {
         ? (pagination['total'] as num).toInt()
         : data.length;
     setState(() {
-      _posts = data;
+      if (reset) {
+        _posts = data;
+        _page = 1;
+      } else {
+        _posts = [..._posts, ...data];
+        _page = nextPage;
+      }
       _totalCount = total;
       _isLoading = false;
+      _isLoadingMore = false;
     });
   }
+
+  Future<void> _loadMorePosts() async {
+    await _loadPosts(reset: false);
+  }
+
+  bool get _showLoadMore =>
+      !_isLoading && _posts.isNotEmpty && _posts.length < _totalCount;
 
   Future<void> _onSearchSubmitted() async {
     await _loadPosts();
@@ -179,11 +207,17 @@ class _ContentListScreenState extends State<ContentListScreen> {
                                   ? _buildEmptySearchResult(context)
                                   : _buildEmptyPostsState(context)
                             else
-                              ..._posts.map((e) => Padding(
-                                    padding: EdgeInsets.only(
-                                        bottom: healthDp(context, 20)),
-                                    child: _buildListCard(context, e),
-                                  )),
+                              ...[
+                                ..._posts.map((e) => Padding(
+                                      padding: EdgeInsets.only(
+                                          bottom: healthDp(context, 20)),
+                                      child: _buildListCard(context, e),
+                                    )),
+                                if (_showLoadMore) ...[
+                                  SizedBox(height: healthDp(context, 4)),
+                                  _buildLoadMoreButton(),
+                                ],
+                              ],
                             SizedBox(height: healthDp(context, 24)),
                             SizedBox(height: healthDp(context, 100)),
                           ],
@@ -435,6 +469,59 @@ class _ContentListScreenState extends State<ContentListScreen> {
         SizedBox(height: healthDp(context, 5)),
         Container(height: dividerH, color: const Color(0x7FD2D2D2)),
       ],
+    );
+  }
+
+  Widget _buildLoadMoreButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _isLoadingMore ? null : _loadMorePosts,
+        borderRadius: BorderRadius.circular(healthDp(context, 10)),
+        child: Container(
+          width: double.infinity,
+          height: healthDp(context, 40),
+          padding: EdgeInsets.all(healthDp(context, 10)),
+          clipBehavior: Clip.antiAlias,
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                width: healthDp(context, 0.5),
+                color: const Color(0xFFD2D2D2),
+              ),
+              borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (_isLoadingMore)
+                SizedBox(
+                  width: healthDp(context, 18),
+                  height: healthDp(context, 18),
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFFFF5B8C),
+                  ),
+                )
+              else
+                Text(
+                  '더보기',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: const Color(0xFF898686),
+                    fontSize: healthSp(context, 16),
+                    fontFamily: 'Gmarket Sans TTF',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
