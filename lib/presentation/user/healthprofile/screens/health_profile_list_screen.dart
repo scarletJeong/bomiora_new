@@ -1,10 +1,11 @@
 ﻿import 'package:flutter/material.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
-import '../../../../data/models/cart/cart_item_model.dart';
 import '../models/health_profile_model.dart';
 import '../health_profile_payload.dart';
+import '../health_profile_prescription_booking_args.dart';
 import 'health_profile_form_screen.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/login_required_dialog.dart';
@@ -14,24 +15,7 @@ import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
 import '../../../shopping/widgets/prescription_booking_progress_bar.dart';
 
-/// 처방 예약 플로우에서 문진표 확인 시 전달
-class HealthProfilePrescriptionBookingArgs {
-  final String productId;
-  final String productName;
-  final dynamic selectedOptions;
-  final List<int>? cartCtIdsForCheckout;
-  final List<CartItem>? checkoutCartItems;
-  final int? checkoutShippingCost;
-
-  const HealthProfilePrescriptionBookingArgs({
-    required this.productId,
-    required this.productName,
-    this.selectedOptions,
-    this.cartCtIdsForCheckout,
-    this.checkoutCartItems,
-    this.checkoutShippingCost,
-  });
-}
+export '../health_profile_prescription_booking_args.dart';
 
 class HealthProfileListScreen extends StatefulWidget {
   final String appBarTitle;
@@ -107,6 +91,31 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+    // 처방 예약 + 문진표 미작성 → 작성 폼으로 바로 이동
+    if (!mounted) return;
+    if (_isPrescriptionBooking &&
+        _currentUser != null &&
+        _healthProfile == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _openPrescriptionFormReplace();
+      });
+    }
+  }
+
+  /// 문진표 목록을 폼으로 교체 (완료 시 폼에서 날짜/시간으로 이동)
+  void _openPrescriptionFormReplace() {
+    final booking = widget.prescriptionBooking;
+    if (booking == null) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: HealthProfileFormScreen.routeName),
+        builder: (context) => HealthProfileFormScreen(
+          prescriptionBooking: booking,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadHealthProfile() async {
@@ -162,10 +171,21 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   Widget _buildContent() {
     if (_currentUser == null) {
-      return const CenteredEmptyState(
-        icon: Icons.assignment_outlined,
+      return CenteredEmptyState(
+        iconWidget: CenteredEmptyState.assetIcon(
+          context,
+          AppAssets.emptyHealthIcon,
+        ),
         message: '로그인 후 이용 가능합니다.',
         fillAvailable: true,
+        trailing: CenteredEmptyState.loginButtonTrailing(
+          context,
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/login');
+            if (!mounted) return;
+            await _loadData();
+          },
+        ),
       );
     }
     if (_healthProfile == null) {
@@ -176,7 +196,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
 
   Widget _buildNoProfileState() {
     return CenteredEmptyState(
-      icon: Icons.assignment_outlined,
+      iconWidget: CenteredEmptyState.assetIcon(
+        context,
+        AppAssets.emptyHealthIcon,
+      ),
       message: '상담을 위해 문진표를 작성해주세요',
       fillAvailable: true,
       trailing: [
@@ -615,13 +638,13 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             showUnderline: false,
           ),
           if (mealTimes.isNotEmpty) ...[
-            SizedBox(height: healthDp(context, 10)),
+            SizedBox(height: healthDp(context, 4)),
             _mealTimeChipRow(mealTimes),
           ],
           SizedBox(height: healthDp(context, 20)),
-          _labeledChipBlock('식습관', habits),
+          _labeledChipBlock('식습관', habits, labelGap: 4),
           SizedBox(height: healthDp(context, 20)),
-          _labeledChipBlock('자주 먹는 음식', foods),
+          _labeledChipBlock('자주 먹는 음식', foods, labelGap: 4),
           SizedBox(height: healthDp(context, 12)),
           Container(
             width: double.infinity,
@@ -636,7 +659,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             showUnderline: false,
           ),
           if (types.isNotEmpty) ...[
-            SizedBox(height: healthDp(context, 10)),
+            SizedBox(height: healthDp(context, 4)),
             _chipWrap(types),
           ],
         ],
@@ -897,7 +920,11 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
     );
   }
 
-  Widget _labeledChipBlock(String label, List<String> items) {
+  Widget _labeledChipBlock(
+    String label,
+    List<String> items, {
+    double labelGap = 12,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -911,7 +938,7 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
             height: 1.3,
           ),
         ),
-        SizedBox(height: healthDp(context, 12)),
+        SizedBox(height: healthDp(context, labelGap)),
         if (items.isEmpty)
           Text(
             '-',
@@ -1114,6 +1141,10 @@ class _HealthProfileListScreenState extends State<HealthProfileListScreen> {
         context,
         message: '건강프로필 작성은 로그인 후 이용할 수 있습니다.',
       );
+      return;
+    }
+    if (_isPrescriptionBooking) {
+      _openPrescriptionFormReplace();
       return;
     }
     final result = await Navigator.push(

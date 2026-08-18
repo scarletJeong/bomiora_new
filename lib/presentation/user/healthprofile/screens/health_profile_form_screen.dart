@@ -8,10 +8,13 @@ import '../../../../data/services/auth_service.dart';
 import '../../../../data/services/health_profile_service.dart';
 import '../../../../data/models/user/user_model.dart';
 import '../models/health_profile_model.dart';
+import '../health_profile_prescription_booking_args.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
+import '../../../shopping/screens/prescription_booking/prescription_time_screen.dart';
+import '../../../shopping/widgets/prescription_booking_progress_bar.dart';
 
 class HealthProfileFormScreen extends StatefulWidget {
   /// [HealthProfileListScreen] 등에서 push 시 `RouteSettings.name`으로 넣어야 함.
@@ -25,6 +28,8 @@ class HealthProfileFormScreen extends StatefulWidget {
   final String? editScreenTitle;
   /// 전체 문진표 모드에서 처음 열 페이지 (0~3). `initialSectionIndices`가 있으면 무시됩니다.
   final int? initialWizardIndex;
+  /// 처방 예약 플로우: 4장 작성 진행률 표시 + 완료 시 날짜/시간 선택으로 이동
+  final HealthProfilePrescriptionBookingArgs? prescriptionBooking;
 
   const HealthProfileFormScreen({
     super.key,
@@ -32,6 +37,7 @@ class HealthProfileFormScreen extends StatefulWidget {
     this.initialSectionIndices,
     this.editScreenTitle,
     this.initialWizardIndex,
+    this.prescriptionBooking,
   });
 
   @override
@@ -918,6 +924,13 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ? _sections[_currentPage].title
             : '');
 
+    final isPrescriptionBooking = widget.prescriptionBooking != null;
+    final stepCount =
+        _sections.isEmpty ? _stepLabels.length : _sections.length;
+    // 장(페이지)을 넘길 때마다 1/4씩 채움 (0장→0, 1장 완료→0.25 … 3장 완료→0.75)
+    final wizardStepProgress =
+        stepCount <= 0 ? 0.0 : (_currentPage / stepCount).clamp(0.0, 1.0);
+
     final baseTheme = Theme.of(context);
     final gmarketTheme = baseTheme.copyWith(
       textTheme: baseTheme.textTheme.apply(fontFamily: 'Gmarket Sans TTF'),
@@ -934,10 +947,24 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
         data: gmarketTheme,
         child: MobileAppLayoutWrapper(
           appBar: HealthAppBar(
-            title: isSubsetEdit ? '$appBarEditTitle 수정' : '문진표',
-            titleFontSize: healthSp(context, 18),
+            title: isPrescriptionBooking
+                ? '진료 예약 중 _ 01 문진표'
+                : (isSubsetEdit ? '$appBarEditTitle 수정' : '문진표'),
+            titleFontSize: healthSp(context, isPrescriptionBooking ? 16 : 18),
+            centerTitle: false,
             leadingIconSize: healthDp(context, 24),
             onBack: () => _popAllHealthProfileFormRoutes(context),
+            bottom: isPrescriptionBooking
+                ? PreferredSize(
+                    preferredSize: const Size.fromHeight(
+                      PrescriptionBookingProgressBar.preferredHeight,
+                    ),
+                    child: PrescriptionBookingProgressBar(
+                      currentStep: PrescriptionBookingSteps.questionnaire,
+                      stepProgress: wizardStepProgress,
+                    ),
+                  )
+                : null,
           ),
           child: DefaultTextStyle.merge(
             style: const TextStyle(fontFamily: 'Gmarket Sans TTF'),
@@ -2045,6 +2072,90 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             allowDecimal: true,
           ),
         ),
+        if (bmi != null && bmiCat != null) ...[
+          SizedBox(height: healthDp(context, 10)),
+          Center(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 14),
+                vertical: healthDp(context, 10),
+              ),
+              decoration: ShapeDecoration(
+                color: const Color(0xFFFAFAFA),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'BMI',
+                          style: TextStyle(
+                            color: const Color(0xFF898686),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' ',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: bmi.toStringAsFixed(1),
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1E),
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: healthDp(context, 4)),
+                  Container(
+                    width: healthDp(context, 1),
+                    height: healthDp(context, 14),
+                    color: const Color(0x7FD2D2D2),
+                  ),
+                  SizedBox(width: healthDp(context, 4)),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: healthDp(context, 14),
+                      vertical: healthDp(context, 4),
+                    ),
+                    decoration: ShapeDecoration(
+                      color: bmiCat.$2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(healthDp(context, 50)),
+                      ),
+                    ),
+                    child: Text(
+                      bmiCat.$1,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: healthSp(context, 11),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         SizedBox(height: healthDp(context, 20)),
         // 현재 체중 | 목표 체중
         Row(
@@ -2090,150 +2201,63 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
             ),
           ],
         ),
-        if (remaining != null || bmi != null) ...[
+        if (remaining != null) ...[
           SizedBox(height: healthDp(context, 10)),
-          Column(
-            children: [
-              if (remaining != null)
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 14),
-                    vertical: healthDp(context, 10),
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
-                    borderRadius:
-                        BorderRadius.circular(healthDp(context, 50)),
-                  ),
-                  child: Text.rich(
+          Center(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 14),
+                vertical: healthDp(context, 10),
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAFAFA),
+                borderRadius: BorderRadius.circular(healthDp(context, 50)),
+              ),
+              child: Text.rich(
+                TextSpan(
+                  children: [
                     TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '목표 체중까지',
-                          style: TextStyle(
-                            color: const Color(0xFF898686),
-                            fontSize: healthSp(context, 12),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' - ',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: healthSp(context, 12),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        TextSpan(
-                          text:
-                              '${remaining.abs() == remaining.abs().roundToDouble() ? remaining.abs().toStringAsFixed(0) : remaining.abs().toStringAsFixed(1)} kg ',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: healthSp(context, 12),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        TextSpan(
-                          text: remaining >= 0 ? '남았어요' : '초과했어요',
-                          style: TextStyle(
-                            color: const Color(0xFF898686),
-                            fontSize: healthSp(context, 12),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                      text: '목표 체중까지',
+                      style: TextStyle(
+                        color: const Color(0xFF898686),
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              if (bmi != null && bmiCat != null) ...[
-                SizedBox(height: healthDp(context, 10)),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: healthDp(context, 14),
-                    vertical: healthDp(context, 10),
-                  ),
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFFAFAFA),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 50)),
+                    TextSpan(
+                      text: ' - ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'BMI',
-                              style: TextStyle(
-                                color: const Color(0xFF898686),
-                                fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            TextSpan(
-                              text: ' ',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            TextSpan(
-                              text: bmi.toStringAsFixed(1),
-                              style: TextStyle(
-                                color: const Color(0xFF1A1A1E),
-                                fontSize: healthSp(context, 12),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+                    TextSpan(
+                      text:
+                          '${remaining.abs() == remaining.abs().roundToDouble() ? remaining.abs().toStringAsFixed(0) : remaining.abs().toStringAsFixed(1)} kg ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w700,
                       ),
-                      SizedBox(width: healthDp(context, 4)),
-                      Container(
-                        width: healthDp(context, 1),
-                        height: healthDp(context, 14),
-                        color: const Color(0x7FD2D2D2),
+                    ),
+                    TextSpan(
+                      text: remaining >= 0 ? '남았어요' : '초과했어요',
+                      style: TextStyle(
+                        color: const Color(0xFF898686),
+                        fontSize: healthSp(context, 12),
+                        fontFamily: 'Gmarket Sans TTF',
+                        fontWeight: FontWeight.w500,
                       ),
-                      SizedBox(width: healthDp(context, 4)),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: healthDp(context, 14),
-                          vertical: healthDp(context, 4),
-                        ),
-                        decoration: ShapeDecoration(
-                          color: bmiCat.$2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(healthDp(context, 50)),
-                          ),
-                        ),
-                        child: Text(
-                          bmiCat.$1,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: healthSp(context, 11),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ],
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ],
         SizedBox(height: healthDp(context, 20)),
@@ -4213,17 +4237,42 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       
       try {
         await _saveHealthProfile();
-        
-        if (mounted) {
-          AppToastOverlay.show(context, '문진표 수정 완료하였습니다');
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop(true);
-          } else {
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              '/profile',
-              (route) => false,
-            );
-          }
+
+        if (!mounted) return;
+
+        final booking = widget.prescriptionBooking;
+        if (booking != null) {
+          final profile = await HealthProfileService.getHealthProfile(
+            _currentUser!.id,
+          );
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (context) => PrescriptionTimeScreen(
+                productId: booking.productId,
+                productName: booking.productName,
+                selectedOptions: booking.selectedOptions,
+                formData: profile != null
+                    ? HealthProfilePayload.formDataFromProfile(profile)
+                    : Map<String, dynamic>.from(_formData),
+                existingProfile: profile,
+                cartCtIdsForCheckout: booking.cartCtIdsForCheckout,
+                checkoutCartItems: booking.checkoutCartItems,
+                checkoutShippingCost: booking.checkoutShippingCost,
+              ),
+            ),
+          );
+          return;
+        }
+
+        AppToastOverlay.show(context, '문진표 수정 완료하였습니다');
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        } else {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/profile',
+            (route) => false,
+          );
         }
       } catch (e) {
       } finally {
