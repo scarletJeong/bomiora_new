@@ -178,16 +178,16 @@ class ProductOption {
     return 0;
   }
 
-  /// 화면 표시: PHP `.opt-cell` 과 같이 `초코 > 1주 플랜`
+  /// 화면 표시: `단계 / 개월`
   String get displayText {
     if (optionParts.length >= 2) {
-      return optionParts.join(' > ');
+      return optionParts.join(' / ');
     }
     if (subOption.isNotEmpty) {
-      return '$step > $subOption';
+      return '$step / $subOption';
     }
     if (step.isNotEmpty) return step;
-    return _sanitizePart(id.replaceAll(axisDelimiter, ' > '));
+    return _sanitizePart(id.replaceAll(axisDelimiter, ' / '));
   }
 
   /// 2번째 축 값 (드롭다운 하위 항목)

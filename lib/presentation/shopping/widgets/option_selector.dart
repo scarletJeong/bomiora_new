@@ -112,7 +112,7 @@ String _cardProductShortLabel({
   return cleaned.isNotEmpty ? cleaned : '상품';
 }
 
-/// 선택 카드 옵션 줄: `초코 > 1주 플랜` (chr(30) 축) 또는 단계/개월
+/// 선택 카드 옵션 줄: `단계 / 개월`
 String _selectedOptionValueText(ProductOption option) {
   return option.displayText;
 }
@@ -302,10 +302,8 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       _supplyMonthsLabel = only;
     }
 
-    debugPrint(
-      '[추가상품] it_option_subject="$raw" '
-      '→ stepLabel="$_supplyStepLabel", monthsLabel="$_supplyMonthsLabel"',
-    );
+    // ignore: avoid_print
+    print('[추가상품] labels=$_supplyStepLabel / $_supplyMonthsLabel');
   }
 
   void _initializeSupplyOptionGroups() {
@@ -369,33 +367,9 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     final mainOpts = opts.where((o) => o.isMain).toList();
     final resolved = mainOpts.isNotEmpty ? mainOpts : opts;
 
-    // ignore: avoid_print
-    print('========== [추가상품 옵션] ${product.name} (${product.id}) ==========');
-    // ignore: avoid_print
-    print('it_option_subject: ${product.additionalInfo?['it_option_subject']}');
-    // ignore: avoid_print
-    print('옵션 개수: ${resolved.length} (전체 ${opts.length}, type0 ${mainOpts.length})');
-    for (var i = 0; i < resolved.length; i++) {
-      final o = resolved[i];
-      // ignore: avoid_print
-      print(
-        '  [$i] id=${o.id} ioType=${o.ioType} '
-        'step="${o.step}" months=${o.months} '
-        'sub="${o.subOption}" price=${o.price} '
-        'display="${o.displayText}"',
-      );
-    }
-    // ignore: avoid_print
-    print('========================================================');
-
     setState(() {
       _pickedSupplyOptions = resolved;
       _initializeSupplyOptionGroups();
-      debugPrint(
-        '[추가상품] groups step=${_supplyStepGroups.length} '
-        'months=${_supplyMonthsGroups.length} '
-        'labels=$_supplyStepLabel / $_supplyMonthsLabel',
-      );
     });
   }
 
@@ -480,22 +454,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     final source = _mainSelectableOptions;
 
     // ignore: avoid_print
-    print('========== [옵션 그룹핑] kind=${widget.productKind} '
-        'axis=$_usesAxisDelimiter months=$_usesMonthsHierarchy ==========');
-    // ignore: avoid_print
-    print('전체=${widget.options.length} '
-        'main=${widget.options.where((o) => o.isMain).length} '
-        'dep1=${_dep1Options.length} dep2=${_dep2Options.length} '
-        'source=${source.length}');
-    for (var i = 0; i < widget.options.length; i++) {
-      final o = widget.options[i];
-      // ignore: avoid_print
-      print(
-        '  ALL[$i] id=${o.id.codeUnits} parts=${o.optionParts} '
-        'step="${o.step}" sub="${o.subOption}" months=${o.months} '
-        'display="${o.displayText}"',
-      );
-    }
+    print('[본품] labels=${widget.stepLabel} / ${widget.monthsLabel}');
 
     for (final option in source) {
       // chr(30)/개월 계층: 1축(step). 평면: 옵션 단위 키
@@ -508,14 +467,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         _stepGroups.add(stepKey);
       }
       _groupedOptionsByStep[stepKey]!.add(option);
-      // ignore: avoid_print
-      print('  GROUP stepKey="$stepKey" ← parts=${option.optionParts}');
     }
-
-    // ignore: avoid_print
-    print('stepGroups(${_stepGroups.length})=$_stepGroups');
-    // ignore: avoid_print
-    print('==============================================');
 
     if (_stepGroups.length == 1) {
       _selectedStep = _stepGroups.first;
@@ -567,8 +519,49 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     }
   }
 
-  bool get _isMonthsEnabled => _selectedStep != null;
-  bool get _isAxis2Enabled => _selectedStep != null;
+  /// 본품 2축(기간 등) — 상위 선택과 무관하게 전체 값을 노출
+  List<String> _allMainSecondAxisKeys() {
+    final keys = <String>[];
+    final seen = <String>{};
+    for (final o in _mainSelectableOptions) {
+      final key = o.axisValue2.trim().isNotEmpty
+          ? o.axisValue2.trim()
+          : (o.months != null ? '${o.months}개월' : '');
+      if (key.isEmpty || !seen.add(key)) continue;
+      keys.add(key);
+    }
+    keys.sort((a, b) {
+      final ma =
+          int.tryParse(RegExp(r'^(\d+)').firstMatch(a)?.group(1) ?? '') ?? 0;
+      final mb =
+          int.tryParse(RegExp(r'^(\d+)').firstMatch(b)?.group(1) ?? '') ?? 0;
+      return ma.compareTo(mb);
+    });
+    return keys;
+  }
+
+  ProductOption? _findMainOption({
+    required String step,
+    required String axis2,
+  }) {
+    for (final o in _mainSelectableOptions) {
+      if (o.step != step) continue;
+      final key = o.axisValue2.trim().isNotEmpty
+          ? o.axisValue2.trim()
+          : (o.months != null ? '${o.months}개월' : '');
+      if (key == axis2) return o;
+    }
+    return null;
+  }
+
+  void _tryAddIndependentMainOption() {
+    final step = _selectedStep;
+    final axis2 = _selectedAxis2;
+    if (step == null || axis2 == null || axis2.isEmpty) return;
+    final option = _findMainOption(step: step, axis2: axis2);
+    if (option == null) return;
+    _addOption(option);
+  }
 
   void _addOption(ProductOption option) {
     setState(() {
@@ -604,6 +597,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
       }
 
       _selectedMonths = null;
+      _selectedAxis2 = null;
       if (_stepGroups.length > 1) {
         _selectedStep = null;
       }
@@ -965,34 +959,16 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
                 ? widget.product!.depOption2Subject!
                 : '추가 선택 2');
 
-    final hasSingleSubjectFlow = _stepGroups.length <= 1;
-    final monthsItems = _monthsGroups.map((months) {
-      final option = _groupedOptionsByMonths[months]?.first;
-      if (option == null) return '$months개월';
-      final discount = _extractDiscountSuffix(option);
-      final base =
-          discount != null ? '$months개월 $discount' : '$months개월';
-      if (option.price <= 0) return base;
-      return '$base (+${option.formattedPrice.replaceAll('원', '')})';
-    }).toList();
+    final secondKeys = _allMainSecondAxisKeys();
+    final showTwoAxes = _stepGroups.length > 1 && secondKeys.length > 1;
 
-    final axis2Items = _axis2Groups.map((axis2) {
-      final option = _groupedOptionsByAxis2[axis2]?.first;
-      if (option == null) return axis2;
-      if (option.price <= 0) return axis2;
-      return '$axis2 (+${option.formattedPrice.replaceAll('원', '')})';
-    }).toList();
-
-    // 1) chr(30) 다축  2) N개월 계층  3) 평면
     final List<Widget> mainOptionFields;
-    if (_usesAxisDelimiter) {
+    if (showTwoAxes) {
       mainOptionFields = [
         DropdownBtn(
           items: _stepGroups,
           value: _selectedStep ?? '',
-          emptyText: widget.stepLabel == '다이어트환 단계'
-              ? '옵션 선택'
-              : widget.stepLabel,
+          emptyText: widget.stepLabel,
           buttonHeight: dropdownHeight,
           itemFontSizeBase: 15.54,
           itemTextAlign: TextAlign.left,
@@ -1003,51 +979,28 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
               _selectedStep = step;
               _selectedAxis2 = null;
               _clearDepSelections();
-              _updateAxis2Groups();
             });
-            // 하위 축이 1개면 바로 담기
-            if (_axis2Groups.length == 1) {
-              final only = _groupedOptionsByAxis2[_axis2Groups.first]?.first;
-              if (only != null) {
-                setState(() => _selectedAxis2 = _axis2Groups.first);
-                _addOption(only);
-              }
-            } else {
-              _emitOptionsChanged();
-            }
           },
         ),
-        if (_axis2Groups.isNotEmpty) ...[
-          SizedBox(height: healthDp(context, 8)),
-          DropdownBtn(
-            items: axis2Items,
-            value: _selectedAxis2 != null
-                ? (_axis2Groups.contains(_selectedAxis2)
-                    ? axis2Items[_axis2Groups.indexOf(_selectedAxis2!)]
-                    : '')
-                : '',
-            emptyText: widget.monthsLabel == '처방 개월수'
-                ? '세부 옵션 선택'
-                : widget.monthsLabel,
-            enabled: _isAxis2Enabled || hasSingleSubjectFlow,
-            buttonHeight: dropdownHeight,
-            itemFontSizeBase: 15.54,
-            itemTextAlign: TextAlign.left,
-            scrollWhenItemCountExceeds: 6,
-            maxVisibleItemsWhenScrolling: 5.5,
-            onChanged: (label) {
-              final idx = axis2Items.indexOf(label);
-              if (idx < 0 || idx >= _axis2Groups.length) return;
-              final axis2 = _axis2Groups[idx];
-              final option = _groupedOptionsByAxis2[axis2]?.first;
-              if (option == null) return;
-              setState(() => _selectedAxis2 = axis2);
-              _addOption(option);
-            },
-          ),
-        ],
+        SizedBox(height: healthDp(context, 8)),
+        DropdownBtn(
+          items: secondKeys,
+          value: _selectedAxis2 ?? '',
+          emptyText: widget.monthsLabel,
+          enabled: _selectedStep != null,
+          buttonHeight: dropdownHeight,
+          itemFontSizeBase: 15.54,
+          itemTextAlign: TextAlign.left,
+          scrollWhenItemCountExceeds: 6,
+          maxVisibleItemsWhenScrolling: 5.5,
+          onChanged: (key) {
+            if (_selectedStep == null) return;
+            setState(() => _selectedAxis2 = key);
+            _tryAddIndependentMainOption();
+          },
+        ),
       ];
-    } else if (!_usesMonthsHierarchy) {
+    } else {
       final flat = _mainSelectableOptions;
       final flatLabels = flat.map((o) {
         final label = o.displayText.isNotEmpty ? o.displayText : o.id;
@@ -1064,9 +1017,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
         DropdownBtn(
           items: flatLabels,
           value: selectedLabel,
-          emptyText: widget.stepLabel == '다이어트환 단계'
-              ? '옵션 선택'
-              : widget.stepLabel,
+          emptyText: widget.stepLabel,
           buttonHeight: dropdownHeight,
           itemFontSizeBase: 15.54,
           itemTextAlign: TextAlign.left,
@@ -1076,51 +1027,6 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
             final idx = flatLabels.indexOf(label);
             if (idx < 0 || idx >= flat.length) return;
             _addOption(flat[idx]);
-          },
-        ),
-      ];
-    } else {
-      mainOptionFields = [
-        if (_stepGroups.length > 1) ...[
-          DropdownBtn(
-            items: _stepGroups,
-            value: _selectedStep ?? '',
-            emptyText: widget.stepLabel,
-            buttonHeight: dropdownHeight,
-            itemFontSizeBase: 15.54,
-            itemTextAlign: TextAlign.left,
-            scrollWhenItemCountExceeds: 6,
-            maxVisibleItemsWhenScrolling: 5.5,
-            onChanged: (step) {
-              setState(() {
-                _selectedStep = step;
-                _selectedMonths = null;
-                _clearDepSelections();
-                _updateMonthsGroups();
-              });
-              _emitOptionsChanged();
-            },
-          ),
-          SizedBox(height: healthDp(context, 8)),
-        ],
-        DropdownBtn(
-          items: monthsItems,
-          value: _selectedMonths != null ? '${_selectedMonths}개월' : '',
-          emptyText: widget.monthsLabel,
-          enabled: _isMonthsEnabled || hasSingleSubjectFlow,
-          buttonHeight: dropdownHeight,
-          itemFontSizeBase: 15.54,
-          itemTextAlign: TextAlign.left,
-          scrollWhenItemCountExceeds: 6,
-          maxVisibleItemsWhenScrolling: 5.5,
-          onChanged: (label) {
-            final monthsMatch = RegExp(r'^(\d+)').firstMatch(label);
-            if (monthsMatch == null) return;
-            final months = int.parse(monthsMatch.group(1)!);
-            final option = _groupedOptionsByMonths[months]?.first;
-            if (option == null) return;
-            setState(() => _selectedMonths = months);
-            _addOption(option);
           },
         ),
       ];
@@ -1566,7 +1472,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     return Container(
       margin: EdgeInsets.only(bottom: marginBottom),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFF5A8D).withValues(alpha: 0.02),
         borderRadius: _selectionCardRadius(
           roundTop: roundTop,
           roundBottom: roundBottom,
@@ -1728,9 +1634,7 @@ class _OptionSelectorBottomSheetState extends State<OptionSelectorBottomSheet> {
     required String optionLine,
   }) {
     final labelStyle = _selectedCardLabelTextStyle(context);
-    final optionStyle = labelStyle.copyWith(
-      color: const Color(0xFFFF4081),
-    );
+    final optionStyle = labelStyle;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
