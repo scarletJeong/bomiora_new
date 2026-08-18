@@ -458,6 +458,8 @@ class _CartScreenState extends State<CartScreen> {
                               crossAxisAlignment: CrossAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                if (widget.scrollHeader != null)
+                                  widget.scrollHeader!,
                                 Padding(
                                   padding: EdgeInsets.fromLTRB(
                                     healthDp(context, 27),
@@ -471,10 +473,6 @@ class _CartScreenState extends State<CartScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
                                     children: [
-                                      if (widget.scrollHeader != null) ...[
-                                        widget.scrollHeader!,
-                                        SizedBox(height: healthDp(context, 8)),
-                                      ],
                                       _buildSelectAllRow(),
                                       SizedBox(height: healthDp(context, 12)),
                                       ..._displayedGroups.expand(
@@ -539,11 +537,15 @@ class _CartScreenState extends State<CartScreen> {
                                           ),
                                         ),
                                       SizedBox(height: healthDp(context, 18)),
+                                      _buildCheckoutReserveHint(),
+                                      SizedBox(height: healthDp(context, 16)),
                                       _summaryRow(
-                                        '구매금액',
+                                        '총 구매 금액',
                                         '${PriceFormatter.format(selectedTotalPrice)}원',
                                         fontSize: healthSp(context, 14),
                                         fontWeight: FontWeight.w500,
+                                        labelColor: const Color(0xFF898686),
+                                        valueColor: const Color(0xFF1A1A1E),
                                       ),
                                       SizedBox(height: healthDp(context, 10)),
                                       _summaryRow(
@@ -551,19 +553,23 @@ class _CartScreenState extends State<CartScreen> {
                                         '${PriceFormatter.format(selectedShippingCost)}원',
                                         fontSize: healthSp(context, 14),
                                         fontWeight: FontWeight.w500,
+                                        labelColor: const Color(0xFF898686),
+                                        valueColor: const Color(0xFF1A1A1E),
                                       ),
                                       SizedBox(height: healthDp(context, 10)),
                                       Divider(
                                         height: healthDp(context, 1),
                                         thickness: healthDp(context, 1),
-                                        color: Colors.grey[300]!,
+                                        color: const Color(0x7F1A1A1A),
                                       ),
                                       SizedBox(height: healthDp(context, 10)),
                                       _summaryRow(
-                                        '총 결제 금액',
+                                        '결제 예정 금액',
                                         '${PriceFormatter.format(finalPrice)}원',
-                                        fontSize: healthSp(context, 17),
+                                        fontSize: healthSp(context, 16),
                                         fontWeight: FontWeight.w500,
+                                        labelColor: const Color(0xFF1A1A1E),
+                                        valueColor: const Color(0xFFFF5A8D),
                                       ),
                                     ],
                                   ),
@@ -697,31 +703,33 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
           const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(
-                onPressed: _selectedDisplayedItemIds.isEmpty
-                    ? null
-                    : () => _deleteSelectedItems(),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 8),
-                      vertical: healthDp(context, 4)),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  '선택삭제',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                    color: Colors.grey,
-                  ),
+          InkWell(
+            onTap: _selectedDisplayedItemIds.isEmpty
+                ? null
+                : () => _deleteSelectedItems(),
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 14),
+                vertical: healthDp(context, 10),
+              ),
+              clipBehavior: Clip.antiAlias,
+              decoration: ShapeDecoration(
+                color: const Color(0xFFF9F9F9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
                 ),
               ),
-            ],
+              child: Text(
+                '선택삭제',
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -777,6 +785,8 @@ class _CartScreenState extends State<CartScreen> {
     String right, {
     required double fontSize,
     required FontWeight fontWeight,
+    Color labelColor = const Color(0xFF1A1A1A),
+    Color valueColor = const Color(0xFF1A1A1A),
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -784,7 +794,7 @@ class _CartScreenState extends State<CartScreen> {
         Text(
           left,
           style: TextStyle(
-            color: const Color(0xFF1A1A1A),
+            color: labelColor,
             fontSize: fontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: fontWeight,
@@ -793,13 +803,49 @@ class _CartScreenState extends State<CartScreen> {
         Text(
           right,
           style: TextStyle(
-            color: const Color(0xFF1A1A1A),
+            color: valueColor,
             fontSize: fontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: fontWeight,
           ),
         ),
       ],
+    );
+  }
+
+  String _formatCartStepLabel(String raw) {
+    return raw.replaceFirst(']_', ']  ');
+  }
+
+  Widget _buildCheckoutReserveHint() {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '※ 처방 예약하기 버튼을 통해 ',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 5)),
+          Text(
+            '결제를 완료하셔야 예약이 확정됩니다.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFFFF5A8D),
+              fontSize: healthSp(context, 12),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -824,7 +870,7 @@ class _CartScreenState extends State<CartScreen> {
           .toList();
       if (parts.length >= 2) {
         return Text(
-          parts.join(' | '),
+          '${_formatCartStepLabel(parts.first)}ㅣ${parts.sublist(1).join('ㅣ')}',
           style: _cartOptionMutedStyle(),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -833,7 +879,7 @@ class _CartScreenState extends State<CartScreen> {
     }
     if (sub.isNotEmpty && opt.isNotEmpty) {
       return Text(
-        '$sub | $opt',
+        '$subㅣ$opt',
         style: _cartOptionMutedStyle(),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -859,31 +905,38 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildReservationNotice() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: '전화진료 예약시간 : ',
-              style: TextStyle(
-                color: const Color(0xFF1A1A1E),
-                fontSize: healthSp(context, 9.6),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            TextSpan(
-              text: '결제를 완료하셔야 예약이 확정됩니다.',
-              style: TextStyle(
-                color: const Color(0xFFFF5A8D),
-                fontSize: healthSp(context, 9.5),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+      padding: EdgeInsets.all(healthDp(context, 4)),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF9F9F9),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 5)),
         ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '전화진료 예약시간 :',
+            style: TextStyle(
+              color: const Color(0xFF1A1A1E),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: healthDp(context, 2)),
+          Text(
+            '결제를 완료하셔야 예약이 확정됩니다.',
+            style: TextStyle(
+              color: const Color(0xFFFF5A8D),
+              fontSize: healthSp(context, 10),
+              fontFamily: 'Gmarket Sans TTF',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -901,9 +954,13 @@ class _CartScreenState extends State<CartScreen> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(cardPad),
+      padding: EdgeInsets.symmetric(
+        horizontal: cardPad,
+        vertical: healthDp(context, 20),
+      ),
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
+        color: Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: healthDp(context, 1),
@@ -917,6 +974,7 @@ class _CartScreenState extends State<CartScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
                 width: healthDp(context, 20),
@@ -954,168 +1012,145 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
               ),
-              const Spacer(),
-              InkWell(
-                onTap: () => _deleteCartItem(item.ctId),
-                borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                child: SizedBox(
-                  width: healthDp(context, 20),
-                  height: healthDp(context, 20),
-                  child: Icon(
-                    Icons.close,
-                    size: healthDp(context, 18),
-                    color: const Color(0xFF1A1A1A),
-                  ),
+              SizedBox(width: healthDp(context, 5)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/product/${item.itId}',
+                          ),
+                          child: CartItemThumbnail(
+                            item: item,
+                            size: healthDp(context, 60),
+                          ),
+                        ),
+                        SizedBox(width: healthDp(context, 8)),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (categoryLabel != null) ...[
+                                Text(
+                                  categoryLabel,
+                                  style: TextStyle(
+                                    color: const Color(0xFF898686),
+                                    fontSize: healthSp(context, 8),
+                                    fontFamily: 'Gmarket Sans TTF',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: healthDp(context, 2)),
+                              ],
+                              Text(
+                                item.itName,
+                                style: TextStyle(
+                                  color: const Color(0xFF1A1A1A),
+                                  fontSize: healthSp(context, 14),
+                                  fontFamily: 'Gmarket Sans TTF',
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: healthSp(context, -1.26),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (optionRow != null) ...[
+                                SizedBox(height: healthDp(context, 4)),
+                                optionRow,
+                              ],
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: healthDp(context, 4)),
+                        InkWell(
+                          onTap: () => _deleteCartItem(item.ctId),
+                          borderRadius:
+                              BorderRadius.circular(healthDp(context, 10)),
+                          child: SizedBox(
+                            width: healthDp(context, 20),
+                            height: healthDp(context, 20),
+                            child: Icon(
+                              Icons.close,
+                              size: healthDp(context, 18),
+                              color: const Color(0x7FD2D2D2),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isPrescription) ...[
+                      SizedBox(height: healthDp(context, 8)),
+                      _buildReservationNotice(),
+                    ] else ...[
+                      SizedBox(height: healthDp(context, 10)),
+                      Row(
+                        children: [
+                          Text(
+                            '수량',
+                            style: TextStyle(
+                              color: const Color(0xFF1A1A1A),
+                              fontSize: healthSp(context, 14),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(width: healthDp(context, 10)),
+                          _buildFigmaQtyControl(
+                            quantity: item.ctQty,
+                            onDecrease: item.ctQty > 1
+                                ? () => _updateQuantity(
+                                      item.ctId,
+                                      item.ctQty - 1,
+                                    )
+                                : null,
+                            onIncrease: () =>
+                                _updateQuantity(item.ctId, item.ctQty + 1),
+                          ),
+                        ],
+                      ),
+                    ],
+                    SizedBox(height: healthDp(context, 20)),
+                    Container(
+                      width: double.infinity,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          if (isPrescription)
+                            _buildFigmaQtyControl(
+                              quantity: item.ctQty,
+                              onDecrease: item.ctQty > 1
+                                  ? () => _updateQuantity(
+                                        item.ctId,
+                                        item.ctQty - 1,
+                                      )
+                                  : null,
+                              onIncrease: () =>
+                                  _updateQuantity(item.ctId, item.ctQty + 1),
+                            )
+                          else
+                            const SizedBox.shrink(),
+                          Text(
+                            '${PriceFormatter.format(item.lineAmount)}원',
+                            style: TextStyle(
+                              color: const Color(0xFF1A1A1A),
+                              fontSize: healthSp(context, 16),
+                              fontFamily: 'Gmarket Sans TTF',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () =>
-                      Navigator.pushNamed(context, '/product/${item.itId}'),
-                  child: CartItemThumbnail(
-                    item: item,
-                    size: healthDp(context, 87),
-                  ),
-                ),
-                SizedBox(width: healthDp(context, 10)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (categoryLabel != null) ...[
-                        Text(
-                          categoryLabel,
-                          style: TextStyle(
-                            color: const Color(0xFF898686),
-                            fontSize: healthSp(context, 8),
-                            fontFamily: 'Gmarket Sans TTF',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: healthDp(context, 2)),
-                      ],
-                      Text(
-                        item.itName,
-                        style: TextStyle(
-                          color: const Color(0xFF1A1A1E),
-                          fontSize: healthSp(context, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: healthSp(context, -1.26),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (isPrescription) ...[
-                        if (optionRow != null) ...[
-                          SizedBox(height: healthDp(context, 4)),
-                          optionRow,
-                        ],
-                        SizedBox(height: healthDp(context, 6)),
-                        _buildReservationNotice(),
-                      ] else ...[
-                        if (optionRow != null) ...[
-                          SizedBox(height: healthDp(context, 5)),
-                          optionRow,
-                        ],
-                        SizedBox(height: healthDp(context, 10)),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Text(
-                              '수량',
-                              style: TextStyle(
-                                color: const Color(0xFF1A1A1A),
-                                fontSize: healthSp(context, 14),
-                                fontFamily: 'Gmarket Sans TTF',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(width: healthDp(context, 10)),
-                            _buildFigmaQtyControl(
-                              quantity: item.ctQty,
-                              onDecrease: item.ctQty > 1
-                                  ? () =>
-                                      _updateQuantity(item.ctId, item.ctQty - 1)
-                                  : null,
-                              onIncrease: () =>
-                                  _updateQuantity(item.ctId, item.ctQty + 1),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isPrescription)
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(
-                healthDp(context, 10),
-                healthDp(context, 12),
-                healthDp(context, 10),
-                healthDp(context, 10),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _buildFigmaQtyControl(
-                    quantity: item.ctQty,
-                    onDecrease: item.ctQty > 1
-                        ? () => _updateQuantity(item.ctId, item.ctQty - 1)
-                        : null,
-                    onIncrease: () =>
-                        _updateQuantity(item.ctId, item.ctQty + 1),
-                  ),
-                  Text(
-                    '${PriceFormatter.format(item.lineAmount)}원',
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 16),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (!isPrescription)
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.only(top: healthDp(context, 15)),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    width: healthDp(context, 0.5),
-                    color: const Color(0x7FD2D2D2),
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    '${PriceFormatter.format(item.lineAmount)}원',
-                    style: TextStyle(
-                      color: const Color(0xFF1A1A1A),
-                      fontSize: healthSp(context, 16),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           if (footer != null) footer,
         ],
       ),

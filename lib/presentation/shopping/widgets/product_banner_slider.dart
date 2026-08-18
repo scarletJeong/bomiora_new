@@ -1,203 +1,94 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/image_url_helper.dart';
-import '../../../data/models/home/banner_model.dart';
-import '../../../data/services/banner_service.dart';
-import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 
 /// 홈·상품 목록 공통 배너 높이 (375 기준).
-/// 기존 상품목록 190에서 소폭 상향.
 const double kSharedBannerHeightBase = 210;
 
-class ProductBannerSlider extends StatefulWidget {
+/// 이미지 준비 전 카테고리별 단색 플레이스홀더 (빨→주→노→초→파→남→보).
+const List<Color> kProductListBannerRainbow = [
+  Color(0xFFE53935), // 빨
+  Color(0xFFFB8C00), // 주
+  Color(0xFFFDD835), // 노
+  Color(0xFF43A047), // 초
+  Color(0xFF1E88E5), // 파
+  Color(0xFF3949AB), // 남
+  Color(0xFF8E24AA), // 보
+];
+
+/// 일반상품 — 단백질쉐이크(`a0`) 전용 / 그 외 공통
+const Color kGeneralProteinShakeBannerColor = Color(0xFF1E88E5); // 파
+const Color kGeneralDefaultBannerColor = Color(0xFF8E24AA); // 보
+
+bool isProteinShakeCategoryId(String categoryId) {
+  final id = categoryId.trim().toLowerCase();
+  return id == 'a0';
+}
+
+/// 상품 목록 배너 색상.
+/// - 비대면: 카테고리마다 다름 (탭 순서대로 무지개)
+/// - 일반: 단백질쉐이크만 별도, 나머지는 공통 1색
+Color resolveProductListBannerColor({
+  required String? productKind,
+  required String categoryId,
+  int categoryIndex = 0,
+}) {
+  final isGeneral = (productKind ?? '').trim().toLowerCase() == 'general';
+  if (isGeneral) {
+    if (isProteinShakeCategoryId(categoryId)) {
+      return kGeneralProteinShakeBannerColor;
+    }
+    return kGeneralDefaultBannerColor;
+  }
+
+  final i = categoryIndex < 0 ? 0 : categoryIndex;
+  return kProductListBannerRainbow[i % kProductListBannerRainbow.length];
+}
+
+/// 상품 목록 상단 배너 — 카테고리당 1장 (현재는 단색 플레이스홀더).
+class ProductBannerSlider extends StatelessWidget {
   /// 375 기준 배너 높이 — [healthDp]로 스케일.
   final double heightBase;
 
   /// `general` | 그 외(처방·비대면)
   final String? productKind;
 
+  /// 현재 선택 카테고리 `ca_id`
+  final String categoryId;
+
+  /// 비대면 탭 순서 인덱스 (색상 배정용)
+  final int categoryIndex;
+
   const ProductBannerSlider({
     super.key,
     this.heightBase = kSharedBannerHeightBase,
     this.productKind,
+    required this.categoryId,
+    this.categoryIndex = 0,
   });
 
   @override
-  State<ProductBannerSlider> createState() => _ProductBannerSliderState();
-}
-
-class _ProductBannerSliderState extends State<ProductBannerSlider> {
-  int _currentIndex = 0;
-  late PageController _pageController;
-  late Future<List<BannerModel>> _bannersFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-    _loadBanners();
-  }
-
-  @override
-  void didUpdateWidget(covariant ProductBannerSlider oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.productKind != widget.productKind) {
-      _loadBanners();
-    }
-  }
-
-  void _loadBanners() {
-    setState(() {
-      _currentIndex = 0;
-      _bannersFuture = BannerService.fetchListBanners(
-        productKind: widget.productKind,
-      );
-    });
-    if (_pageController.hasClients) {
-      _pageController.jumpToPage(0);
-    }
-  }
-
-  @override
-  void reassemble() {
-    super.reassemble();
-    _loadBanners();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final bannerH = healthDp(context, widget.heightBase);
+    final bannerH = healthDp(context, heightBase);
     final borderW = healthDp(context, 3);
-    final indicatorBottom = healthDp(context, 10);
-    final dotSize = healthDp(context, 8);
-    final dotMarginH = healthDp(context, 4);
+    final color = resolveProductListBannerColor(
+      productKind: productKind,
+      categoryId: categoryId,
+      categoryIndex: categoryIndex,
+    );
 
-    return FutureBuilder<List<BannerModel>>(
-      future: _bannersFuture,
-      builder: (context, snapshot) {
-        final banners = snapshot.data ?? const <BannerModel>[];
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            banners.isEmpty) {
-          return SizedBox(
-            height: bannerH,
-            child: const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          );
-        }
-        if (banners.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        if (_currentIndex >= banners.length) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            setState(() => _currentIndex = 0);
-            if (_pageController.hasClients) {
-              _pageController.jumpToPage(0);
-            }
-          });
-        }
-
-        final hasMultiple = banners.length > 1;
-
-        return Container(
-          height: bannerH,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              bottom: BorderSide(
-                color: const Color(0xFFFF5A8D),
-                width: borderW,
-              ),
-            ),
+    return Container(
+      height: bannerH,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: color,
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFFFF5A8D),
+            width: borderW,
           ),
-          child: Stack(
-            children: [
-              ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(
-                  dragDevices: const {
-                    PointerDeviceKind.touch,
-                    PointerDeviceKind.mouse,
-                    PointerDeviceKind.trackpad,
-                    PointerDeviceKind.stylus,
-                    PointerDeviceKind.unknown,
-                  },
-                ),
-                child: PageView.builder(
-                  controller: _pageController,
-                  physics: hasMultiple
-                      ? null
-                      : const NeverScrollableScrollPhysics(),
-                  onPageChanged: (index) {
-                    setState(() => _currentIndex = index);
-                  },
-                  itemCount: banners.length,
-                  itemBuilder: (context, index) {
-                    final banner = banners[index];
-                    final imageUrl =
-                        ImageUrlHelper.resolveSiteAssetUrl(banner.imageUrl);
-                    return AppNetworkImage(
-                      url: imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: bannerH,
-                      decodeHeightLogical: bannerH,
-                      errorBuilder: (_, __, ___) => ColoredBox(
-                        color: Colors.grey[200]!,
-                        child: const Center(
-                          child: Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              if (hasMultiple)
-                Positioned(
-                  bottom: indicatorBottom,
-                  left: 0,
-                  right: 0,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(banners.length, (index) {
-                      return GestureDetector(
-                        onTap: () => _pageController.animateToPage(
-                          index,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        ),
-                        child: Container(
-                          width: dotSize,
-                          height: dotSize,
-                          margin: EdgeInsets.symmetric(horizontal: dotMarginH),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _currentIndex == index
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.4),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

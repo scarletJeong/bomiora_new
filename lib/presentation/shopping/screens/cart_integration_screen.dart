@@ -7,7 +7,7 @@ import 'cart_general_screen.dart' as cart_general;
 import 'cart_screen.dart' as cart_prescription;
 
 /// 비대면 구매 이력이 있는 회원용 통합 장바구니.
-/// 탭: 비대면진료 / 일반상품 (스크롤과 함께 이동, 상단 고정 아님)
+/// 탭: 비대면진료 / 일반상품 (본문과 함께 스크롤)
 class CartIntegrationScreen extends StatefulWidget {
   final int initialTabIndex;
   final String? backToProductId;
@@ -44,54 +44,62 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
     setState(() => _selectedTabIndex = index);
   }
 
-  Widget _buildScrollTabBar() {
-    return SizedBox(
-      width: double.infinity,
-      height: healthDp(context, 46.5),
-      child: Row(
-        children: [
-          Expanded(child: _buildTabLabel('비대면진료', 0)),
-          Expanded(child: _buildTabLabel('일반상품', 1)),
-        ],
+  Widget _buildTabBar() {
+    final radius = healthDp(context, 20);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 27),
+        healthDp(context, 12),
+        healthDp(context, 27),
+        healthDp(context, 8),
+      ),
+      child: Container(
+        width: double.infinity,
+        height: healthDp(context, 35),
+        decoration: ShapeDecoration(
+          color: const Color(0xFFF9F9F9),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: _buildTabLabel('비대면 진료', 0, radius)),
+            Expanded(child: _buildTabLabel('일반상품', 1, radius)),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTabLabel(String label, int index) {
+  Widget _buildTabLabel(String label, int index, double radius) {
     final selected = _selectedTabIndex == index;
     return InkWell(
       onTap: () => _onTabSelected(index),
-      child: SizedBox(
-        height: healthDp(context, 46.5),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: selected
-                    ? const Color(0xFF1A1A1E)
-                    : const Color(0xFF6A7282),
-                fontSize: healthSp(context, 15),
-                fontFamily: 'Gmarket Sans TTF',
-                fontWeight: FontWeight.w500,
-                height: 1.50,
-                letterSpacing: -0.23,
-              ),
-            ),
-            SizedBox(height: healthDp(context, 6)),
-            Container(
-              height: healthDp(context, 2),
-              width: healthDp(context, 72),
-              decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFFFF5A8D)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(healthDp(context, 1)),
-              ),
-            ),
-          ],
+      borderRadius: BorderRadius.circular(radius),
+      child: Container(
+        height: double.infinity,
+        decoration: ShapeDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            side: selected
+                ? const BorderSide(width: 0.5, color: Color(0x7F898686))
+                : BorderSide.none,
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected
+                ? const Color(0xFF1A1A1E)
+                : const Color(0xFF898686),
+            fontSize: healthSp(context, 13),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -114,12 +122,12 @@ class _CartIntegrationScreenState extends State<CartIntegrationScreen> {
             cart_prescription.CartScreen(
               embedInParent: true,
               backToProductId: widget.backToProductId,
-              scrollHeader: _buildScrollTabBar(),
+              scrollHeader: _buildTabBar(),
             ),
             cart_general.CartScreen(
               embedInParent: true,
               backToProductId: widget.backToProductId,
-              scrollHeader: _buildScrollTabBar(),
+              scrollHeader: _buildTabBar(),
             ),
           ],
         ),

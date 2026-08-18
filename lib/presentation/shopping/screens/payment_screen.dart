@@ -1160,7 +1160,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       },
       borderRadius: BorderRadius.circular(healthDp(context, 15)),
       child: Container(
-        height: healthDp(context, 45),
+        height: healthDp(context, _kDeliveryFieldHeight),
         padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
         decoration: ShapeDecoration(
           color: selected ? const Color(0x0CFF5A8D) : Colors.white,
@@ -1180,36 +1180,84 @@ class _PaymentScreenState extends State<PaymentScreen> {
             fontSize: healthSp(context, 12),
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: FontWeight.w500,
+            height: 1.2,
           ),
         ),
       ),
     );
   }
 
-  InputDecoration _formFieldDecoration(BuildContext context, String hint) {
-    return InputDecoration(
-      isDense: true,
-      filled: true,
-      fillColor: const Color(0xFFF8FAFC),
-      contentPadding: EdgeInsets.all(healthDp(context, 10)),
-      hintText: hint,
-      hintStyle: TextStyle(
-        color: _muted,
-        fontSize: healthSp(context, 12),
-        fontFamily: 'Gmarket Sans TTF',
-        fontWeight: FontWeight.w300,
+  /// 배송지 폼 입력칸 공통 높이 (375 기준) — 주소칸·드롭다운과 동일 셸 사용
+  static const double _kDeliveryFieldHeight = 45;
+  static const Color _kDeliveryFieldFill = Color(0xFFF8FAFC);
+
+  /// 높이 45 고정 박스 (테두리·배경). TextField Outline은 높이 무시하므로 사용하지 않음.
+  Widget _deliveryFieldBox({
+    required Widget child,
+    Color? fillColor,
+    Color? borderColor,
+    VoidCallback? onTap,
+  }) {
+    final h = healthDp(context, _kDeliveryFieldHeight);
+    final r = healthDp(context, 10);
+    final box = Container(
+      width: double.infinity,
+      height: h,
+      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: fillColor ?? _kDeliveryFieldFill,
+        borderRadius: BorderRadius.circular(r),
+        border: Border.all(width: 1, color: borderColor ?? _border),
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        borderSide: const BorderSide(color: _border),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        borderSide: const BorderSide(color: _border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(healthDp(context, 10)),
-        borderSide: const BorderSide(color: _pink),
+      child: child,
+    );
+    if (onTap == null) return box;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(r),
+      child: box,
+    );
+  }
+
+  Widget _deliveryTextField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return _deliveryFieldBox(
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        textAlignVertical: TextAlignVertical.center,
+        style: TextStyle(
+          fontSize: healthSp(context, 12),
+          fontFamily: 'Gmarket Sans TTF',
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+          color: const Color(0xFF1A1A1E),
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+          isCollapsed: true,
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: _muted,
+            fontSize: healthSp(context, 12),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w300,
+            height: 1.2,
+          ),
+        ),
       ),
     );
   }
@@ -1290,9 +1338,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: healthDp(context, 5)),
+          SizedBox(height: healthDp(context, 2)),
           DropdownBtn(
-            buttonHeight: healthDp(context, 45),
+            buttonHeight: healthDp(context, _kDeliveryFieldHeight),
             items: memoItems,
             value: memo,
             emptyText: '배송메모를 선택해주세요',
@@ -1360,7 +1408,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 2)),
           Row(
             children: [
               _addressLabelChipBtn(context, '집'),
@@ -1371,109 +1419,78 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
           ),
           if (_showCustomAddressName) ...[
-            SizedBox(height: healthDp(context, 10)),
-            SizedBox(
-              height: healthDp(context, 45),
-              child: TextField(
-                controller: _addressNameController,
-                style: TextStyle(
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                ),
-                decoration: _formFieldDecoration(context, '배송지명을 입력해 주세요.'),
-              ),
+            SizedBox(height: healthDp(context, 2)),
+            _deliveryTextField(
+              controller: _addressNameController,
+              hint: '배송지명을 입력해 주세요.',
             ),
           ],
           SizedBox(height: healthDp(context, 10)),
           _requiredLabel(context, '받으시는 분'),
-          SizedBox(height: healthDp(context, 10)),
-          SizedBox(
-            height: healthDp(context, 45),
-            child: TextField(
-              controller: _receiverController,
-              style: TextStyle(
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-              ),
-              decoration:
-                  _formFieldDecoration(context, '수령인의 이름을 입력해 주세요.'),
-            ),
+          SizedBox(height: healthDp(context, 2)),
+          _deliveryTextField(
+            controller: _receiverController,
+            hint: '수령인의 이름을 입력해 주세요.',
           ),
           SizedBox(height: healthDp(context, 10)),
           _requiredLabel(context, '연락처'),
-          SizedBox(height: healthDp(context, 10)),
-          SizedBox(
-            height: healthDp(context, 45),
-            child: TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: TextStyle(
-                fontSize: healthSp(context, 12),
-                fontFamily: 'Gmarket Sans TTF',
-              ),
-              decoration: _formFieldDecoration(context, '‘-’없이 기입해주세요.'),
-            ),
+          SizedBox(height: healthDp(context, 2)),
+          _deliveryTextField(
+            controller: _phoneController,
+            hint: '‘-’없이 기입해주세요.',
+            keyboardType: TextInputType.phone,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
           SizedBox(height: healthDp(context, 10)),
           _requiredLabel(context, '배송지 주소'),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 2)),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: InkWell(
+                child: _deliveryFieldBox(
                   onTap: _openAddressSearch,
-                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                  child: Container(
-                    height: healthDp(context, 45),
-                    padding: EdgeInsets.all(healthDp(context, 10)),
-                    decoration: ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        side: const BorderSide(width: 1, color: _border),
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 10)),
-                      ),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      addressDisplay.isEmpty ? '주소를 검색해 주세요' : addressDisplay,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: addressDisplay.isEmpty
-                            ? _muted
-                            : const Color(0xFF1A1A1E),
-                        fontSize: healthSp(context, 12),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w300,
-                      ),
+                  child: Text(
+                    addressDisplay.isEmpty ? '주소를 검색해 주세요' : addressDisplay,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: addressDisplay.isEmpty
+                          ? _muted
+                          : const Color(0xFF1A1A1E),
+                      fontSize: healthSp(context, 12),
+                      fontFamily: 'Gmarket Sans TTF',
+                      fontWeight: FontWeight.w300,
+                      height: 1.2,
                     ),
                   ),
                 ),
               ),
               SizedBox(width: healthDp(context, 10)),
-              InkWell(
-                onTap: _openAddressSearch,
+              Material(
+                color: _pink,
                 borderRadius: BorderRadius.circular(healthDp(context, 10)),
-                child: Container(
-                  height: healthDp(context, 45),
-                  padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-                  alignment: Alignment.center,
-                  decoration: ShapeDecoration(
-                    color: _pink,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(healthDp(context, 10)),
-                    ),
-                  ),
-                  child: Text(
-                    '주소 검색',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: healthSp(context, 12),
-                      fontFamily: 'Gmarket Sans TTF',
-                      fontWeight: FontWeight.w500,
+                child: InkWell(
+                  onTap: _openAddressSearch,
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                  child: SizedBox(
+                    height: healthDp(context, _kDeliveryFieldHeight),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: healthDp(context, 10),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '주소 검색',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1482,16 +1499,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           if (_addressController.text.trim().isNotEmpty) ...[
             SizedBox(height: healthDp(context, 10)),
-            SizedBox(
-              height: healthDp(context, 45),
-              child: TextField(
-                controller: _detailAddressController,
-                style: TextStyle(
-                  fontSize: healthSp(context, 12),
-                  fontFamily: 'Gmarket Sans TTF',
-                ),
-                decoration: _formFieldDecoration(context, '상세주소를 입력해 주세요.'),
-              ),
+            _deliveryTextField(
+              controller: _detailAddressController,
+              hint: '상세주소를 입력해 주세요.',
             ),
           ],
           SizedBox(height: healthDp(context, 10)),
@@ -1504,9 +1514,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 2)),
           DropdownBtn(
-            buttonHeight: healthDp(context, 45),
+            buttonHeight: healthDp(context, _kDeliveryFieldHeight),
             items: memoItems,
             value: memo,
             emptyText: '배송메모를 선택해주세요',
@@ -1656,7 +1666,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 10)),
+                    SizedBox(height: healthDp(context, 2)),
                     _couponDropdown(context),
                     if (_selectedCoupons.isNotEmpty) ...[
                       SizedBox(height: healthDp(context, 10)),
@@ -1691,7 +1701,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: healthDp(context, 10)),
+                    SizedBox(height: healthDp(context, 2)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -1970,7 +1980,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               letterSpacing: -1.44,
             ),
           ),
-          SizedBox(height: healthDp(context, 10)),
+          SizedBox(height: healthDp(context, 2)),
           Row(
             children: [
               Expanded(child: _methodButton(context, '신용카드', 0)),

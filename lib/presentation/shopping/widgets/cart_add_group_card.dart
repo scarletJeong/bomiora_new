@@ -432,7 +432,7 @@ class _SupplyAddRow extends StatelessWidget {
                 child: Icon(
                   Icons.close,
                   size: healthSp(context, 14),
-                  color: _kInk,
+                  color: _kBorder,
                 ),
               ),
             ),

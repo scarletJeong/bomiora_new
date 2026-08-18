@@ -542,7 +542,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
               child: _buildProductInfoSection(),
             ),
             SliverPersistentHeader(
-              pinned: true,
+              pinned: false,
               delegate: _SliverTabBarDelegate(
                 _buildProductTabBar(
                   context,
@@ -1270,6 +1270,7 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
   }
 
   Widget _buildFloatingTransparentAppBar() {
+    const iconColor = Color(0xFF1A1A1A);
     return Positioned(
       top: 0,
       left: 0,
@@ -1280,16 +1281,68 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           height: kToolbarHeight,
           child: Row(
             children: [
-              IconButton(
-                icon: Icon(
+              _detailAppBarIconButton(
+                onPressed: _handleGeneralDetailBack,
+                child: Icon(
                   Icons.chevron_left,
-                  color: Colors.black,
+                  color: iconColor,
                   size: healthDp(context, 28),
                 ),
-                onPressed: _handleGeneralDetailBack,
+              ),
+              const Spacer(),
+              _detailAppBarIconButton(
+                onPressed: () {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/home',
+                    (route) => false,
+                  );
+                },
+                child: _detailAppBarSvgIcon(AppAssets.menu_home_icon),
+              ),
+              _detailAppBarIconButton(
+                onPressed: () {
+                  CartNavigation.openCart(context, prescriptionTab: false);
+                },
+                child: _detailAppBarSvgIcon(
+                  AppAssets.appbarCartIcon,
+                  size: 22,
+                ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailAppBarSvgIcon(String asset, {double size = 16}) {
+    final s = healthDp(context, size);
+    return SvgPicture.asset(
+      asset,
+      width: s,
+      height: s,
+      fit: BoxFit.contain,
+      colorFilter: const ColorFilter.mode(
+        Color(0xFF1A1A1A),
+        BlendMode.srcIn,
+      ),
+    );
+  }
+
+  Widget _detailAppBarIconButton({
+    required Widget child,
+    required VoidCallback onPressed,
+  }) {
+    final tap = healthDp(context, 40);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: SizedBox(
+          width: tap,
+          height: tap,
+          child: Center(child: child),
         ),
       ),
     );
@@ -1506,14 +1559,17 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
           return;
         }
 
+        final options = Map<ProductOption, int>.from(_selectedOptions);
+        final supply = List<SupplyCartLine>.from(_supplyLines);
         Navigator.of(context).pop();
 
         if (!mounted) return;
 
+        final beforeIds = await _snapshotGeneralCartIds();
         final result = await CartService.addOptionsToCart(
           product: _product!,
-          selectedOptions: _selectedOptions,
-          supplyLines: _supplyLines,
+          selectedOptions: options,
+          supplyLines: supply,
           mergeIfExists: true,
         );
 
@@ -1524,9 +1580,13 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
             _selectedOptions.clear();
             _supplyLines.clear();
           });
+          final checkout = await _resolveGeneralCheckoutPayload(
+            beforeIds: beforeIds,
+            selectedOptions: options,
+          );
           await _loadRecommendedProducts();
           if (!mounted) return;
-          await _showRecommendProductBottomup();
+          await _showRecommendProductBottomup(checkout: checkout);
         }
       },
       onAddToPrescriptionCart: () async {},
@@ -1756,23 +1816,71 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
     );
   }
 
-  Future<void> _showRecommendProductBottomup() async {
+  Future<({List<CartItem> payItems, int shippingCost})?>
+      _resolveGeneralCheckoutPayload({
+    required Set<int> beforeIds,
+    Map<ProductOption, int>? selectedOptions,
+    int? quantity,
+  }) async {
+    final payItems = await _resolveGeneralBuyNowPayItems(
+      beforeIds: beforeIds,
+      selectedOptions: selectedOptions,
+      quantity: quantity,
+    );
+    if (payItems.isEmpty) return null;
+
+    final cart = await CartService.getCart();
+    if (cart['success'] != true) return null;
+
+    final allGeneralItems = _parseGeneralCartItems(cart);
+    final cartShippingCost = (cart['shipping_cost'] as num?)?.toInt() ?? 0;
+    final shippingCost = _resolveBuyNowShippingCost(
+      payItems: payItems,
+      allGeneralItems: allGeneralItems,
+      cartShippingCost: cartShippingCost,
+    );
+    return (payItems: payItems, shippingCost: shippingCost);
+  }
+
+  Future<void> _showRecommendProductBottomup({
+    ({List<CartItem> payItems, int shippingCost})? checkout,
+  }) async {
     if (_product == null || !mounted) return;
 
     final products =
         await CartService.getProductRecommendProducts(_product!.id);
-    if (!mounted || products.isEmpty) return;
+    if (!mounted) return;
+
+    // 추천이 없어도 바로 결제하기는 가능해야 함
+    if (products.isEmpty) {
+      if (checkout != null) {
+        await _openGeneralPaymentScreen(
+          payItems: checkout.payItems,
+          shippingCost: checkout.shippingCost,
+        );
+      }
+      return;
+    }
 
     await showRecommendProductBottomup(
       context: context,
       products: products,
-      primaryButtonLabel: '장바구니 바로가기',
+      primaryButtonLabel: '바로 결제하기',
       onProductTap: (product) {
         Navigator.of(context).pop();
         _openRecommendProduct(product);
       },
-      onGoToCart: () {
-        CartNavigation.openCart(context, prescriptionTab: false);
+      onGoToCart: () async {
+        // 바텀시트가 이미 pop 한 뒤 호출됨
+        if (!mounted) return;
+        if (checkout == null || checkout.payItems.isEmpty) {
+          _showBuyNowFailedSnackBar();
+          return;
+        }
+        await _openGeneralPaymentScreen(
+          payItems: checkout.payItems,
+          shippingCost: checkout.shippingCost,
+        );
       },
     );
   }
@@ -1789,11 +1897,16 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
       onToggleFavorite: _toggleFavorite,
       onAddToCart: (quantity) async {
         Navigator.of(context).pop();
+        final beforeIds = await _snapshotGeneralCartIds();
         final success = await _addGeneralProductToCart(quantity: quantity);
         if (!mounted || !success) return;
+        final checkout = await _resolveGeneralCheckoutPayload(
+          beforeIds: beforeIds,
+          quantity: quantity,
+        );
         await _loadRecommendedProducts();
         if (!mounted) return;
-        await _showRecommendProductBottomup();
+        await _showRecommendProductBottomup(checkout: checkout);
       },
       onBuyNow: (quantity) async {
         Navigator.of(context).pop();

@@ -35,6 +35,7 @@ import '../utils/product_detail_html_helper.dart';
 import '../utils/product_info_spec_helper.dart';
 import '../../common/widgets/login_required_dialog.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../../data/services/pending_product_checkout.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
 
@@ -165,6 +166,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       // 찜하기 상태 확인
       await _checkFavoriteStatus();
       await _loadRecommendedProducts();
+      await _resumePendingCheckoutIfNeeded();
     } catch (e) {
       _safeSetState(() {
         _isLoading = false;
@@ -294,9 +296,66 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       _safeSetState(() {
         _productOptions = options;
       });
+      await _resumePendingCheckoutIfNeeded();
     } catch (e) {
       // 옵션 로드 실패 시 무시
     }
+  }
+
+  Future<void> _resumePendingCheckoutIfNeeded() async {
+    final pending = PendingProductCheckout.peek();
+    if (pending == null || pending.productId != widget.productId) return;
+    if (_product == null) return;
+
+    final user = await AuthService.getUser();
+    if (user == null || user.id.isEmpty || !mounted) return;
+
+    final taken = PendingProductCheckout.take();
+    if (taken == null) return;
+
+    _safeSetState(() {
+      _selectedOptions = taken.restoreOptions(_productOptions);
+      _supplyLines = taken.restoreSupplyLines();
+    });
+    if (_selectedOptions.isEmpty || !mounted) return;
+
+    if (taken.action == PendingProductCheckoutAction.reserve) {
+      await _startPrescriptionReservationCheckout();
+      return;
+    }
+    final added = await _addPrescriptionItemsToShoppingCart(
+      navigateToCart: true,
+    );
+    if (added != null && mounted) {
+      await _loadRecommendedProducts();
+    }
+  }
+
+  Future<bool> _requireLoginForCheckout({
+    required PendingProductCheckoutAction action,
+    required String message,
+  }) async {
+    if (_product == null || _selectedOptions.isEmpty) return false;
+    final user = await AuthService.getUser();
+    if (user != null && user.id.isNotEmpty) return true;
+    if (!mounted) return false;
+
+    PendingProductCheckout.save(
+      productId: _product!.id,
+      action: action,
+      selectedOptions: _selectedOptions,
+      supplyLines: _supplyLines,
+    );
+    if (!mounted) return false;
+    final went = await showLoginRequiredDialog(
+      context,
+      message: message,
+      returnTo: '/product/${_product!.id}',
+    );
+    if (went != true) {
+      PendingProductCheckout.clear();
+    }
+    return false;
   }
 
   /// 찜하기 토글
@@ -446,7 +505,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               child: _buildProductInfoSection(),
             ),
             SliverPersistentHeader(
-              pinned: true,
+              pinned: false,
               delegate: _SliverTabBarDelegate(
                 _buildProductTabBar(
                   context,
@@ -1269,8 +1328,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  /// 홈 화면 AppBar와 동일하게 배경·블러 없이 투명 (뒤로가기만)
+  /// 배경·블러 없이 투명 — 뒤로가기 / 홈 / 장바구니
   Widget _buildFloatingTransparentAppBar() {
+    const iconColor = Color(0xFF1A1A1A);
     return Positioned(
       top: 0,
       left: 0,
@@ -1281,12 +1341,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           height: kToolbarHeight,
           child: Row(
             children: [
-              IconButton(
-                icon: Icon(
-                  Icons.chevron_left,
-                  color: Colors.black,
-                  size: healthDp(context, 28),
-                ),
+              _detailAppBarIconButton(
                 onPressed: () {
                   if (Navigator.of(context).canPop()) {
                     Navigator.of(context).pop();
@@ -1294,9 +1349,66 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     Navigator.of(context).pushReplacementNamed('/home');
                   }
                 },
+                child: Icon(
+                  Icons.chevron_left,
+                  color: iconColor,
+                  size: healthDp(context, 28),
+                ),
+              ),
+              const Spacer(),
+              _detailAppBarIconButton(
+                onPressed: () {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/home',
+                    (route) => false,
+                  );
+                },
+                child: _detailAppBarSvgIcon(AppAssets.menu_home_icon),
+              ),
+              _detailAppBarIconButton(
+                onPressed: () {
+                  CartNavigation.openCart(context, prescriptionTab: true);
+                },
+                child: _detailAppBarSvgIcon(
+                  AppAssets.appbarCartIcon,
+                  size: 22,
+                ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailAppBarSvgIcon(String asset, {double size = 16}) {
+    final s = healthDp(context, size);
+    return SvgPicture.asset(
+      asset,
+      width: s,
+      height: s,
+      fit: BoxFit.contain,
+      colorFilter: const ColorFilter.mode(
+        Color(0xFF1A1A1A),
+        BlendMode.srcIn,
+      ),
+    );
+  }
+
+  Widget _detailAppBarIconButton({
+    required Widget child,
+    required VoidCallback onPressed,
+  }) {
+    final tap = healthDp(context, 40);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: SizedBox(
+          width: tap,
+          height: tap,
+          child: Center(child: child),
         ),
       ),
     );
@@ -1554,15 +1666,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onAddToPrescriptionCart: () async {
         if (_product == null || _selectedOptions.isEmpty) return;
 
-        final user = await AuthService.getUser();
-        if (user == null || user.id.isEmpty) {
-          if (!mounted) return;
-          await showLoginRequiredDialog(
-            context,
-            message: '진료담기는 로그인 후 이용할 수 있습니다.',
-          );
-          return;
-        }
+        final loggedIn = await _requireLoginForCheckout(
+          action: PendingProductCheckoutAction.prescriptionCart,
+          message: '진료담기는 로그인 후 이용할 수 있습니다.',
+        );
+        if (!loggedIn || !mounted) return;
 
         Navigator.of(context).pop();
 
@@ -1580,15 +1688,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       onReserve: () async {
         if (_product == null || _selectedOptions.isEmpty) return;
 
-        final user = await AuthService.getUser();
-        if (user == null || user.id.isEmpty) {
-          if (!mounted) return;
-          await showLoginRequiredDialog(
-            context,
-            message: '진료담기는 로그인 후 이용할 수 있습니다.',
-          );
-          return;
-        }
+        final loggedIn = await _requireLoginForCheckout(
+          action: PendingProductCheckoutAction.reserve,
+          message: '처방예약은 로그인 후 이용할 수 있습니다.',
+        );
+        if (!loggedIn || !mounted) return;
 
         Navigator.of(context).pop();
 

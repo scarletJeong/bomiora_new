@@ -471,6 +471,8 @@ class _CartScreenState extends State<CartScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  if (widget.scrollHeader != null)
+                                    widget.scrollHeader!,
                                   Padding(
                                     padding: EdgeInsets.fromLTRB(
                                       healthDp(context, 27),
@@ -483,10 +485,6 @@ class _CartScreenState extends State<CartScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        if (widget.scrollHeader != null) ...[
-                                          widget.scrollHeader!,
-                                          SizedBox(height: healthDp(context, 8)),
-                                        ],
                                         _buildSelectAllRow(),
                                         SizedBox(height: healthDp(context, 12)),
                                         ...groupCartByVendor(_displayedGroups)
@@ -644,20 +642,38 @@ class _CartScreenState extends State<CartScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _summaryRow('구매금액', '${PriceFormatter.format(selectedPrice)}원',
-            fontSize: healthSp(context, 16), fontWeight: FontWeight.w500),
+        _summaryRow(
+          '총 구매 금액',
+          '${PriceFormatter.format(selectedPrice)}원',
+          fontSize: healthSp(context, 14),
+          fontWeight: FontWeight.w500,
+          labelColor: const Color(0xFF898686),
+          valueColor: const Color(0xFF1A1A1E),
+        ),
         SizedBox(height: healthDp(context, 10)),
-        _summaryRow('배송비', '${PriceFormatter.format(selectedShipping)}원',
-            fontSize: healthSp(context, 14), fontWeight: FontWeight.w500),
+        _summaryRow(
+          '배송비',
+          '${PriceFormatter.format(selectedShipping)}원',
+          fontSize: healthSp(context, 14),
+          fontWeight: FontWeight.w500,
+          labelColor: const Color(0xFF898686),
+          valueColor: const Color(0xFF1A1A1E),
+        ),
         SizedBox(height: healthDp(context, 10)),
         Divider(
           height: healthDp(context, 1),
           thickness: healthDp(context, 1),
-          color: const Color(0x7F1A1A1A),
+          color: const Color(0xFF898686),
         ),
         SizedBox(height: healthDp(context, 10)),
-        _summaryRow('결제 금액', '${PriceFormatter.format(payable)}원',
-            fontSize: healthSp(context, 16), fontWeight: FontWeight.w700),
+        _summaryRow(
+          '결제 예정 금액',
+          '${PriceFormatter.format(payable)}원',
+          fontSize: healthSp(context, 16),
+          fontWeight: FontWeight.w500,
+          labelColor: const Color(0xFF1A1A1E),
+          valueColor: const Color(0xFFFF5A8D),
+        ),
       ],
     );
   }
@@ -760,31 +776,33 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
           const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(
-                onPressed: _selectedDisplayedItemIds.isEmpty
-                    ? null
-                    : () => _deleteSelectedItems(),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 8),
-                      vertical: healthDp(context, 4)),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  '선택삭제',
-                  style: TextStyle(
-                    fontSize: healthSp(context, 12),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w300,
-                    color: Colors.grey,
-                  ),
+          InkWell(
+            onTap: _selectedDisplayedItemIds.isEmpty
+                ? null
+                : () => _deleteSelectedItems(),
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: healthDp(context, 14),
+                vertical: healthDp(context, 10),
+              ),
+              clipBehavior: Clip.antiAlias,
+              decoration: ShapeDecoration(
+                color: const Color(0xFFF9F9F9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 50)),
                 ),
               ),
-            ],
+              child: Text(
+                '선택삭제',
+                style: TextStyle(
+                  color: const Color(0xFF898686),
+                  fontSize: healthSp(context, 12),
+                  fontFamily: 'Gmarket Sans TTF',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -840,6 +858,8 @@ class _CartScreenState extends State<CartScreen> {
     String right, {
     required double fontSize,
     required FontWeight fontWeight,
+    Color labelColor = const Color(0xFF1A1A1A),
+    Color valueColor = const Color(0xFF1A1A1A),
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -847,7 +867,7 @@ class _CartScreenState extends State<CartScreen> {
         Text(
           left,
           style: TextStyle(
-            color: const Color(0xFF1A1A1A),
+            color: labelColor,
             fontSize: fontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: fontWeight,
@@ -856,7 +876,7 @@ class _CartScreenState extends State<CartScreen> {
         Text(
           right,
           style: TextStyle(
-            color: const Color(0xFF1A1A1A),
+            color: valueColor,
             fontSize: fontSize,
             fontFamily: 'Gmarket Sans TTF',
             fontWeight: fontWeight,

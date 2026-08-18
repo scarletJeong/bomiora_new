@@ -7,7 +7,6 @@ import '../../health/health_common/health_responsive_scale.dart';
 import 'get_cartImage.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
-const _kPink = Color(0xFFFF5A8D);
 const _kInk = Color(0xFF1A1A1A);
 const _kMuted = Color(0xFF898686);
 const _kMuted2 = Color(0xFF898383);
@@ -122,26 +121,6 @@ class CartGroupGeneralCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    SizedBox(width: healthDp(context, 5)),
-                    Container(
-                      padding: EdgeInsets.all(healthDp(context, 5)),
-                      decoration: ShapeDecoration(
-                        color: const Color(0x0CFF5A8D),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(healthDp(context, 50)),
-                        ),
-                      ),
-                      child: Text(
-                        '묶음배송',
-                        style: TextStyle(
-                          color: _kPink,
-                          fontSize: healthSp(context, 10),
-                          fontFamily: _kGmarketSans,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
                 SizedBox(height: healthDp(context, 10)),
@@ -159,6 +138,7 @@ class CartGroupGeneralCard extends StatelessWidget {
                     item: items[i],
                     selected: selectedItems.contains(items[i].ctId),
                     readOnly: readOnly,
+                    compactBottom: items.length < 2,
                     buildCheckbox: buildCheckbox,
                     buildQtyControl: buildQtyControl,
                     onToggle: (v) => onToggleItem?.call(items[i], v),
@@ -168,12 +148,12 @@ class CartGroupGeneralCard extends StatelessWidget {
                     onOpenDetail: () => onOpenDetail?.call(items[i]),
                   ),
                 ],
-                // 회색선 위(상품 가격) 간격 — 기존 14의 절반
-                SizedBox(height: healthDp(context, 7)),
+                if (items.length >= 2)
+                  SizedBox(height: healthDp(context, 7)),
               ],
             ),
           ),
-          if (showBundleTotal) ...[
+          if (showBundleTotal && items.length >= 2) ...[
             // 묶음 합계 위 회색선 — 카드 테두리에서 살짝 띄움
             Padding(
               padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
@@ -212,7 +192,7 @@ class CartGroupGeneralCard extends StatelessWidget {
               ),
             ),
           ] else
-            SizedBox(height: pad),
+            SizedBox(height: healthDp(context, items.length < 2 ? 10 : 14)),
         ],
       ),
     );
@@ -223,6 +203,7 @@ class _VendorProductCard extends StatelessWidget {
   final CartItem item;
   final bool selected;
   final bool readOnly;
+  final bool compactBottom;
   final Widget Function({
     required bool value,
     required ValueChanged<bool?> onChanged,
@@ -241,6 +222,7 @@ class _VendorProductCard extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.readOnly,
+    this.compactBottom = false,
     required this.buildCheckbox,
     required this.buildQtyControl,
     required this.onToggle,
@@ -271,9 +253,11 @@ class _VendorProductCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-        vertical: healthDp(context, readOnly ? 10 : 20),
+      padding: EdgeInsets.fromLTRB(
+        healthDp(context, 10),
+        healthDp(context, readOnly ? 10 : 20),
+        healthDp(context, 10),
+        healthDp(context, readOnly ? 10 : (compactBottom ? 4 : 20)),
       ),
       decoration: ShapeDecoration(
         color: Colors.white,
@@ -397,7 +381,7 @@ class _VendorProductCard extends StatelessWidget {
                           child: Icon(
                             Icons.close,
                             size: healthDp(context, 16),
-                            color: _kInk,
+                            color: _kBorder,
                           ),
                         ),
                       ),
