@@ -285,45 +285,60 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         },
                       ),
                     )
-                  : SingleChildScrollView(
-                      padding: EdgeInsets.only(
-                        left: healthDp(context, 27),
-                        right: healthDp(context, 27),
-                        bottom: healthDp(context, 20),
-                        top: healthDp(context, 20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildAddAddressButton(),
-                          SizedBox(height: healthDp(context, 16)),
-                          if (_addresses.isEmpty)
-                            Padding(
-                              padding: EdgeInsets.only(
-                                top: healthDp(context, 40),
-                              ),
-                              child: CenteredEmptyState(
-                                iconWidget: CenteredEmptyState.assetIcon(
-                                  context,
-                                  AppAssets.emptyAddressIcon,
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final contentPadding = EdgeInsets.only(
+                          left: healthDp(context, 27),
+                          right: healthDp(context, 27),
+                          bottom: healthDp(context, 20),
+                          top: healthDp(context, 20),
+                        );
+
+                        if (_addresses.isEmpty) {
+                          return Padding(
+                            padding: contentPadding,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildAddAddressButton(),
+                                SizedBox(height: healthDp(context, 16)),
+                                Expanded(
+                                  child: Center(
+                                    child: CenteredEmptyState(
+                                      iconWidget: CenteredEmptyState.assetIcon(
+                                        context,
+                                        AppAssets.emptyAddressIcon,
+                                      ),
+                                      message: '등록된 배송지가 없습니다',
+                                    ),
+                                  ),
                                 ),
-                                message: '등록된 배송지가 없습니다',
-                              ),
-                            )
-                          else
-                            ..._addresses.asMap().entries.map((entry) {
-                              final isLast =
-                                  entry.key == _addresses.length - 1;
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                  bottom:
-                                      isLast ? 0 : healthDp(context, 10),
-                                ),
-                                child: _buildAddressCard(entry.value),
-                              );
-                            }),
-                        ],
-                      ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return SingleChildScrollView(
+                          padding: contentPadding,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildAddAddressButton(),
+                              SizedBox(height: healthDp(context, 16)),
+                              ..._addresses.asMap().entries.map((entry) {
+                                final isLast =
+                                    entry.key == _addresses.length - 1;
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: isLast ? 0 : healthDp(context, 10),
+                                  ),
+                                  child: _buildAddressCard(entry.value),
+                                );
+                              }),
+                            ],
+                          ),
+                        );
+                      },
                     ),
         ),
       ),
