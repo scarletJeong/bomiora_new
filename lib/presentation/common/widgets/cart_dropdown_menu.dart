@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../health/health_common/health_responsive_scale.dart';
 
-/// 장바구니 분기(진료담기 / 구매담기) 드롭다운 폭 — 라벨이 잘리지 않도록 여유 있게.
+/// 장바구니 분기(진료담기 / 장바구니) 드롭다운 폭 — 라벨이 잘리지 않도록 여유 있게.
 double cartDropdownWidth(BuildContext context) => healthDp(context, 108);
 
 class CartDropdownMenuPanel extends StatelessWidget {
@@ -46,7 +46,7 @@ class CartDropdownMenuPanel extends StatelessWidget {
           ),
           SizedBox(height: healthDp(context, 5)),
           CartDropdownMenuItem(
-            label: '구매담기',
+            label: '장바구니',
             onTap: onShoppingTap,
           ),
         ],
