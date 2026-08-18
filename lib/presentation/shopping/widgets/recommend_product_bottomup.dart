@@ -131,6 +131,7 @@ Future<void> showRecommendProductBottomup({
   required List<Product> products,
   required ValueChanged<Product> onProductTap,
   VoidCallback? onGoToCart,
+  VoidCallback? onPrimaryAction,
   String headline = '장바구니에 상품을 담았어요.',
   String title = '함께 구매하기 좋은 상품',
   String primaryButtonLabel = '처방 예약 바로가기',
@@ -169,6 +170,7 @@ Future<void> showRecommendProductBottomup({
               primaryButtonLabel: primaryButtonLabel,
               onProductTap: onProductTap,
               onGoToCart: onGoToCart,
+              onPrimaryAction: onPrimaryAction,
             ),
           ),
         ),
@@ -184,6 +186,7 @@ class RecommendProductBottomSheet extends StatelessWidget {
   final String primaryButtonLabel;
   final ValueChanged<Product> onProductTap;
   final VoidCallback? onGoToCart;
+  final VoidCallback? onPrimaryAction;
 
   const RecommendProductBottomSheet({
     super.key,
@@ -193,7 +196,11 @@ class RecommendProductBottomSheet extends StatelessWidget {
     required this.primaryButtonLabel,
     required this.onProductTap,
     this.onGoToCart,
+    this.onPrimaryAction,
   });
+
+  VoidCallback? get _primaryTap =>
+      onPrimaryAction ?? onGoToCart;
 
   @override
   Widget build(BuildContext context) {
@@ -309,12 +316,12 @@ class RecommendProductBottomSheet extends StatelessWidget {
                       onProductTap: onProductTap,
                       innerWidth: innerWidth,
                     ),
-                    if (onGoToCart != null) ...[
+                    if (_primaryTap != null) ...[
                       SizedBox(height: healthDp(context, 20)),
                       GestureDetector(
                         onTap: () {
                           Navigator.of(context).pop();
-                          onGoToCart!();
+                          _primaryTap!();
                         },
                         child: Container(
                           width: double.infinity,

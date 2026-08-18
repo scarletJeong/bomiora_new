@@ -1870,8 +1870,11 @@ class _ProductDetailGeneralScreenState extends State<ProductDetailGeneralScreen>
         Navigator.of(context).pop();
         _openRecommendProduct(product);
       },
-      onGoToCart: () async {
-        // 바텀시트가 이미 pop 한 뒤 호출됨
+      onGoToCart: () {
+        if (!mounted) return;
+        CartNavigation.openCart(context, prescriptionTab: false);
+      },
+      onPrimaryAction: () async {
         if (!mounted) return;
         if (checkout == null || checkout.payItems.isEmpty) {
           _showBuyNowFailedSnackBar();

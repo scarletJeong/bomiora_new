@@ -15,6 +15,7 @@ import '../../../data/services/auth_service.dart';
 import '../../../core/utils/price_formatter.dart';
 import 'payment_screen.dart';
 import '../widgets/cart_add_group_card.dart';
+import '../widgets/cart_empty_shop_button.dart';
 import '../widgets/cart_group_general_card.dart';
 
 class CartScreen extends StatefulWidget {
@@ -442,7 +443,10 @@ class _CartScreenState extends State<CartScreen> {
             context,
             AppAssets.emptyCartGeneralIcon,
           ),
-          message: '장바구니가 비어있습니다.',
+          message: '장바구니에 담긴 상품이 없습니다 \n원하는 상품을 담아보세요',
+          trailing: [
+            CartEmptyShopButton(prescriptionTab: false),
+          ],
         ),
       );
     }

@@ -92,10 +92,31 @@ class _ProductListScreenState extends State<ProductListScreen> {
     if (!mounted || requestToken != _tabsRequestToken) return;
 
     _baseTabOrder = source
-        .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
+        .map(
+          (item) => _CategoryTab(
+            id: item.categoryId.trim(),
+            label: item.label,
+          ),
+        )
+        .where((tab) => tab.id.isNotEmpty)
         .toList();
+    if (_baseTabOrder.isEmpty) {
+      final fallback = widget.productKind == 'general'
+          ? productGeneralCategoryListFallback
+          : productPrescriptionCategoryListFallback;
+      _baseTabOrder = fallback
+          .map((item) => _CategoryTab(id: item.categoryId, label: item.label))
+          .toList();
+    }
     _tabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
     _stickyTabKeys = List.generate(_baseTabOrder.length, (_) => GlobalKey());
+
+    _activeCategoryId = _activeCategoryId.trim();
+    final matchedIndex =
+        _baseTabOrder.indexWhere((tab) => tab.id == _activeCategoryId);
+    if (matchedIndex < 0 && _baseTabOrder.isNotEmpty) {
+      _activeCategoryId = _baseTabOrder.first.id;
+    }
 
     setState(() => _tabsReady = true);
 

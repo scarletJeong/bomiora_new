@@ -16,6 +16,7 @@ import '../../../core/utils/price_formatter.dart';
 import 'prescription_booking/prescription_profile_screen.dart';
 import '../widgets/get_cartImage.dart';
 import '../widgets/cart_add_group_card.dart';
+import '../widgets/cart_empty_shop_button.dart';
 
 class CartScreen extends StatefulWidget {
   final String? backToProductId;
@@ -429,7 +430,10 @@ class _CartScreenState extends State<CartScreen> {
             context,
             AppAssets.emptyCartIcon,
           ),
-          message: '장바구니가 비어있습니다.',
+          message: '장바구니에 담긴 상품이 없습니다 \n원하는 상품을 담아보세요',
+          trailing: [
+            CartEmptyShopButton(prescriptionTab: true),
+          ],
         ),
       );
     }

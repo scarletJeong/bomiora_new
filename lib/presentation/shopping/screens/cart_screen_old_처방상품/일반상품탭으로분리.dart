@@ -430,7 +430,7 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            '장바구니가 비어있습니다.',
+                            '장바구니에 담긴 상품이 없습니다 \n원하는 상품을 담아보세요',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey,

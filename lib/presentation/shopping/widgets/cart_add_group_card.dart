@@ -456,56 +456,67 @@ class _MiniQtyControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _btn(context, Icons.remove, onDecrease, filled: true),
-        SizedBox(width: healthDp(context, 6)),
-        Text(
-          '$quantity',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _kInk,
-            fontSize: healthSp(context, 11),
-            fontFamily: 'Arimo',
-            fontWeight: FontWeight.w600,
-            height: 1.5,
-          ),
+    return Container(
+      padding: EdgeInsets.all(healthDp(context, 4)),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF6F6F6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(healthDp(context, 20)),
         ),
-        SizedBox(width: healthDp(context, 6)),
-        _btn(context, Icons.add, onIncrease, filled: false),
-      ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _circleBtn(context, Icons.remove, onDecrease),
+          SizedBox(
+            width: healthDp(context, 18),
+            child: Text(
+              '$quantity',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: healthSp(context, 12),
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                height: 0.79,
+              ),
+            ),
+          ),
+          _circleBtn(context, Icons.add, onIncrease),
+        ],
+      ),
     );
   }
 
-  Widget _btn(
+  Widget _circleBtn(
     BuildContext context,
     IconData icon,
-    VoidCallback? onTap, {
-    required bool filled,
-  }) {
-    final size = healthDp(context, 20);
+    VoidCallback? onTap,
+  ) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(size),
+      borderRadius: BorderRadius.circular(healthDp(context, 10)),
       child: Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
+        width: healthDp(context, 20),
+        height: healthDp(context, 20),
         decoration: ShapeDecoration(
-          color: filled ? const Color(0xFFF9F9F9) : Colors.white,
+          color: Colors.white,
           shape: RoundedRectangleBorder(
-            side: const BorderSide(
-              width: 1,
-              color: _kBorder,
-            ),
-            borderRadius: BorderRadius.circular(size),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
           ),
+          shadows: [
+            BoxShadow(
+              color: const Color(0x0C000000),
+              blurRadius: healthDp(context, 1.07),
+              offset: Offset(0, healthDp(context, 0.54)),
+              spreadRadius: 0,
+            ),
+          ],
         ),
         child: Icon(
           icon,
-          size: healthSp(context, 10),
-          color: onTap == null ? Colors.grey[300] : _kInk,
+          size: healthDp(context, 14),
+          color: onTap == null ? Colors.grey[300] : const Color(0xFFFF5A8D),
         ),
       ),
     );
