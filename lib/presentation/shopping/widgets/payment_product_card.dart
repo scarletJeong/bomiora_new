@@ -398,25 +398,6 @@ class _PaymentVendorSection extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              SizedBox(width: healthDp(context, 5)),
-              Container(
-                padding: EdgeInsets.all(healthDp(context, 5)),
-                decoration: ShapeDecoration(
-                  color: const Color(0x0CFF5A8D),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(healthDp(context, 50)),
-                  ),
-                ),
-                child: Text(
-                  '묶음배송',
-                  style: TextStyle(
-                    color: _kPink,
-                    fontSize: healthSp(context, 10),
-                    fontFamily: _kGmarketSans,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
             ],
           ),
         ),

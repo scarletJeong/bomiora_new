@@ -197,6 +197,12 @@ abstract final class AppAssets {
   static const String payCash = '${_img}pay_cash.svg';
   static const String escrow = '${_img}escrow.png';
 
+  // 결제 완료 _ 진료예약 카드 아이콘
+  static const String paymentCompleteReservationDateIcon = '${_img}payment_complete_reservation_date_icon.svg'; // 날짜 - 달력아이콘
+  static const String paymentCompleteReservationTimeIcon = '${_img}payment_complete_reservation_time_icon.svg'; // 시간 - 시계아이콘
+  static const String paymentCompleteReservationDoctorIcon = '${_img}payment_complete_reservation_doctor_icon.svg'; // 정대진 - 인간아이콘콘
+
+
 
   /*9. 은행 아이콘 */
   static const String IBKIcon = '${_img}bankIcon_IBK.svg';

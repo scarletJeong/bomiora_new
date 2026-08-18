@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../../core/constants/app_assets.dart';
 import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../data/models/delivery/delivery_model.dart';
 import '../../../../health/health_common/health_responsive_scale.dart';
@@ -143,17 +145,17 @@ class DeliveryDetailReservationSection extends StatelessWidget {
           children: [
             _meta(
               context,
-              icon: Icons.calendar_today_outlined,
+              asset: AppAssets.paymentCompleteReservationDateIcon,
               label: formatDateCompact(order.reservationDate),
             ),
             _meta(
               context,
-              icon: Icons.access_time,
+              asset: AppAssets.paymentCompleteReservationTimeIcon,
               label: formatTimeRange(order),
             ),
             _meta(
               context,
-              icon: Icons.person_outline,
+              asset: AppAssets.paymentCompleteReservationDoctorIcon,
               label: doctorName,
             ),
           ],
@@ -204,24 +206,26 @@ class DeliveryDetailReservationSection extends StatelessWidget {
 
   Widget _meta(
     BuildContext context, {
-    required IconData icon,
+    required String asset,
     required String label,
   }) {
+    final iconSize = healthDp(context, 16);
     return Expanded(
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: healthDp(context, 24),
-            color: iconColor,
+          SvgPicture.asset(
+            asset,
+            width: iconSize,
+            height: iconSize,
+            colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
           ),
-          SizedBox(height: healthDp(context, 4)),
+          SizedBox(height: healthDp(context, 3)),
           Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: const Color(0xFF333333),
-              fontSize: healthSp(context, 12),
+              fontSize: healthSp(context, 10),
               fontFamily: DeliveryDetailSectionStyle.font,
               fontWeight: FontWeight.w500,
               height: 1.38,
