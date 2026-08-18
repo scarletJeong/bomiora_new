@@ -263,7 +263,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                             context,
                             AppAssets.emptyAlarmIcon,
                           ),
-                          message: '로그인 후 알림을 확인할 수 있습니다.',
+                          message: '알림내역이 없습니다',
                         ),
                       );
                     },

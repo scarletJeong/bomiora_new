@@ -43,6 +43,8 @@ abstract final class AppAssets {
 
   // 앱바 - 검색 아이콘
   static const String searchIcon = '${_img}search_icon.svg';
+  // 앱바 - 설정 아이콘
+  static const String appbarSettingsIcon = '${_img}appbar_menu_settings.svg';
 
   // 사진추가하기 회색카드 아이콘
   static const String addPhotoIcon = '${_img}add_photo_icon.svg';

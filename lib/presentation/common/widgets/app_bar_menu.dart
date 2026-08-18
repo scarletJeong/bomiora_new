@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
+import '../../../data/services/notification_inbox_service.dart';
 import '../../../data/services/prescription_purchase_history_service.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../settings/notification_center_screen.dart';
@@ -13,7 +14,7 @@ import '../../shopping/screens/cart_integration_screen.dart';
 import '../../home/search/search_popup.dart';
 import 'cart_dropdown_menu.dart';
 
-/// 홈: 검색·알림·장바구니 / 마이페이지: 설정·장바구니
+/// 홈: 검색·알림·장바구니 / 마이페이지: 장바구니·설정
 enum AppBarMenuActionsStyle { home, myPage }
 
 /// [HealthAppBar]와 동일한 전체 높이(375 기준 52).
@@ -56,11 +57,32 @@ class _AppBarMenuState extends State<AppBarMenu> {
   final GlobalKey _cartIconKey = GlobalKey();
   OverlayEntry? _cartOverlay;
   bool _cartNavigating = false;
+  int _unreadNotificationCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationInboxService.revision.addListener(_loadUnreadNotificationCount);
+    _loadUnreadNotificationCount();
+  }
 
   @override
   void dispose() {
+    NotificationInboxService.revision
+        .removeListener(_loadUnreadNotificationCount);
     _removeCartOverlay();
     super.dispose();
+  }
+
+  Future<void> _loadUnreadNotificationCount() async {
+    final items = await NotificationInboxService.fetchList(
+      unreadOnly: true,
+      allowServer: false,
+    );
+    if (!mounted) return;
+    setState(() {
+      _unreadNotificationCount = items.length;
+    });
   }
 
   @override
@@ -200,6 +222,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
     required double width,
     required double height,
     required double iconSz,
+    Widget? badge,
   }) {
     return SizedBox(
       key: key,
@@ -210,15 +233,54 @@ class _AppBarMenuState extends State<AppBarMenu> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onPressed,
-          child: Align(
+          child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
-            child: SvgPicture.asset(
-              asset,
-              width: iconSz,
-              height: iconSz,
-              fit: BoxFit.contain,
-              alignment: Alignment.center,
-            ),
+            children: [
+              SvgPicture.asset(
+                asset,
+                width: iconSz,
+                height: iconSz,
+                fit: BoxFit.contain,
+                alignment: Alignment.center,
+              ),
+              if (badge != null)
+                Positioned(
+                  top: (height - iconSz) / 2 - healthDp(context, 4),
+                  right: (width - iconSz) / 2 - healthDp(context, 6),
+                  child: badge,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? _notificationCountBadge() {
+    final count = _unreadNotificationCount;
+    if (count <= 0) return null;
+    final label = count > 99 ? '99+' : '$count';
+    return ConstrainedBox(
+      constraints: BoxConstraints(minWidth: healthDp(context, 16)),
+      child: Container(
+        height: healthDp(context, 16),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 4)),
+        decoration: ShapeDecoration(
+          color: const Color(0xFFFF5A8D),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: healthSp(context, 10),
+            fontFamily: 'Gmarket Sans TTF',
+            fontWeight: FontWeight.w500,
+            height: 1,
           ),
         ),
       ),
@@ -253,17 +315,12 @@ class _AppBarMenuState extends State<AppBarMenu> {
           height: barH,
           width: tapBoxW,
           child: _actionSvg(
-            asset: AppAssets.settingsIcon,
+            key: _cartIconKey,
+            asset: AppAssets.appbarCartIcon,
             width: tapBoxW,
             height: barH,
             iconSz: iconSz,
-            onPressed: () {
-              Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
+            onPressed: _toggleCartMenu,
           ),
         ),
         Positioned(
@@ -272,12 +329,18 @@ class _AppBarMenuState extends State<AppBarMenu> {
           height: barH,
           width: tapBoxW,
           child: _actionSvg(
-            key: _cartIconKey,
-            asset: AppAssets.appbarCartIcon,
+            asset: AppAssets.appbarSettingsIcon,
             width: tapBoxW,
             height: barH,
-            iconSz: iconSz,
-            onPressed: _toggleCartMenu,
+            iconSz: healthDp(context, 14),
+            badge: _notificationCountBadge(),
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
           ),
         ),
       ];
@@ -312,6 +375,7 @@ class _AppBarMenuState extends State<AppBarMenu> {
             width: tapBoxW,
             height: barH,
             iconSz: iconSz,
+            badge: _notificationCountBadge(),
             onPressed: () {
               Navigator.of(context).push<void>(
                 MaterialPageRoute<void>(
