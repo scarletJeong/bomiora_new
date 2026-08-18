@@ -531,16 +531,17 @@ class QaListScreenState extends State<QaListScreen> {
                 children: [
                   _buildListHeader(),
                   SizedBox(
-                    height: (constraints.maxHeight -
-                            healthDp(context, 200))
-                        .clamp(healthDp(context, 120), double.infinity),
-                  ),
-                  CenteredEmptyState(
-                    iconWidget: CenteredEmptyState.assetIcon(
-                      context,
-                      AppAssets.emptyQAIcon,
+                    height: (constraints.maxHeight - healthDp(context, 140))
+                        .clamp(healthDp(context, 220), double.infinity),
+                    child: Center(
+                      child: CenteredEmptyState(
+                        iconWidget: CenteredEmptyState.assetIcon(
+                          context,
+                          AppAssets.emptyQAIcon,
+                        ),
+                        message: _emptyTabMessage,
+                      ),
                     ),
-                    message: _emptyTabMessage,
                   ),
                   SizedBox(height: healthDp(context, 40)),
                 ],
