@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/pending_product_checkout.dart';
 import '../../../core/utils/node_value_parser.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
@@ -129,6 +130,7 @@ class _SocialSignupScreenState extends State<SocialSignupScreen> {
       );
 
       if (!mounted) return;
+      if (PendingProductCheckout.navigateAfterAuth(context)) return;
       Navigator.of(context)
           .pushNamedAndRemoveUntil('/enter-home', (route) => false);
       return;

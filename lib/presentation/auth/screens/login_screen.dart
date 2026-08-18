@@ -11,6 +11,7 @@ import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../widgets/kcp_cert.dart';
 import 'signup_screen.dart';
+import '../../../data/services/pending_product_checkout.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -346,12 +347,11 @@ class _LoginScreenState extends State<LoginScreen> {
         // 다음 마이크로태스크에서 네비게이션 실행 (더 안전함)
         Future.microtask(() {
           if (!mounted) return;
+          if (PendingProductCheckout.navigateAfterAuth(context)) return;
           try {
-            // context를 다시 가져와서 사용
             final navigator = Navigator.of(context);
             navigator.pushReplacementNamed(_returnTo ?? '/enter-home');
           } catch (e) {
-            // 실패 시 홈으로 이동 시도
             if (mounted) {
               try {
                 Navigator.of(context)
@@ -701,6 +701,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
+    if (PendingProductCheckout.navigateAfterAuth(context)) return;
     Navigator.of(context).pushReplacementNamed(_returnTo ?? '/enter-home');
   }
 
