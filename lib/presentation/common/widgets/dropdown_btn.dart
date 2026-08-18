@@ -188,57 +188,21 @@ class DropdownBtn extends StatefulWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         for (int i = 0; i < items.length; i++)
-                          Material(
-                            color: Colors.white,
-                            child: InkWell(
-                              onTap: () {
-                                onSelected(items[i]);
-                                close();
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding: resolvedItemPadding,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      width: i == items.length - 1
-                                          ? 0
-                                          : dividerWidth,
-                                      color: const Color(0x7FD2D2D2),
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      itemTextAlign == TextAlign.center
-                                          ? MainAxisAlignment.center
-                                          : MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    if (leadingBuilder != null) ...[
-                                      leadingBuilder(items[i]) ??
-                                          const SizedBox.shrink(),
-                                      SizedBox(width: itemLeadingGap),
-                                    ],
-                                    Flexible(
-                                      child: Text(
-                                        items[i],
-                                        textAlign: itemTextAlign,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: const Color(0xFF1A1A1A),
-                                          fontSize: itemFontSize,
-                                          fontFamily: itemFontFamily,
-                                          fontWeight: itemFontWeight,
-                                          height: 1.2,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          _DropdownHoverItem(
+                            label: items[i],
+                            showDivider: i != items.length - 1,
+                            dividerWidth: dividerWidth,
+                            itemPadding: resolvedItemPadding,
+                            itemFontSize: itemFontSize,
+                            itemFontFamily: itemFontFamily,
+                            itemFontWeight: itemFontWeight,
+                            itemTextAlign: itemTextAlign,
+                            leading: leadingBuilder?.call(items[i]),
+                            itemLeadingGap: itemLeadingGap,
+                            onTap: () {
+                              onSelected(items[i]);
+                              close();
+                            },
                           ),
                       ],
                     ),
@@ -470,6 +434,100 @@ class _DropdownBtnState extends State<DropdownBtn> {
                   color: canOpen
                       ? const Color(0xFF898686)
                       : const Color(0xFFBDBDBD),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownHoverItem extends StatefulWidget {
+  const _DropdownHoverItem({
+    required this.label,
+    required this.showDivider,
+    required this.dividerWidth,
+    required this.itemPadding,
+    required this.itemFontSize,
+    required this.itemFontFamily,
+    required this.itemFontWeight,
+    required this.itemTextAlign,
+    required this.onTap,
+    this.leading,
+    this.itemLeadingGap = 0,
+  });
+
+  final String label;
+  final bool showDivider;
+  final double dividerWidth;
+  final EdgeInsetsGeometry itemPadding;
+  final double itemFontSize;
+  final String itemFontFamily;
+  final FontWeight itemFontWeight;
+  final TextAlign itemTextAlign;
+  final VoidCallback onTap;
+  final Widget? leading;
+  final double itemLeadingGap;
+
+  @override
+  State<_DropdownHoverItem> createState() => _DropdownHoverItemState();
+}
+
+class _DropdownHoverItemState extends State<_DropdownHoverItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: Colors.white,
+        child: InkWell(
+          onTap: widget.onTap,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          child: Container(
+            width: double.infinity,
+            padding: widget.itemPadding,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(
+                  width: widget.showDivider ? widget.dividerWidth : 0,
+                  color: const Color(0x7FD2D2D2),
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: widget.itemTextAlign == TextAlign.center
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (widget.leading != null) ...[
+                  widget.leading!,
+                  SizedBox(width: widget.itemLeadingGap),
+                ],
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    textAlign: widget.itemTextAlign,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _hovered
+                          ? const Color(0xFFFF5A8D)
+                          : const Color(0xFF1A1A1A),
+                      fontSize: widget.itemFontSize,
+                      fontFamily: widget.itemFontFamily,
+                      fontWeight: widget.itemFontWeight,
+                      height: 1.2,
+                    ),
+                  ),
                 ),
               ],
             ),

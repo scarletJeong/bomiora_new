@@ -562,7 +562,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     style: TextStyle(
                       fontFamily: _fontFamily,
                       fontSize: healthSp(context, 13),
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       height: 1.2,
                     ),
                   ),
@@ -603,7 +603,7 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                     style: TextStyle(
                       fontFamily: _fontFamily,
                       fontSize: healthSp(context, 13),
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       height: 1.2,
                     ),
                   ),
@@ -1003,6 +1003,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                               child: Container(
                                 width: healthDp(context, 16),
                                 height: healthDp(context, 16),
+                                alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
@@ -1022,7 +1023,7 @@ class _DrawerShortcutState extends State<_DrawerShortcut> {
                                   _showCartDropdown
                                       ? Icons.keyboard_arrow_up
                                       : Icons.keyboard_arrow_down,
-                                  size: healthDp(context, 16),
+                                  size: healthDp(context, 11),
                                   color: const Color(0xFFFF5A8D),
                                 ),
                               ),
