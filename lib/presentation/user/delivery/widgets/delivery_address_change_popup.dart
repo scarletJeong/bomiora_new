@@ -78,6 +78,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
 
   _SubjectPreset _subjectPreset = _SubjectPreset.none;
   bool _isDefault = false;
+  bool _wasDefault = false;
 
   late final AnimationController _pulseCtrl = AnimationController(
     vsync: this,
@@ -88,7 +89,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   bool get _isEditForm => _editingAddress != null;
 
   String get _formTitle =>
-      _isEditForm ? '배송지 수정' : '배송지 추가';
+      _isEditForm ? '배송지 수정' : '배송지 신규 입력';
 
   @override
   void initState() {
@@ -178,6 +179,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     _zipController.dispose();
     _addr1Controller.dispose();
     _addr2Controller.dispose();
+    _pulseCtrl.stop();
     _pulseCtrl.dispose();
     super.dispose();
   }
@@ -360,6 +362,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     _addr2Controller.clear();
     _subjectPreset = _SubjectPreset.none;
     _isDefault = false;
+    _wasDefault = false;
     _pulseFields = {};
     _editingAddress = null;
   }
@@ -373,6 +376,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     _addr1Controller.text = (m['adAddr1'] ?? '').toString().trim();
     _addr2Controller.text = (m['adAddr2'] ?? '').toString().trim();
     _isDefault = m['adDefault'] == 1;
+    _wasDefault = _isDefault;
 
     final subject = (m['adSubject'] ?? '').toString().trim();
     if (subject.isEmpty) {
@@ -534,11 +538,14 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         });
       }
       if (!mounted) return;
+      final defaultChanged = _isDefault && !_wasDefault;
       await _goToList();
       if (!mounted) return;
       AppToastOverlay.show(
         context,
-        wasEdit ? '배송지를 수정했습니다.' : '배송지를 추가했습니다.',
+        defaultChanged
+            ? '기본배송지가 변경되었어요.'
+            : (wasEdit ? '배송지를 수정했습니다.' : '배송지를 추가했습니다.'),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -611,7 +618,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
       borderRadius: BorderRadius.circular(healthDp(context, 8)),
       child: Container(
         width: double.infinity,
-        height: healthDp(context, 42),
+        height: healthDp(context, 35),
         clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
           color: Colors.white,
@@ -625,42 +632,11 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
           '+ 배송지 신규입력',
           style: TextStyle(
             color: _kMuted,
-            fontSize: healthSp(context, 12),
+            fontSize: healthSp(context, 10),
             fontFamily: _kFont,
             fontWeight: FontWeight.w500,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildRadio(BuildContext context, bool selected) {
-    final size = healthDp(context, 20);
-    return Padding(
-      padding: EdgeInsets.only(top: healthDp(context, 2)),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: ShapeDecoration(
-          color: selected ? _kPink : Colors.white,
-          shape: OvalBorder(
-            side: BorderSide(
-              width: healthDp(context, 1.5),
-              color: selected ? _kPink : _kBorder,
-            ),
-          ),
-        ),
-        alignment: Alignment.center,
-        child: selected
-            ? Container(
-                width: size * 0.4,
-                height: size * 0.4,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-              )
-            : null,
       ),
     );
   }
@@ -684,7 +660,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
         child: Text(
           '수정',
           style: TextStyle(
-            color: _kInk,
+            color: _kBorder,
             fontSize: healthSp(context, 11),
             fontFamily: _kFont,
             fontWeight: FontWeight.w500,
@@ -740,8 +716,6 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildRadio(context, selected),
-                  SizedBox(width: healthDp(context, 10)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -917,63 +891,76 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
     final radius = healthDp(context, 10);
     final fieldH = _fieldHeight(context);
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Container(
+    return SizedBox(
       key: key,
       width: double.infinity,
       height: fieldH,
-      padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
-      clipBehavior: Clip.antiAlias,
-      alignment: Alignment.centerLeft,
-      decoration: ShapeDecoration(
-        color: fillColor,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: borderColor),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: fillColor,
           borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: borderColor),
         ),
-      ),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        textInputAction: textInputAction,
-        cursorColor: _kPink,
-        // 키패드에 가리지 않도록 여유 스크롤 패딩
-        scrollPadding: EdgeInsets.only(
-          bottom: keyboardInset + healthDp(context, 180),
-        ),
-        style: TextStyle(
-          color: _kInk,
-          fontSize: healthSp(context, 12),
-          fontFamily: _kFont,
-          fontWeight: FontWeight.w500,
-          height: 1.2,
-        ),
-        onTap: () {
-          if (pulseKey == 'addr2') {
-            _scrollToAddr2Field(alignment: 0.05);
-          }
-        },
-        onEditingComplete: onSubmitted,
-        onSubmitted: (_) => onSubmitted?.call(),
-        onChanged: (_) {
-          if (_pulseFields.contains(pulseKey)) {
-            setState(() => _pulseFields = {..._pulseFields}..remove(pulseKey));
-          }
-        },
-        decoration: InputDecoration(
-          isDense: true,
-          isCollapsed: true,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          hintText: hint,
-          hintStyle: TextStyle(
-            color: _kMuted,
-            fontSize: healthSp(context, 12),
-            fontFamily: _kFont,
-            fontWeight: FontWeight.w300,
-            height: 1.2,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: keyboardType,
+                inputFormatters: inputFormatters,
+                textInputAction: textInputAction,
+                textAlignVertical: TextAlignVertical.center,
+                maxLines: 1,
+                cursorColor: _kPink,
+                scrollPadding: EdgeInsets.only(
+                  bottom: keyboardInset + healthDp(context, 180),
+                ),
+                style: TextStyle(
+                  color: _kInk,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w500,
+                  height: 1.0,
+                ),
+                onTap: () {
+                  if (pulseKey == 'addr2') {
+                    _scrollToAddr2Field(alignment: 0.05);
+                  }
+                },
+                onEditingComplete: onSubmitted,
+                onSubmitted: (_) => onSubmitted?.call(),
+                onChanged: (_) {
+                  if (_pulseFields.contains(pulseKey)) {
+                    setState(
+                      () => _pulseFields = {..._pulseFields}..remove(pulseKey),
+                    );
+                  }
+                },
+                decoration: InputDecoration(
+                  isDense: true,
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  hintText: hint,
+                  hintStyle: TextStyle(
+                    color: _kMuted,
+                    fontSize: healthSp(context, 12),
+                    fontFamily: _kFont,
+                    fontWeight: FontWeight.w300,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -1130,6 +1117,7 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
   Widget _subjectChip(
       BuildContext context, String label, _SubjectPreset preset) {
     final selected = _subjectPreset == preset;
+    final h = _fieldHeight(context);
     return InkWell(
       onTap: () {
         setState(() {
@@ -1145,31 +1133,30 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
           }
         });
       },
-      borderRadius: BorderRadius.circular(healthDp(context, 15)),
-      child: Container(
-        height: healthDp(context, 45),
-        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
-        clipBehavior: Clip.antiAlias,
-        decoration: ShapeDecoration(
-          color: selected ? _kChipTint : Colors.white,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: selected ? _kPink : _kBorder),
-            borderRadius: BorderRadius.circular(healthDp(context, 15)),
+      borderRadius: BorderRadius.circular(healthDp(context, 10)),
+      child: SizedBox(
+        height: h,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: selected ? _kChipTint : Colors.white,
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
+            border: Border.all(color: selected ? _kPink : _kBorder),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? const Color(0xFF1A1A1E) : _kAddrMuted,
-                fontSize: healthSp(context, 12),
-                fontFamily: _kFont,
-                fontWeight: FontWeight.w500,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: healthDp(context, 14)),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? const Color(0xFF1A1A1E) : _kAddrMuted,
+                  fontSize: healthSp(context, 12),
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w500,
+                  height: 1.0,
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1275,14 +1262,18 @@ class _DeliveryAddressChangePopupState extends State<DeliveryAddressChangePopup>
                       ),
                     ),
                     SizedBox(height: healthDp(context, 8)),
-                    Row(
-                      children: [
-                        _subjectChip(context, '집', _SubjectPreset.home),
-                        SizedBox(width: healthDp(context, 8)),
-                        _subjectChip(context, '회사', _SubjectPreset.office),
-                        SizedBox(width: healthDp(context, 8)),
-                        _subjectChip(context, '직접입력', _SubjectPreset.custom),
-                      ],
+                    SizedBox(
+                      height: _fieldHeight(context),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _subjectChip(context, '집', _SubjectPreset.home),
+                          SizedBox(width: healthDp(context, 8)),
+                          _subjectChip(context, '회사', _SubjectPreset.office),
+                          SizedBox(width: healthDp(context, 8)),
+                          _subjectChip(context, '직접입력', _SubjectPreset.custom),
+                        ],
+                      ),
                     ),
                     if (_subjectPreset == _SubjectPreset.custom) ...[
                       SizedBox(height: healthDp(context, 8)),

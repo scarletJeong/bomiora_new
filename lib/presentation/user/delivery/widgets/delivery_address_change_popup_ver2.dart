@@ -240,7 +240,7 @@ class _DeliveryAddressChangePopupState
       borderRadius: BorderRadius.circular(healthDp(context, 8)),
       child: Container(
         width: double.infinity,
-        height: healthDp(context, 42),
+        height: healthDp(context, 35),
         clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
           color: Colors.white,
@@ -251,45 +251,14 @@ class _DeliveryAddressChangePopupState
         ),
         alignment: Alignment.center,
         child: Text(
-          '+ 배송지 신규입력',
+          '+ 배송지 신규 입력',
           style: TextStyle(
             color: _kMuted,
-            fontSize: healthSp(context, 14),
+            fontSize: healthSp(context, 10),
             fontFamily: _kFont,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w300,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildRadio(BuildContext context, bool selected) {
-    final size = healthDp(context, 20);
-    return Padding(
-      padding: EdgeInsets.only(top: healthDp(context, 2)),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: ShapeDecoration(
-          color: selected ? _kPink : Colors.white,
-          shape: OvalBorder(
-            side: BorderSide(
-              width: healthDp(context, 1.5),
-              color: selected ? _kPink : _kBorder,
-            ),
-          ),
-        ),
-        alignment: Alignment.center,
-        child: selected
-            ? Container(
-                width: size * 0.4,
-                height: size * 0.4,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-              )
-            : null,
       ),
     );
   }
@@ -366,8 +335,6 @@ class _DeliveryAddressChangePopupState
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildRadio(context, selected),
-                  SizedBox(width: healthDp(context, 10)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -698,6 +665,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
     _zipController.dispose();
     _addr1Controller.dispose();
     _addr2Controller.dispose();
+    _pulseCtrl.stop();
     _pulseCtrl.dispose();
     super.dispose();
   }
@@ -1166,7 +1134,7 @@ class _AddressFormDialogState extends State<_AddressFormDialog>
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            _isEdit ? '배송지 수정' : '배송지 추가',
+                            _isEdit ? '배송지 수정' : '배송지 신규 입력',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: _kInk,

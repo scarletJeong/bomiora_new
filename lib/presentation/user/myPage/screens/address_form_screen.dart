@@ -447,10 +447,13 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
       if (!mounted) return;
       if (result['success'] == true) {
         final isNew = widget.address == null;
-        final defaultChanged = defaultFlag == 1 && !_wasDefault && !isNew;
+        final defaultChanged =
+            defaultFlag == 1 && !_wasDefault && !(_mustKeepDefault && isNew);
         AppToastOverlay.show(
           context,
-          isNew ? '배송지를 추가했습니다.' : '배송지를 수정했습니다.',
+          defaultChanged
+              ? '기본배송지가 변경되었어요.'
+              : (isNew ? '배송지를 추가했습니다.' : '배송지를 수정했습니다.'),
         );
         Navigator.of(context).pop(<String, dynamic>{
           'ok': true,
