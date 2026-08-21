@@ -170,6 +170,16 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
 
   void _goToProductIndex(int index) {
     if (index == _productIndex) return;
+
+    for (var i = 0; i < index; i++) {
+      if (i == _productIndex) {
+        if (!_validateCurrent()) return;
+      } else if (!_isProductDraftComplete(i)) {
+        AppToastOverlay.show(context, '${i + 1}번 상품 리뷰를 먼저 작성해 주세요.');
+        return;
+      }
+    }
+
     _saveCurrentDraft();
     setState(() {
       _productIndex = index;
@@ -224,39 +234,102 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         children: [
           for (var i = 0; i < list.length; i++) ...[
             if (i > 0) SizedBox(width: healthDp(context, 8)),
-            GestureDetector(
-              onTap: () => _goToProductIndex(i),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: healthDp(context, 12),
-                  vertical: healthDp(context, 4),
-                ),
-                decoration: ShapeDecoration(
-                  color: i == _productIndex ? _kPink : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                      width: 1,
-                      color:
-                          i == _productIndex ? _kPink : const Color(0xFFD2D2D2),
-                    ),
-                    borderRadius: BorderRadius.circular(healthDp(context, 999)),
-                  ),
-                ),
-                child: Text(
-                  '${i + 1}번 상품',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: i == _productIndex ? Colors.white : _kMuted,
-                    fontSize: healthSp(context, 11),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w400,
-                    height: 1.5,
-                  ),
-                ),
+            _buildProductStepChip(i),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 0=완료(이미 지나감), 1=작성중(현재), 2=대기(아직 안 씀)
+  int _productStepKind(int index) {
+    if (index < _productIndex) return 0;
+    if (index == _productIndex) return 1;
+    return 2;
+  }
+
+  bool _isProductDraftComplete(int index) {
+    if (index == _productIndex) return _canProceedCurrent;
+    final d = _drafts[index];
+    if (d == null) return false;
+    return d.score >= 0.1 && d.text.trim().length >= 20;
+  }
+
+  Widget _buildProductStepChip(int index) {
+    final kind = _productStepKind(index);
+    final label = '${index + 1}번 상품';
+    final showIcon = kind != 2;
+
+    late final Color bg;
+    late final Color border;
+    late final Color textColor;
+    List<BoxShadow>? shadows;
+
+    switch (kind) {
+      case 0: // 완료
+        bg = const Color(0xFFFFF0F5);
+        border = const Color(0xFFFFC5D8);
+        textColor = _kPink;
+        shadows = null;
+        break;
+      case 1: // 작성중
+        bg = _kPink;
+        border = _kPink;
+        textColor = Colors.white;
+        shadows = [
+          BoxShadow(
+            color: const Color(0x2DFF5A8D),
+            blurRadius: healthDp(context, 12),
+            offset: Offset(0, healthDp(context, 5)),
+          ),
+        ];
+        break;
+      default: // 대기
+        bg = Colors.white;
+        border = const Color(0xFFD8D5D5);
+        textColor = _kMuted;
+        shadows = null;
+        break;
+    }
+
+    return GestureDetector(
+      onTap: () => _goToProductIndex(index),
+      child: Container(
+        height: healthDp(context, 25),
+        padding: EdgeInsets.symmetric(horizontal: healthDp(context, 10)),
+        decoration: ShapeDecoration(
+          color: bg,
+          shadows: shadows,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: healthDp(context, 1), color: border),
+            borderRadius: BorderRadius.circular(healthDp(context, 999)),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showIcon) ...[
+              Icon(
+                Icons.check_circle,
+                size: healthDp(context, 9),
+                color: textColor,
+              ),
+              SizedBox(width: healthDp(context, 4)),
+            ],
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontSize: healthSp(context, 10),
+                fontFamily: _kFont,
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+                letterSpacing: healthSp(context, -0.5),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -612,10 +685,10 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
   Widget _bottomActionBar(BuildContext context) {
     final isLast = !_isMulti || _productIndex >= _targetProducts.length - 1;
     final isFirst = !_isMulti || _productIndex <= 0;
-    final leftLabel = _isMulti ? (isFirst ? '취소' : '이전') : '취소';
+    final leftLabel = widget._isEditMode ? '취소' : '이전';
     final rightLabel = widget._isEditMode
         ? '수정'
-        : (_isMulti ? (isLast ? '등록' : '다음') : '등록');
+        : (_isMulti ? (isLast ? '완료' : '다음') : '완료');
 
     return SafeArea(
       top: false,
@@ -639,6 +712,7 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
         child: Row(
           children: [
             Expanded(
+              flex: 2,
               child: OutlinedButton(
                 onPressed: _isLoading
                     ? null
@@ -669,8 +743,9 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
                 ),
               ),
             ),
-            SizedBox(width: healthDp(context, 20)),
+            SizedBox(width: healthDp(context, 10)),
             Expanded(
+              flex: 8,
               child: ElevatedButton(
                 onPressed: (_isLoading || !_canProceedCurrent)
                     ? null
@@ -1045,36 +1120,27 @@ class _ReviewWriteGeneralScreenState extends State<ReviewWriteGeneralScreen> {
           Positioned(
             right: 0,
             bottom: 0,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$len자',
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 10),
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -0.6,
+            child: meetsMin
+                ? Icon(
+                    Icons.check_circle,
+                    size: healthDp(context, 15),
+                    color: _kPink,
+                  )
+                : Text(
+                    len == 0
+                        ? '최소 20자 이상 작성'
+                        : '${20 - len}자 더 필요',
+                    style: TextStyle(
+                      fontFamily: _kFont,
+                      color: len == 0
+                          ? const Color(0xFFAAA6A6)
+                          : const Color(0xFF898686),
+                      fontSize: healthSp(context, 9),
+                      fontWeight: FontWeight.w500,
+                      height: 1.50,
+                      letterSpacing: healthSp(context, -0.55),
+                    ),
                   ),
-                ),
-                SizedBox(width: healthDp(context, 6)),
-                Container(
-                  width: healthDp(context, 16),
-                  height: healthDp(context, 16),
-                  decoration: BoxDecoration(
-                    color: meetsMin
-                        ? const Color(0xFF22C55E)
-                        : const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    meetsMin ? Icons.check : Icons.close,
-                    size: healthDp(context, 11),
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
