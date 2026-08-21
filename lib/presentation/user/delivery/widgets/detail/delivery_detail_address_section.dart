@@ -95,7 +95,7 @@ class DeliveryDetailAddressSection extends StatelessWidget {
                       color: Colors.white,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                          width: 1,
+                          width: healthDp(context, 1),
                           color: changeButtonPink
                               ? DeliveryDetailSectionStyle.pink
                               : const Color(0xFFE5E7EB),
@@ -171,7 +171,10 @@ class DeliveryDetailAddressSection extends StatelessWidget {
               alignment: Alignment.centerLeft,
               decoration: ShapeDecoration(
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 1, color: Color(0xFFD2D2D2)),
+                  side: BorderSide(
+                    width: healthDp(context, 1),
+                    color: const Color(0xFFD2D2D2),
+                  ),
                   borderRadius: BorderRadius.circular(healthDp(context, 10)),
                 ),
               ),

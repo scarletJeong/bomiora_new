@@ -49,7 +49,7 @@ class DeliveryDetailReservationProductsCard extends StatelessWidget {
           SizedBox(height: healthDp(context, 20)),
           Container(
             width: double.infinity,
-            height: 1,
+            height: healthDp(context, 1),
             color: const Color(0xFFE8E8E8),
           ),
           SizedBox(height: healthDp(context, 20)),

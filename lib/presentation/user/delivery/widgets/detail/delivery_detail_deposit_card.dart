@@ -108,11 +108,11 @@ class DeliveryDetailDepositCard extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(healthDp(context, 15)),
               ),
-              shadows: const [
+              shadows: [
                 BoxShadow(
-                  color: Color(0x19000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
+                  color: const Color(0x19000000),
+                  blurRadius: healthDp(context, 4),
+                  offset: Offset(0, healthDp(context, 1)),
                 ),
               ],
             ),
@@ -152,9 +152,9 @@ class DeliveryDetailDepositCard extends StatelessWidget {
                         ),
                         decoration: ShapeDecoration(
                           shape: RoundedRectangleBorder(
-                            side: const BorderSide(
-                              width: 1,
-                              color: Color(0xFFFF5C8D),
+                            side: BorderSide(
+                              width: healthDp(context, 1),
+                              color: const Color(0xFFFF5C8D),
                             ),
                             borderRadius:
                                 BorderRadius.circular(healthDp(context, 8)),

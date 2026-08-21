@@ -46,7 +46,6 @@ class DeliveryDetailProductsSection extends StatelessWidget {
       0,
       (sum, g) => sum + g.allItems.length,
     );
-    final showReservationHint = order.isPrescriptionOrder;
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,7 +64,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
         if (asCard) ...[
           Container(
             width: double.infinity,
-            height: 0.5,
+            height: healthDp(context, 0.5),
             color: const Color(0x7FD2D2D2),
           ),
           SizedBox(height: healthDp(context, 10)),
@@ -77,7 +76,6 @@ class DeliveryDetailProductsSection extends StatelessWidget {
             selectedItems: const {},
             supplyInteractive: false,
             showBundleTotal: false,
-            showSameReservationHint: showReservationHint,
             onToggleSelect: (_, __) {},
             buildParentOrMainCard: (item, {required isChild, footer}) {
               return Column(
@@ -223,7 +221,10 @@ class DeliveryDetailProductsSection extends StatelessWidget {
           alignment: Alignment.center,
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: Color(0xFFE5E7EB)),
+              side: BorderSide(
+                width: healthDp(context, 1),
+                color: const Color(0xFFE5E7EB),
+              ),
               borderRadius: BorderRadius.circular(healthDp(context, 9999)),
             ),
           ),
@@ -288,7 +289,7 @@ class DeliveryDetailProductsSection extends StatelessWidget {
           shape: RoundedRectangleBorder(
             side: border == null
                 ? BorderSide.none
-                : BorderSide(width: 1, color: border),
+                : BorderSide(width: healthDp(context, 1), color: border),
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
           ),
         ),

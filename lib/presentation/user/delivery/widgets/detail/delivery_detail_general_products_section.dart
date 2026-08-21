@@ -75,7 +75,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
           SizedBox(height: healthDp(context, 10)),
           Container(
             width: double.infinity,
-            height: 0.5,
+            height: healthDp(context, 0.5),
             color: const Color(0x7FD2D2D2),
           ),
           SizedBox(height: healthDp(context, 10)),
@@ -84,7 +84,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
               SizedBox(height: healthDp(context, 10)),
               Container(
                 width: double.infinity,
-                height: 0.5,
+                height: healthDp(context, 0.5),
                 color: const Color(0x7FD2D2D2),
               ),
               SizedBox(height: healthDp(context, 10)),
@@ -99,7 +99,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
             SizedBox(height: healthDp(context, 10)),
             Container(
               width: double.infinity,
-              height: 1,
+              height: healthDp(context, 1),
               color: const Color(0xFFE8E8E8),
             ),
             SizedBox(height: healthDp(context, 10)),
@@ -231,7 +231,10 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
           alignment: Alignment.center,
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              side: const BorderSide(width: 1, color: Color(0xFFE5E7EB)),
+              side: BorderSide(
+                width: healthDp(context, 1),
+                color: const Color(0xFFE5E7EB),
+              ),
               borderRadius: BorderRadius.circular(healthDp(context, 9999)),
             ),
           ),
@@ -296,7 +299,7 @@ class DeliveryDetailGeneralProductsSection extends StatelessWidget {
           shape: RoundedRectangleBorder(
             side: border == null
                 ? BorderSide.none
-                : BorderSide(width: 1, color: border),
+                : BorderSide(width: healthDp(context, 1), color: border),
             borderRadius: BorderRadius.circular(healthDp(context, 50)),
           ),
         ),

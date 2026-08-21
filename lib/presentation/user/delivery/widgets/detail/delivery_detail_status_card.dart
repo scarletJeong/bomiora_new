@@ -163,7 +163,7 @@ class DeliveryDetailStatusCard extends StatelessWidget {
                                 ? DeliveryDetailSectionStyle.pink
                                 : (filled
                                     ? DeliveryDetailSectionStyle.ink
-                                    : DeliveryDetailSectionStyle.muted),
+                                    : DeliveryDetailSectionStyle.mutedPending),
                             fontSize: healthSp(context, 10),
                             fontFamily: DeliveryDetailSectionStyle.font,
                             fontWeight: FontWeight.w500,
