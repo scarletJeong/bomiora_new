@@ -165,6 +165,26 @@ class QaInquiry {
     return '';
   }
 
+  /// 문의 유형 배지용 키 — 예: 상품문의, 예약/결제, 배송
+  String get inquiryTypeBadgeKey {
+    final major = inquiryMajorLabel.trim();
+    if (major.isNotEmpty) return major;
+    final ca = (caName ?? '').trim();
+    if (ca.isNotEmpty && !ca.contains('|')) return ca;
+    if (ca.contains('|')) {
+      final parts = ca
+          .split('|')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parts.length >= 2) return parts[1];
+      if (parts.isNotEmpty) return parts.first;
+    }
+    final detail = (wr6 ?? '').trim();
+    if (detail.isNotEmpty) return detail;
+    return inquiryCategoryLabel;
+  }
+
   /// 상세 칩 (`ca_name` 마지막) — 예: 결제 문의, 배송
   /// 구버전 `주문|결제` 도 지원
   String get inquiryDetailLabel {
@@ -237,12 +257,21 @@ class QaInquiry {
   /// - 예전에 content에 넣었던 메타 블록(`[…문의]…---`)은 본문에서 제거
   String get displayQuestionText {
     var body = _stripLegacyContentMeta(plainQuestionBody.trim());
+    body = _stripCardBlock(body);
     if (isLegacySubjectTitle) {
       final subject = wrSubject.trim();
       if (body.isEmpty) return subject;
       if (body.startsWith(subject)) return body;
       return '$subject\n$body';
     }
+    return body;
+  }
+
+  /// `[QA_CARD]...---` 상품 카드 JSON 블록 제거
+  String _stripCardBlock(String body) {
+    if (body.isEmpty || !body.startsWith('[QA_CARD]')) return body;
+    final sep = RegExp(r'\n---\s*\n').firstMatch(body);
+    if (sep != null) return body.substring(sep.end).trim();
     return body;
   }
 

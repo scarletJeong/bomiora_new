@@ -170,8 +170,10 @@ class ApiEndpoints {
   static const String qaList = '/api/qa/list';
   static const String qaDetail = '/api/qa';
   static const String qaCreate = '/api/qa/create';
+  static const String qaUploadImage = '/api/qa/upload-image';
   static String qaUpdate(int wrId) => '/api/qa/$wrId';
   static String qaDelete(int wrId) => '/api/qa/$wrId';
+  static String qaImage(String filename) => '/api/qa/images/$filename';
 
   // 이벤트 관련
   static const String getActiveEvents = '/api/event/active';

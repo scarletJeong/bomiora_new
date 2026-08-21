@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'qa_category_screen.dart';
+import 'qa_write_screen.dart';
 import 'qa_detail_screen.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
 import '../../common/widgets/centered_empty_state.dart';
@@ -10,6 +10,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../../data/models/qa/qa_inquiry_model.dart';
 import '../../../data/services/qa_service.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../common/widgets/app_toast_overlay.dart';
 
 /// 1:1 문의 **화면(페이지)** — 앱바, 총 문의수, 목록.
 class QaListScreen extends StatefulWidget {
@@ -69,8 +70,11 @@ class QaListScreenState extends State<QaListScreen> {
     super.dispose();
   }
 
-  Future<void> _loadContacts({bool fromPullRefresh = false}) async {
-    if (!fromPullRefresh) {
+  Future<void> _loadContacts({
+    bool fromPullRefresh = false,
+    bool preserveScroll = false,
+  }) async {
+    if (!fromPullRefresh && !preserveScroll) {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
@@ -86,9 +90,20 @@ class QaListScreenState extends State<QaListScreen> {
     try {
       final contacts = await QaService.getMyList();
       if (!mounted) return;
-      setState(() {_inquiries = contacts;
+      setState(() {
+        _inquiries = contacts;
         final total = _filteredContacts.length;
-        _visibleCount = total < _pageSize ? total : _pageSize;
+        if (preserveScroll) {
+          if (total <= 0) {
+            _visibleCount = 0;
+          } else if (_visibleCount < _pageSize) {
+            _visibleCount = total < _pageSize ? total : _pageSize;
+          } else if (_visibleCount > total) {
+            _visibleCount = total;
+          }
+        } else {
+          _visibleCount = total < _pageSize ? total : _pageSize;
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -136,7 +151,7 @@ class QaListScreenState extends State<QaListScreen> {
     final result = await Navigator.push<Object>(
       context,
       MaterialPageRoute(
-        builder: (context) => const QaCategoryScreen(),
+        builder: (context) => const QaWriteScreen(),
       ),
     );
     if (!mounted) return;
@@ -205,31 +220,75 @@ class QaListScreenState extends State<QaListScreen> {
     );
   }
 
+  Future<void> _deleteInquiry(QaInquiry item) async {
+    try {
+      final result = await QaService.delete(item.wrId);
+      if (!mounted) return;
+      if (result['success'] == true) {
+        setState(() {
+          _inquiries.removeWhere((e) => e.wrId == item.wrId);
+          final total = _filteredContacts.length;
+          _visibleCount = total < _visibleCount ? total : _visibleCount;
+        });
+        AppToastOverlay.show(context, '문의가 삭제되었습니다.');
+      } else {
+        AppToastOverlay.show(
+          context,
+          result['message']?.toString() ?? '문의 삭제에 실패했습니다.',
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      AppToastOverlay.show(context, '문의 삭제 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 목록 카드용 — 기존 회색 배지 스타일, 문구만 문의 유형
+  String _listInquiryTypeBadgeText(QaInquiry item) {
+    final key = item.inquiryTypeBadgeKey.trim();
+    const labels = <String, String>{
+      '상품문의': '상품문의',
+      '상품 문의': '상품문의',
+      '상품': '상품문의',
+      '예약/결제': '예약/결제',
+      '배송': '배송문의',
+      '배송 문의': '배송문의',
+      '교환/반품': '교환/반품',
+      '취소/환불': '취소/환불',
+      '이벤트/쿠폰/회원': '이벤트/쿠폰/회원',
+      '기타': '기타',
+      '주문': '주문문의',
+    };
+    final label = labels[key] ?? (key.isNotEmpty ? key : '기타');
+    return '[$label]';
+  }
+
   // 문의 카드
   Widget _buildContactItem(BuildContext context, QaInquiry item) {
-    final category =
-        item.inquiryCategoryLabel.isNotEmpty ? item.inquiryCategoryLabel : '기타';
+    final typeBadge = _listInquiryTypeBadgeText(item);
     final content = _firstQuestionTitle(item);
     final closed = item.isClosed;
     final status = _statusLabel(item);
     final latestDateRaw =
         item.wrLast.trim().isNotEmpty ? item.wrLast : item.wrDatetime;
     final r = healthDp(context, 16);
-    final categoryBadgeHeight = healthDp(context, 18);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => QaDetailScreen(wrId: item.wrId),
-            ),
-          ).then((_) => _loadContacts());
-        },
-        borderRadius: BorderRadius.circular(r),
-        child: Container(
+    return _SwipeDeleteQaCard(
+      key: ValueKey(item.wrId),
+      borderRadius: r,
+      onDelete: () => _deleteInquiry(item),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => QaDetailScreen(wrId: item.wrId),
+          ),
+        ).then((_) {
+          if (!mounted) return;
+          _loadContacts(preserveScroll: true);
+        });
+      },
+      child: Container(
           width: double.infinity,
           height: healthDp(context, 88),
           padding: EdgeInsets.fromLTRB(
@@ -258,30 +317,27 @@ class QaListScreenState extends State<QaListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      height: categoryBadgeHeight,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: healthDp(context, 3),
-                            vertical: healthDp(context, 1.5),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: healthDp(context, 3),
+                          vertical: healthDp(context, 1.5),
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(
+                            healthDp(context, 3.5),
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(
-                              healthDp(context, 3.5),
-                            ),
-                          ),
-                          child: Text(
-                            '[$category문의]',
-                            style: TextStyle(
-                              color: const Color(0xFF888888),
-                              fontSize: healthSp(context, 10),
-                              fontFamily: 'Apple SD Gothic Neo',
-                              fontWeight: FontWeight.w500,
-                              height: 1.5,
-                            ),
+                        ),
+                        child: Text(
+                          typeBadge,
+                          style: TextStyle(
+                            color: const Color(0xFF888888),
+                            fontSize: healthSp(context, 10),
+                            fontFamily: 'Gmarket Sans TTF',
+                            fontWeight: FontWeight.w500,
+                            height: 1.5,
                           ),
                         ),
                       ),
@@ -327,7 +383,6 @@ class QaListScreenState extends State<QaListScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -340,27 +395,31 @@ class QaListScreenState extends State<QaListScreen> {
     final bg = closed
         ? const Color(0xFFE7E8E9)
         : answered
-            ? const Color(0xFFFFE8EF)
+            ? Colors.white
             : const Color(0xFFFF5A8D);
     final fg = closed
         ? _muted
         : answered
             ? _pink
             : Colors.white;
+    final border = answered
+        ? Border.all(color: _pink, width: healthDp(context, 1))
+        : null;
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 6),
-        vertical: healthDp(context, 2),
+        horizontal: healthDp(context, 7),
+        vertical: healthDp(context, 3),
       ),
       decoration: BoxDecoration(
         color: bg,
+        border: border,
         borderRadius: BorderRadius.circular(healthDp(context, 9999)),
       ),
       child: Text(
         label,
         style: _qaText(
           context,
-          size: 9,
+          size: 10,
           color: fg,
           weight: FontWeight.w500,
           height: 1.2,
@@ -694,6 +753,110 @@ class QaListScreenState extends State<QaListScreen> {
           if (!mounted) return;
           await _loadContacts();
         },
+      ),
+    );
+  }
+}
+
+class _SwipeDeleteQaCard extends StatefulWidget {
+  const _SwipeDeleteQaCard({
+    super.key,
+    required this.child,
+    required this.onTap,
+    required this.onDelete,
+    required this.borderRadius,
+  });
+
+  final Widget child;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final double borderRadius;
+
+  @override
+  State<_SwipeDeleteQaCard> createState() => _SwipeDeleteQaCardState();
+}
+
+class _SwipeDeleteQaCardState extends State<_SwipeDeleteQaCard> {
+  double _offsetX = 0;
+
+  double _deleteWidth(BuildContext context) => healthDp(context, 72);
+
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    final max = _deleteWidth(context);
+    setState(() {
+      _offsetX = (_offsetX + details.delta.dx).clamp(-max, 0.0);
+    });
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    final max = _deleteWidth(context);
+    final shouldOpen = _offsetX < -max * 0.35 ||
+        (details.primaryVelocity != null && details.primaryVelocity! < -200);
+    setState(() {
+      _offsetX = shouldOpen ? -max : 0;
+    });
+  }
+
+  void _close() {
+    if (_offsetX == 0) return;
+    setState(() => _offsetX = 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final deleteW = _deleteWidth(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(widget.borderRadius),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: deleteW,
+                child: Material(
+                  color: const Color(0xFFFF5A8D),
+                  child: InkWell(
+                    onTap: () {
+                      _close();
+                      widget.onDelete();
+                    },
+                    child: Center(
+                      child: Text(
+                        '삭제',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: healthSp(context, 14),
+                          fontFamily: 'Gmarket Sans TTF',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onHorizontalDragUpdate: _onHorizontalDragUpdate,
+            onHorizontalDragEnd: _onHorizontalDragEnd,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOut,
+              transform: Matrix4.translationValues(_offsetX, 0, 0),
+              child: GestureDetector(
+                onTap: () {
+                  if (_offsetX != 0) {
+                    _close();
+                    return;
+                  }
+                  widget.onTap();
+                },
+                child: widget.child,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,53 @@
 class DateDisplayFormatter {
+  /// UTC instant → 한국표준시(KST, UTC+9) 벽시계
+  static DateTime toKoreaTime(DateTime dt) {
+    return dt.toUtc().add(const Duration(hours: 9));
+  }
+
+  /// API/DB 시각 문자열 → KST `yyyy.MM.dd HH:mm` (UTC+9 고정)
+  static String formatDotDateTimeKorea(String? raw) {
+    if (raw == null || raw.isEmpty || raw == '-') return '-';
+    final t = raw.trim();
+    final dt = _tryParseDateTime(t);
+    if (dt == null) {
+      final full = formatDotDateTimeFull(t);
+      final match =
+          RegExp(r'^(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2})').firstMatch(full);
+      return match?.group(1) ?? full;
+    }
+    // 항상 KST(UTC+9) 벽시계로 표시
+    final display = toKoreaTime(dt);
+    return '${display.year}.'
+        '${display.month.toString().padLeft(2, '0')}.'
+        '${display.day.toString().padLeft(2, '0')} '
+        '${display.hour.toString().padLeft(2, '0')}:'
+        '${display.minute.toString().padLeft(2, '0')}';
+  }
+
+  static DateTime? _tryParseDateTime(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return null;
+
+    try {
+      return DateTime.parse(t);
+    } catch (_) {}
+
+    // `2026.08.21 09:00:00` → `2026-08-21T09:00:00`
+    final normalized = t.replaceFirstMapped(
+      RegExp(r'^(\d{4})\.(\d{1,2})\.(\d{1,2})'),
+      (m) =>
+          '${m[1]}-${m[2]!.padLeft(2, '0')}-${m[3]!.padLeft(2, '0')}',
+    );
+    final withT = normalized.contains('T')
+        ? normalized
+        : normalized.replaceFirst(' ', 'T');
+    try {
+      return DateTime.parse(withT);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static String formatYmd(DateTime date) {
     return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
   }

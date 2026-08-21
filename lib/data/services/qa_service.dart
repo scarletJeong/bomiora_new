@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:image_picker/image_picker.dart';
+
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../../core/utils/node_value_parser.dart';
@@ -221,13 +223,32 @@ class QaService {
     }
   }
 
-  /// 문의 작성
+  /// 문의 첨부 사진 업로드
+  static Future<String?> uploadImage(XFile image) async {
+    try {
+      final response = await ApiClient.uploadFile(
+        ApiEndpoints.qaUploadImage,
+        image,
+      );
+      if (response.statusCode != 200) return null;
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      if (data['success'] != true || data['url'] == null) return null;
+      final relativeUrl = data['url'].toString().trim();
+      if (relativeUrl.isEmpty) return null;
+      if (relativeUrl.startsWith('http')) return relativeUrl;
+      return relativeUrl.startsWith('/') ? relativeUrl : '/$relativeUrl';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 문의 작성 (단일 Q&A — 추가문의 없음)
   static Future<Map<String, dynamic>> create({
     required String subject,
     required String content,
-    int? parentWrId,
     String? primaryType,
     String? detailType,
+    List<XFile>? images,
   }) async {
     try {
       final user = await AuthService.getUser();
@@ -241,6 +262,31 @@ class QaService {
         phoneNumber = user.phone!.replaceAll(RegExp(r'[^0-9]'), '');
       }
 
+      // multipart 대신 create JSON에 base64로 포함 (웹 업로드 실패 방지)
+      final imagePayloads = <Map<String, String>>[];
+      for (final file in (images ?? const <XFile>[]).take(3)) {
+        final bytes = await file.readAsBytes();
+        if (bytes.isEmpty) continue;
+        if (bytes.length > 5 * 1024 * 1024) {
+          throw Exception('사진 용량은 5MB 이하여야 합니다.');
+        }
+        final name =
+            file.name.trim().isNotEmpty ? file.name.trim() : 'image.jpg';
+        final lower = name.toLowerCase();
+        final mime = lower.endsWith('.png')
+            ? 'image/png'
+            : lower.endsWith('.gif')
+                ? 'image/gif'
+                : lower.endsWith('.webp')
+                    ? 'image/webp'
+                    : 'image/jpeg';
+        imagePayloads.add({
+          'filename': name,
+          'mime': mime,
+          'data': base64Encode(bytes),
+        });
+      }
+
       final response = await ApiClient.post(
         ApiEndpoints.qaCreate,
         {
@@ -252,7 +298,7 @@ class QaService {
           if (primaryType != null && primaryType.isNotEmpty)
             'ca_name': primaryType,
           if (detailType != null && detailType.isNotEmpty) 'wr_6': detailType,
-          if (parentWrId != null) 'parent_wr_id': parentWrId,
+          if (imagePayloads.isNotEmpty) 'images': imagePayloads,
           'wr_password': (user.password != null && user.password!.isNotEmpty)
               ? user.password
               : user.id,

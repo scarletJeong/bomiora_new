@@ -178,6 +178,9 @@ class ImageUrlHelper {
     if (isReviewApiImagePath(normalizedPath)) {
       return _resolveReviewApiImageUrl(normalizedPath);
     }
+    if (isQaApiImagePath(normalizedPath)) {
+      return _resolveQaApiImageUrl(normalizedPath);
+    }
 
     // data/item/이 없으면 추가
     if (!normalizedPath.contains('/data/item/')) {
@@ -352,6 +355,11 @@ class ImageUrlHelper {
     return p.contains('/api/user/reviews/images/');
   }
 
+  static bool isQaApiImagePath(String path) {
+    final p = path.toLowerCase();
+    return p.contains('/api/qa/images/') || p.contains('/data/qa_images/');
+  }
+
   /// 과거 `normalizeImageUrl`이 붙인 `/data/item/api/health/...` 접두사 제거
   static String fixHealthApiImagePath(String path) {
     var p = path.trim();
@@ -359,6 +367,12 @@ class ImageUrlHelper {
     if (lower.contains('/data/item/api/health/')) {
       p = p.replaceFirst(
         RegExp(r'/data/item(?=/api/health/)', caseSensitive: false),
+        '',
+      );
+    }
+    if (lower.contains('/data/item/api/qa/')) {
+      p = p.replaceFirst(
+        RegExp(r'/data/item(?=/api/qa/)', caseSensitive: false),
         '',
       );
     }
@@ -442,6 +456,32 @@ class ImageUrlHelper {
     return convertToLocalUrl(fullUrl);
   }
 
+  static String _resolveQaApiImageUrl(String imageUrl) {
+    final fixed = fixHealthApiImagePath(imageUrl);
+    late final String fullUrl;
+    if (fixed.startsWith('http://') || fixed.startsWith('https://')) {
+      fullUrl = fixed;
+    } else {
+      var path = fixed;
+      if (!path.startsWith('/')) path = '/$path';
+      fullUrl = '${_healthApiImageOrigin()}$path';
+    }
+
+    final uri = Uri.tryParse(fullUrl);
+    if (uri == null) return fullUrl;
+
+    // QA 이미지: Cafe24 data/qa_images 는 정적, Node /api/qa/images 는 API origin
+    if (isQaApiImagePath(uri.path) || isQaApiImagePath(fullUrl)) {
+      if (uri.path.toLowerCase().contains('/data/qa_images/')) {
+        if (uri.hasScheme) return fullUrl;
+        return convertToLocalUrl('https://bomiora0.mycafe24.com${uri.path}');
+      }
+      return '${ApiClient.baseUrl}${uri.path}';
+    }
+
+    return convertToLocalUrl(fullUrl);
+  }
+
   static String getImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return convertToLocalUrl('${imageBaseUrl}/data/item/no_img.png');
@@ -457,6 +497,12 @@ class ImageUrlHelper {
     if (isHealthApiImagePath(normalizedPath)) {
       return _resolveHealthApiImageUrl(normalizedPath);
     }
+    if (isReviewApiImagePath(normalizedPath)) {
+      return _resolveReviewApiImageUrl(normalizedPath);
+    }
+    if (isQaApiImagePath(normalizedPath)) {
+      return _resolveQaApiImageUrl(normalizedPath);
+    }
 
     // localhost URL 수정 (잘못된 형태)
     if (imageUrl.contains('localhost/bomiora/www/')) {
@@ -468,6 +514,13 @@ class ImageUrlHelper {
 
     // 이미 전체 URL인 경우 convertToLocalUrl로 변환
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      // localhost:9000/api/qa/images 등 API 정적 파일
+      if (isQaApiImagePath(imageUrl) || isReviewApiImagePath(imageUrl) || isHealthApiImagePath(imageUrl)) {
+        final uri = Uri.tryParse(imageUrl);
+        if (uri != null && uri.path.isNotEmpty) {
+          return '${ApiClient.baseUrl}${uri.path}';
+        }
+      }
       return convertToLocalUrl(imageUrl);
     }
     
