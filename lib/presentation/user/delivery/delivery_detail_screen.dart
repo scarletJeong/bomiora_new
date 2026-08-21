@@ -11,7 +11,8 @@ import '../../../data/services/review_service.dart';
 import '../../../utils/delivery_tracker.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 import '../../common/widgets/mobile_layout_wrapper.dart';
-import '../../customer_service/screens/qa_category_screen.dart';
+import '../../customer_service/models/qa_inquiry_draft.dart';
+import '../../customer_service/screens/qa_write_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../health/health_common/widgets/health_app_bar.dart';
 import '../../shopping/screens/prescription_booking/prescription_profile_screen.dart';
@@ -413,15 +414,31 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   List<String> _progressLabels(OrderDetailModel order) {
-    if (order.isPrescriptionOrder) {
-      return const ['결제대기중', '결제완료', '상담완료', '배송중', '배송완료'];
+    // 결제대기중(가상계좌 등)만 5단계. 카드 등 즉시결제는 처음부터 4단계.
+    if (_isPaymentWaitingStage(order)) {
+      if (order.isPrescriptionOrder) {
+        return const ['결제대기중', '결제완료', '상담완료', '배송중', '배송완료'];
+      }
+      return const ['결제대기중', '결제완료', '배송준비중', '배송중', '배송완료'];
     }
-    return const ['결제대기중', '결제완료', '배송준비중', '배송중', '배송완료'];
+    if (order.isPrescriptionOrder) {
+      return const ['결제완료', '상담완료', '배송중', '배송완료'];
+    }
+    return const ['결제완료', '배송준비중', '배송중', '배송완료'];
   }
 
   int _progressStep(OrderDetailModel order) {
     if (_isCancelledStage(order)) return 0;
+    final labels = _progressLabels(order);
+    final fourFromPaid = labels.length == 4 && labels.first == '결제완료';
+
     if (order.isPrescriptionOrder) {
+      if (fourFromPaid) {
+        if (_isCompletedStage(order)) return 3;
+        if (_isDeliveringStage(order)) return 2;
+        if (_isConsultationDoneStage(order)) return 1;
+        return 0; // 결제완료
+      }
       if (_isCompletedStage(order)) return 4;
       if (_isDeliveringStage(order)) return 3;
       if (_isConsultationDoneStage(order)) return 2;
@@ -432,7 +449,13 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       }
       return 0;
     }
-    // 일반: 결제대기중 → 결제완료 → 배송준비중 → 배송중 → 배송완료
+
+    if (fourFromPaid) {
+      if (_isCompletedStage(order)) return 3;
+      if (_isDeliveringStage(order)) return 2;
+      if (_isPreparingStage(order)) return 1;
+      return 0; // 결제완료
+    }
     if (_isCompletedStage(order)) return 4;
     if (_isDeliveringStage(order)) return 3;
     if (_isPreparingStage(order)) return 2;
@@ -817,9 +840,16 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Future<void> _openInquiry() async {
+    final order = _orderDetail;
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const QaCategoryScreen()),
+      MaterialPageRoute(
+        builder: (_) => QaWriteScreen(
+          prefilledDraft: order != null
+              ? QaInquiryDraft.fromOrderDetail(order)
+              : null,
+        ),
+      ),
     );
   }
 
