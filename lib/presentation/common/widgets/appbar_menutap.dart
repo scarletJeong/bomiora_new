@@ -13,7 +13,6 @@ import '../../shopping/screens/cart_general_screen.dart' as cart_general;
 import '../../shopping/screens/cart_integration_screen.dart';
 import '../../../data/repositories/product/product_category_catalog.dart';
 import '../../shopping/utils/get_product.dart';
-import '../../settings/settings_screen.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../customer_service/screens/qa_list_screen.dart';
 import 'cart_dropdown_menu.dart';
@@ -526,7 +525,6 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                   ),
                 ),
               ),
-              _DrawerSettingsIcon(context),
             ],
           ),
           SizedBox(height: healthDp(context, 16)),
@@ -650,49 +648,9 @@ class _AppBarMenuTapDrawerState extends State<AppBarMenuTapDrawer> {
                 ),
               ),
             ),
-            _DrawerSettingsIcon(context),
           ],
         ),
       ],
-    );
-  }
-}
-
-class _DrawerSettingsIcon extends StatelessWidget {
-  final BuildContext drawerContext;
-
-  const _DrawerSettingsIcon(this.drawerContext);
-
-  void _onTap() {
-    Navigator.pop(drawerContext);
-    Navigator.push(
-      drawerContext,
-      MaterialPageRoute<void>(
-        builder: (_) => const SettingsScreen(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _onTap,
-        borderRadius: BorderRadius.circular(healthDp(context, 8)),
-        child: SizedBox(
-          //width: healthDp(context, 25),
-          //height: healthDp(context, 25),
-          child: Center(
-            child: SvgPicture.asset(
-              AppAssets.settingsIcon,
-              width: healthDp(context, 25),
-              height: healthDp(context, 25),
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
