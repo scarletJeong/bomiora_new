@@ -20,7 +20,7 @@ class ApiClient {
   // PC의 로컬 IP 주소 (로컬 개발 시 사용)
   // 네트워크가 변경되면 이 값을 업데이트해야 합니다
   // Windows에서 확인: ipconfig 명령어로 IPv4 주소 확인
-  static const String _localPcIp = '172.30.1.83'; // PC의 실제 IP 주소
+  static const String _localPcIp = '172.30.1.81'; // PC의 실제 IP 주소
 
   static String get baseUrl {
     if (_overrideBaseUrl.trim().isNotEmpty) {
@@ -41,10 +41,9 @@ class ApiClient {
         return _devServerUrl; // 개발 서버
       }
     } else {
-      // 모바일/데스크톱 환경: 개발 서버 사용 (로컬 IP 연결 문제 해결)
-      // 로컬 개발이 필요하면 아래 주석을 해제하고 _devServerUrl 대신 사용
-      // return 'http://$_localPcIp:9000';  // 로컬 서버 사용
-      return _devServerUrl; // 개발 서버 사용
+      // 모바일: 로컬 백엔드(npm start) 우선. 원격은 아래 주석 전환.
+      return 'http://$_localPcIp:9000';
+      // return _devServerUrl;
     }
   }
 
@@ -188,24 +187,19 @@ class ApiClient {
       var request =
           http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'));
 
-      if (kIsWeb) {
-        // 웹에서는 XFile을 직접 사용
-        if (file is XFile) {
-          // XFile에서 바이트 읽기
-          final bytes = await file.readAsBytes();
-          request.files.add(http.MultipartFile.fromBytes(
-            'file',
-            bytes,
-            filename: 'image.jpg',
-          ));
-        } else {
-          return http.Response('Invalid file type for web upload', 400);
-        }
-      } else {
-        // 모바일/데스크톱에서는 파일 경로 사용
-        File fileObj = file as File;
+      if (file is XFile) {
+        final bytes = await file.readAsBytes();
+        final name = file.name.trim().isNotEmpty ? file.name : 'image.jpg';
+        request.files.add(http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: name,
+        ));
+      } else if (!kIsWeb && file is File) {
         request.files
-            .add(await http.MultipartFile.fromPath('file', fileObj.path));
+            .add(await http.MultipartFile.fromPath('file', file.path));
+      } else {
+        return http.Response('Invalid file type for upload', 400);
       }
 
       var streamedResponse = await request.send();
