@@ -54,9 +54,24 @@ import 'core/utils/inf_code_tracker.dart';
 /// 개발용: 앱 시작 시 로그인 화면을 먼저 표시
 const bool kDevForceLoginScreenFirst = false;
 
+/// Flutter web hot restart / WebView 종료 시 엔진이 이미 dispose된
+/// EngineFlutterView를 계속 그리면서 window.dart:99 assertion이 매 프레임
+/// 반복되는 것을 막는다.
+void _installWebDisposedViewErrorGuard() {
+  if (!kIsWeb) return;
+  FlutterError.onError = (details) {
+    final text = '${details.exceptionAsString()}\n${details.stack ?? ''}';
+    final disposedView = text.contains('window.dart:99') ||
+        text.contains('Trying to render a disposed EngineFlutterView');
+    if (disposedView) return;
+    FlutterError.presentError(details);
+  };
+}
+
 void main() async {
   // Flutter 바인딩 초기화
   WidgetsFlutterBinding.ensureInitialized();
+  _installWebDisposedViewErrorGuard();
 
   if (!kIsWeb) {
     try {
@@ -86,6 +101,8 @@ class _BomioraAppState extends State<BomioraApp> {
   @override
   void reassemble() {
     super.reassemble();
+    // hot reload는 main()을 다시 안 타므로, 예전 로그 핸들러가 남지 않게 재설치
+    _installWebDisposedViewErrorGuard();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       DropdownBtn.closeMenu();
     });
