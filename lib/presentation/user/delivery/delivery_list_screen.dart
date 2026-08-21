@@ -23,7 +23,8 @@ import 'widgets/delivery_select_list.dart';
 import 'widgets/order_flow_dialogs.dart';
 import 'widgets/order_item_subject_groups.dart';
 import '../../health/health_common/health_responsive_scale.dart';
-import '../../customer_service/screens/qa_category_screen.dart';
+import '../../customer_service/models/qa_inquiry_draft.dart';
+import '../../customer_service/screens/qa_write_screen.dart';
 import '../../common/widgets/app_toast_overlay.dart';
 
 /// 주문내역 화면
@@ -853,7 +854,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
       final actions = <({String label, VoidCallback? onTap, _CardActionStyle style})>[
         (
           label: '1:1 문의',
-          onTap: () => _openInquiry(),
+          onTap: () => _openInquiry(order),
           style: _CardActionStyle.outlinePink,
         ),
         (
@@ -1163,10 +1164,35 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     if (mounted) await _loadOrders();
   }
 
-  Future<void> _openInquiry() async {
+  Future<void> _openInquiry(OrderListModel order) async {
+    var draft = QaInquiryDraft.fromOrderList(order);
+    // 목록에 상품이 일부만 있으면 상세를 조회해 주문 전체 상품을 담는다
+    final needDetail = order.items.length <= 1 && order.odCartCount > 1;
+    if (needDetail || order.items.isEmpty) {
+      try {
+        final user = await AuthService.getUser();
+        if (user != null) {
+          final detailResult = await OrderService.getOrderDetail(
+            odId: order.odId,
+            mbId: user.id,
+          );
+          if (detailResult['success'] == true) {
+            final detail = detailResult['order'] as OrderDetailModel;
+            if (detail.products.isNotEmpty) {
+              draft = QaInquiryDraft.fromOrderDetail(detail);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    if (!mounted) return;
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const QaCategoryScreen()),
+      MaterialPageRoute(
+        builder: (_) => QaWriteScreen(
+          prefilledDraft: draft,
+        ),
+      ),
     );
   }
 
