@@ -5,18 +5,14 @@ import '../../../data/models/cart/cart_item_model.dart';
 import '../../../data/models/cart/cart_line_group.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import 'get_cartImage.dart';
+import 'supply_add_expand_block.dart';
 
 const _kGmarketSans = 'Gmarket Sans TTF';
-const _kPink = Color(0xFFFF5A8D);
 const _kInk = Color(0xFF1A1A1A);
 const _kInkAlt = Color(0xFF1A1A1E);
-const _kMuted = Color(0xFF898686);
 const _kMuted2 = Color(0xFF898383);
 const _kBorder = Color(0x7FD2D2D2);
-const _kBorderSoft = Color(0x33FF5A8D);
 const _kDivider = Color(0x26FF5A8D);
-const _kHeaderBg = Colors.white;
-const _kRowBg = Colors.white;
 
 /// 처방 장바구니 — 본상품 + 추가상품(supply_add) 묶음 카드
 class CartAddGroupCard extends StatelessWidget {
@@ -34,7 +30,6 @@ class CartAddGroupCard extends StatelessWidget {
   final void Function(CartItem item)? onChildOpenDetail;
   final bool showBundleTotal;
   final bool supplyInteractive;
-  final bool showSameReservationHint;
 
   const CartAddGroupCard({
     super.key,
@@ -48,7 +43,6 @@ class CartAddGroupCard extends StatelessWidget {
     this.onChildOpenDetail,
     this.showBundleTotal = true,
     this.supplyInteractive = true,
-    this.showSameReservationHint = true,
   });
 
   @override
@@ -74,7 +68,6 @@ class CartAddGroupCard extends StatelessWidget {
             child: _SupplyAddBlock(
               items: children,
               interactive: supplyInteractive,
-              showSameReservationHint: showSameReservationHint,
               onQuantityChanged: onChildQuantityChanged,
               onDelete: onChildDelete,
               onOpenDetail: onChildOpenDetail,
@@ -163,15 +156,14 @@ class _MergedSupplyLine {
   }
 }
 
-/// 추가상품(supply_add) 리스트 UI — [CartAddGroupCard] 내부용
-class _SupplyAddBlock extends StatelessWidget {
+/// 추가상품(supply_add) 리스트 UI — [CartAddGroupCard] 내부용 (기본 접힘)
+class _SupplyAddBlock extends StatefulWidget {
   const _SupplyAddBlock({
     required this.items,
     this.onQuantityChanged,
     this.onDelete,
     this.onOpenDetail,
     this.interactive = true,
-    this.showSameReservationHint = true,
   });
 
   final List<CartItem> items;
@@ -179,136 +171,63 @@ class _SupplyAddBlock extends StatelessWidget {
   final void Function(CartItem item)? onDelete;
   final void Function(CartItem item)? onOpenDetail;
   final bool interactive;
-  final bool showSameReservationHint;
+
+  @override
+  State<_SupplyAddBlock> createState() => _SupplyAddBlockState();
+}
+
+class _SupplyAddBlockState extends State<_SupplyAddBlock> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (widget.items.isEmpty) return const SizedBox.shrink();
 
-    final merged = _MergedSupplyLine.merge(items);
-    final canEdit = interactive && onQuantityChanged != null;
-    final radius = healthDp(context, 8);
+    final merged = _MergedSupplyLine.merge(widget.items);
+    final canEdit = widget.interactive && widget.onQuantityChanged != null;
 
-    // 테두리와 clip을 분리해 상단 양끝 라운드 보더가 가려지지 않게 함
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(width: 1, color: _kBorderSoft),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius > 1 ? radius - 1 : radius),
-        child: ColoredBox(
-          color: _kRowBg,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _header(context, count: merged.length),
-              for (var i = 0; i < merged.length; i++) ...[
-                if (i > 0)
-                  const Divider(height: 1, thickness: 1, color: _kDivider),
-                _SupplyAddRow(
-                  line: merged[i],
-                  canEdit: canEdit,
-                  onDecrease: !canEdit
-                      ? null
-                      : () {
-                          final line = merged[i];
-                          final primary = line.primary;
-                          if (primary.ctQty > 1) {
-                            onQuantityChanged!(primary, primary.ctQty - 1);
-                          } else if (line.lines.length > 1 &&
-                              onDelete != null) {
-                            onDelete!(primary);
-                          }
-                        },
-                  onIncrease: canEdit
-                      ? () {
-                          final primary = merged[i].primary;
-                          onQuantityChanged!(primary, primary.ctQty + 1);
-                        }
-                      : null,
-                  onDelete: interactive && onDelete != null
-                      ? () {
-                          for (final item in merged[i].lines) {
-                            onDelete!(item);
-                          }
-                        }
-                      : null,
-                  onOpenDetail: onOpenDetail == null
-                      ? null
-                      : () => onOpenDetail!(merged[i].primary),
-                ),
-              ],
-            ],
+    return SupplyAddExpandBlock(
+      count: merged.length,
+      expanded: _expanded,
+      onToggle: () => setState(() => _expanded = !_expanded),
+      showSameReservationHint: false,
+      children: [
+        for (var i = 0; i < merged.length; i++) ...[
+          if (i > 0) const Divider(height: 1, thickness: 1, color: _kDivider),
+          _SupplyAddRow(
+            line: merged[i],
+            canEdit: canEdit,
+            onDecrease: !canEdit
+                ? null
+                : () {
+                    final line = merged[i];
+                    final primary = line.primary;
+                    if (primary.ctQty > 1) {
+                      widget.onQuantityChanged!(primary, primary.ctQty - 1);
+                    } else if (line.lines.length > 1 &&
+                        widget.onDelete != null) {
+                      widget.onDelete!(primary);
+                    }
+                  },
+            onIncrease: canEdit
+                ? () {
+                    final primary = merged[i].primary;
+                    widget.onQuantityChanged!(primary, primary.ctQty + 1);
+                  }
+                : null,
+            onDelete: widget.interactive && widget.onDelete != null
+                ? () {
+                    for (final item in merged[i].lines) {
+                      widget.onDelete!(item);
+                    }
+                  }
+                : null,
+            onOpenDetail: widget.onOpenDetail == null
+                ? null
+                : () => widget.onOpenDetail!(merged[i].primary),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _header(BuildContext context, {required int count}) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: healthDp(context, 10),
-        vertical: healthDp(context, 7),
-      ),
-      decoration: const BoxDecoration(
-        color: _kHeaderBg,
-        border: Border(
-          bottom: BorderSide(width: 1, color: _kDivider),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: healthDp(context, 6),
-            height: healthDp(context, 6),
-            decoration: const BoxDecoration(
-              color: _kPink,
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(width: healthDp(context, 6)),
-          Text(
-            '추가 상품 $count개',
-            style: TextStyle(
-              color: _kPink,
-              fontSize: healthSp(context, 10),
-              fontFamily: _kGmarketSans,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
-            ),
-          ),
-          SizedBox(width: healthDp(context, 6)),
-          Expanded(
-            child: Container(
-              height: 0.5,
-              color: _kBorderSoft,
-            ),
-          ),
-          if (showSameReservationHint) ...[
-            SizedBox(width: healthDp(context, 6)),
-            Icon(
-              Icons.schedule,
-              size: healthSp(context, 10),
-              color: _kMuted,
-            ),
-            SizedBox(width: healthDp(context, 3)),
-            Text(
-              '동일 예약',
-              style: TextStyle(
-                color: _kMuted,
-                fontSize: healthSp(context, 9),
-                fontFamily: _kGmarketSans,
-                fontWeight: FontWeight.w500,
-                height: 1.5,
-              ),
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }
