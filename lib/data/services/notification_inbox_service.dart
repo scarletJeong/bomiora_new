@@ -16,6 +16,7 @@ class NotificationInboxService {
   static const String _localKeyPrefix = 'notification_inbox_v1_';
 
   static final ValueNotifier<int> revision = ValueNotifier(0);
+  static bool _serverListMissing = false;
 
   static void _bump() => revision.value++;
 
@@ -121,6 +122,7 @@ class NotificationInboxService {
   static Future<List<AppNotificationItem>> fetchList({
     int limit = 50,
     bool unreadOnly = false,
+    bool allowServer = true,
   }) async {
     final user = await AuthService.getUser();
     if (user == null || user.id.trim().isEmpty) return [];
@@ -128,7 +130,9 @@ class NotificationInboxService {
     final mbId = user.id.trim();
     List<AppNotificationItem> items;
 
-    final server = await _fetchFromServer(mbId, limit);
+    final server = allowServer && !_serverListMissing
+        ? await _fetchFromServer(mbId, limit)
+        : null;
     if (server != null) {
       await _saveLocalList(mbId, server);
       items = server;
@@ -207,7 +211,10 @@ class NotificationInboxService {
       final response = await ApiClient.get(
         '${ApiEndpoints.userNotifications}?mb_id=${Uri.encodeQueryComponent(mbId)}&limit=$limit',
       );
-      if (response.statusCode == 404) return null;
+      if (response.statusCode == 404) {
+        _serverListMissing = true;
+        return null;
+      }
       if (response.statusCode != 200 || response.body.trim().isEmpty) {
         return null;
       }
