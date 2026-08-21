@@ -181,7 +181,6 @@ class PaymentProductCard extends StatelessWidget {
             selectedItems: const {},
             supplyInteractive: false,
             showBundleTotal: false,
-            showSameReservationHint: showSameReservationHint,
             onToggleSelect: (_, __) {},
             buildParentOrMainCard: (item, {required isChild, footer}) =>
                 _PaymentParentBlock(item: item, footer: footer),
