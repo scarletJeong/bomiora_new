@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_assets.dart';
 import '../../health/health_common/health_responsive_scale.dart';
+import '../../settings/policy/screens/privacy_policy_screen.dart';
+import '../../settings/policy/screens/terms_of_service_screen.dart';
 
 class AppFooter extends StatelessWidget {
   const AppFooter({super.key});
@@ -170,15 +172,35 @@ class AppFooter extends StatelessWidget {
                     runSpacing: healthDp(context, 4),
                     crossAxisAlignment: WrapCrossAlignment.start,
                     children: [
-                      Text(
-                        '이용약관',
-                        textAlign: TextAlign.start,
-                        style: rowStyleSmall,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const TermsOfServiceScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          '이용약관',
+                          textAlign: TextAlign.start,
+                          style: rowStyleSmall,
+                        ),
                       ),
-                      Text(
-                        '개인정보처리방침',
-                        textAlign: TextAlign.start,
-                        style: rowStyleSmall,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const PrivacyPolicyScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          '개인정보처리방침',
+                          textAlign: TextAlign.start,
+                          style: rowStyleSmall,
+                        ),
                       ),
                     ],
                   ),
