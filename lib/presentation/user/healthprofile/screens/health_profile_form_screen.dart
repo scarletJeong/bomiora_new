@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../health_profile_questionnaire_options.dart';
@@ -118,6 +120,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
   /// BMI 안내 팝업 (현재 체중 라벨 아이콘)
   final GlobalKey _bmiGuideIconKey = GlobalKey();
   OverlayEntry? _bmiGuideOverlay;
+
+  /// 목표 체중 ≥ 현재 체중일 때 핑크 테두리 + 일시 안내 문구
+  bool _goalWeightInvalid = false;
+  bool _goalWeightHintVisible = false;
+  Timer? _goalWeightHintTimer;
 
   /// 주로 하는 운동 > 기타 커스텀 종목
   final List<String> _exerciseOthers = [];
@@ -1504,6 +1511,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
       if (!_nonEmptyString(_formData['answer_4'])) return false;
       if (!_nonEmptyString(_formData['answer_5'])) return false;
       if (!_nonEmptyString(_formData['answer_3'])) return false;
+      if (_isGoalWeightTooHigh()) return false;
       if (!_nonEmptyString(_formData['answer_6'])) return false;
       return true;
     }
@@ -2183,6 +2191,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   suffix: 'kg',
                   requiredMsg: '현재 체중을 입력해주세요',
                   allowDecimal: true,
+                  onAfterChanged: _checkGoalWeightAgainstCurrent,
                 ),
               ),
             ),
@@ -2196,6 +2205,11 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                   suffix: 'kg',
                   requiredMsg: '목표 체중을 입력해주세요',
                   allowDecimal: true,
+                  forcePinkBorder: _goalWeightInvalid,
+                  transientErrorText: _goalWeightHintVisible
+                      ? '현재 체중보다 낮게만 입력해주세요'
+                      : null,
+                  onAfterChanged: _checkGoalWeightAgainstCurrent,
                 ),
               ),
             ),
@@ -2393,22 +2407,72 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
     );
   }
 
+  bool _isGoalWeightTooHigh() {
+    final weight = double.tryParse(
+      (_formData['answer_5']?.toString() ?? '').replaceAll(',', ''),
+    );
+    final goal = double.tryParse(
+      (_formData['answer_3']?.toString() ?? '').replaceAll(',', ''),
+    );
+    if (weight == null || goal == null) return false;
+    return goal >= weight;
+  }
+
+  void _checkGoalWeightAgainstCurrent() {
+    final tooHigh = _isGoalWeightTooHigh();
+    if (tooHigh) {
+      _goalWeightHintTimer?.cancel();
+      setState(() {
+        _goalWeightInvalid = true;
+        _goalWeightHintVisible = true;
+      });
+      _goalWeightHintTimer = Timer(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        setState(() => _goalWeightHintVisible = false);
+      });
+      return;
+    }
+    _goalWeightHintTimer?.cancel();
+    if (_goalWeightInvalid || _goalWeightHintVisible) {
+      setState(() {
+        _goalWeightInvalid = false;
+        _goalWeightHintVisible = false;
+      });
+    }
+  }
+
   Widget _suffixField({
     required String questionId,
     required String hint,
     required String suffix,
     required String requiredMsg,
     bool allowDecimal = false,
+    bool forcePinkBorder = false,
+    String? transientErrorText,
+    VoidCallback? onAfterChanged,
   }) {
+    final pinkBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(healthDp(context, 15)),
+      borderSide: BorderSide(
+        width: healthDp(context, 1),
+        color: _pfPink,
+      ),
+    );
     return FormField<String>(
       initialValue: (_formData[questionId]?.toString() ?? '').trim(),
       validator: (v) {
         final s = (v ?? '').trim();
         if (s.isEmpty) return requiredMsg;
+        if (questionId == 'answer_3' && _isGoalWeightTooHigh()) {
+          return '현재 체중보다 낮게만 입력해주세요';
+        }
         return null;
       },
       onSaved: (v) => _formData[questionId] = (v ?? '').trim(),
       builder: (state) {
+        final showTransient =
+            transientErrorText != null && transientErrorText.isNotEmpty;
+        final showFormError = state.hasError && !showTransient;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -2428,6 +2492,9 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 suffixText: suffix,
                 suffixStyle: _figmaFieldTextStyle(context),
                 errorStyle: const TextStyle(height: 0, fontSize: 0),
+                border: forcePinkBorder ? pinkBorder : null,
+                enabledBorder: forcePinkBorder ? pinkBorder : null,
+                focusedBorder: forcePinkBorder ? pinkBorder : null,
               ),
               onChanged: (v) {
                 state.didChange(v);
@@ -2435,22 +2502,27 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                 setState(() {
                   _formData[questionId] = v.trim();
                 });
+                onAfterChanged?.call();
               },
               validator: (_) => null,
               onSaved: (_) {},
             ),
-            if (state.hasError) ...[
+            if (showTransient || showFormError) ...[
               SizedBox(height: healthDp(context, 4)),
               SizedBox(
                 height: healthDp(context, 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    state.errorText ?? '',
+                    showTransient
+                        ? transientErrorText
+                        : (state.errorText ?? ''),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                      color: forcePinkBorder || showTransient
+                          ? _pfPink
+                          : Theme.of(context).colorScheme.error,
                       fontSize: healthSp(context, 12),
                       fontFamily: 'Gmarket Sans TTF',
                       height: 1.1,
@@ -4684,6 +4756,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
 
   @override
   void dispose() {
+    _goalWeightHintTimer?.cancel();
     _removeAnswer6MenuOverlay();
     _hideBmiGuideOverlay();
     _exerciseOtherDraftFocus.removeListener(_onExerciseOtherDraftFocusChange);
