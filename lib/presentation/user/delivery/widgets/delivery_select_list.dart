@@ -27,7 +27,8 @@ List<OrderItem> pendingReviewProducts(
   OrderDetailModel order,
   Iterable<String> reviewedItIds,
 ) {
-  final reviewed = reviewedItIds.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+  final reviewed =
+      reviewedItIds.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
   return reviewableOrderProducts(order)
       .where((p) => !reviewed.contains(p.itId.trim()))
       .toList();
@@ -42,7 +43,6 @@ class DeliverySelectList extends StatefulWidget {
   });
 
   final OrderDetailModel orderDetail;
-  /// 미리 필터된 미작성 상품 (없으면 orderDetail 전체 본품)
   final List<OrderItem>? pendingProducts;
 
   @override
@@ -52,8 +52,13 @@ class DeliverySelectList extends StatefulWidget {
 class _DeliverySelectListState extends State<DeliverySelectList> {
   static const Color _kPink = Color(0xFFFF5A8D);
   static const Color _kInk = Color(0xFF1A1A1E);
+  static const Color _kInkDark = Color(0xFF1A1A1A);
+  static const Color _kGrey60 = Color(0xFF999999);
+  static const Color _kGrey55 = Color(0xFF555555);
   static const Color _kMuted = Color(0xFF898686);
+  static const Color _kMutedOpt = Color(0xFF898383);
   static const Color _kBorder = Color(0xFFD2D2D2);
+  static const Color _kLine = Color(0xFFF5F5F5);
   static const String _kFont = 'Gmarket Sans TTF';
 
   late final List<OrderItem> _products;
@@ -62,8 +67,8 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
   @override
   void initState() {
     super.initState();
-    _products = widget.pendingProducts ??
-        reviewableOrderProducts(widget.orderDetail);
+    _products =
+        widget.pendingProducts ?? reviewableOrderProducts(widget.orderDetail);
   }
 
   bool get _allSelected =>
@@ -124,16 +129,29 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
     }
   }
 
-  String _optionLine(OrderItem item) {
+  List<String> _metaParts(OrderItem item) {
+    final parts = <String>['수량: ${item.ctQty}'];
     final option = (item.ctOption ?? '').trim();
-    if (option.isEmpty) return '수량: ${item.ctQty}';
-    return '수량: ${item.ctQty}ㅣ$option';
+    if (option.isEmpty) return parts;
+    if (option.contains(' / ')) {
+      parts.addAll(
+        option
+            .split(' / ')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty),
+      );
+    } else if (option.contains('|')) {
+      parts.addAll(
+        option.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty),
+      );
+    } else {
+      parts.add(option);
+    }
+    return parts;
   }
 
   @override
   Widget build(BuildContext context) {
-    final padH = healthDp(context, 20);
-
     return MobileAppLayoutWrapper(
       backgroundColor: Colors.white,
       appBar: HealthAppBar(
@@ -145,82 +163,81 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
         children: [
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                padH,
-                healthDp(context, 10),
-                padH,
-                healthDp(context, 24),
-              ),
+              padding: EdgeInsets.zero,
               children: [
-                Text(
-                  '리뷰를 작성할 상품을 선택해 주세요',
-                  style: TextStyle(
-                    color: _kInk,
-                    fontSize: healthSp(context, 15),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w500,
-                    height: 1.5,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                SizedBox(height: healthDp(context, 5)),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: healthDp(context, 12),
-                      vertical: healthDp(context, 4),
-                    ),
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFFFFF0F5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(healthDp(context, 999)),
-                      ),
-                    ),
-                    child: Text(
-                      '주문번호: ${widget.orderDetail.odId}',
-                      style: TextStyle(
-                        color: _kPink,
-                        fontSize: healthSp(context, 11),
-                        fontFamily: _kFont,
-                        fontWeight: FontWeight.w500,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: healthDp(context, 20)),
-                InkWell(
-                  onTap: _toggleAll,
-                  child: Row(
-                    children: [
-                      _checkCircle(selected: _allSelected),
-                      SizedBox(width: healthDp(context, 8)),
-                      Text(
-                        '전체선택',
-                        style: TextStyle(
-                          color: _kInk,
-                          fontSize: healthSp(context, 13),
-                          fontFamily: _kFont,
-                          fontWeight: FontWeight.w500,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: healthDp(context, 16)),
                 Container(
                   width: double.infinity,
-                  height: 1,
-                  color: const Color(0x66D2D2D2),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: healthDp(context, 20),
+                    vertical: healthDp(context, 10),
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        width: healthDp(context, 1),
+                        color: _kBorder,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '리뷰를 작성하실 상품을 선택해 주세요.',
+                    style: TextStyle(
+                      color: _kInkDark,
+                      fontSize: healthSp(context, 18),
+                      fontFamily: _kFont,
+                      fontWeight: FontWeight.w300,
+                      height: 1.40,
+                    ),
+                  ),
                 ),
-                SizedBox(height: healthDp(context, 16)),
-                for (var i = 0; i < _products.length; i++) ...[
-                  if (i > 0) SizedBox(height: healthDp(context, 16)),
-                  _productRow(_products[i]),
-                ],
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.only(
+                    top: healthDp(context, 14),
+                    left: healthDp(context, 20),
+                    right: healthDp(context, 20),
+                    bottom: healthDp(context, 10),
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        width: healthDp(context, 1),
+                        color: _kLine,
+                      ),
+                    ),
+                  ),
+                  child: InkWell(
+                    onTap: _toggleAll,
+                    child: Row(
+                      children: [
+                        _checkSquare(selected: _allSelected),
+                        SizedBox(width: healthDp(context, 8)),
+                        Text(
+                          '주문번호',
+                          style: TextStyle(
+                            color: _kGrey60,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _kFont,
+                            fontWeight: FontWeight.w300,
+                            height: 1.50,
+                          ),
+                        ),
+                        SizedBox(width: healthDp(context, 10)),
+                        Text(
+                          widget.orderDetail.odId,
+                          style: TextStyle(
+                            color: _kGrey55,
+                            fontSize: healthSp(context, 12),
+                            fontFamily: _kFont,
+                            fontWeight: FontWeight.w300,
+                            height: 1.50,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                for (final item in _products) _productRow(item),
               ],
             ),
           ),
@@ -232,107 +249,143 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
 
   Widget _productRow(OrderItem item) {
     final selected = _selectedCtIds.contains(item.ctId);
-    final thumb = healthDp(context, 64);
+    final thumbW = healthDp(context, 78);
+    final thumbH = healthDp(context, 72);
     final url = (item.imageUrl != null && item.imageUrl!.isNotEmpty)
         ? ImageUrlHelper.normalizeThumbnailUrl(item.imageUrl, item.itId)
         : null;
+    final meta = _metaParts(item);
 
     return InkWell(
       onTap: () => _toggleOne(item),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _checkCircle(selected: selected),
-          SizedBox(width: healthDp(context, 12)),
-          Container(
-            width: thumb,
-            height: thumb,
-            clipBehavior: Clip.antiAlias,
-            decoration: ShapeDecoration(
-              color: const Color(0xFFF6F6F6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(context, 8)),
-              ),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+          horizontal: healthDp(context, 20),
+          vertical: healthDp(context, 16),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            bottom: BorderSide(
+              width: healthDp(context, 1),
+              color: _kLine,
             ),
-            child: url == null
-                ? Icon(Icons.image_outlined, color: _kMuted, size: healthDp(context, 28))
-                : Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _checkSquare(selected: selected),
+            SizedBox(width: healthDp(context, 14)),
+            Container(
+              width: thumbW,
+              height: thumbH,
+              clipBehavior: Clip.antiAlias,
+              decoration: ShapeDecoration(
+                color: const Color(0xFFF6F6F6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(healthDp(context, 10)),
+                ),
+              ),
+              child: url == null
+                  ? Icon(
                       Icons.image_outlined,
                       color: _kMuted,
                       size: healthDp(context, 28),
+                    )
+                  : Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.image_outlined,
+                        color: _kMuted,
+                        size: healthDp(context, 28),
+                      ),
+                    ),
+            ),
+            SizedBox(width: healthDp(context, 14)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.itName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _kInk,
+                      fontSize: healthSp(context, 14),
+                      fontFamily: _kFont,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-          ),
-          SizedBox(width: healthDp(context, 12)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.itName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _kInk,
-                    fontSize: healthSp(context, 13),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w500,
-                    height: 1.38,
-                    letterSpacing: -0.5,
+                  SizedBox(height: healthDp(context, 10)),
+                  Row(
+                    children: [
+                      for (var i = 0; i < meta.length; i++) ...[
+                        if (i > 0) ...[
+                          SizedBox(width: healthDp(context, 5)),
+                          Container(
+                            width: healthDp(context, 0.5),
+                            height: healthDp(context, 10),
+                            color: _kMuted,
+                          ),
+                          SizedBox(width: healthDp(context, 5)),
+                        ],
+                        Flexible(
+                          child: Text(
+                            meta[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: i == 0 ? _kMuted : _kMutedOpt,
+                              fontSize: healthSp(context, 10),
+                              fontFamily: _kFont,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: i == 1 ? -0.9 : 0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ),
-                SizedBox(height: healthDp(context, 4)),
-                Text(
-                  _optionLine(item),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _kMuted,
-                    fontSize: healthSp(context, 11),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w400,
-                    height: 1.5,
+                  SizedBox(height: healthDp(context, 10)),
+                  Text(
+                    '${PriceFormatter.format(item.totalPrice)}원',
+                    style: TextStyle(
+                      color: _kInk,
+                      fontSize: healthSp(context, 14),
+                      fontFamily: _kFont,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                SizedBox(height: healthDp(context, 4)),
-                Text(
-                  '${PriceFormatter.format(item.totalPrice)}원',
-                  style: TextStyle(
-                    color: _kInk,
-                    fontSize: healthSp(context, 13),
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _checkCircle({required bool selected}) {
+  Widget _checkSquare({required bool selected}) {
     final size = healthDp(context, 20);
     return Container(
       width: size,
       height: size,
       decoration: ShapeDecoration(
-        color: selected ? _kPink : Colors.white,
+        color: Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(
-            width: 1.06,
+            width: healthDp(context, 1),
             color: selected ? _kPink : _kBorder,
           ),
-          borderRadius: BorderRadius.circular(healthDp(context, 999)),
+          borderRadius: BorderRadius.circular(healthDp(context, 4)),
         ),
       ),
       child: selected
-          ? Icon(Icons.check, size: healthDp(context, 14), color: Colors.white)
+          ? Icon(Icons.check, size: healthDp(context, 14), color: _kPink)
           : null,
     );
   }
@@ -352,30 +405,33 @@ class _DeliverySelectListState extends State<DeliverySelectList> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border(
-            top: BorderSide(width: 1, color: const Color(0x7FD2D2D2)),
+            top: BorderSide(
+              width: healthDp(context, 1.06),
+              color: const Color(0x7FD2D2D2),
+            ),
           ),
         ),
         child: Material(
           color: enabled ? _kPink : const Color(0xFFF0F0F0),
-          borderRadius: BorderRadius.circular(healthDp(context, 50)),
+          borderRadius: BorderRadius.circular(healthDp(context, 10)),
           child: InkWell(
             onTap: enabled ? _onConfirm : null,
-            borderRadius: BorderRadius.circular(healthDp(context, 50)),
+            borderRadius: BorderRadius.circular(healthDp(context, 10)),
             child: SizedBox(
               height: healthDp(context, 49),
               child: Center(
                 child: Text(
                   enabled
-                      ? '리뷰쓰기 (${_selectedCtIds.length})'
+                      ? '${_selectedCtIds.length}개 상품 리뷰쓰기'
                       : '상품을 선택해 주세요',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: enabled ? Colors.white : const Color(0xFFC0B9B9),
                     fontSize: healthSp(context, 14),
                     fontFamily: _kFont,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                    letterSpacing: -0.3,
+                    fontWeight: FontWeight.w300,
+                    height: 1.50,
+                    letterSpacing: -0.30,
                   ),
                 ),
               ),
