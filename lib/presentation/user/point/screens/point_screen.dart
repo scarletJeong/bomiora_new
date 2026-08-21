@@ -130,15 +130,6 @@ class _PointScreenState extends State<PointScreen> {
               title: '포인트',
               titleFontSize: healthSp(context, 16),
               leadingIconSize: healthDp(context, 24),
-              actions: [
-                healthAppBarAction(
-                  context: context,
-                  icon: Icons.info_outline,
-                  tooltip: '포인트 이용 안내',
-                  iconColor: _textSub,
-                  onPressed: _showPointUsageInfoSheet,
-                ),
-              ],
             ),
             child: _isLoading
                 ? const Center(
@@ -232,6 +223,18 @@ class _PointScreenState extends State<PointScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              GestureDetector(
+                onTap: _showPointUsageInfoSheet,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: EdgeInsets.only(right: healthDp(context, 4)),
+                  child: SvgPicture.asset(
+                    AppAssets.guideIcon,
+                    width: healthDp(context, 14),
+                    height: healthDp(context, 14),
+                  ),
+                ),
+              ),
               Text(
                 '포인트',
                 style: TextStyle(
