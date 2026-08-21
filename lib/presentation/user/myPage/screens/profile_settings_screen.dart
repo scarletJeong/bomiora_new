@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../common/widgets/app_toast_overlay.dart';
 import '../../../common/widgets/mobile_layout_wrapper.dart';
 import '../../../health/health_common/widgets/health_app_bar.dart';
 import '../../../health/health_common/health_responsive_scale.dart';
@@ -164,112 +165,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return '${date.year}.$m.$d';
   }
 
-  Future<void> _showNicknameChangeLimitDialog({String? nextChangeDate}) async {
-    final parsedNext = nextChangeDate != null && nextChangeDate.isNotEmpty
-        ? _parseNicknameChangedAt(nextChangeDate) ??
-            DateTime.tryParse(nextChangeDate)
-        : _nextNicknameChangeDate;
-
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        const kInk = Color(0xFF1A1A1E);
-        const kMuted = Color(0xFF898686);
-        const kPink = Color(0xFFFF5A8D);
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          insetPadding: EdgeInsets.symmetric(horizontal: healthDp(ctx, 24)),
-          child: Container(
-            width: healthDp(ctx, 272),
-            padding: EdgeInsets.all(healthDp(ctx, 20)),
-            decoration: ShapeDecoration(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(healthDp(ctx, 20)),
-              ),
-              shadows: const [
-                BoxShadow(
-                  color: Color(0x19000000),
-                  blurRadius: 8.14,
-                  offset: Offset.zero,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '닉네임 변경 제한',
-                  style: TextStyle(
-                    color: kInk,
-                    fontSize: healthSp(ctx, 20),
-                    fontFamily: 'Gmarket Sans TTF',
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: healthDp(ctx, 20)),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '닉네임은 6개월에 1번만 변경할 수 있습니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: kMuted,
-                        fontSize: healthSp(ctx, 14),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                        height: 1.57,
-                      ),
-                    ),
-                    if (parsedNext != null) ...[
-                      SizedBox(height: healthDp(ctx, 8)),
-                      Text(
-                        '다음 변경 가능일: ${_formatYmdDot(parsedNext)}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: kMuted,
-                          fontSize: healthSp(ctx, 14),
-                          fontFamily: 'Gmarket Sans TTF',
-                          fontWeight: FontWeight.w500,
-                          height: 1.57,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                SizedBox(height: healthDp(ctx, 20)),
-                SizedBox(
-                  width: double.infinity,
-                  height: healthDp(ctx, 40),
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: TextButton.styleFrom(
-                      backgroundColor: kPink,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(healthDp(ctx, 10)),
-                      ),
-                    ),
-                    child: Text(
-                      '확인',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: healthSp(ctx, 16),
-                        fontFamily: 'Gmarket Sans TTF',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  void _showNicknameChangeLimitToast() {
+    AppToastOverlay.show(context, '닉네임은 6개월에 1번만 변경 가능합니다.');
   }
 
   String _formatPhoneForApi(String phoneDigits) {
@@ -433,7 +330,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
 
     if (_nicknameChanged && !_canChangeNicknameNow()) {
-      await _showNicknameChangeLimitDialog();
+      _showNicknameChangeLimitToast();
       _nicknameController.text = _originalNickname;
       return;
     }
@@ -455,9 +352,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
       if (result['success'] != true) {
         if (result['code'] == 'NICKNAME_CHANGE_TOO_SOON') {
-          await _showNicknameChangeLimitDialog(
-            nextChangeDate: result['nextChangeDate']?.toString(),
-          );
+          _showNicknameChangeLimitToast();
           _nicknameController.text = _originalNickname;
           if (mounted) setState(() {});
         }
@@ -722,7 +617,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           SizedBox(height: healthDp(context, 5)),
           GestureDetector(
             onTap: !_canChangeNicknameNow()
-                ? () => _showNicknameChangeLimitDialog()
+                ? _showNicknameChangeLimitToast
                 : null,
             child: AbsorbPointer(
               absorbing: !_canChangeNicknameNow(),
