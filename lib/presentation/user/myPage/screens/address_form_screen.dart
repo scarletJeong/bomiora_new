@@ -62,9 +62,14 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     if (mounted) setState(() {});
   }
 
+  bool get _isPhoneValid {
+    final t = _phoneController.text.trim();
+    return RegExp(r'^\d{11}$').hasMatch(t);
+  }
+
   bool get _canSave {
     if (_nameController.text.trim().isEmpty) return false;
-    if (_phoneController.text.trim().isEmpty) return false;
+    if (!_isPhoneValid) return false;
     if (_address1Controller.text.trim().isEmpty) return false;
     if (_address2Controller.text.trim().isEmpty) return false;
     if (_subjectPreset == _SubjectPreset.custom &&
@@ -180,7 +185,10 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
     final zipLine = _zipLine(m);
     final subject = _str(m, ['adSubject', 'ad_subject']);
     _nameController.text = _str(m, ['adName', 'ad_name']);
-    _phoneController.text = _str(m, ['adHp', 'ad_hp', 'adTel', 'ad_tel']);
+    final rawPhone = _str(m, ['adHp', 'ad_hp', 'adTel', 'ad_tel']);
+    final phoneDigits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    _phoneController.text =
+        phoneDigits.length > 11 ? phoneDigits.substring(0, 11) : phoneDigits;
     _zipController.text = zipLine;
     _address1Controller.text = _str(m, ['adAddr1', 'ad_addr1']);
     final a2 = _str(m, ['adAddr2', 'ad_addr2']);
@@ -355,6 +363,12 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
 
   // 배송지 저장
   Future<void> _saveAddress() async {
+    final phone = _phoneController.text.trim();
+    if (phone.length != 11 || !RegExp(r'^\d{11}$').hasMatch(phone)) {
+      AppToastOverlay.show(context, '연락처 11자리를 확인해 주세요.');
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -548,7 +562,7 @@ class _AddressFormScreenState extends State<AddressFormScreen> {
                 validator: (v) {
                   final t = v?.trim() ?? '';
                   if (t.isEmpty) return '연락처를 입력해주세요.';
-                  if (t.length > 11) return '연락처는 11자리까지 입력해주세요.';
+                  if (t.length != 11) return '연락처는 11자리로 입력해주세요.';
                   return null;
                 },
               ),
