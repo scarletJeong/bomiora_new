@@ -1,10 +1,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/image_url_helper.dart';
+// import '../../../core/utils/image_url_helper.dart';
 import '../../../data/models/home/banner_model.dart';
 import '../../../data/services/banner_service.dart';
-import '../../common/widgets/app_network_image.dart';
+// import '../../common/widgets/app_network_image.dart';
 import '../../health/health_common/health_responsive_scale.dart';
 import '../../shopping/widgets/product_banner_slider.dart'
     show kSharedBannerHeightBase;
@@ -27,6 +27,14 @@ class BannerSlider extends StatefulWidget {
 }
 
 class _BannerSliderState extends State<BannerSlider> {
+  /// 임시 단색 배너 — 핑크 / 주황 / 노랑 / 파랑
+  static const List<Color> _tempBannerColors = [
+    Color(0xFFFF5A8D), // 핑크
+    Color(0xFFFF8C42), // 주황
+    Color(0xFFFFD60A), // 노랑
+    Color(0xFF4A90E2), // 파랑
+  ];
+
   int _currentIndex = 0;
   late PageController _pageController;
   late Future<List<BannerModel>> _bannersFuture;
@@ -69,6 +77,16 @@ class _BannerSliderState extends State<BannerSlider> {
     super.dispose();
   }
 
+  Widget _buildTempColorPage(BuildContext context, int index, double bannerH) {
+    return ColoredBox(
+      color: _tempBannerColors[index % _tempBannerColors.length],
+      child: SizedBox(
+        width: double.infinity,
+        height: bannerH,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bannerH = healthDp(context, kSharedBannerHeightBase);
@@ -80,22 +98,25 @@ class _BannerSliderState extends State<BannerSlider> {
     return FutureBuilder<List<BannerModel>>(
       future: _bannersFuture,
       builder: (context, snapshot) {
-        final banners = snapshot.data ?? const <BannerModel>[];
+        final apiBanners = snapshot.data ?? const <BannerModel>[];
         if (snapshot.connectionState == ConnectionState.waiting &&
-            banners.isEmpty) {
+            apiBanners.isEmpty) {
           return SizedBox(
             height: bannerH,
             child: const Center(child: CircularProgressIndicator()),
           );
         }
-        if (banners.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _notifyPrimarySettled();
-          });
-          return const SizedBox.shrink();
-        }
 
-        if (_currentIndex >= banners.length) {
+        // API 배너가 없어도 임시 4색 슬라이드 표시
+        final pageCount = apiBanners.isNotEmpty
+            ? apiBanners.length
+            : _tempBannerColors.length;
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _notifyPrimarySettled();
+        });
+
+        if (_currentIndex >= pageCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             setState(() => _currentIndex = 0);
@@ -105,7 +126,7 @@ class _BannerSliderState extends State<BannerSlider> {
           });
         }
 
-        final hasMultiple = banners.length > 1;
+        final hasMultiple = pageCount > 1;
 
         return Container(
           height: bannerH,
@@ -138,25 +159,32 @@ class _BannerSliderState extends State<BannerSlider> {
                   onPageChanged: (index) {
                     setState(() => _currentIndex = index);
                   },
-                  itemCount: banners.length,
+                  itemCount: pageCount,
                   itemBuilder: (context, index) {
-                    final banner = banners[index];
-                    final imageUrl =
-                        ImageUrlHelper.resolveSiteAssetUrl(banner.imageUrl);
-                    return AppNetworkImage(
-                      url: imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: bannerH,
-                      decodeHeightLogical: bannerH,
-                      onSettled: index == 0 ? _notifyPrimarySettled : null,
-                      errorBuilder: (_, __, ___) => ColoredBox(
-                        color: Colors.grey[200]!,
-                        child: const Center(
-                          child: Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
-                    );
+                    // --- 이미지 배너 (임시 비활성 — 경로/로드 로직 유지) ---
+                    // if (apiBanners.isNotEmpty) {
+                    //   final banner = apiBanners[index];
+                    //   final imageUrl =
+                    //       ImageUrlHelper.resolveSiteAssetUrl(banner.imageUrl);
+                    //   return AppNetworkImage(
+                    //     url: imageUrl,
+                    //     fit: BoxFit.cover,
+                    //     width: double.infinity,
+                    //     height: bannerH,
+                    //     decodeHeightLogical: bannerH,
+                    //     onSettled: index == 0 ? _notifyPrimarySettled : null,
+                    //     errorBuilder: (_, __, ___) => ColoredBox(
+                    //       color: Colors.grey[200]!,
+                    //       child: const Center(
+                    //         child: Icon(Icons.broken_image_outlined),
+                    //       ),
+                    //     ),
+                    //   );
+                    // }
+                    // --- /이미지 배너 ---
+
+                    // 임시: 핑크 / 주황 / 노랑 / 파랑
+                    return _buildTempColorPage(context, index, bannerH);
                   },
                 ),
               ),
@@ -167,7 +195,7 @@ class _BannerSliderState extends State<BannerSlider> {
                   right: 0,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(banners.length, (index) {
+                    children: List.generate(pageCount, (index) {
                       return GestureDetector(
                         onTap: () => _pageController.animateToPage(
                           index,
