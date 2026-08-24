@@ -2242,7 +2242,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                     TextSpan(
                       text: ' - ',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: _pfPink,
                         fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w500,
@@ -2252,7 +2252,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       text:
                           '${remaining.abs() == remaining.abs().roundToDouble() ? remaining.abs().toStringAsFixed(0) : remaining.abs().toStringAsFixed(1)} kg ',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: _pfPink,
                         fontSize: healthSp(context, 12),
                         fontFamily: 'Gmarket Sans TTF',
                         fontWeight: FontWeight.w700,
@@ -2523,7 +2523,7 @@ class _HealthProfileFormScreenState extends State<HealthProfileFormScreen> {
                       color: forcePinkBorder || showTransient
                           ? _pfPink
                           : Theme.of(context).colorScheme.error,
-                      fontSize: healthSp(context, 12),
+                      fontSize: healthSp(context, 10),
                       fontFamily: 'Gmarket Sans TTF',
                       height: 1.1,
                     ),

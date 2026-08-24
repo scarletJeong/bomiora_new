@@ -4,22 +4,39 @@ import '../../presentation/user/healthprofile/models/health_profile_model.dart';
 
 class HealthProfileService {
   // ApiClient의 동적 baseUrl 사용 (로컬: localhost:9000, 서버: bomiora.net)
-  
+
+  static final Map<String, HealthProfileModel?> _memCache = {};
+  static final Map<String, DateTime> _memCacheAt = {};
+  static const Duration _memTtl = Duration(minutes: 2);
+
   // 건강프로필 조회
   static Future<HealthProfileModel?> getHealthProfile(String userId) async {
     try {
-      final response = await ApiClient.get('/api/healthprofile/$userId');
-      
-      
+      final id = userId.trim();
+      final cachedAt = _memCacheAt[id];
+      if (cachedAt != null &&
+          DateTime.now().difference(cachedAt) < _memTtl &&
+          _memCache.containsKey(id)) {
+        return _memCache[id];
+      }
+
+      final response = await ApiClient.get('/api/healthprofile/$id');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         if (data is Map && data['success'] == true && data['data'] != null) {
           final payload = data['data'];
           if (payload is Map) {
-            return HealthProfileModel.fromJson(Map<String, dynamic>.from(payload));
+            final model =
+                HealthProfileModel.fromJson(Map<String, dynamic>.from(payload));
+            _memCache[id] = model;
+            _memCacheAt[id] = DateTime.now();
+            return model;
           }
         }
+        _memCache[id] = null;
+        _memCacheAt[id] = DateTime.now();
         return null;
       } else {
         throw Exception('건강프로필 조회 실패: ${response.statusCode}');
@@ -27,6 +44,17 @@ class HealthProfileService {
     } catch (e) {
       throw Exception('건강프로필 조회 중 오류 발생: $e');
     }
+  }
+
+  static void invalidateCache([String? userId]) {
+    if (userId == null || userId.trim().isEmpty) {
+      _memCache.clear();
+      _memCacheAt.clear();
+      return;
+    }
+    final id = userId.trim();
+    _memCache.remove(id);
+    _memCacheAt.remove(id);
   }
   
   // 건강프로필 저장
@@ -36,7 +64,9 @@ class HealthProfileService {
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        return data is Map && data['success'] == true;
+        final ok = data is Map && data['success'] == true;
+        if (ok) invalidateCache(profile.mbId);
+        return ok;
       } else {
         throw Exception('건강프로필 저장 실패: ${response.statusCode}');
       }
@@ -54,7 +84,9 @@ class HealthProfileService {
             
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        return data is Map && data['success'] == true;
+        final ok = data is Map && data['success'] == true;
+        if (ok) invalidateCache(profile.mbId);
+        return ok;
       } else {
         throw Exception('건강프로필 수정 실패: ${response.statusCode}');
       }
