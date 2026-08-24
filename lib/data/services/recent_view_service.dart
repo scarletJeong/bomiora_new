@@ -15,8 +15,49 @@ class RecentViewService {
   /// [recordView] 호출 시 증가 — 드로어 등에서 목록 갱신용
   static final ValueNotifier<int> revision = ValueNotifier(0);
 
+  static List<Map<String, dynamic>>? _memList;
+  static DateTime? _memAt;
+  static int _memLimit = 0;
+  static const Duration _memTtl = Duration(seconds: 45);
+
   static void _notifyRevision() {
+    _memList = null;
+    _memAt = null;
     revision.value++;
+  }
+
+  /// 드로어·마이페이지 등에서 최근 본 상품 목록 조회
+  static Future<List<Map<String, dynamic>>> getRecentList({
+    int limit = 4,
+  }) async {
+    final safeLimit = limit.clamp(1, 20);
+
+    final now = DateTime.now();
+    if (_memList != null &&
+        _memAt != null &&
+        _memLimit >= safeLimit &&
+        now.difference(_memAt!) < _memTtl) {
+      return _memList!.take(safeLimit).toList();
+    }
+
+    try {
+      final user = await AuthService.getUser();
+      if (user != null && user.id.trim().isNotEmpty) {
+        final server = await _fetchFromServer(user.id, safeLimit);
+        if (server.isNotEmpty) {
+          _memList = server;
+          _memAt = now;
+          _memLimit = safeLimit;
+          return server;
+        }
+      }
+    } catch (_) {}
+
+    final local = (await _getLocalList()).take(safeLimit).toList();
+    _memList = local;
+    _memAt = now;
+    _memLimit = safeLimit;
+    return local;
   }
 
   /// 상품 상세 진입 시 최근 본 상품 기록 (비로그인: 로컬, 로그인: 로컬+서버)
@@ -91,23 +132,6 @@ class RecentViewService {
         // 개별 실패는 무시하고 나머지 동기화 계속
       }
     }
-  }
-
-  /// 드로어·마이페이지 등에서 최근 본 상품 목록 조회
-  static Future<List<Map<String, dynamic>>> getRecentList({
-    int limit = 4,
-  }) async {
-    final safeLimit = limit.clamp(1, 20);
-
-    try {
-      final user = await AuthService.getUser();
-      if (user != null && user.id.trim().isNotEmpty) {
-        final server = await _fetchFromServer(user.id, safeLimit);
-        if (server.isNotEmpty) return server;
-      }
-    } catch (_) {}
-
-    return (await _getLocalList()).take(safeLimit).toList();
   }
 
   static Future<List<Map<String, dynamic>>> _fetchFromServer(
