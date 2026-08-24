@@ -71,15 +71,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       _fetchError = null;
     });
     String? mbId;
-    int pfNo = 0;
+    // 상세 진입 시 문진표 전체 API를 타지 않음 (추천 시에만 pfNo 조회)
+    const int pfNo = 0;
     try {
       final u = await AuthService.getUser();
       if (u != null) {
         mbId = u.id;
-        // 상세 API와 겹치지 않게 프로필만 선행 (실패해도 상세는 진행)
-        final hp = await HealthProfileService.getHealthProfile(u.id);
-        pfNo = hp?.pfNo ?? 0;
-        if (pfNo < 0) pfNo = 0;
       }
     } catch (_) {}
     if (mounted) {
@@ -169,12 +166,14 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       return;
     }
     int pfNo = _recommendPfNo;
-    try {
-      final hp = await HealthProfileService.getHealthProfile(user.id);
-      pfNo = hp?.pfNo ?? 0;
-      if (pfNo < 0) pfNo = 0;
-    } catch (_) {}
-    if (mounted) setState(() => _recommendPfNo = pfNo);
+    if (pfNo <= 0) {
+      try {
+        final hp = await HealthProfileService.getHealthProfile(user.id);
+        pfNo = hp?.pfNo ?? 0;
+        if (pfNo < 0) pfNo = 0;
+      } catch (_) {}
+      if (mounted) setState(() => _recommendPfNo = pfNo);
+    }
     final prevCount = _recommendCount;
     setState(() {
       _recommendBusy = true;
